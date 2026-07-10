@@ -28,6 +28,11 @@ dist-ssr
 
 # Environment variables
 .env
+.env.local
+
+# Supabase CLI (linked credentials)
+supabase/.branches
+supabase/.temp
 
 # IDE - VS Code
 .vscode/*
