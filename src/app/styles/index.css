@@ -2,78 +2,115 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
 @custom-variant dark (&:is(.dark *));
 
+/* Deep Cobalt Blueprint — design tokens */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    /* Surfaces */
+    --background: #f1f5f9;
+    --foreground: #0a0f1d;
+    --card: #ffffff;
+    --card-foreground: #0a0f1d;
+    --popover: #ffffff;
+    --popover-foreground: #0a0f1d;
+
+    /* Brand */
+    --primary: #0284c7;
+    --primary-foreground: #f8fafc;
+
+    /* Secondary / grid */
+    --secondary: #e2e8f0;
+    --secondary-foreground: #0a0f1d;
+    --muted: #e2e8f0;
+    --muted-foreground: #64748b;
+    --grid: #cbd5e1;
+
+    /* Interactive */
+    --accent: #0ea5e9;
+    --accent-foreground: #0a0f1d;
+
+    /* Semantic */
+    --destructive: #da3633;
+    --destructive-foreground: #f8fafc;
+    --success: #238636;
+    --success-foreground: #f8fafc;
+
+    /* Lines & focus */
+    --border: color-mix(in oklab, #0284c7 22%, #f1f5f9);
+    --input: #e2e8f0;
+    --ring: #0ea5e9;
+
+    /* Charts */
+    --chart-1: #0284c7;
+    --chart-2: #0ea5e9;
+    --chart-3: #64748b;
+    --chart-4: #cbd5e1;
+    --chart-5: #238636;
+
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar: #f8fafc;
+    --sidebar-foreground: #0a0f1d;
+    --sidebar-primary: #0284c7;
+    --sidebar-primary-foreground: #f8fafc;
+    --sidebar-accent: #e2e8f0;
+    --sidebar-accent-foreground: #0a0f1d;
+    --sidebar-border: color-mix(in oklab, #0284c7 22%, #f1f5f9);
+    --sidebar-ring: #0ea5e9;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: #0a0f1d;
+    --foreground: #f8fafc;
+    --card: #111827;
+    --card-foreground: #f8fafc;
+    --popover: #111827;
+    --popover-foreground: #f8fafc;
+    --primary: #38bdf8;
+    --primary-foreground: #0a0f1d;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #64748b;
+    --grid: #1e293b;
+    --accent: #0ea5e9;
+    --accent-foreground: #f8fafc;
+    --destructive: #da3633;
+    --destructive-foreground: #f8fafc;
+    --success: #238636;
+    --success-foreground: #f8fafc;
+    --border: color-mix(in oklab, #38bdf8 28%, #0a0f1d);
+    --input: #1e293b;
+    --ring: #0ea5e9;
+    --chart-1: #38bdf8;
+    --chart-2: #0ea5e9;
+    --chart-3: #64748b;
+    --chart-4: #1e293b;
+    --chart-5: #238636;
+    --sidebar: #0a0f1d;
+    --sidebar-foreground: #f8fafc;
+    --sidebar-primary: #38bdf8;
+    --sidebar-primary-foreground: #0a0f1d;
+    --sidebar-accent: #1e293b;
+    --sidebar-accent-foreground: #f8fafc;
+    --sidebar-border: color-mix(in oklab, #38bdf8 28%, #0a0f1d);
+    --sidebar-ring: #0ea5e9;
 }
 
 @theme inline {
+    --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -89,9 +126,13 @@
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+    --color-grid: var(--grid);
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
@@ -114,12 +155,104 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
+/* Typography scale — Minor Third (1.200), base 16px */
+@utility text-h1 {
+    font-family: var(--font-heading);
+    font-size: 2.0625rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
 
-  body {
-    @apply bg-background text-foreground;
-  }
+@utility text-h2 {
+    font-family: var(--font-heading);
+    font-size: 1.6875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+}
+
+@utility text-h3 {
+    font-family: var(--font-heading);
+    font-size: 1.4375rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+@utility text-h4 {
+    font-family: var(--font-heading);
+    font-size: 1.1875rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+@utility text-body {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+@utility text-ui {
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+@utility text-code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+@utility text-meta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+@utility bg-blueprint-grid {
+    background-color: var(--background);
+    background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 1.25rem 1.25rem;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background font-sans text-body text-foreground antialiased;
+    }
+
+    h1 {
+        @apply text-h1;
+    }
+
+    h2 {
+        @apply text-h2;
+    }
+
+    h3 {
+        @apply text-h3;
+    }
+
+    h4 {
+        @apply text-h4;
+    }
+
+    code,
+    pre,
+    kbd,
+    samp {
+        @apply font-mono text-code;
+    }
 }

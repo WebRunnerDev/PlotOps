@@ -9,31 +9,42 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './../routes/__root'
+import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
+import { Route as mainSettingsRouteImport } from './../routes/(main)/settings'
 import { Route as mainHomeRouteImport } from './../routes/(main)/home'
 import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
 import { Route as mainAboutRouteImport } from './../routes/(main)/about'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
 
+const mainRouteRoute = mainRouteRouteImport.update({
+  id: '/(main)',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const mainSettingsRoute = mainSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => mainRouteRoute,
+} as any)
 const mainHomeRoute = mainHomeRouteImport.update({
-  id: '/(main)/home',
+  id: '/home',
   path: '/home',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => mainRouteRoute,
 } as any)
 const mainDashboardRoute = mainDashboardRouteImport.update({
-  id: '/(main)/dashboard',
+  id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => mainRouteRoute,
 } as any)
 const mainAboutRoute = mainAboutRouteImport.update({
-  id: '/(main)/about',
+  id: '/about',
   path: '/about',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => mainRouteRoute,
 } as any)
 const authSignInRoute = authSignInRouteImport.update({
   id: '/(auth)/sign-in',
@@ -47,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof mainAboutRoute
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
+  '/settings': typeof mainSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,39 +66,49 @@ export interface FileRoutesByTo {
   '/about': typeof mainAboutRoute
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
+  '/settings': typeof mainSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/(main)': typeof mainRouteRouteWithChildren
   '/(auth)/sign-in': typeof authSignInRoute
   '/(main)/about': typeof mainAboutRoute
   '/(main)/dashboard': typeof mainDashboardRoute
   '/(main)/home': typeof mainHomeRoute
+  '/(main)/settings': typeof mainSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/about' | '/dashboard' | '/home'
+  fullPaths: '/' | '/sign-in' | '/about' | '/dashboard' | '/home' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/about' | '/dashboard' | '/home'
+  to: '/' | '/sign-in' | '/about' | '/dashboard' | '/home' | '/settings'
   id:
     | '__root__'
     | '/'
+    | '/(main)'
     | '/(auth)/sign-in'
     | '/(main)/about'
     | '/(main)/dashboard'
     | '/(main)/home'
+    | '/(main)/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  mainRouteRoute: typeof mainRouteRouteWithChildren
   authSignInRoute: typeof authSignInRoute
-  mainAboutRoute: typeof mainAboutRoute
-  mainDashboardRoute: typeof mainDashboardRoute
-  mainHomeRoute: typeof mainHomeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/(main)': {
+      id: '/(main)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof mainRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -94,26 +116,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(main)/settings': {
+      id: '/(main)/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof mainSettingsRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
     '/(main)/home': {
       id: '/(main)/home'
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof mainHomeRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof mainRouteRoute
     }
     '/(main)/dashboard': {
       id: '/(main)/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof mainDashboardRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof mainRouteRoute
     }
     '/(main)/about': {
       id: '/(main)/about'
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof mainAboutRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof mainRouteRoute
     }
     '/(auth)/sign-in': {
       id: '/(auth)/sign-in'
@@ -125,12 +154,28 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  authSignInRoute: authSignInRoute,
+interface mainRouteRouteChildren {
+  mainAboutRoute: typeof mainAboutRoute
+  mainDashboardRoute: typeof mainDashboardRoute
+  mainHomeRoute: typeof mainHomeRoute
+  mainSettingsRoute: typeof mainSettingsRoute
+}
+
+const mainRouteRouteChildren: mainRouteRouteChildren = {
   mainAboutRoute: mainAboutRoute,
   mainDashboardRoute: mainDashboardRoute,
   mainHomeRoute: mainHomeRoute,
+  mainSettingsRoute: mainSettingsRoute,
+}
+
+const mainRouteRouteWithChildren = mainRouteRoute._addFileChildren(
+  mainRouteRouteChildren,
+)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  mainRouteRoute: mainRouteRouteWithChildren,
+  authSignInRoute: authSignInRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,18 +1,32 @@
+import type { QueryClient } from '@tanstack/react-query'
+
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import type { QueryClient } from '@tanstack/react-query'
+
 import type { AuthContextValue } from '@/features/auth/model/types'
+import { GridPattern } from '@/shared/shadcn'
+import { cn } from '@/shared'
 
 export type RouterContext = {
+  auth: Pick<AuthContextValue, 'isLoading' | 'user'>
   queryClient: QueryClient
-  auth: Pick<AuthContextValue, 'user' | 'isLoading'>
 }
 
 function RootLayout() {
   return (
     <>
-      <main className="mx-auto max-w-5xl p-4">
+      <main className="min-h-screen">
         <Outlet />
+        <GridPattern
+          width={32}
+          height={32}
+          x={-1}
+          y={-1}
+          className={cn(
+            "stroke-grid/40 -z-50",
+            "mask-[radial-gradient(ellipse_at_center,white,transparent_80%)]",
+          )}
+        />
       </main>
       <TanStackRouterDevtools />
     </>

@@ -1,9 +1,12 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/(main)/home')({
-  component: RouteComponent,
-})
+import { ProjectsPage } from "@/features/projects";
 
-function RouteComponent() {
-  return <div>Hello "/(main)/home"!</div>
-}
+export const Route = createFileRoute("/(main)/home")({
+    beforeLoad: ({ context }) => {
+        if (!context.auth.user) {
+            throw redirect({ to: "/sign-in" });
+        }
+    },
+    component: ProjectsPage,
+});

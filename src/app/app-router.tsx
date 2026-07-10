@@ -1,5 +1,8 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
+
 import { useAuth } from "@/features/auth";
+
 import { queryClient, router } from "./router";
 
 export function AppRouter() {
@@ -14,12 +17,14 @@ export function AppRouter() {
     }
 
     return (
-        <RouterProvider
-            router={router}
-            context={{
-                queryClient,
-                auth: { user: auth.user, isLoading: auth.isLoading },
-            }}
-        />
+        <QueryClientProvider client={queryClient}>
+            <RouterProvider
+                context={{
+                    auth: { isLoading: auth.isLoading, user: auth.user },
+                    queryClient,
+                }}
+                router={router}
+            />
+        </QueryClientProvider>
     );
 }
