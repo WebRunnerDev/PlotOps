@@ -1,0 +1,19 @@
+{
+  "title": "Projects",
+  "subtitle": "GitHub repositories connected to PlotOps",
+  "addProject": "Add from GitHub",
+  "addProjectTitle": "Connect repository",
+  "addProjectSubtitle": "Pick a repo from your GitHub account",
+  "searchRepos": "Search repositories…",
+  "loadingRepos": "Loading repositories from GitHub…",
+  "reposError": "Failed to load repositories. Try signing out and back in with GitHub.",
+  "reposScopeError": "GitHub access is missing the repo scope required for private repositories. Reconnect GitHub and approve access to your repositories.",
+  "reconnectGitHub": "Reconnect GitHub",
+  "noReposFound": "No repositories found",
+  "projectsError": "Failed to load projects",
+  "githubRequired": "Sign in with GitHub to connect repositories",
+  "emptyTitle": "No projects yet",
+  "emptyDescription": "Connect a GitHub repository to start tracking tasks and branches.",
+  "removeProject": "Remove project",
+  "closeDialog": "Close"
+}

@@ -1,0 +1,13 @@
+{
+  "email": "Email",
+  "emailPlaceholder": "you@example.com",
+  "githubRedirecting": "Redirecting...",
+  "githubSignIn": "Sign in with GitHub",
+  "or": "or",
+  "password": "Password",
+  "passwordPlaceholder": "••••••••",
+  "signIn": "Sign in",
+  "signInLoading": "Signing in...",
+  "signInSubtitle": "Sign in with GitHub or email and password",
+  "signInTitle": "Sign in to PlotOps"
+}

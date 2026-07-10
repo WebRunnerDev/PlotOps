@@ -1,0 +1,20 @@
+{
+  "accountMenu": "Account menu",
+  "actions": {
+    "cancel": "Cancel"
+  },
+  "en": "English",
+  "logout": {
+    "action": "Sign out",
+    "description": "You will be redirected to the sign-in page.",
+    "error": "Could not sign out",
+    "signedInAs": "Signed in as {{email}}",
+    "title": "Sign out?"
+  },
+  "platformSettings": "Platform settings",
+  "ru": "Russian",
+  "settingsPlaceholder": "Theme, language, and other preferences will live here.",
+  "switcher": "Language",
+  "themeDark": "Switch to dark theme",
+  "themeLight": "Switch to light theme"
+}

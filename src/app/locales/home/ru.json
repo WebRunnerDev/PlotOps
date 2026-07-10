@@ -1,0 +1,19 @@
+{
+  "title": "Проекты",
+  "subtitle": "Репозитории GitHub, подключённые к PlotOps",
+  "addProject": "Добавить из GitHub",
+  "addProjectTitle": "Подключить репозиторий",
+  "addProjectSubtitle": "Выберите репозиторий из вашего аккаунта GitHub",
+  "searchRepos": "Поиск репозиториев…",
+  "loadingRepos": "Загрузка репозиториев из GitHub…",
+  "reposError": "Не удалось загрузить репозитории. Попробуйте выйти и войти через GitHub снова.",
+  "reposScopeError": "У токена GitHub нет scope repo, нужного для приватных репозиториев. Переподключите GitHub и разрешите доступ к репозиториям.",
+  "reconnectGitHub": "Переподключить GitHub",
+  "noReposFound": "Репозитории не найдены",
+  "projectsError": "Не удалось загрузить проекты",
+  "githubRequired": "Войдите через GitHub, чтобы подключать репозитории",
+  "emptyTitle": "Пока нет проектов",
+  "emptyDescription": "Подключите репозиторий GitHub, чтобы начать отслеживать задачи и ветки.",
+  "removeProject": "Удалить проект",
+  "closeDialog": "Закрыть"
+}
