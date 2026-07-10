@@ -1,0 +1,6 @@
+export const projectKeys = {
+    all: ["projects"] as const,
+    githubRepos: (userId: string) =>
+        ["projects", "github-repos", userId] as const,
+    list: () => [...projectKeys.all, "list"] as const,
+};
