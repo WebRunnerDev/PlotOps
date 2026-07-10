@@ -1,4 +1,5 @@
 import type { AuthError } from "@supabase/supabase-js";
+
 import { supabase } from "@/shared/api/supabase";
 
 export type SignInCredentials = {
@@ -7,33 +8,6 @@ export type SignInCredentials = {
 };
 
 export type SignUpCredentials = SignInCredentials;
-
-export async function signInWithPassword(credentials: SignInCredentials) {
-    return supabase.auth.signInWithPassword(credentials);
-}
-
-export async function signInWithGitHub() {
-    return supabase.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-            redirectTo: `${window.location.origin}/home`,
-        },
-    });
-}
-
-export async function signUpWithPassword(credentials: SignUpCredentials) {
-    return supabase.auth.signUp(credentials);
-}
-
-export async function signOut() {
-    return supabase.auth.signOut();
-}
-
-export async function resetPasswordForEmail(email: string) {
-    return supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/sign-in`,
-    });
-}
 
 export function getAuthErrorKey(error: AuthError): string {
     const message = error.message.toLowerCase();
@@ -52,4 +26,32 @@ export function getAuthErrorKey(error: AuthError): string {
     }
 
     return "errors.auth.generic";
+}
+
+export async function resetPasswordForEmail(email: string) {
+    return supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${globalThis.location.origin}/sign-in`,
+    });
+}
+
+export async function signInWithGitHub() {
+    return supabase.auth.signInWithOAuth({
+        options: {
+            redirectTo: `${globalThis.location.origin}/home`,
+            scopes: "repo read:user",
+        },
+        provider: "github",
+    });
+}
+
+export async function signInWithPassword(credentials: SignInCredentials) {
+    return supabase.auth.signInWithPassword(credentials);
+}
+
+export async function signOut() {
+    return supabase.auth.signOut();
+}
+
+export async function signUpWithPassword(credentials: SignUpCredentials) {
+    return supabase.auth.signUp(credentials);
 }

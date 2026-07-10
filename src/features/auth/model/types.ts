@@ -1,8 +1,9 @@
 import type { Session, User } from "@supabase/supabase-js";
 
 export type AuthContextValue = {
-    session: Session | null;
-    user: User | null;
+    githubAccessToken: null | string;
     isLoading: boolean;
+    session: null | Session;
     signOut: () => Promise<void>;
+    user: null | User;
 };
