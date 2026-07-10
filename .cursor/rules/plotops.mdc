@@ -1,0 +1,63 @@
+---
+description: PlotOps project spec — Git-oriented CRM with GitHub integration
+alwaysApply: true
+---
+
+# PlotOps
+
+Git-oriented CRM (Jira/Linear clone) with GitHub integration. Portfolio project targeting Middle-level frontend skills.
+
+## Tech Stack (current)
+
+- **Frontend:** Vite, React 19, TanStack Router, TanStack Query, Tailwind CSS 4, shadcn/ui, i18next
+- **Architecture:** Feature-Sliced Design — `src/app`, `src/routes`, `src/features`, `src/shared`
+- **State:** TanStack Query (server/async), Zustand (UI — when needed)
+- **Backend:** Supabase (PostgreSQL, Auth, Realtime, Storage, Edge Functions)
+- **Env vars:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+## Full Spec
+
+Read `docs/SPEC.md` before implementing major features. For the latest version, fetch Notion page **"CRM system with Github integration"**.
+
+**Progress:** current implementation status lives in `docs/SPEC.md` → Progress. After completing a roadmap item or stage, update that section in the same PR/commit.
+
+## Core Features (roadmap)
+
+1. **Git Kanban** — tasks linked to branches; drag-and-drop updates status; branch name generator (`feature/TASK-123-login-page`)
+2. **In-app Git** — PR list, commit history, code diff viewer (no redirect to GitHub)
+3. **CI/CD Dashboard** — build status per branch, streaming build logs
+4. **Command Palette** — `Ctrl+K` / `Cmd+K` via `cmdk`
+5. **Guest Mode** — demo without GitHub OAuth; pre-seeded projects, tasks, fake diffs and CI logs
+
+## Database (Supabase)
+
+Tables: `profiles`, `projects`, `tasks`, `activity_log`. Enable **RLS** from day one — users see only their projects/tasks.
+
+### Supabase project (PlotOps only)
+
+- **Remote project ref:** parse from `.env` → `VITE_SUPABASE_URL` host (`https://<ref>.supabase.co`). Current PlotOps ref: `ijcelrdcygzyzhcijkhe`.
+- **Other Supabase projects** (e.g. bailyq / `mcuvozjlvifdhihqwosh`) belong to a different app — **never** run migrations or MCP SQL against them from this repo unless the user explicitly names that project.
+- **MCP:** pass `project_id` = PlotOps ref from `.env` on every Supabase MCP call. Do **not** use `list_projects()[0]` or any default. If MCP returns permission denied for PlotOps, stop and tell the user to re-auth MCP or use CLI — do not fall back to another project.
+- **CLI (preferred for schema):** `npm run db:push` after `npx supabase login` and `npm run db:link` (one-time). Migrations live in `supabase/migrations/`.
+- **New migrations:** `npx supabase migration new <name>` — never invent filenames.
+
+## Key Patterns
+
+- TanStack Query hooks for Supabase (not raw `useEffect`); optimistic updates on kanban drag-drop
+- Supabase Realtime subscription on `tasks` for live board sync
+- SQL triggers for `activity_log` on status changes
+- GitHub webhooks → Supabase Edge Function → sync PR merge to task `DONE`
+
+## UI Components (shadcn/ui)
+
+**Prefer shadcn/ui over raw HTML** — use existing primitives from `@/shared/shadcn/ui` instead of hand-rolling `<button>`, `<input>`, `<dialog>`, cards, dropdowns, etc.
+
+- **Import path:** `@/shared/shadcn/ui/<component>` (see `components.json` aliases)
+- **Before writing UI:** check `src/shared/shadcn/ui/` — reuse what's already installed
+- **Missing component:** add via `npm run shadcn:add -- <name>` (e.g. `input`, `dialog`, `card`) — auto-updates `src/shared/shadcn/index.tsx`; or `npm run shadcn:exports` to regenerate the barrel after manual adds
+- **Compose, don't reinvent:** build feature UI by composing shadcn primitives + Tailwind; raw HTML only when no suitable primitive exists or the markup is trivially structural (`<div>`, `<section>`, layout wrappers)
+- **Icons:** `lucide-react` (project default per `components.json`)
+
+## Design
+
+Dark, strict, Linear/Neobrutalism-inspired: sharp borders, monospace for git elements, neon accents on build statuses (green success, red failure). No gratuitous gradients.
