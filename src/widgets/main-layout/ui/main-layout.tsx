@@ -1,6 +1,7 @@
-import { Header } from "@/widgets/header/ui/header";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "motion/react";
+
+import { AppDock } from "@/widgets/dock";
 
 function RouteTransition() {
     const pathname = useRouterState({
@@ -22,10 +23,10 @@ function RouteTransition() {
 function MainLayoutContent() {
     return (
         <>
-            <Header />
-            <div className="mx-auto max-w-5xl p-4">
+            <div className="mx-auto max-w-5xl p-4 pb-24">
                 <RouteTransition />
             </div>
+            <AppDock />
         </>
     )
 }

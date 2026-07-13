@@ -4,8 +4,15 @@
     "cancel": "Cancel"
   },
   "en": "English",
+  "nav": {
+    "home": "Home",
+    "notifications": "Notifications",
+    "notificationsEmpty": "No new notifications",
+    "settings": "Settings"
+  },
   "logout": {
     "action": "Sign out",
+    "signOut": "Sign out of account",
     "description": "You will be redirected to the sign-in page.",
     "error": "Could not sign out",
     "signedInAs": "Signed in as {{email}}",

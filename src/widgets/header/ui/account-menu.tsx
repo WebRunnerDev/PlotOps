@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { LogOutIcon, SettingsIcon, User } from "lucide-react";
+import { ChevronDownIcon, LogOutIcon, SettingsIcon, User } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -60,28 +60,21 @@ export function AccountMenu() {
     return (
         <>
             <DropdownMenu>
-                <DropdownMenuTrigger
-                    render={
-                        <Button
-                            aria-label={t("accountMenu")}
-                            className="rounded-full"
-                            size="icon-sm"
-                            type="button"
-                            variant="ghost"
-                        />
-                    }
-                >
-                    <Avatar size="sm">
-                        {avatarUrl ? (
-                            <AvatarImage alt={displayName ?? ""} src={avatarUrl} />
-                        ) : null}
-                        <AvatarFallback className="text-meta">
-                            {initials ?? <User />}
-                        </AvatarFallback>
-                    </Avatar>
+                <DropdownMenuTrigger>
+                    <div className="flex items-center gap-2 cursor-pointer p-1 hover:bg-primary/80 rounded-lg">
+                        <Avatar size="sm">
+                            {avatarUrl ? (
+                                <AvatarImage alt={displayName ?? ""} src={avatarUrl} />
+                            ) : null}
+                            <AvatarFallback className="text-meta">
+                                {initials ?? <User />}
+                            </AvatarFallback>
+                        </Avatar>
+                        <p className="text-sm font-medium">{displayName}</p>
+                        <ChevronDownIcon className="size-4" />
+                    </div>
                 </DropdownMenuTrigger>
-
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 *:cursor-pointer">
                     <DropdownMenuItem render={<Link to="/settings" />}>
                         <SettingsIcon />
                         {t("platformSettings")}
