@@ -61,9 +61,7 @@ export function LoginForm() {
     return (
         <Card className="mx-auto w-full max-w-sm">
             <CardHeader className="text-center">
-                <CardTitle className="font-display text-2xl">
-                    {t("signInTitle")}
-                </CardTitle>
+                <CardTitle>{t("signInTitle")}</CardTitle>
                 <CardDescription>{t("signInSubtitle")}</CardDescription>
             </CardHeader>
 
@@ -86,7 +84,7 @@ export function LoginForm() {
 
                 <div className="flex items-center gap-3">
                     <Separator className="flex-1" />
-                    <span className="text-xs text-muted-foreground uppercase">
+                    <span className="text-meta text-muted-foreground">
                         {t("or")}
                     </span>
                     <Separator className="flex-1" />

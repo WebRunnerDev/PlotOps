@@ -86,6 +86,24 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 - **State split:** Zustand for UI (palette, theme); TanStack Query for server data.
 - **Visual style:** dark, brutal, monospace for git metadata, neon accents on CI statuses. Linear / Neobrutalism vibe.
 
+## Typography
+
+Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by **role**, not by wanting a larger size.
+
+| Role | Token | When |
+|------|-------|------|
+| Page title | `text-h1` | One per screen (`h1`). Scales 28px → 33px at `md` |
+| Section | `text-h2` | Blocks inside a page (`h2`) |
+| Title | `text-h3` | Card / dialog / panel headers (`h3`; bare `h4` maps here) |
+| Body | `text-body` | Paragraphs, long descriptions |
+| UI | `text-ui` | Nav, forms, list rows, dense chrome |
+| Code | `text-code` | Branches, paths, diffs, commits |
+| Meta | `text-meta` | Uppercase micro-labels: statuses, task keys, chips, avatar initials |
+
+**Fonts:** Space Grotesk (headings), IBM Plex Sans (body/ui), JetBrains Mono (code/meta).
+
+**Anti-patterns:** `text-3xl` / `text-2xl` / `text-lg` / `font-display` for titles; `text-meta` for sentences; fluid type on ui/body/code/meta.
+
 ---
 
 ## Supabase Backend

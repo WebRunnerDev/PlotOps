@@ -155,18 +155,23 @@
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* Typography scale — Minor Third (1.200), base 16px */
+/* Typography scale — Minor Third (~1.2), base 16px
+   Roles: h1 page · h2 section · h3 card/dialog · body · ui · code · meta */
 @utility text-h1 {
     font-family: var(--font-heading);
-    font-size: 2.0625rem;
+    font-size: 1.75rem;
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: -0.02em;
+
+    @media (width >= 48rem) {
+        font-size: 2.0625rem;
+    }
 }
 
 @utility text-h2 {
     font-family: var(--font-heading);
-    font-size: 1.6875rem;
+    font-size: 1.5rem;
     font-weight: 600;
     line-height: 1.3;
     letter-spacing: -0.015em;
@@ -174,16 +179,9 @@
 
 @utility text-h3 {
     font-family: var(--font-heading);
-    font-size: 1.4375rem;
+    font-size: 1.1875rem;
     font-weight: 600;
     line-height: 1.3;
-}
-
-@utility text-h4 {
-    font-family: var(--font-heading);
-    font-size: 1.1875rem;
-    font-weight: 500;
-    line-height: 1.4;
 }
 
 @utility text-body {
@@ -241,12 +239,9 @@
         @apply text-h2;
     }
 
-    h3 {
-        @apply text-h3;
-    }
-
+    h3,
     h4 {
-        @apply text-h4;
+        @apply text-h3;
     }
 
     code,

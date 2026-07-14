@@ -78,9 +78,7 @@ export function AddProjectDialog({
         <Dialog onOpenChange={onOpenChange} open={open}>
             <DialogContent className="flex max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
                 <DialogHeader className="border-b border-border px-4 py-3">
-                    <DialogTitle className="font-display text-lg">
-                        {t("addProjectTitle")}
-                    </DialogTitle>
+                    <DialogTitle>{t("addProjectTitle")}</DialogTitle>
                     <DialogDescription>
                         {t("addProjectSubtitle")}
                     </DialogDescription>

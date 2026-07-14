@@ -15,5 +15,9 @@
   "emptyTitle": "No projects yet",
   "emptyDescription": "Connect a GitHub repository to start tracking tasks and branches.",
   "removeProject": "Remove project",
+  "removeProjectTitle": "Remove project?",
+  "removeProjectDescription": "“{{name}}” will be disconnected from PlotOps. This cannot be undone.",
+  "removeProjectConfirm": "Remove",
+  "removeProjectCancel": "Cancel",
   "closeDialog": "Close"
 }

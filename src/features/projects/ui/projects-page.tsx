@@ -3,12 +3,23 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
+import type { Project } from "@/features/projects/model/types";
 import {
     useDeleteProject,
     useProjects,
 } from "@/features/projects/model/use-projects";
 import { AddProjectDialog } from "@/features/projects/ui/add-project-dialog";
 import { ProjectCard } from "@/features/projects/ui/project-card";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/shared/shadcn/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -25,23 +36,29 @@ export function ProjectsPage() {
     const { t } = useTranslation("home");
     const { githubAccessToken, user } = useAuth();
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [projectToRemove, setProjectToRemove] = useState<Project | null>(
+        null,
+    );
     const { data: projects = [], error, isLoading } = useProjects();
     const deleteProject = useDeleteProject();
 
     const canAddFromGitHub = Boolean(githubAccessToken && user);
 
-    const handleRemove = async (projectId: string) => {
-        await deleteProject.mutateAsync(projectId);
+    const handleConfirmRemove = async () => {
+        if (!projectToRemove) return;
+
+        await deleteProject.mutateAsync(projectToRemove.id);
+        setProjectToRemove(null);
     };
 
     return (
         <div className="flex flex-col gap-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex flex-col gap-1">
-                    <h1 className="font-display text-3xl font-bold tracking-tight">
-                        {t("title")}
-                    </h1>
-                    <p className="text-muted-foreground">{t("subtitle")}</p>
+                    <h1>{t("title")}</h1>
+                    <p className="text-body text-muted-foreground">
+                        {t("subtitle")}
+                    </p>
                 </div>
 
                 {canAddFromGitHub ? (
@@ -110,14 +127,56 @@ export function ProjectsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     {projects.map((project) => (
                         <ProjectCard
-                            isRemoving={deleteProject.isPending}
+                            isRemoving={
+                                deleteProject.isPending &&
+                                projectToRemove?.id === project.id
+                            }
                             key={project.id}
-                            onRemove={handleRemove}
+                            onRemove={setProjectToRemove}
                             project={project}
                         />
                     ))}
                 </div>
             )}
+
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open && !deleteProject.isPending) {
+                        setProjectToRemove(null);
+                    }
+                }}
+                open={projectToRemove !== null}
+            >
+                <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("removeProjectTitle")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("removeProjectDescription", {
+                                name: projectToRemove?.name ?? "",
+                            })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleteProject.isPending}>
+                            {t("removeProjectCancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={deleteProject.isPending}
+                            onClick={() => {
+                                void handleConfirmRemove();
+                            }}
+                            variant="destructive"
+                        >
+                            {deleteProject.isPending ? (
+                                <Spinner data-icon="inline-start" />
+                            ) : null}
+                            {t("removeProjectConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {user && githubAccessToken && (
                 <AddProjectDialog
