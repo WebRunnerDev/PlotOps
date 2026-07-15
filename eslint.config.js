@@ -7,7 +7,13 @@ import { config, configs as tseslintConfigs } from 'typescript-eslint';
 
 export default config(
   {
-    ignores: ['dist', 'node_modules', 'src/app/routeTree.gen.ts'],
+    ignores: [
+      'dist',
+      'node_modules',
+      'src/app/routeTree.gen.ts',
+      // Upstream shadcn primitives — keep stock formatting
+      'src/shared/shadcn/ui/**',
+    ],
   },
   eslint.configs.recommended,
   ...tseslintConfigs.recommended,
@@ -33,6 +39,13 @@ export default config(
           project: ['./tsconfig.app.json', './tsconfig.node.json'],
         },
       },
+    },
+  },
+  {
+    files: ['src/routes/**/$*.tsx'],
+    rules: {
+      // TanStack Router uses $paramName for typed route params
+      'unicorn/filename-case': 'off',
     },
   },
 );
