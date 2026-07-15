@@ -16,7 +16,7 @@
 | Guest mode | ⬜ Not started |
 | Database schema + RLS (`projects`) | ✅ Done |
 | GitHub project import (home page) | ✅ Done |
-| Kanban board | ⬜ Not started |
+| Kanban board | ✅ Done (custom columns, labels/priority/deadline on tasks; DnD polish deferred) |
 | Git integration (PR, diff, branches) | ⬜ Not started |
 | CI/CD dashboard | ⬜ Not started |
 | Command palette | ⬜ Not started |
@@ -142,7 +142,8 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 |-------|-------------|
 | `profiles` | `id` (uuid → auth.users), `username`, `avatar_url` |
 | `projects` | `id`, `name`, `slug`, `owner_id` → profiles |
-| `tasks` | `id`, `project_id`, `title`, `description`, `status` (BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE), `priority`, `branch_name`, `assignee_id` |
+| `tasks` | `id`, `project_id`, `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id` |
+| `labels` | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`) |
 | `activity_log` | `id`, `task_id`, `user_id`, `text`, `created_at` |
 
 Enable RLS and base policies before writing frontend code.
