@@ -23,6 +23,7 @@
   },
   "registries": {
     "@magicui": "https://magicui.design/r/{name}",
-    "@beui": "https://beui.dev/r/{name}.json"
+    "@beui": "https://beui.dev/r/{name}.json",
+    "@reui": "https://reui.io/r/{style}/{name}.json"
   }
 }
