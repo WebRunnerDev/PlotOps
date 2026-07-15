@@ -1,0 +1,68 @@
+{
+  "backToProjects": "All projects",
+  "projectError": "Project not found or you don't have access.",
+  "columns": {
+    "todo": "To Do",
+    "inProgress": "In Progress",
+    "inReview": "In Review",
+    "done": "Done",
+    "add": "Add status",
+    "newStatus": "New status",
+    "renameAria": "Rename status",
+    "renameFailed": "Status name must be unique and not empty",
+    "deleteAria": "Delete status",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteEmptyDescription": "This status has no tasks and will be removed from the board.",
+    "deleteWithTasksDescription": "{{count}} task(s) will be moved to another status, then this column will be removed.",
+    "moveTasksTo": "Move tasks to",
+    "deleteCancel": "Cancel",
+    "deleteConfirm": "Delete",
+    "deleteLastFailed": "Keep at least one status on the board",
+    "deleteFailed": "Could not delete this status",
+    "deleted": "Status “{{name}}” deleted",
+    "deletedWithMove": "Moved {{count}} task(s) to “{{target}}” and deleted “{{name}}”",
+    "dragAria": "Drag to reorder status"
+  },
+  "prLink": "Pull request #{{number}} ({{state}})",
+  "prTooltip": "PR #{{number}} · {{state}}",
+  "prState": {
+    "open": "open",
+    "merged": "merged",
+    "closed": "closed"
+  },
+  "drawerDescription": "Edit task details and GitHub links",
+  "fields": {
+    "title": "Title",
+    "description": "Description",
+    "descriptionPlaceholder": "Add a description…",
+    "status": "Status",
+    "priority": "Priority",
+    "deadline": "Deadline",
+    "labels": "Labels"
+  },
+  "priority": {
+    "none": "No priority",
+    "urgent": "Urgent",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "labels": {
+    "empty": "No project labels yet. Type a name to create one.",
+    "placeholder": "Select or create…",
+    "noResults": "No labels found.",
+    "createOption": "Create “{{name}}”",
+    "createFailed": "Label name must be unique and not empty",
+    "created": "Label “{{name}}” created"
+  },
+  "github": {
+    "title": "GitHub",
+    "checkout": "Checkout",
+    "copy": "Copy checkout command",
+    "noBranch": "No branch linked",
+    "noPr": "No pull request",
+    "prLink": "PR #{{number}} · {{state}}"
+  },
+  "copiedCheckout": "Checkout command copied",
+  "copyFailed": "Could not copy to clipboard"
+}

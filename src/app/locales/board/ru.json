@@ -1,0 +1,68 @@
+{
+  "backToProjects": "Все проекты",
+  "projectError": "Проект не найден или нет доступа.",
+  "columns": {
+    "todo": "To Do",
+    "inProgress": "In Progress",
+    "inReview": "In Review",
+    "done": "Done",
+    "add": "Добавить статус",
+    "newStatus": "Новый статус",
+    "renameAria": "Переименовать статус",
+    "renameFailed": "Имя статуса должно быть уникальным и непустым",
+    "deleteAria": "Удалить статус",
+    "deleteTitle": "Удалить «{{name}}»?",
+    "deleteEmptyDescription": "В этом статусе нет задач — колонка будет убрана с доски.",
+    "deleteWithTasksDescription": "{{count}} задач(и) будут перенесены в другой статус, затем колонка удалится.",
+    "moveTasksTo": "Перенести задачи в",
+    "deleteCancel": "Отмена",
+    "deleteConfirm": "Удалить",
+    "deleteLastFailed": "На доске должен остаться хотя бы один статус",
+    "deleteFailed": "Не удалось удалить статус",
+    "deleted": "Статус «{{name}}» удалён",
+    "deletedWithMove": "Перенесено задач: {{count}} → «{{target}}», статус «{{name}}» удалён",
+    "dragAria": "Перетащить статус"
+  },
+  "prLink": "Pull request #{{number}} ({{state}})",
+  "prTooltip": "PR #{{number}} · {{state}}",
+  "prState": {
+    "open": "open",
+    "merged": "merged",
+    "closed": "closed"
+  },
+  "drawerDescription": "Редактирование задачи и связей с GitHub",
+  "fields": {
+    "title": "Название",
+    "description": "Описание",
+    "descriptionPlaceholder": "Добавьте описание…",
+    "status": "Статус",
+    "priority": "Приоритет",
+    "deadline": "Дедлайн",
+    "labels": "Метки"
+  },
+  "priority": {
+    "none": "Без приоритета",
+    "urgent": "Срочный",
+    "high": "Высокий",
+    "medium": "Средний",
+    "low": "Низкий"
+  },
+  "labels": {
+    "empty": "Меток проекта пока нет. Введите имя, чтобы создать.",
+    "placeholder": "Выбрать или создать…",
+    "noResults": "Метки не найдены.",
+    "createOption": "Создать «{{name}}»",
+    "createFailed": "Имя метки должно быть уникальным и непустым",
+    "created": "Метка «{{name}}» создана"
+  },
+  "github": {
+    "title": "GitHub",
+    "checkout": "Checkout",
+    "copy": "Скопировать команду checkout",
+    "noBranch": "Ветка не привязана",
+    "noPr": "Нет pull request",
+    "prLink": "PR #{{number}} · {{state}}"
+  },
+  "copiedCheckout": "Команда checkout скопирована",
+  "copyFailed": "Не удалось скопировать"
+}
