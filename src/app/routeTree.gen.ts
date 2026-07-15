@@ -16,6 +16,7 @@ import { Route as mainHomeRouteImport } from './../routes/(main)/home'
 import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
 import { Route as mainAboutRouteImport } from './../routes/(main)/about'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
+import { Route as mainProjectsProjectIdRouteImport } from './../routes/(main)/projects/$projectId'
 
 const mainRouteRoute = mainRouteRouteImport.update({
   id: '/(main)',
@@ -51,6 +52,11 @@ const authSignInRoute = authSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const mainProjectsProjectIdRoute = mainProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => mainRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
+  '/projects/$projectId': typeof mainProjectsProjectIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
+  '/projects/$projectId': typeof mainProjectsProjectIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,12 +85,27 @@ export interface FileRoutesById {
   '/(main)/dashboard': typeof mainDashboardRoute
   '/(main)/home': typeof mainHomeRoute
   '/(main)/settings': typeof mainSettingsRoute
+  '/(main)/projects/$projectId': typeof mainProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/about' | '/dashboard' | '/home' | '/settings'
+  fullPaths:
+    | '/'
+    | '/sign-in'
+    | '/about'
+    | '/dashboard'
+    | '/home'
+    | '/settings'
+    | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/about' | '/dashboard' | '/home' | '/settings'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/about'
+    | '/dashboard'
+    | '/home'
+    | '/settings'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
@@ -92,6 +115,7 @@ export interface FileRouteTypes {
     | '/(main)/dashboard'
     | '/(main)/home'
     | '/(main)/settings'
+    | '/(main)/projects/$projectId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -151,6 +175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(main)/projects/$projectId': {
+      id: '/(main)/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof mainProjectsProjectIdRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
   }
 }
 
@@ -159,6 +190,7 @@ interface mainRouteRouteChildren {
   mainDashboardRoute: typeof mainDashboardRoute
   mainHomeRoute: typeof mainHomeRoute
   mainSettingsRoute: typeof mainSettingsRoute
+  mainProjectsProjectIdRoute: typeof mainProjectsProjectIdRoute
 }
 
 const mainRouteRouteChildren: mainRouteRouteChildren = {
@@ -166,6 +198,7 @@ const mainRouteRouteChildren: mainRouteRouteChildren = {
   mainDashboardRoute: mainDashboardRoute,
   mainHomeRoute: mainHomeRoute,
   mainSettingsRoute: mainSettingsRoute,
+  mainProjectsProjectIdRoute: mainProjectsProjectIdRoute,
 }
 
 const mainRouteRouteWithChildren = mainRouteRoute._addFileChildren(

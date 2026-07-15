@@ -45,4 +45,8 @@ export async function fetchProjects() {
         .order("created_at", { ascending: false });
 }
 
+export async function fetchProject(projectId: string) {
+    return supabase.from("projects").select("*").eq("id", projectId).single();
+}
+
 export type { Project };

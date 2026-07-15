@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     createProject,
     deleteProject,
+    fetchProject,
     fetchProjects,
     slugifyRepoName,
 } from "@/features/projects/api/projects-api";
@@ -18,6 +19,18 @@ export function useProjects() {
             return data;
         },
         queryKey: projectKeys.list(),
+    });
+}
+
+export function useProject(projectId: string) {
+    return useQuery({
+        enabled: Boolean(projectId),
+        queryFn: async () => {
+            const { data, error } = await fetchProject(projectId);
+            if (error) throw error;
+            return data;
+        },
+        queryKey: projectKeys.detail(projectId),
     });
 }
 

@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { ExternalLink, GitBranch, Lock, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -14,7 +15,7 @@ import {
     CardTitle,
 } from "@/shared/shadcn/ui/card";
 
-type ProjectCardProps = {
+type ProjectCardProperties = {
     isRemoving?: boolean;
     onRemove: (project: Project) => void;
     project: Project;
@@ -24,11 +25,31 @@ export function ProjectCard({
     isRemoving = false,
     onRemove,
     project,
-}: ProjectCardProps) {
+}: ProjectCardProperties) {
     const { t } = useTranslation("home");
+    const navigate = useNavigate();
 
     return (
-        <Card className="group transition-colors hover:ring-primary/40">
+        <Card
+            className="group cursor-pointer transition-colors hover:ring-primary/40"
+            onClick={() =>
+                void navigate({
+                    params: { projectId: project.id },
+                    to: "/projects/$projectId",
+                })
+            }
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    void navigate({
+                        params: { projectId: project.id },
+                        to: "/projects/$projectId",
+                    });
+                }
+            }}
+            role="link"
+            tabIndex={0}
+        >
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <span className="truncate">{project.name}</span>
@@ -47,7 +68,10 @@ export function ProjectCard({
                         aria-label={t("removeProject")}
                         className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                         disabled={isRemoving}
-                        onClick={() => onRemove(project)}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onRemove(project);
+                        }}
                         size="icon-sm"
                         type="button"
                         variant="ghost"
@@ -73,6 +97,9 @@ export function ProjectCard({
 
                 <Button
                     nativeButton={false}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                    }}
                     render={
                         <a
                             href={project.github_html_url}
