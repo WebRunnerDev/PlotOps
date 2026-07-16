@@ -18,6 +18,9 @@ import { useTranslation } from "react-i18next";
 
 import {
     type BoardColumn,
+    type BoardTaskFilters,
+    EMPTY_BOARD_FILTERS,
+    filterTasks,
     type ProjectLabel,
     type Task,
     TaskCard,
@@ -28,6 +31,7 @@ import {
 import { Button } from "@/shared/shadcn/ui/button";
 
 import { KanbanColumn } from "./kanban-column";
+import { KanbanFilters } from "./kanban-filters";
 
 type DragType = "column" | "task";
 
@@ -49,6 +53,8 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
+    const [filters, setFilters] =
+        useState<BoardTaskFilters>(EMPTY_BOARD_FILTERS);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -72,9 +78,14 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
         return map;
     }, [projectLabels]);
 
+    const filteredTasks = useMemo(
+        () => filterTasks(tasks, filters),
+        [filters, tasks],
+    );
+
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
-        for (const task of tasks) {
+        for (const task of filteredTasks) {
             const resolved =
                 task.labelIds
                     ?.map((id) => labelsById.get(id))
@@ -83,11 +94,15 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             map.set(task.id, resolved);
         }
         return map;
-    }, [labelsById, tasks]);
+    }, [filteredTasks, labelsById]);
 
     useEffect(() => {
         ensureProjectLabels(projectId);
     }, [ensureProjectLabels, projectId]);
+
+    useEffect(() => {
+        setFilters(EMPTY_BOARD_FILTERS);
+    }, [projectId]);
 
     useEffect(() => {
         if (!focusColumnId) return;
@@ -113,7 +128,9 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
         }
 
         if (type === "task") {
-            setActiveTask(tasks.find((item) => item.id === event.active.id));
+            setActiveTask(
+                filteredTasks.find((item) => item.id === event.active.id),
+            );
         }
     };
 
@@ -128,7 +145,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             const overColumnId = resolveColumnId(
                 String(over.id),
                 over.data.current,
-                tasks,
+                filteredTasks,
                 columnIdSet,
             );
             if (!overColumnId || overColumnId === active.id) return;
@@ -140,12 +157,12 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             const nextStatus = resolveDropStatus(
                 String(over.id),
                 over.data.current,
-                tasks,
+                filteredTasks,
                 columnIdSet,
             );
             if (!nextStatus) return;
 
-            const task = tasks.find((item) => item.id === active.id);
+            const task = filteredTasks.find((item) => item.id === active.id);
             if (!task || task.status === nextStatus) return;
 
             updateTaskStatus(task.id, nextStatus);
@@ -167,7 +184,15 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
     };
 
     return (
-        <>
+        <div className="flex h-full min-h-0 flex-col gap-3">
+            <div className="sticky left-0 z-[5] w-[calc(100cqw-6rem)] shrink-0">
+                <KanbanFilters
+                    filters={filters}
+                    labels={projectLabels}
+                    onChange={setFilters}
+                />
+            </div>
+
             <DndContext
                 collisionDetection={closestCorners}
                 onDragCancel={clearActiveDrag}
@@ -179,7 +204,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
                     items={columnIds}
                     strategy={horizontalListSortingStrategy}
                 >
-                    <div className="flex h-full min-h-0 min-w-full w-max gap-3">
+                    <div className="flex min-h-0 min-w-full w-max flex-1 gap-3">
                         {columns.map((column) => (
                             <KanbanColumn
                                 key={column.id}
@@ -187,7 +212,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
                                 name={column.name}
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
-                                tasks={tasks.filter(
+                                tasks={filteredTasks.filter(
                                     (task) => task.status === column.id,
                                 )}
                             />
@@ -229,7 +254,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             </DndContext>
 
             <TaskDrawer projectId={projectId} />
-        </>
+        </div>
     );
 }
 

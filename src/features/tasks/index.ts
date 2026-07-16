@@ -1,3 +1,15 @@
+export {
+    DEADLINE_FILTER_VALUES,
+    EMPTY_BOARD_FILTERS,
+    filterTasks,
+    isBoardFiltersActive,
+    toggleFilterValue,
+} from "./lib/filter-tasks";
+export type {
+    BoardTaskFilters,
+    DeadlineFilterValue,
+    PriorityFilterValue,
+} from "./lib/filter-tasks";
 export { formatBranchName } from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export {
