@@ -47,6 +47,18 @@
     "medium": "Средний",
     "low": "Низкий"
   },
+  "filters": {
+    "label": "Фильтр",
+    "clear": "Сбросить",
+    "labelsEmpty": "В проекте пока нет меток.",
+    "deadline": {
+      "overdue": "Просрочено",
+      "today": "Сегодня",
+      "thisWeek": "На этой неделе",
+      "later": "Позже",
+      "none": "Без дедлайна"
+    }
+  },
   "labels": {
     "empty": "Меток проекта пока нет. Введите имя, чтобы создать.",
     "placeholder": "Выбрать или создать…",
@@ -64,5 +76,39 @@
     "prLink": "PR #{{number}} · {{state}}"
   },
   "copiedCheckout": "Команда checkout скопирована",
-  "copyFailed": "Не удалось скопировать"
+  "copyFailed": "Не удалось скопировать",
+  "richText": {
+    "linkPrompt": "Введите URL",
+    "toolbar": {
+      "bold": "Жирный",
+      "italic": "Курсив",
+      "underline": "Подчёркнутый",
+      "strike": "Зачёркнутый",
+      "code": "Код",
+      "highlight": "Выделение",
+      "link": "Ссылка"
+    },
+    "slash": {
+      "title": "Базовые блоки",
+      "paragraph": "Текст",
+      "heading1": "Заголовок 1",
+      "heading2": "Заголовок 2",
+      "heading3": "Заголовок 3",
+      "bulletList": "Маркированный список",
+      "orderedList": "Нумерованный список",
+      "taskList": "Список задач",
+      "quote": "Цитата",
+      "codeBlock": "Код",
+      "image": "Изображение",
+      "divider": "Разделитель"
+    },
+    "media": {
+      "uploadFailed": "Не удалось загрузить изображение",
+      "unsupportedType": "Допустимы только JPEG, PNG, GIF и WebP",
+      "tooLarge": "Размер изображения не больше 5 МБ",
+      "unauthenticated": "Войдите, чтобы загружать изображения",
+      "uploadUnavailable": "Загрузка изображений здесь недоступна",
+      "dropHint": "Отпустите, чтобы загрузить"
+    }
+  }
 }

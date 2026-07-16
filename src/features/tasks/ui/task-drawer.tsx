@@ -18,6 +18,7 @@ import type {
 import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
 import { useTasksStore } from "@/features/tasks/model/use-tasks-store";
 import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
+import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -36,7 +37,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/shared/shadcn/ui/select";
-import { Textarea } from "@/shared/shadcn/ui/textarea";
+import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { Separator } from "@/shared";
 
 const PR_STATE_CLASS: Record<NonNullable<Task["pr"]>["state"], string> = {
@@ -96,7 +97,7 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
 
     const commitDescription = () => {
         if (!task) return;
-        const next = description.trim();
+        const next = description;
         const current = task.description ?? "";
         if (next === current) return;
         updateTaskDetails(task.id, {
@@ -120,7 +121,10 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
     return (
         <Drawer
             onOpenChange={(open) => {
-                if (!open) clearSelectedTask();
+                if (!open) {
+                    commitDescription();
+                    clearSelectedTask();
+                }
             }}
             open={Boolean(task)}
             showSwipeHandle
@@ -130,7 +134,7 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
             <DrawerContent>
                 {task ? (
                     <>
-                        <DrawerHeader className="text-left">
+                        <DrawerHeader className="text-left p-2">
                             <p className="text-meta text-muted-foreground">
                                 {task.id}
                             </p>
@@ -142,9 +146,9 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                             </DrawerDescription>
                         </DrawerHeader>
 
-                        <div className="min-w-7xl flex flex-1 flex-col md:flex-row gap-6 *:flex *:flex-col *:gap-6 self-center overflow-y-auto p-4">
+                        <div className="mx-auto flex min-h-0 w-full min-w-7xl max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row">
                             {/* Title and Description */}
-                            <div className="w-2/3">
+                            <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
                                 <div className="flex flex-col gap-2">
                                     <Label htmlFor="task-title">
                                         {t("fields.title")}
@@ -165,15 +169,19 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                     />
                                 </div>
 
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="task-description">
+                                <div className="flex min-w-0 flex-col gap-2">
+                                    <Label
+                                        htmlFor="task-description"
+                                        id="task-description-label"
+                                    >
                                         {t("fields.description")}
                                     </Label>
-                                    <Textarea
+                                    <RichTextEditor
                                         id="task-description"
                                         onBlur={commitDescription}
-                                        onChange={(event) =>
-                                            setDescription(event.target.value)
+                                        onChange={setDescription}
+                                        onUploadImage={(file) =>
+                                            uploadTaskMedia(file, task.id)
                                         }
                                         placeholder={t(
                                             "fields.descriptionPlaceholder",
@@ -182,9 +190,12 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                     />
                                 </div>
                             </div>
-                            <Separator orientation="vertical" />
+                            <Separator
+                                className="hidden shrink-0 md:block"
+                                orientation="vertical"
+                            />
                             {/* Status, Priority, Deadline */}
-                            <div className="w-1/3">
+                            <div className="flex min-w-0 flex-[1_1_0%] flex-col gap-6">
                                 <div className="grid gap-4 sm:grid-cols-3">
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="task-status">

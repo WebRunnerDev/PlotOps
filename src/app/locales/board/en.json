@@ -47,6 +47,18 @@
     "medium": "Medium",
     "low": "Low"
   },
+  "filters": {
+    "label": "Filter",
+    "clear": "Clear",
+    "labelsEmpty": "No labels in this project.",
+    "deadline": {
+      "overdue": "Overdue",
+      "today": "Today",
+      "thisWeek": "This week",
+      "later": "Later",
+      "none": "No deadline"
+    }
+  },
   "labels": {
     "empty": "No project labels yet. Type a name to create one.",
     "placeholder": "Select or create…",
@@ -64,5 +76,39 @@
     "prLink": "PR #{{number}} · {{state}}"
   },
   "copiedCheckout": "Checkout command copied",
-  "copyFailed": "Could not copy to clipboard"
+  "copyFailed": "Could not copy to clipboard",
+  "richText": {
+    "linkPrompt": "Enter URL",
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strike": "Strikethrough",
+      "code": "Inline code",
+      "highlight": "Highlight",
+      "link": "Link"
+    },
+    "slash": {
+      "title": "Basic blocks",
+      "paragraph": "Text",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bulletList": "Bulleted list",
+      "orderedList": "Numbered list",
+      "taskList": "To-do list",
+      "quote": "Quote",
+      "codeBlock": "Code",
+      "image": "Image",
+      "divider": "Divider"
+    },
+    "media": {
+      "uploadFailed": "Could not upload image",
+      "unsupportedType": "Only JPEG, PNG, GIF, and WebP are supported",
+      "tooLarge": "Image must be 5 MB or smaller",
+      "unauthenticated": "Sign in to upload images",
+      "uploadUnavailable": "Image upload is not available here",
+      "dropHint": "Drop image to upload"
+    }
+  }
 }
