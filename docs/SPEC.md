@@ -16,7 +16,8 @@
 | Guest mode | ⬜ Not started |
 | Database schema + RLS (`projects`) | ✅ Done |
 | GitHub project import (home page) | ✅ Done |
-| Kanban board | ✅ Done (custom columns, labels/priority/deadline on tasks; DnD polish deferred) |
+| Kanban board | ✅ Done (custom columns, labels/priority/deadline on tasks; board filters by priority/deadline/labels; DnD polish deferred) |
+| Task rich text + media (Storage) | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket) |
 | Git integration (PR, diff, branches) | ⬜ Not started |
 | CI/CD dashboard | ⬜ Not started |
 | Command palette | ⬜ Not started |
