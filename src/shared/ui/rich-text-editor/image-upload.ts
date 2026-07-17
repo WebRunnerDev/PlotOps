@@ -5,6 +5,9 @@ export type ImageUploadFn = (file: File) => Promise<string>;
 
 type ImageUploadStorage = {
     onError?: (error: unknown) => void;
+    // Number of uploads currently in flight — used to defer persisting the
+    // document (so transient blob URLs never leak into stored content).
+    pending: number;
     upload?: ImageUploadFn;
 };
 
@@ -30,6 +33,7 @@ export const ImageUpload = Extension.create({
     addStorage(): ImageUploadStorage {
         return {
             onError: undefined,
+            pending: 0,
             upload: undefined,
         };
     },
@@ -48,12 +52,91 @@ export function filterImageFiles(files: FileList | File[]): File[] {
     return Array.from(files).filter((file) => isImageFile(file));
 }
 
-export async function insertImageFiles(
+function createUploadId(): string {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+        return crypto.randomUUID();
+    }
+    return `upload-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function findImagePos(editor: Editor, uploadId: string): null | number {
+    let found: null | number = null;
+    editor.state.doc.descendants((node, pos) => {
+        if (found !== null) return false;
+        if (node.type.name === "image" && node.attrs.uploadId === uploadId) {
+            found = pos;
+            return false;
+        }
+        return true;
+    });
+    return found;
+}
+
+function updateImageByUploadId(
+    editor: Editor,
+    uploadId: string,
+    attrs: Record<string, unknown>,
+) {
+    const pos = findImagePos(editor, uploadId);
+    if (pos === null) return;
+
+    const node = editor.state.doc.nodeAt(pos);
+    if (!node) return;
+
+    const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+        ...node.attrs,
+        ...attrs,
+    });
+    editor.view.dispatch(tr);
+}
+
+function removeImageByUploadId(editor: Editor, uploadId: string) {
+    const pos = findImagePos(editor, uploadId);
+    if (pos === null) return;
+
+    const node = editor.state.doc.nodeAt(pos);
+    if (!node) return;
+
+    editor.view.dispatch(editor.state.tr.delete(pos, pos + node.nodeSize));
+}
+
+async function uploadImage(
+    editor: Editor,
+    file: File,
+    uploadId: string,
+    localSrc: string,
+) {
+    const { onError, upload } = editor.storage.imageUpload;
+
+    try {
+        const src = await upload!(file);
+        editor.storage.imageUpload.pending = Math.max(
+            0,
+            editor.storage.imageUpload.pending - 1,
+        );
+        updateImageByUploadId(editor, uploadId, {
+            src,
+            uploading: false,
+            uploadId: null,
+        });
+    } catch (error) {
+        editor.storage.imageUpload.pending = Math.max(
+            0,
+            editor.storage.imageUpload.pending - 1,
+        );
+        removeImageByUploadId(editor, uploadId);
+        onError?.(error);
+    } finally {
+        URL.revokeObjectURL(localSrc);
+    }
+}
+
+export function insertImageFiles(
     editor: Editor,
     files: File[],
     position?: number,
 ) {
-    const { upload, onError } = editor.storage.imageUpload;
+    const { onError, upload } = editor.storage.imageUpload;
     if (!upload) {
         onError?.(new Error("uploadUnavailable"));
         return;
@@ -65,32 +148,33 @@ export async function insertImageFiles(
         return;
     }
 
-    let insertAt = position;
+    let insertAt = typeof position === "number" ? position : null;
 
     for (const file of images) {
-        try {
-            const src = await upload(file);
-            const content = {
-                attrs: {
-                    alt: file.name,
-                    src,
-                },
-                type: "image" as const,
-            };
+        const uploadId = createUploadId();
+        const localSrc = URL.createObjectURL(file);
+        const attrs = {
+            alt: file.name,
+            src: localSrc,
+            uploadId,
+            uploading: true,
+        };
 
-            if (typeof insertAt === "number") {
-                editor
-                    .chain()
-                    .focus()
-                    .insertContentAt(insertAt, content)
-                    .run();
-                insertAt += 1;
-            } else {
-                editor.chain().focus().setImage(content.attrs).run();
-            }
-        } catch (error) {
-            onError?.(error);
+        // Increment before inserting so the placeholder's blob URL is never
+        // flushed to `onChange` while the upload is still running.
+        editor.storage.imageUpload.pending += 1;
+
+        if (insertAt !== null) {
+            editor.chain().focus().insertContentAt(insertAt, {
+                attrs,
+                type: "image",
+            }).run();
+            insertAt += 1;
+        } else {
+            editor.chain().focus().setImage(attrs).run();
         }
+
+        void uploadImage(editor, file, uploadId, localSrc);
     }
 }
 
@@ -101,7 +185,7 @@ export function pickAndInsertImage(editor: Editor) {
     input.addEventListener("change", () => {
         const file = input.files?.[0];
         if (!file) return;
-        void insertImageFiles(editor, [file]);
+        insertImageFiles(editor, [file]);
     });
     input.click();
 }

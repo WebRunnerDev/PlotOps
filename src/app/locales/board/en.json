@@ -78,7 +78,17 @@
   "copiedCheckout": "Checkout command copied",
   "copyFailed": "Could not copy to clipboard",
   "richText": {
+    "hint": "Select text to format, or type “/” for blocks",
     "linkPrompt": "Enter URL",
+    "link": {
+      "title": "Add link",
+      "description": "Enter a URL to link the selected text. Leave empty to remove the link.",
+      "label": "URL",
+      "placeholder": "https://example.com",
+      "cancel": "Cancel",
+      "remove": "Remove link",
+      "save": "Save"
+    },
     "toolbar": {
       "bold": "Bold",
       "italic": "Italic",
@@ -86,7 +96,11 @@
       "strike": "Strikethrough",
       "code": "Inline code",
       "highlight": "Highlight",
-      "link": "Link"
+      "link": "Link",
+      "alignLeft": "Align left",
+      "alignCenter": "Align center",
+      "alignRight": "Align right",
+      "alignJustify": "Justify"
     },
     "slash": {
       "title": "Basic blocks",
@@ -108,7 +122,15 @@
       "tooLarge": "Image must be 5 MB or smaller",
       "unauthenticated": "Sign in to upload images",
       "uploadUnavailable": "Image upload is not available here",
-      "dropHint": "Drop image to upload"
+      "dropHint": "Drop image to upload",
+      "width": "Width",
+      "height": "Height",
+      "toggleBorder": "Toggle border",
+      "align": {
+        "left": "Align left",
+        "center": "Align center",
+        "right": "Align right"
+      }
     }
   }
 }
