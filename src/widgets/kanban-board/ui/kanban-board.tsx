@@ -1,17 +1,20 @@
 import {
+    closestCenter,
     closestCorners,
+    type CollisionDetection,
+    defaultDropAnimationSideEffects,
     DndContext,
     type DragEndEvent,
+    type DragOverEvent,
     DragOverlay,
     type DragStartEvent,
+    type DropAnimation,
     PointerSensor,
+    pointerWithin,
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
-import {
-    horizontalListSortingStrategy,
-    SortableContext,
-} from "@dnd-kit/sortable";
+import { rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,7 +28,6 @@ import {
     type Task,
     TaskCard,
     TaskDrawer,
-    type TaskStatus,
     useTasksStore,
 } from "@/features/tasks";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -34,6 +36,37 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanFilters } from "./kanban-filters";
 
 type DragType = "column" | "task";
+
+const dropAnimation: DropAnimation = {
+    duration: 220,
+    easing: "cubic-bezier(0.2, 0, 0, 1)",
+    sideEffects: defaultDropAnimationSideEffects({
+        styles: {
+            active: { opacity: "0.4" },
+        },
+    }),
+};
+
+// While dragging a column, only consider other columns as drop targets so the
+// sort strategy opens a gap between columns (task cards would otherwise win the
+// collision and no column preview would show). Resolve by the pointer position
+// rather than the dragged rect's center — a wide column overlay would otherwise
+// bias the collision to the neighbor on its right. Tasks keep the corner-based
+// detection for accurate cross-column placement.
+const collisionDetection: CollisionDetection = (args) => {
+    if (args.active.data.current?.type === "column") {
+        const columnContainers = args.droppableContainers.filter(
+            (container) => container.data.current?.type === "column",
+        );
+        const pointerCollisions = pointerWithin({
+            ...args,
+            droppableContainers: columnContainers,
+        });
+        if (pointerCollisions.length > 0) return pointerCollisions;
+        return closestCenter({ ...args, droppableContainers: columnContainers });
+    }
+    return closestCorners(args);
+};
 
 type KanbanBoardProperties = {
     projectId: string;
@@ -49,7 +82,8 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
         (state) => state.ensureProjectLabels,
     );
     const reorderColumns = useTasksStore((state) => state.reorderColumns);
-    const updateTaskStatus = useTasksStore((state) => state.updateTaskStatus);
+    const moveTaskToColumn = useTasksStore((state) => state.moveTaskToColumn);
+    const reorderTaskWithin = useTasksStore((state) => state.reorderTaskWithin);
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
@@ -63,7 +97,6 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
     );
 
     const columnIds = columns.map((column) => column.id);
-    const columnIdSet = new Set(columnIds);
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -89,7 +122,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             const resolved =
                 task.labelIds
                     ?.map((id) => labelsById.get(id))
-                    .filter(Boolean) ??
+                    .filter((label): label is ProjectLabel => label !== undefined) ??
                 [];
             map.set(task.id, resolved);
         }
@@ -134,6 +167,28 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
         }
     };
 
+    const handleDragOver = (event: DragOverEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const activeType = active.data.current?.type as DragType | undefined;
+
+        if (activeType === "column") {
+            // Live reorder so the column physically slots into place, showing
+            // exactly where it lands (like a task). Collision is pointer-based
+            // and restricted to columns, so `over` is always a column and this
+            // stays stable (no oscillation).
+            reorderColumns(String(active.id), String(over.id));
+            return;
+        }
+
+        if (activeType !== "task") return;
+
+        // Only move across columns here; same-column ordering is handled
+        // visually by the sort strategy and committed on drop.
+        moveTaskToColumn(String(active.id), String(over.id));
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         clearActiveDrag();
@@ -141,31 +196,16 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
 
         const activeType = active.data.current?.type as DragType | undefined;
 
-        if (activeType === "column") {
-            const overColumnId = resolveColumnId(
-                String(over.id),
-                over.data.current,
-                filteredTasks,
-                columnIdSet,
-            );
-            if (!overColumnId || overColumnId === active.id) return;
-            reorderColumns(String(active.id), overColumnId);
-            return;
-        }
+        // Column order is applied live in onDragOver; nothing to commit here.
+        if (activeType === "column") return;
 
         if (activeType === "task") {
-            const nextStatus = resolveDropStatus(
-                String(over.id),
-                over.data.current,
-                filteredTasks,
-                columnIdSet,
-            );
-            if (!nextStatus) return;
-
-            const task = filteredTasks.find((item) => item.id === active.id);
-            if (!task || task.status === nextStatus) return;
-
-            updateTaskStatus(task.id, nextStatus);
+            const overType = over.data.current?.type as DragType | undefined;
+            // Cross-column placement already happened in onDragOver; here we
+            // only commit the final in-column position when dropped over a task.
+            if (overType === "task") {
+                reorderTaskWithin(String(active.id), String(over.id));
+            }
         }
     };
 
@@ -185,7 +225,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="sticky left-0 z-[5] w-[calc(100cqw-6rem)] shrink-0">
+            <div className="sticky left-0 z-5 w-[calc(100cqw-6rem)] shrink-0">
                 <KanbanFilters
                     filters={filters}
                     labels={projectLabels}
@@ -194,16 +234,14 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             </div>
 
             <DndContext
-                collisionDetection={closestCorners}
+                collisionDetection={collisionDetection}
                 onDragCancel={clearActiveDrag}
                 onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
                 onDragStart={handleDragStart}
                 sensors={sensors}
             >
-                <SortableContext
-                    items={columnIds}
-                    strategy={horizontalListSortingStrategy}
-                >
+                <SortableContext items={columnIds} strategy={rectSortingStrategy}>
                     <div className="flex min-h-0 min-w-full w-max flex-1 gap-3">
                         {columns.map((column) => (
                             <KanbanColumn
@@ -232,11 +270,9 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
                     </div>
                 </SortableContext>
 
-                {/* dnd-kit API: null disables drop animation */}
-                {/* eslint-disable-next-line unicorn/no-null -- DragOverlay API */}
-                <DragOverlay dropAnimation={null}>
+                <DragOverlay dropAnimation={dropAnimation}>
                     {activeTask ? (
-                        <div className="rotate-1 scale-[1.02] shadow-lg">
+                        <div className="rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
                             <TaskCard
                                 labels={labelsByTaskId.get(activeTask.id) ?? []}
                                 task={activeTask}
@@ -256,27 +292,4 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
             <TaskDrawer projectId={projectId} />
         </div>
     );
-}
-
-function resolveColumnId(
-    overId: string,
-    overData: Record<string, unknown> | undefined,
-    tasks: Task[],
-    columnIds: Set<string>,
-): TaskStatus | undefined {
-    if (overData?.type === "column") return overId;
-    if (overData?.type === "task" && typeof overData.status === "string") {
-        return overData.status;
-    }
-    if (columnIds.has(overId)) return overId;
-    return tasks.find((task) => task.id === overId)?.status;
-}
-
-function resolveDropStatus(
-    overId: string,
-    overData: Record<string, unknown> | undefined,
-    tasks: Task[],
-    columnIds: Set<string>,
-): TaskStatus | undefined {
-    return resolveColumnId(overId, overData, tasks, columnIds);
 }

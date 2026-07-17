@@ -1,4 +1,8 @@
-import { useSortable } from "@dnd-kit/sortable";
+import {
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -218,13 +222,18 @@ export function KanbanColumn({
                 </header>
 
                 <div className="scrollbar-board flex flex-1 flex-col gap-2 overflow-y-auto">
-                    {tasks.map((task) => (
-                        <DraggableTaskCard
-                            key={task.id}
-                            labels={labelsByTaskId.get(task.id) ?? []}
-                            task={task}
-                        />
-                    ))}
+                    <SortableContext
+                        items={tasks.map((task) => task.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        {tasks.map((task) => (
+                            <DraggableTaskCard
+                                key={task.id}
+                                labels={labelsByTaskId.get(task.id) ?? []}
+                                task={task}
+                            />
+                        ))}
+                    </SortableContext>
                 </div>
             </section>
 
