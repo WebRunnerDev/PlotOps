@@ -10,9 +10,9 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
+    BoardColumn,
     Task,
     TaskPriority,
-    TaskStatus,
 } from "@/features/tasks/model/types";
 
 import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
@@ -21,6 +21,14 @@ import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
+import {
+    Combobox,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxItem,
+    ComboboxList,
+} from "@/shared/shadcn/ui/combobox";
 import {
     Drawer,
     DrawerContent,
@@ -73,6 +81,8 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [copied, setCopied] = useState(false);
+
+    const selectedColumn = columns.find((column) => column.id === task?.status);
 
     useEffect(() => {
         if (!task) return;
@@ -201,34 +211,44 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                         <Label htmlFor="task-status">
                                             {t("fields.status")}
                                         </Label>
-                                        <Select
+                                        <Combobox
+                                            isItemEqualToValue={(a, b) =>
+                                                a.id === b.id
+                                            }
+                                            items={columns}
+                                            itemToStringLabel={(item) =>
+                                                item.name
+                                            }
                                             onValueChange={(value) => {
-                                                if (typeof value === "string") {
+                                                if (value) {
                                                     updateTaskStatus(
                                                         task.id,
-                                                        value as TaskStatus,
+                                                        value.id,
                                                     );
                                                 }
                                             }}
-                                            value={task.status}
+                                            value={selectedColumn ?? null}
                                         >
-                                            <SelectTrigger
+                                            <ComboboxInput
                                                 className="w-full"
                                                 id="task-status"
-                                            >
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent alignItemWithTrigger={false}>
-                                                {columns.map((column) => (
-                                                    <SelectItem
-                                                        key={column.id}
-                                                        value={column.id}
-                                                    >
-                                                        {column.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            />
+                                            <ComboboxContent>
+                                                <ComboboxEmpty>
+                                                    {t("columns.noResults")}
+                                                </ComboboxEmpty>
+                                                <ComboboxList>
+                                                    {(column: BoardColumn) => (
+                                                        <ComboboxItem
+                                                            key={column.id}
+                                                            value={column}
+                                                        >
+                                                            {column.name}
+                                                        </ComboboxItem>
+                                                    )}
+                                                </ComboboxList>
+                                            </ComboboxContent>
+                                        </Combobox>
                                     </div>
 
                                     <div className="flex flex-col gap-2">

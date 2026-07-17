@@ -1,4 +1,11 @@
-import type { BoardColumn, LabelColor, TaskPriority } from "./types";
+import type { CSSProperties } from "react";
+
+import type {
+    BoardColumn,
+    LabelColor,
+    ProjectLabel,
+    TaskPriority,
+} from "./types";
 
 /** Default statuses — each is a kanban column. Names are editable on the board. */
 export const DEFAULT_KANBAN_COLUMNS: BoardColumn[] = [
@@ -52,6 +59,40 @@ export const LABEL_DOT_CLASS: Record<LabelColor, string> = {
     purple: "bg-violet-500",
     red: "bg-red-500",
 };
+
+/** Matches `#rgb` or `#rrggbb`. Custom label colors are stored as hex. */
+export const HEX_COLOR_PATTERN = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
+
+export function isValidHexColor(value: string): boolean {
+    return HEX_COLOR_PATTERN.test(value.trim());
+}
+
+type LabelColorInput = Pick<ProjectLabel, "color" | "customColor">;
+
+type ColorRender = { className?: string; style?: CSSProperties };
+
+/** Dot swatch styling — inline color when custom, preset class otherwise. */
+export function getLabelDotProps(label: LabelColorInput): ColorRender {
+    if (label.customColor) {
+        return { style: { backgroundColor: label.customColor } };
+    }
+    return { className: LABEL_DOT_CLASS[label.color] };
+}
+
+/** Chip/badge styling — translucent fill + ring derived from the hex when custom. */
+export function getLabelChipProps(label: LabelColorInput): ColorRender {
+    if (label.customColor) {
+        const hex = label.customColor;
+        return {
+            style: {
+                backgroundColor: `${hex}26`,
+                boxShadow: `inset 0 0 0 1px ${hex}4d`,
+                color: hex,
+            },
+        };
+    }
+    return { className: LABEL_COLOR_CLASS[label.color] };
+}
 
 export const PRIORITY_CLASS: Record<TaskPriority, string> = {
     high: "text-orange-500",

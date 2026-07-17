@@ -18,6 +18,8 @@ export type LabelColor =
 /** Project-scoped label. Future: copy/import labels across projects. */
 export type ProjectLabel = {
     color: LabelColor;
+    /** Custom hex color (`#rrggbb`). Overrides the `color` preset when set. */
+    customColor?: string;
     id: string;
     name: string;
     projectId: string;

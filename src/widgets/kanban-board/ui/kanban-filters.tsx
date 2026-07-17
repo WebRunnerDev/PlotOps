@@ -6,8 +6,8 @@ import { useTranslation } from "react-i18next";
 import {
     type BoardTaskFilters,
     DEADLINE_FILTER_VALUES,
+    getLabelDotProps,
     isBoardFiltersActive,
-    LABEL_DOT_CLASS,
     type PriorityFilterValue,
     type ProjectLabel,
     TASK_PRIORITIES,
@@ -126,30 +126,36 @@ export function KanbanFilters({
                             {t("filters.labelsEmpty")}
                         </p>
                     ) : (
-                        labels.map((label) => (
-                            <DropdownMenuCheckboxItem
-                                checked={filters.labelIds.includes(label.id)}
-                                key={label.id}
-                                onCheckedChange={() => {
-                                    onChange({
-                                        ...filters,
-                                        labelIds: toggleFilterValue(
-                                            filters.labelIds,
-                                            label.id,
-                                        ),
-                                    });
-                                }}
-                            >
-                                <span
-                                    aria-hidden
-                                    className={cn(
-                                        "size-2 shrink-0 rounded-full",
-                                        LABEL_DOT_CLASS[label.color],
+                        labels.map((label) => {
+                            const dot = getLabelDotProps(label);
+                            return (
+                                <DropdownMenuCheckboxItem
+                                    checked={filters.labelIds.includes(
+                                        label.id,
                                     )}
-                                />
-                                {label.name}
-                            </DropdownMenuCheckboxItem>
-                        ))
+                                    key={label.id}
+                                    onCheckedChange={() => {
+                                        onChange({
+                                            ...filters,
+                                            labelIds: toggleFilterValue(
+                                                filters.labelIds,
+                                                label.id,
+                                            ),
+                                        });
+                                    }}
+                                >
+                                    <span
+                                        aria-hidden
+                                        className={cn(
+                                            "size-2 shrink-0 rounded-full",
+                                            dot.className,
+                                        )}
+                                        style={dot.style}
+                                    />
+                                    {label.name}
+                                </DropdownMenuCheckboxItem>
+                            );
+                        })
                     )}
                 </DropdownMenuGroup>
             </FilterMenu>

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink, GitBranch } from "lucide-react";
+import { ArrowLeft, ExternalLink, GitBranch, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useProject } from "@/features/projects/model/use-projects";
@@ -73,6 +73,20 @@ export function BoardPage({ projectId }: BoardPageProperties) {
                                 <GitBranch aria-hidden className="size-3.5" />
                                 {project.github_default_branch}
                             </span>
+                            <Button
+                                nativeButton={false}
+                                render={
+                                    <Link
+                                        params={{ projectId }}
+                                        to="/projects/$projectId/settings"
+                                    />
+                                }
+                                size="xs"
+                                variant="outline"
+                            >
+                                <Settings data-icon="inline-start" />
+                                {t("settings.link")}
+                            </Button>
                             <Button
                                 nativeButton={false}
                                 render={

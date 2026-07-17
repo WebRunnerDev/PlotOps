@@ -16,7 +16,9 @@ import { Route as mainHomeRouteImport } from './../routes/(main)/home'
 import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
 import { Route as mainAboutRouteImport } from './../routes/(main)/about'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
-import { Route as mainProjectsProjectIdRouteImport } from './../routes/(main)/projects/$projectId'
+import { Route as mainProjectsProjectIdRouteRouteImport } from './../routes/(main)/projects/$projectId/route'
+import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(main)/projects/$projectId/index'
+import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
 
 const mainRouteRoute = mainRouteRouteImport.update({
   id: '/(main)',
@@ -52,11 +54,24 @@ const authSignInRoute = authSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
-const mainProjectsProjectIdRoute = mainProjectsProjectIdRouteImport.update({
-  id: '/projects/$projectId',
-  path: '/projects/$projectId',
-  getParentRoute: () => mainRouteRoute,
-} as any)
+const mainProjectsProjectIdRouteRoute =
+  mainProjectsProjectIdRouteRouteImport.update({
+    id: '/projects/$projectId',
+    path: '/projects/$projectId',
+    getParentRoute: () => mainRouteRoute,
+  } as any)
+const mainProjectsProjectIdIndexRoute =
+  mainProjectsProjectIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
+const mainProjectsProjectIdSettingsRoute =
+  mainProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -65,7 +80,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
-  '/projects/$projectId': typeof mainProjectsProjectIdRoute
+  '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
+  '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
+  '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -74,7 +91,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
-  '/projects/$projectId': typeof mainProjectsProjectIdRoute
+  '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
+  '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,7 +103,9 @@ export interface FileRoutesById {
   '/(main)/dashboard': typeof mainDashboardRoute
   '/(main)/home': typeof mainHomeRoute
   '/(main)/settings': typeof mainSettingsRoute
-  '/(main)/projects/$projectId': typeof mainProjectsProjectIdRoute
+  '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
+  '/(main)/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
+  '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +117,8 @@ export interface FileRouteTypes {
     | '/home'
     | '/settings'
     | '/projects/$projectId'
+    | '/projects/$projectId/settings'
+    | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -105,6 +127,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/home'
     | '/settings'
+    | '/projects/$projectId/settings'
     | '/projects/$projectId'
   id:
     | '__root__'
@@ -116,6 +139,8 @@ export interface FileRouteTypes {
     | '/(main)/home'
     | '/(main)/settings'
     | '/(main)/projects/$projectId'
+    | '/(main)/projects/$projectId/settings'
+    | '/(main)/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,18 +204,48 @@ declare module '@tanstack/react-router' {
       id: '/(main)/projects/$projectId'
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
-      preLoaderRoute: typeof mainProjectsProjectIdRouteImport
+      preLoaderRoute: typeof mainProjectsProjectIdRouteRouteImport
       parentRoute: typeof mainRouteRoute
+    }
+    '/(main)/projects/$projectId/': {
+      id: '/(main)/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof mainProjectsProjectIdIndexRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
+    '/(main)/projects/$projectId/settings': {
+      id: '/(main)/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/projects/$projectId/settings'
+      preLoaderRoute: typeof mainProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
   }
 }
+
+interface mainProjectsProjectIdRouteRouteChildren {
+  mainProjectsProjectIdSettingsRoute: typeof mainProjectsProjectIdSettingsRoute
+  mainProjectsProjectIdIndexRoute: typeof mainProjectsProjectIdIndexRoute
+}
+
+const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteChildren =
+  {
+    mainProjectsProjectIdSettingsRoute: mainProjectsProjectIdSettingsRoute,
+    mainProjectsProjectIdIndexRoute: mainProjectsProjectIdIndexRoute,
+  }
+
+const mainProjectsProjectIdRouteRouteWithChildren =
+  mainProjectsProjectIdRouteRoute._addFileChildren(
+    mainProjectsProjectIdRouteRouteChildren,
+  )
 
 interface mainRouteRouteChildren {
   mainAboutRoute: typeof mainAboutRoute
   mainDashboardRoute: typeof mainDashboardRoute
   mainHomeRoute: typeof mainHomeRoute
   mainSettingsRoute: typeof mainSettingsRoute
-  mainProjectsProjectIdRoute: typeof mainProjectsProjectIdRoute
+  mainProjectsProjectIdRouteRoute: typeof mainProjectsProjectIdRouteRouteWithChildren
 }
 
 const mainRouteRouteChildren: mainRouteRouteChildren = {
@@ -198,7 +253,7 @@ const mainRouteRouteChildren: mainRouteRouteChildren = {
   mainDashboardRoute: mainDashboardRoute,
   mainHomeRoute: mainHomeRoute,
   mainSettingsRoute: mainSettingsRoute,
-  mainProjectsProjectIdRoute: mainProjectsProjectIdRoute,
+  mainProjectsProjectIdRouteRoute: mainProjectsProjectIdRouteRouteWithChildren,
 }
 
 const mainRouteRouteWithChildren = mainRouteRoute._addFileChildren(

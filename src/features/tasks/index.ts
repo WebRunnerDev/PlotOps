@@ -14,6 +14,9 @@ export { formatBranchName } from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export {
     DEFAULT_KANBAN_COLUMNS,
+    getLabelChipProps,
+    getLabelDotProps,
+    isValidHexColor,
     KANBAN_COLUMNS,
     LABEL_COLOR_CLASS,
     LABEL_COLORS,
@@ -32,6 +35,7 @@ export type {
 } from "./model/types";
 export { useTasksStore } from "./model/use-tasks-store";
 export { GithubTaskMeta } from "./ui/github-task-meta";
+export { ProjectLabelsSettings } from "./ui/project-labels-settings";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
 export { TaskLabelChips } from "./ui/task-label-chips";

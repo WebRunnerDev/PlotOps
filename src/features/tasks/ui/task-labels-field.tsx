@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import type { ProjectLabel } from "@/features/tasks/model/types";
 
-import { LABEL_DOT_CLASS } from "@/features/tasks/model/constants";
+import { getLabelDotProps } from "@/features/tasks/model/constants";
 import { useTasksStore } from "@/features/tasks/model/use-tasks-store";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -128,18 +128,22 @@ export function TaskLabelsField({
                 <ComboboxValue>
                     {(values: ProjectLabel[]) => (
                         <Fragment>
-                            {values.map((label) => (
-                                <ComboboxChip key={label.id}>
-                                    <span
-                                        aria-hidden
-                                        className={cn(
-                                            "size-2 shrink-0 rounded-full",
-                                            LABEL_DOT_CLASS[label.color],
-                                        )}
-                                    />
-                                    {label.name}
-                                </ComboboxChip>
-                            ))}
+                            {values.map((label) => {
+                                const dot = getLabelDotProps(label);
+                                return (
+                                    <ComboboxChip key={label.id}>
+                                        <span
+                                            aria-hidden
+                                            className={cn(
+                                                "size-2 shrink-0 rounded-full",
+                                                dot.className,
+                                            )}
+                                            style={dot.style}
+                                        />
+                                        {label.name}
+                                    </ComboboxChip>
+                                );
+                            })}
                             <ComboboxChipsInput
                                 placeholder={t("labels.placeholder")}
                             />
@@ -165,8 +169,9 @@ export function TaskLabelsField({
                                     aria-hidden
                                     className={cn(
                                         "size-2.5 shrink-0 rounded-full",
-                                        LABEL_DOT_CLASS[item.color],
+                                        getLabelDotProps(item).className,
                                     )}
+                                    style={getLabelDotProps(item).style}
                                 />
                                 {item.name}
                             </ComboboxItem>
