@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { TaskPullRequest } from "@/features/tasks/model/types";
 
-import { formatBranchName } from "@/features/tasks/lib/format-branch";
+import { formatBranchName, isSharedBranch } from "@/features/tasks/lib/format-branch";
 import { cn } from "@/shared/lib/utils";
 import {
     Tooltip,
@@ -25,6 +25,7 @@ type GithubTaskMetaProperties = {
 
 export function GithubTaskMeta({ branchName, pr }: GithubTaskMetaProperties) {
     const { t } = useTranslation("board");
+    const shared = branchName ? isSharedBranch(branchName) : false;
 
     if (!branchName && !pr) {
         return;
@@ -36,7 +37,12 @@ export function GithubTaskMeta({ branchName, pr }: GithubTaskMetaProperties) {
                 {branchName ? (
                     <Tooltip>
                         <TooltipTrigger
-                            className="inline-flex min-w-0 max-w-[9.5rem] cursor-default items-center gap-1 text-code text-muted-foreground"
+                            className={cn(
+                                "inline-flex min-w-0 max-w-38 cursor-default items-center gap-1 text-code",
+                                shared
+                                    ? "text-muted-foreground/70"
+                                    : "text-muted-foreground",
+                            )}
                             render={<span />}
                         >
                             <GitBranch aria-hidden className="size-3 shrink-0" />
@@ -44,7 +50,11 @@ export function GithubTaskMeta({ branchName, pr }: GithubTaskMetaProperties) {
                                 {formatBranchName(branchName)}
                             </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top">{branchName}</TooltipContent>
+                        <TooltipContent side="top">
+                            {shared
+                                ? `${branchName} · ${t("github.sharedBranchTitle")}`
+                                : branchName}
+                        </TooltipContent>
                     </Tooltip>
                 ) : undefined}
 

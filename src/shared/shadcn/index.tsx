@@ -16,6 +16,7 @@ export * from "./ui/grid-pattern";
 export * from "./ui/input";
 export * from "./ui/input-group";
 export * from "./ui/label";
+export * from "./ui/scroll-area";
 export * from "./ui/select";
 export * from "./ui/separator";
 export * from "./ui/skeleton";
