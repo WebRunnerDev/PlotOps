@@ -12,16 +12,46 @@
 | Project scaffold (Vite, FSD, ESLint) | ✅ Done |
 | Routing (TanStack Router) | ✅ Done |
 | i18n (i18next) | ✅ Done |
-| Auth (Supabase, GitHub OAuth UI) | ✅ Done |
+| Auth (Supabase, GitHub OAuth + email signup/confirm) | ✅ Done |
 | Guest mode | ⬜ Not started |
 | Database schema + RLS (`projects`) | ✅ Done |
 | GitHub project import (home page) | ✅ Done |
 | Kanban board | ✅ Done (custom columns, labels/priority/deadline on tasks; board filters by priority/deadline/labels; DnD polish deferred) |
 | Task rich text + media (Storage) | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket) |
-| Git integration (PR, diff, branches) | ⬜ Not started |
+| Git integration (PR, diff, branches) | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer) |
 | CI/CD dashboard | ⬜ Not started |
 | Command palette | ⬜ Not started |
 | GitHub webhooks + Edge Function | ⬜ Not started |
+| Team & permissions (`project_members`, roles, invites) | 🟡 In progress (schema+RLS+settings/invite UI; polish gating next) |
+| Multi-board + branch mapping | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn) |
+
+## Team & permissions (MVP)
+
+> Domain glossary: `CONTEXT.md`. Decisions: `docs/adr/0001`–`0005`.
+
+**Model:** Project is the collaboration boundary (no Team entity). Owner = `projects.owner_id`. Members: Admin / Manager / Contributor / Viewer. Invites are email-addressed, copy-link delivered, TTL 1/7/30/never.
+
+### Implementation plan
+
+1. **Schema + RLS** — `project_members`, `project_invites`, capability helpers, rewrite policies (this migration).
+2. **API + permissions hook** — TanStack Query for members/invites; `useProjectAccess` from role.
+3. **Settings UI** — members list, create invite (copy link), revoke, change role, remove, confirm mismatched redeem.
+4. **Accept route** — `/invite/$token`; email-match accept RPC; pending confirm for Owner/Admin.
+5. **UI gating** — hide create/delete/board controls by capability (RLS remains source of truth).
+
+## Deferred / later
+
+> Captured during domain grilling (Team & Permissions). Not in current MVP scope — do not implement until explicitly pulled in.
+
+| Item | Notes |
+|------|--------|
+| Separate **Team** entity above Project | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed. |
+| GitHub collaborator auto-suggest | On repo connect, list GH collaborators and offer “Add to Project”. |
+| Custom SMTP / real invite emails | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough. |
+| Open invite link (no email binding) | Role + TTL link anyone can redeem — separate from email-targeted Invites. |
+| Board-level permission overrides | Notion `view` / `edit` / `manage` per board beyond Project Role. |
+| Assigned-only Contributor edits | Rejected for MVP (Contributor may update any Task); revisit if needed. |
+| Granular permission flags per Member | Roles only for MVP; no custom `tasks:create`-style flags. |
 
 ## Tech Stack
 
@@ -59,8 +89,10 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 
 ### 1. Git-oriented Kanban & Sprints
 
-- Every task is tied to a Git branch.
-- "Create branch" button in a task card generates a proper name (e.g. `feature/TASK-123-login-page`) and copies the terminal command.
+- Every task **can** be tied to a Git branch (optional).
+- "Generate branch" / "Link branch" / "No dedicated branch" in the task drawer.
+- Shared/base branches (`main`, `dev`, …) may be linked but do not load full commit/PR lists.
+- Tasks can link a pull request by number/URL (works without a dedicated branch); diff opens in-app.
 - Drag-and-drop between columns updates task status; optionally syncs with linked pull requests.
 
 ### 2. Mini-GitHub (PR & Code Diff)
@@ -112,6 +144,7 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 ### Auth
 
 - GitHub OAuth via Supabase Auth — avatar, username, email, session on the client.
+- **Email/password signup** at `/sign-up` with **email confirmation** required before sign-in. Manager/Viewer (and other invitees) register with the invited email so `/invite/$token` can accept without the claim/confirm path. After signup, confirmation link redirects back to the pending invite when present.
 - **Guest Mode** (critical for portfolio UX): prominent "Try demo without registration" button next to GitHub login. Auto-login as a pre-seeded demo user with rich fake data (projects, kanban cards, CI logs, diffs). Many employers close the tab rather than OAuth a pet project.
 
 ### Realtime Kanban
@@ -143,7 +176,9 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 |-------|-------------|
 | `profiles` | `id` (uuid → auth.users), `username`, `avatar_url` |
 | `projects` | `id`, `name`, `slug`, `owner_id` → profiles |
-| `tasks` | `id`, `project_id`, `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id` |
+| `boards` | `id`, `project_id`, `name`, `position`, `base_branch`, `allowed_head_patterns` |
+| `board_columns` | `(board_id, id)` PK, `project_id`, `name`, `position` |
+| `tasks` | `id`, `project_id`, `board_id`, `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id` |
 | `labels` | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`) |
 | `activity_log` | `id`, `task_id`, `user_id`, `text`, `created_at` |
 
@@ -173,9 +208,10 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 ### Stage 4: Git Integration (Week 3)
 
 - Read `provider_token` from Supabase session.
-- Task Git tab: commits + PRs by `branch_name`.
-- Code diff viewer for PRs.
-- Branch name generator button.
+- Task Git tab: commits + PRs by `branch_name` (skipped for shared/base branches).
+- Code diff viewer for PRs (`@git-diff-view`: split/unified, syntax highlight, file list).
+- Branch name generator, link existing branch, or skip dedicated branch.
+- Link PR by number/URL → persist `pr_*` on task; view diff without a feature branch.
 
 ### Stage 5: Webhooks (Week 4)
 
