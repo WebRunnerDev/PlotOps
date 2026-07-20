@@ -5,9 +5,11 @@ import type {
     Task,
     TaskPriority,
     TaskPullRequest,
+    TaskType,
 } from "@/features/tasks/model/types";
 
 export type DbBoardColumn = {
+    board_id: string;
     id: string;
     name: string;
     position: number;
@@ -31,6 +33,7 @@ export type DbProfile = {
 export type DbTask = {
     assignee: DbProfile | DbProfile[] | null;
     assignee_id: string | null;
+    board_id: string;
     branch_name: string | null;
     created_at: string;
     deadline: string | null;
@@ -43,7 +46,9 @@ export type DbTask = {
     priority: string | null;
     project_id: string;
     status: string;
+    task_key: string;
     task_labels: Array<{ label_id: string }> | null;
+    task_type: string;
     title: string;
 };
 
@@ -60,6 +65,13 @@ const LABEL_COLORS = new Set<string>([
 ]);
 
 const TASK_PRIORITIES = new Set<string>(["high", "low", "medium", "urgent"]);
+
+const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
+
+function toTaskType(value: string | null): TaskType {
+    if (!value || !TASK_TYPES.has(value)) return "task";
+    return value as TaskType;
+}
 
 const PR_STATES = new Set<string>(["closed", "merged", "open"]);
 
@@ -112,15 +124,18 @@ export function mapDbTask(row: DbTask): Task {
                   name: assignee.username,
               }
             : undefined,
+        boardId: row.board_id,
         branchName: row.branch_name ?? undefined,
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
         id: row.id,
+        key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
         pr: toPullRequest(row),
         priority: toTaskPriority(row.priority),
         status: row.status,
         title: row.title,
+        type: toTaskType(row.task_type),
     };
 }
 

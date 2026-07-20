@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { TaskStatus } from "@/features/tasks";
 import { useBoardContext } from "@/features/tasks/model/board-context";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
 
@@ -15,7 +16,8 @@ type KanbanAddTaskProperties = {
 
 export function KanbanAddTask({ status }: KanbanAddTaskProperties) {
     const { t } = useTranslation("board");
-    const { createTask } = useBoardContext();
+    const { createTask, projectId } = useBoardContext();
+    const { canCreateTasks } = useProjectAccess(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
@@ -51,6 +53,10 @@ export function KanbanAddTask({ status }: KanbanAddTaskProperties) {
             setIsSubmitting(false);
         }
     };
+
+    if (!canCreateTasks) {
+        return null;
+    }
 
     if (!open) {
         return (

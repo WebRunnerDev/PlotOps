@@ -6,6 +6,7 @@ import type {
     Task,
     TaskPriority,
     TaskStatus,
+    TaskType,
 } from "@/features/tasks/model/types";
 import { supabase } from "@/shared/api/supabase";
 
@@ -19,6 +20,7 @@ import {
     type DbLabel,
     type DbTask,
 } from "./board-mappers";
+import { fetchBoardColumnIds } from "./boards-api";
 
 export type ProjectBoard = {
     columns: BoardColumn[];
@@ -30,6 +32,7 @@ export type ProjectBoard = {
 const TASK_SELECT = `
   id,
   project_id,
+  board_id,
   title,
   description,
   status,
@@ -41,6 +44,8 @@ const TASK_SELECT = `
   pr_number,
   pr_state,
   pr_url,
+  task_key,
+  task_type,
   created_at,
   assignee:profiles!tasks_assignee_id_fkey (
     id,
@@ -52,16 +57,17 @@ const TASK_SELECT = `
   )
 `;
 
-async function ensureDefaultColumns(projectId: string) {
+async function ensureDefaultColumns(projectId: string, boardId: string) {
     const { count, error } = await supabase
         .from("board_columns")
         .select("id", { count: "exact", head: true })
-        .eq("project_id", projectId);
+        .eq("board_id", boardId);
 
     if (error) throw error;
     if ((count ?? 0) > 0) return;
 
     const rows = DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
+        board_id: boardId,
         id: column.id,
         name: column.name,
         position: index,
@@ -75,14 +81,17 @@ async function ensureDefaultColumns(projectId: string) {
     if (insertError) throw insertError;
 }
 
-export async function fetchProjectBoard(projectId: string): Promise<ProjectBoard> {
-    await ensureDefaultColumns(projectId);
+export async function fetchProjectBoard(
+    projectId: string,
+    boardId: string,
+): Promise<ProjectBoard> {
+    await ensureDefaultColumns(projectId, boardId);
 
     const [columnsResult, labelsResult, tasksResult] = await Promise.all([
         supabase
             .from("board_columns")
-            .select("id, project_id, name, position")
-            .eq("project_id", projectId)
+            .select("id, project_id, board_id, name, position")
+            .eq("board_id", boardId)
             .order("position", { ascending: true }),
         supabase
             .from("labels")
@@ -92,7 +101,7 @@ export async function fetchProjectBoard(projectId: string): Promise<ProjectBoard
         supabase
             .from("tasks")
             .select(TASK_SELECT)
-            .eq("project_id", projectId)
+            .eq("board_id", boardId)
             .order("position", { ascending: true })
             .order("created_at", { ascending: true }),
     ]);
@@ -120,13 +129,17 @@ export async function fetchProjectBoard(projectId: string): Promise<ProjectBoard
     };
 }
 
-export async function createBoardColumn(projectId: string, name: string) {
+export async function createBoardColumn(
+    projectId: string,
+    boardId: string,
+    name: string,
+) {
     const id = `col_${crypto.randomUUID().slice(0, 8)}`;
 
     const { data: existing, error: existingError } = await supabase
         .from("board_columns")
         .select("position")
-        .eq("project_id", projectId)
+        .eq("board_id", boardId)
         .order("position", { ascending: false })
         .limit(1);
 
@@ -135,6 +148,7 @@ export async function createBoardColumn(projectId: string, name: string) {
     const position = (existing?.[0]?.position ?? -1) + 1;
 
     const { error } = await supabase.from("board_columns").insert({
+        board_id: boardId,
         id,
         name,
         position,
@@ -146,21 +160,21 @@ export async function createBoardColumn(projectId: string, name: string) {
 }
 
 export async function renameBoardColumn(
-    projectId: string,
+    boardId: string,
     columnId: TaskStatus,
     name: string,
 ) {
     const { error } = await supabase
         .from("board_columns")
         .update({ name })
-        .eq("project_id", projectId)
+        .eq("board_id", boardId)
         .eq("id", columnId);
 
     if (error) throw error;
 }
 
 export async function deleteBoardColumn(
-    projectId: string,
+    boardId: string,
     columnId: TaskStatus,
     moveTasksTo?: TaskStatus,
 ) {
@@ -168,7 +182,7 @@ export async function deleteBoardColumn(
         const { error: moveError } = await supabase
             .from("tasks")
             .update({ status: moveTasksTo })
-            .eq("project_id", projectId)
+            .eq("board_id", boardId)
             .eq("status", columnId);
 
         if (moveError) throw moveError;
@@ -177,21 +191,21 @@ export async function deleteBoardColumn(
     const { error } = await supabase
         .from("board_columns")
         .delete()
-        .eq("project_id", projectId)
+        .eq("board_id", boardId)
         .eq("id", columnId);
 
     if (error) throw error;
 }
 
 export async function reorderBoardColumns(
-    projectId: string,
+    boardId: string,
     columnIds: TaskStatus[],
 ) {
     const updates = columnIds.map((id, position) =>
         supabase
             .from("board_columns")
             .update({ position })
-            .eq("project_id", projectId)
+            .eq("board_id", boardId)
             .eq("id", id),
     );
 
@@ -202,13 +216,15 @@ export async function reorderBoardColumns(
 
 export async function createTaskRecord(
     projectId: string,
+    boardId: string,
     status: TaskStatus,
     title: string,
+    taskType: TaskType = "task",
 ) {
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
         .select("position")
-        .eq("project_id", projectId)
+        .eq("board_id", boardId)
         .eq("status", status)
         .order("position", { ascending: false })
         .limit(1);
@@ -220,9 +236,11 @@ export async function createTaskRecord(
     const { data, error } = await supabase
         .from("tasks")
         .insert({
+            board_id: boardId,
             position,
             project_id: projectId,
             status,
+            task_type: taskType,
             title: title.trim(),
         })
         .select(TASK_SELECT)
@@ -235,16 +253,65 @@ export async function createTaskRecord(
 export async function updateTaskRecord(
     taskId: string,
     patch: {
+        board_id?: string;
         branch_name?: string | null;
         deadline?: string | null;
         description?: string | null;
         position?: number;
+        pr_number?: number | null;
+        pr_state?: string | null;
+        pr_url?: string | null;
         priority?: TaskPriority | null;
         status?: TaskStatus;
+        task_type?: TaskType;
         title?: string;
     },
 ) {
     const { error } = await supabase.from("tasks").update(patch).eq("id", taskId);
+    if (error) throw error;
+}
+
+export async function moveTaskToBoard(
+    taskId: string,
+    targetBoardId: string,
+    targetStatus: TaskStatus,
+) {
+    const columnIds = await fetchBoardColumnIds(targetBoardId);
+    if (columnIds.length === 0) {
+        throw new Error("Target board has no columns");
+    }
+    if (!columnIds.includes(targetStatus)) {
+        throw new Error("Target column is not on the destination board");
+    }
+
+    const { data: existing, error: existingError } = await supabase
+        .from("tasks")
+        .select("position")
+        .eq("board_id", targetBoardId)
+        .eq("status", targetStatus)
+        .order("position", { ascending: false })
+        .limit(1);
+
+    if (existingError) throw existingError;
+
+    const position = (existing?.[0]?.position ?? -1) + 1;
+
+    const { error } = await supabase
+        .from("tasks")
+        .update({
+            board_id: targetBoardId,
+            position,
+            status: targetStatus,
+        })
+        .eq("id", taskId);
+
+    if (error) throw error;
+
+    return { status: targetStatus };
+}
+
+export async function deleteTaskRecord(taskId: string) {
+    const { error } = await supabase.from("tasks").delete().eq("id", taskId);
     if (error) throw error;
 }
 
@@ -268,7 +335,7 @@ export async function replaceTaskLabels(taskId: string, labelIds: string[]) {
 }
 
 export async function persistTaskMoves(
-    projectId: string,
+    boardId: string,
     updates: Array<{ id: string; position: number; status: TaskStatus }>,
 ) {
     const results = await Promise.all(
@@ -280,7 +347,7 @@ export async function persistTaskMoves(
                     status: item.status,
                 })
                 .eq("id", item.id)
-                .eq("project_id", projectId),
+                .eq("board_id", boardId),
         ),
     );
 

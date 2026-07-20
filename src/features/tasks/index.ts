@@ -10,7 +10,12 @@ export type {
     DeadlineFilterValue,
     PriorityFilterValue,
 } from "./lib/filter-tasks";
-export { formatBranchName } from "./lib/format-branch";
+export {
+    formatBranchName,
+    generateBranchName,
+    isSharedBranch,
+    normalizeBranchName,
+} from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export {
     DEFAULT_KANBAN_COLUMNS,
@@ -33,12 +38,19 @@ export type {
     TaskPriority,
     TaskStatus,
 } from "./model/types";
-export { taskKeys } from "./model/query-keys";
+export { boardKeys, taskKeys } from "./model/query-keys";
 export { useBoard } from "./model/use-board";
+export {
+    useBoardMutations,
+    useProjectBoards,
+} from "./model/use-project-boards";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
+export { BoardSwitcher } from "./ui/board-switcher";
 export { GithubTaskMeta } from "./ui/github-task-meta";
+export { ProjectBoardsSettings } from "./ui/project-boards-settings";
 export { ProjectLabelsSettings } from "./ui/project-labels-settings";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
+export { TaskGithubPanel } from "./ui/task-github-panel";
 export { TaskLabelChips } from "./ui/task-label-chips";
 export { TaskLabelsField } from "./ui/task-labels-field";

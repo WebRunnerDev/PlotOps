@@ -1,4 +1,10 @@
+export const boardKeys = {
+    all: ["boards"] as const,
+    list: (projectId: string) => [...boardKeys.all, "list", projectId] as const,
+};
+
 export const taskKeys = {
     all: ["tasks"] as const,
-    board: (projectId: string) => [...taskKeys.all, "board", projectId] as const,
+    board: (projectId: string, boardId: string) =>
+        [...taskKeys.all, "board", projectId, boardId] as const,
 };

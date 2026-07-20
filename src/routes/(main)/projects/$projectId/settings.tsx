@@ -3,6 +3,9 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useProject } from "@/features/projects/model/use-projects";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { ProjectMembersSettings } from "@/features/projects/ui/project-members-settings";
+import { ProjectBoardsSettings } from "@/features/tasks/ui/project-boards-settings";
 import { ProjectLabelsSettings } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -16,6 +19,7 @@ function ProjectSettingsRoute() {
     const { projectId } = Route.useParams();
     const { t } = useTranslation("board");
     const { data: project, error, isLoading } = useProject(projectId);
+    const { canManageBoard } = useProjectAccess(projectId);
 
     if (isLoading) {
         return (
@@ -58,7 +62,15 @@ function ProjectSettingsRoute() {
                         </AlertDescription>
                     </Alert>
                 ) : (
-                    <ProjectLabelsSettings projectId={projectId} />
+                    <>
+                        <ProjectMembersSettings projectId={projectId} />
+                        {canManageBoard ? (
+                            <>
+                                <ProjectBoardsSettings projectId={projectId} />
+                                <ProjectLabelsSettings projectId={projectId} />
+                            </>
+                        ) : undefined}
+                    </>
                 )}
             </div>
         </div>

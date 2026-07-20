@@ -1,26 +1,37 @@
-import {
-    Check,
-    Copy,
-    ExternalLink,
-    GitBranch,
-    GitPullRequest,
-} from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
     BoardColumn,
-    Task,
     TaskPriority,
+    TaskStatus,
+    TaskType,
 } from "@/features/tasks/model/types";
 
-import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
+import { fetchBoardColumns } from "@/features/tasks/api/boards-api";
+import { TASK_PRIORITIES, TASK_TYPES } from "@/features/tasks/model/constants";
+import { isSharedBranch } from "@/features/tasks/lib/format-branch";
+import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
 import { useBoardContext } from "@/features/tasks/model/board-context";
+import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
 import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
-import { cn } from "@/shared/lib/utils";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/shared/shadcn/ui/alert-dialog";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
     Combobox,
@@ -48,29 +59,43 @@ import {
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { Separator } from "@/shared";
 
-const PR_STATE_CLASS: Record<NonNullable<Task["pr"]>["state"], string> = {
-    closed: "text-red-500",
-    merged: "text-purple-500",
-    open: "text-emerald-500",
-};
-
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
 const PRIORITY_NONE = "__none__";
 
-type TaskDrawerProperties = {
-    projectId: string;
+type MoveBoardTarget = {
+    boardId: string;
+    boardName: string;
+    columnId: TaskStatus;
+    columns: BoardColumn[];
 };
 
-export function TaskDrawer({ projectId }: TaskDrawerProperties) {
+type TaskDrawerProperties = {
+    githubToken: null | string;
+    projectId: string;
+    repoFullName: string | undefined;
+};
+
+export function TaskDrawer({
+    githubToken,
+    projectId,
+    repoFullName,
+}: TaskDrawerProperties) {
     const { t } = useTranslation("board");
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const {
+        boardId,
         columns,
+        deleteTask,
         labels,
+        moveTaskToOtherBoard,
         tasks,
         updateTaskDetails,
         updateTaskStatus,
     } = useBoardContext();
+    const { data: boards = [] } = useProjectBoards(projectId);
+    const currentBoard = boards.find((board) => board.id === boardId);
+    const navigate = useNavigate();
+    const { canDeleteTasks, canEditTasks } = useProjectAccess(projectId);
     const clearSelectedTask = useTasksUiStore((state) => state.clearSelectedTask);
 
     const task = tasks.find((item) => item.id === selectedTaskId);
@@ -82,20 +107,26 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [copied, setCopied] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<{
+        id: string;
+        key: string;
+        title: string;
+    } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [moveTarget, setMoveTarget] = useState<MoveBoardTarget | null>(null);
+    const [isMoving, setIsMoving] = useState(false);
+    const [isLoadingMoveColumns, setIsLoadingMoveColumns] = useState(false);
 
     const selectedColumn = columns.find((column) => column.id === task?.status);
+    const moveToColumnName =
+        moveTarget?.columns.find((column) => column.id === moveTarget.columnId)
+            ?.name ?? "";
 
     useEffect(() => {
         if (!task) return;
         setTitle(task.title);
         setDescription(task.description ?? "");
-        setCopied(false);
     }, [task]);
-
-    const checkoutCommand = task?.branchName
-        ? `git checkout ${task.branchName}`
-        : undefined;
 
     const commitTitle = () => {
         if (!task) return;
@@ -117,20 +148,89 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
         });
     };
 
-    const handleCopyCheckout = async () => {
-        if (!checkoutCommand) return;
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget || isDeleting) return;
 
+        const { id, key } = deleteTarget;
+        setIsDeleting(true);
         try {
-            await navigator.clipboard.writeText(checkoutCommand);
-            setCopied(true);
-            toast.success(t("copiedCheckout"));
-            globalThis.setTimeout(() => setCopied(false), 1500);
+            await deleteTask(id);
+            setDeleteTarget(null);
+            clearSelectedTask();
+            toast.success(t("tasks.deleted", { key }));
         } catch {
-            toast.error(t("copyFailed"));
+            toast.error(t("tasks.deleteFailed"));
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const openMoveToBoard = async (targetBoardId: string) => {
+        if (!task || targetBoardId === boardId || isLoadingMoveColumns) return;
+
+        setIsLoadingMoveColumns(true);
+        try {
+            const targetColumns = await fetchBoardColumns(targetBoardId);
+            if (targetColumns.length === 0) {
+                toast.error(t("boards.taskMoveFailed"));
+                return;
+            }
+
+            const sameName = selectedColumn
+                ? targetColumns.find(
+                      (column) =>
+                          column.name.trim().toLowerCase() ===
+                          selectedColumn.name.trim().toLowerCase(),
+                  )
+                : undefined;
+
+            setMoveTarget({
+                boardId: targetBoardId,
+                boardName:
+                    boards.find((board) => board.id === targetBoardId)?.name ??
+                    "",
+                columnId: (sameName?.id ?? targetColumns[0]!.id) as TaskStatus,
+                columns: targetColumns.map((column) => ({
+                    id: column.id as TaskStatus,
+                    name: column.name,
+                })),
+            });
+        } catch {
+            toast.error(t("boards.taskMoveFailed"));
+        } finally {
+            setIsLoadingMoveColumns(false);
+        }
+    };
+
+    const handleConfirmMove = async () => {
+        if (!task || !moveTarget || isMoving) return;
+
+        setIsMoving(true);
+        try {
+            await moveTaskToOtherBoard(
+                task.id,
+                moveTarget.boardId,
+                moveTarget.columnId,
+            );
+            setMoveTarget(null);
+            clearSelectedTask();
+            toast.success(t("boards.taskMoved"));
+            void navigate({
+                params: {
+                    boardId: moveTarget.boardId,
+                    projectId,
+                },
+                to: "/projects/$projectId/boards/$boardId",
+            });
+        } catch {
+            toast.error(t("boards.taskMoveFailed"));
+        } finally {
+            setIsMoving(false);
         }
     };
 
     return (
+        <>
         <Drawer
             onOpenChange={(open) => {
                 if (!open) {
@@ -147,8 +247,8 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                 {task ? (
                     <>
                         <DrawerHeader className="text-left p-2">
-                            <p className="text-meta text-muted-foreground">
-                                {task.id}
+                            <p className="text-meta font-mono text-muted-foreground">
+                                {task.key}
                             </p>
                             <DrawerTitle className="sr-only">
                                 {task.title}
@@ -167,6 +267,7 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                     </Label>
                                     <Input
                                         className="text-h3 font-medium"
+                                        disabled={!canEditTasks}
                                         id="task-title"
                                         onBlur={commitTitle}
                                         onChange={(event) =>
@@ -206,9 +307,42 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                 className="hidden shrink-0 md:block"
                                 orientation="vertical"
                             />
-                            {/* Status, Priority, Deadline */}
+                            {/* Type, Status, Priority, Deadline */}
                             <div className="flex min-w-0 flex-[1_1_0%] flex-col gap-6">
-                                <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="task-type">
+                                            {t("fields.type")}
+                                        </Label>
+                                        <Select
+                                            onValueChange={(value) => {
+                                                updateTaskDetails(task.id, {
+                                                    type: value as TaskType,
+                                                });
+                                            }}
+                                            value={task.type}
+                                        >
+                                            <SelectTrigger
+                                                className="w-full"
+                                                id="task-type"
+                                            >
+                                                <span>
+                                                    {t(`taskType.${task.type}`)}
+                                                </span>
+                                            </SelectTrigger>
+                                            <SelectContent alignItemWithTrigger={false}>
+                                                {TASK_TYPES.map((type) => (
+                                                    <SelectItem
+                                                        key={type}
+                                                        value={type}
+                                                    >
+                                                        {t(`taskType.${type}`)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="task-status">
                                             {t("fields.status")}
@@ -252,6 +386,52 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                             </ComboboxContent>
                                         </Combobox>
                                     </div>
+
+                                    {boards.length > 1 ? (
+                                        <div className="flex flex-col gap-2">
+                                            <Label htmlFor="task-board">
+                                                {t("fields.board")}
+                                            </Label>
+                                            <Select
+                                                onValueChange={(value) => {
+                                                    if (
+                                                        typeof value !==
+                                                            "string" ||
+                                                        value === boardId
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    void openMoveToBoard(value);
+                                                }}
+                                                value={boardId}
+                                                disabled={
+                                                    !canEditTasks ||
+                                                    isLoadingMoveColumns ||
+                                                    isMoving
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    className="w-full"
+                                                    id="task-board"
+                                                >
+                                                    <span>
+                                                        {currentBoard?.name ??
+                                                            t("boards.loading")}
+                                                    </span>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {boards.map((board) => (
+                                                        <SelectItem
+                                                            key={board.id}
+                                                            value={board.id}
+                                                        >
+                                                            {board.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    ) : undefined}
 
                                     <div className="flex flex-col gap-2">
                                         <Label htmlFor="task-priority">
@@ -328,77 +508,59 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                     />
                                 </div>
 
-                                <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
-                                    <p className="text-meta text-muted-foreground">
-                                        {t("github.title")}
-                                    </p>
+                                <TaskGithubPanel
+                                    allowedHeadPatterns={
+                                        currentBoard?.allowedHeadPatterns ?? []
+                                    }
+                                    baseBranch={
+                                        currentBoard?.baseBranch ?? "main"
+                                    }
+                                    githubToken={githubToken}
+                                    onBranchChange={(branchName) => {
+                                        updateTaskDetails(task.id, {
+                                            branchName,
+                                        });
+                                    }}
+                                    onPrChange={(pr) => {
+                                        updateTaskDetails(task.id, { pr });
+                                    }}
+                                    repoFullName={repoFullName}
+                                    task={task}
+                                />
 
-                                    {checkoutCommand ? (
-                                        <div className="flex flex-col gap-2">
-                                            <span className="inline-flex items-center gap-1.5 text-ui text-muted-foreground">
-                                                <GitBranch
-                                                    aria-hidden
-                                                    className="size-3.5"
-                                                />
-                                                {t("github.checkout")}
-                                            </span>
-                                            <div className="flex items-center gap-2">
-                                                <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
-                                                    {checkoutCommand}
-                                                </code>
-                                                <Button
-                                                    aria-label={t("github.copy")}
-                                                    onClick={() => {
-                                                        void handleCopyCheckout();
-                                                    }}
-                                                    size="icon-sm"
-                                                    type="button"
-                                                    variant="outline"
-                                                >
-                                                    {copied ? (
-                                                        <Check className="text-emerald-500" />
-                                                    ) : (
-                                                        <Copy />
-                                                    )}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className="text-ui text-muted-foreground">
-                                            {t("github.noBranch")}
-                                        </p>
-                                    )}
-
-                                    {task.pr ? (
-                                        <a
-                                            className={cn(
-                                                "inline-flex items-center gap-1.5 text-ui underline-offset-4 hover:underline",
-                                                PR_STATE_CLASS[task.pr.state],
+                                {/* Live Git data — only when branch is set and token available */}
+                                {task.branchName &&
+                                    githubToken &&
+                                    repoFullName && (
+                                        <TaskGitTab
+                                            branchName={task.branchName}
+                                            isShared={isSharedBranch(
+                                                task.branchName,
                                             )}
-                                            href={task.pr.url}
-                                            rel="noreferrer"
-                                            target="_blank"
-                                        >
-                                            <GitPullRequest
-                                                aria-hidden
-                                                className="size-3.5"
-                                            />
-                                            {t("github.prLink", {
-                                                number: task.pr.number,
-                                                state: t(
-                                                    `prState.${task.pr.state}`,
-                                                ),
-                                            })}
-                                            <ExternalLink
-                                                aria-hidden
-                                                className="size-3"
-                                            />
-                                        </a>
-                                    ) : (
-                                        <p className="text-ui text-muted-foreground">
-                                            {t("github.noPr")}
-                                        </p>
+                                            repoFullName={repoFullName}
+                                            token={githubToken}
+                                        />
                                     )}
+
+                                <div className="mt-auto border-t border-foreground/10 pt-4">
+                                    {canDeleteTasks ? (
+                                        <Button
+                                            className="w-full"
+                                            disabled={isDeleting}
+                                            onClick={() =>
+                                                setDeleteTarget({
+                                                    id: task.id,
+                                                    key: task.key,
+                                                    title: task.title,
+                                                })
+                                            }
+                                            type="button"
+                                            variant="destructive"
+                                        >
+                                            <Trash2 data-icon="inline-start" />
+                                            {t("tasks.delete")}
+                                        </Button>
+                                    ) : undefined}
                                 </div>
                             </div>
                         </div>
@@ -406,5 +568,115 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                 ) : undefined}
             </DrawerContent>
         </Drawer>
+
+        <AlertDialog
+            onOpenChange={(open) => {
+                if (!open && !isDeleting) setDeleteTarget(null);
+            }}
+            open={deleteTarget !== null}
+        >
+            <AlertDialogContent size="sm">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+                        {t("tasks.deleteTitle", {
+                            key: deleteTarget?.key ?? "",
+                        })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {t("tasks.deleteDescription", {
+                            title: deleteTarget?.title ?? "",
+                        })}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>
+                        {t("tasks.deleteCancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                        disabled={isDeleting}
+                        onClick={() => {
+                            void handleConfirmDelete();
+                        }}
+                        variant="destructive"
+                    >
+                        {t("tasks.deleteConfirm")}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog
+            onOpenChange={(open) => {
+                if (!open && !isMoving) setMoveTarget(null);
+            }}
+            open={moveTarget !== null}
+        >
+            <AlertDialogContent className="sm:max-w-sm" size="sm">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>
+                        {t("boards.moveTitle", {
+                            board: moveTarget?.boardName ?? "",
+                        })}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {t("boards.moveDescription")}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                {moveTarget ? (
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="move-task-column">
+                            {t("boards.moveToColumn")}
+                        </Label>
+                        <Select
+                            onValueChange={(value) => {
+                                if (typeof value !== "string") return;
+                                setMoveTarget((current) =>
+                                    current
+                                        ? {
+                                              ...current,
+                                              columnId: value as TaskStatus,
+                                          }
+                                        : current,
+                                );
+                            }}
+                            value={moveTarget.columnId}
+                        >
+                            <SelectTrigger
+                                className="w-full"
+                                id="move-task-column"
+                            >
+                                <span>{moveToColumnName}</span>
+                            </SelectTrigger>
+                            <SelectContent alignItemWithTrigger={false}>
+                                {moveTarget.columns.map((column) => (
+                                    <SelectItem
+                                        key={column.id}
+                                        value={column.id}
+                                    >
+                                        {column.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                ) : undefined}
+
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isMoving}>
+                        {t("boards.cancel")}
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                        disabled={isMoving || !moveTarget?.columnId}
+                        onClick={() => {
+                            void handleConfirmMove();
+                        }}
+                    >
+                        {t("boards.moveConfirm")}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }

@@ -27,17 +27,23 @@ export type ProjectLabel = {
 
 export type Task = {
     assignee?: TaskAssignee;
+    boardId: string;
     branchName?: string;
     /** ISO calendar date `YYYY-MM-DD`. */
     deadline?: string;
     description?: string;
     id: string;
+    /** Human-readable key, e.g. TASK-1, BUG-5, FEAT-12. Set by DB trigger on insert. */
+    key: string;
     labelIds?: string[];
     pr?: TaskPullRequest;
     priority?: TaskPriority;
     status: TaskStatus;
     title: string;
+    type: TaskType;
 };
+
+export type TaskType = "bug" | "feature" | "task";
 
 export type TaskAssignee = {
     avatarUrl?: string;

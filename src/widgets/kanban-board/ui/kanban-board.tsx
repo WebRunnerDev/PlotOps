@@ -30,6 +30,7 @@ import {
     TaskDrawer,
 } from "@/features/tasks";
 import { useBoardContext } from "@/features/tasks/model/board-context";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -71,10 +72,16 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 
 type KanbanBoardProperties = {
+    githubToken: null | string;
     projectId: string;
+    repoFullName: string | undefined;
 };
 
-export function KanbanBoard({ projectId }: KanbanBoardProperties) {
+export function KanbanBoard({
+    githubToken,
+    projectId,
+    repoFullName,
+}: KanbanBoardProperties) {
     const { t } = useTranslation("board");
     const {
         addColumn,
@@ -87,6 +94,7 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
         reorderTaskWithin,
         tasks,
     } = useBoardContext();
+    const { canManageBoard } = useProjectAccess(projectId);
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
@@ -272,17 +280,19 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
                             />
                         ))}
 
-                        <div className="flex w-48 shrink-0 flex-col pt-0.5">
-                            <Button
-                                className="justify-start gap-2 text-muted-foreground"
-                                onClick={handleAddColumn}
-                                type="button"
-                                variant="ghost"
-                            >
-                                <Plus className="size-4" />
-                                {t("columns.add")}
-                            </Button>
-                        </div>
+                        {canManageBoard ? (
+                            <div className="flex w-48 shrink-0 flex-col pt-0.5">
+                                <Button
+                                    className="justify-start gap-2 text-muted-foreground"
+                                    onClick={handleAddColumn}
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <Plus className="size-4" />
+                                    {t("columns.add")}
+                                </Button>
+                            </div>
+                        ) : undefined}
                     </div>
                 </SortableContext>
 
@@ -305,7 +315,11 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
                 </DragOverlay>
             </DndContext>
 
-            <TaskDrawer projectId={projectId} />
+            <TaskDrawer
+                githubToken={githubToken}
+                projectId={projectId}
+                repoFullName={repoFullName}
+            />
         </div>
     );
 }

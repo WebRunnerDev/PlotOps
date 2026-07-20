@@ -5,6 +5,7 @@ import type {
     LabelColor,
     ProjectLabel,
     TaskPriority,
+    TaskType,
 } from "./types";
 
 /** Default statuses — each is a kanban column. Names are editable on the board. */
@@ -16,6 +17,8 @@ export const DEFAULT_KANBAN_COLUMNS: BoardColumn[] = [
 ];
 
 export const KANBAN_COLUMNS = DEFAULT_KANBAN_COLUMNS;
+
+export const TASK_TYPES: TaskType[] = ["task", "bug", "feature"];
 
 export const TASK_PRIORITIES: TaskPriority[] = [
     "urgent",

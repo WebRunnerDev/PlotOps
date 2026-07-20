@@ -7,12 +7,17 @@ type BoardContextValue = ReturnType<typeof useBoard>;
 const BoardContext = createContext<BoardContextValue | null>(null);
 
 type BoardProviderProperties = {
+    boardId: string;
     children: ReactNode;
     projectId: string;
 };
 
-export function BoardProvider({ children, projectId }: BoardProviderProperties) {
-    const board = useBoard(projectId);
+export function BoardProvider({
+    boardId,
+    children,
+    projectId,
+}: BoardProviderProperties) {
+    const board = useBoard(projectId, boardId);
     return (
         <BoardContext.Provider value={board}>{children}</BoardContext.Provider>
     );

@@ -39,8 +39,8 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
         >
             <CardHeader className="gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-meta text-muted-foreground">
-                        {task.id}
+                    <span className="text-meta font-mono text-muted-foreground">
+                        {task.key}
                     </span>
                     {task.priority ? (
                         <span

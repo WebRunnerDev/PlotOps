@@ -18,6 +18,7 @@ import {
     LABEL_DOT_CLASS,
 } from "@/features/tasks/model/constants";
 import { useBoard } from "@/features/tasks/model/use-board";
+import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
 import { useProjects } from "@/features/projects/model/use-projects";
 import type { Project } from "@/features/projects/model/types";
 import { cn } from "@/shared/lib/utils";
@@ -85,11 +86,9 @@ export function ProjectLabelsSettings({
     projectId,
 }: ProjectLabelsSettingsProperties) {
     const { t } = useTranslation("board");
-    const {
-        addLabel,
-        labels,
-        tasks,
-    } = useBoard(projectId);
+    const { data: boards = [] } = useProjectBoards(projectId);
+    const defaultBoardId = boards[0]?.id ?? "";
+    const board = useBoard(projectId, defaultBoardId);
 
     const { data: projects } = useProjects();
 
@@ -97,15 +96,15 @@ export function ProjectLabelsSettings({
 
     const projectLabels = useMemo(
         () =>
-            labels
+            board.labels
                 .filter((label) => label.projectId === projectId)
                 .sort((a, b) => a.name.localeCompare(b.name)),
-        [labels, projectId],
+        [board.labels, projectId],
     );
 
     const tasksByLabel = useMemo(() => {
         const map = new Map<string, Task[]>();
-        for (const task of tasks) {
+        for (const task of board.tasks) {
             for (const id of task.labelIds ?? []) {
                 const list = map.get(id);
                 if (list) {
@@ -116,7 +115,7 @@ export function ProjectLabelsSettings({
             }
         }
         return map;
-    }, [tasks]);
+    }, [board.tasks]);
 
     const otherProjects = useMemo(
         () => (projects ?? []).filter((project) => project.id !== projectId),
@@ -127,7 +126,7 @@ export function ProjectLabelsSettings({
         const trimmed = newName.trim();
         if (!trimmed) return;
 
-        const id = await addLabel(trimmed);
+        const id = await board.addLabel(trimmed);
         if (!id) {
             toast.error(t("labels.createFailed"));
             return;
@@ -136,6 +135,10 @@ export function ProjectLabelsSettings({
         toast.success(t("labels.created", { name: trimmed }));
         setNewName("");
     };
+
+    if (!defaultBoardId) {
+        return null;
+    }
 
     return (
         <section className="flex flex-col gap-4">
@@ -185,10 +188,10 @@ export function ProjectLabelsSettings({
                 <ul className="flex flex-col gap-1.5">
                     {projectLabels.map((label) => (
                         <LabelRow
+                            board={board}
                             key={label.id}
                             label={label}
                             otherProjects={otherProjects}
-                            projectId={projectId}
                             taggedTasks={tasksByLabel.get(label.id) ?? EMPTY_TASKS}
                         />
                     ))}
@@ -198,17 +201,19 @@ export function ProjectLabelsSettings({
     );
 }
 
+type BoardActions = ReturnType<typeof useBoard>;
+
 type LabelRowProperties = {
+    board: BoardActions;
     label: ProjectLabel;
     otherProjects: Project[];
-    projectId: string;
     taggedTasks: Task[];
 };
 
 function LabelRow({
+    board,
     label,
     otherProjects,
-    projectId,
     taggedTasks,
 }: LabelRowProperties) {
     const { t } = useTranslation("board");
@@ -219,7 +224,7 @@ function LabelRow({
         renameLabel,
         setLabelCustomColor,
         updateLabelColor,
-    } = useBoard(projectId);
+    } = board;
 
     const [draft, setDraft] = useState(label.name);
     const [colorOpen, setColorOpen] = useState(false);

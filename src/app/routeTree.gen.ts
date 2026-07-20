@@ -11,14 +11,17 @@
 import { Route as rootRouteImport } from './../routes/__root'
 import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
+import { Route as InviteTokenRouteImport } from './../routes/invite.$token'
 import { Route as mainSettingsRouteImport } from './../routes/(main)/settings'
 import { Route as mainHomeRouteImport } from './../routes/(main)/home'
 import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
 import { Route as mainAboutRouteImport } from './../routes/(main)/about'
+import { Route as authSignUpRouteImport } from './../routes/(auth)/sign-up'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
 import { Route as mainProjectsProjectIdRouteRouteImport } from './../routes/(main)/projects/$projectId/route'
 import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(main)/projects/$projectId/index'
 import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
+import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
 
 const mainRouteRoute = mainRouteRouteImport.update({
   id: '/(main)',
@@ -27,6 +30,11 @@ const mainRouteRoute = mainRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const mainSettingsRoute = mainSettingsRouteImport.update({
@@ -48,6 +56,11 @@ const mainAboutRoute = mainAboutRouteImport.update({
   id: '/about',
   path: '/about',
   getParentRoute: () => mainRouteRoute,
+} as any)
+const authSignUpRoute = authSignUpRouteImport.update({
+  id: '/(auth)/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const authSignInRoute = authSignInRouteImport.update({
   id: '/(auth)/sign-in',
@@ -72,81 +85,107 @@ const mainProjectsProjectIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainProjectsProjectIdBoardsBoardIdRoute =
+  mainProjectsProjectIdBoardsBoardIdRouteImport.update({
+    id: '/boards/$boardId',
+    path: '/boards/$boardId',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof authSignInRoute
+  '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
+  '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof authSignInRoute
+  '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
+  '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/(main)': typeof mainRouteRouteWithChildren
   '/(auth)/sign-in': typeof authSignInRoute
+  '/(auth)/sign-up': typeof authSignUpRoute
   '/(main)/about': typeof mainAboutRoute
   '/(main)/dashboard': typeof mainDashboardRoute
   '/(main)/home': typeof mainHomeRoute
   '/(main)/settings': typeof mainSettingsRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/(main)/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
+  '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/sign-in'
+    | '/sign-up'
     | '/about'
     | '/dashboard'
     | '/home'
     | '/settings'
+    | '/invite/$token'
     | '/projects/$projectId'
     | '/projects/$projectId/settings'
     | '/projects/$projectId/'
+    | '/projects/$projectId/boards/$boardId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/sign-in'
+    | '/sign-up'
     | '/about'
     | '/dashboard'
     | '/home'
     | '/settings'
+    | '/invite/$token'
     | '/projects/$projectId/settings'
     | '/projects/$projectId'
+    | '/projects/$projectId/boards/$boardId'
   id:
     | '__root__'
     | '/'
     | '/(main)'
     | '/(auth)/sign-in'
+    | '/(auth)/sign-up'
     | '/(main)/about'
     | '/(main)/dashboard'
     | '/(main)/home'
     | '/(main)/settings'
+    | '/invite/$token'
     | '/(main)/projects/$projectId'
     | '/(main)/projects/$projectId/settings'
     | '/(main)/projects/$projectId/'
+    | '/(main)/projects/$projectId/boards/$boardId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   mainRouteRoute: typeof mainRouteRouteWithChildren
   authSignInRoute: typeof authSignInRoute
+  authSignUpRoute: typeof authSignUpRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -163,6 +202,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(main)/settings': {
@@ -193,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainAboutRouteImport
       parentRoute: typeof mainRouteRoute
     }
+    '/(auth)/sign-up': {
+      id: '/(auth)/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof authSignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/sign-in': {
       id: '/(auth)/sign-in'
       path: '/sign-in'
@@ -221,18 +274,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdSettingsRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
+    '/(main)/projects/$projectId/boards/$boardId': {
+      id: '/(main)/projects/$projectId/boards/$boardId'
+      path: '/boards/$boardId'
+      fullPath: '/projects/$projectId/boards/$boardId'
+      preLoaderRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
   }
 }
 
 interface mainProjectsProjectIdRouteRouteChildren {
   mainProjectsProjectIdSettingsRoute: typeof mainProjectsProjectIdSettingsRoute
   mainProjectsProjectIdIndexRoute: typeof mainProjectsProjectIdIndexRoute
+  mainProjectsProjectIdBoardsBoardIdRoute: typeof mainProjectsProjectIdBoardsBoardIdRoute
 }
 
 const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteChildren =
   {
     mainProjectsProjectIdSettingsRoute: mainProjectsProjectIdSettingsRoute,
     mainProjectsProjectIdIndexRoute: mainProjectsProjectIdIndexRoute,
+    mainProjectsProjectIdBoardsBoardIdRoute:
+      mainProjectsProjectIdBoardsBoardIdRoute,
   }
 
 const mainProjectsProjectIdRouteRouteWithChildren =
@@ -264,6 +327,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   mainRouteRoute: mainRouteRouteWithChildren,
   authSignInRoute: authSignInRoute,
+  authSignUpRoute: authSignUpRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

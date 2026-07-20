@@ -15,6 +15,7 @@ import {
     type TaskStatus,
 } from "@/features/tasks";
 import { useBoardContext } from "@/features/tasks/model/board-context";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -55,7 +56,8 @@ export function KanbanColumn({
     tasks,
 }: KanbanColumnProperties) {
     const { t } = useTranslation("board");
-    const { columns, deleteColumn, renameColumn } = useBoardContext();
+    const { columns, deleteColumn, projectId, renameColumn } = useBoardContext();
+    const { canManageBoard } = useProjectAccess(projectId);
 
     const {
         attributes,
@@ -170,17 +172,19 @@ export function KanbanColumn({
                 }}
             >
                 <header className="flex items-center gap-1 px-0.5">
-                    <button
-                        aria-label={t("columns.dragAria")}
-                        className="flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-                        type="button"
-                        {...attributes}
-                        {...listeners}
-                    >
-                        <GripVertical aria-hidden className="size-3.5" />
-                    </button>
+                    {canManageBoard ? (
+                        <button
+                            aria-label={t("columns.dragAria")}
+                            className="flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                            type="button"
+                            {...attributes}
+                            {...listeners}
+                        >
+                            <GripVertical aria-hidden className="size-3.5" />
+                        </button>
+                    ) : undefined}
 
-                    {isEditing ? (
+                    {isEditing && canManageBoard ? (
                         <Input
                             aria-label={t("columns.renameAria")}
                             className="h-7 flex-1 border-transparent bg-transparent px-1 text-ui font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
@@ -198,7 +202,7 @@ export function KanbanColumn({
                             ref={inputReference}
                             value={draft}
                         />
-                    ) : (
+                    ) : canManageBoard ? (
                         <button
                             className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-ui font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => setIsEditing(true)}
@@ -206,20 +210,26 @@ export function KanbanColumn({
                         >
                             {name}
                         </button>
+                    ) : (
+                        <span className="min-w-0 flex-1 truncate px-1 py-0.5 text-left text-ui font-medium">
+                            {name}
+                        </span>
                     )}
                     <span className="shrink-0 rounded-md bg-background px-1.5 py-0.5 text-meta text-muted-foreground ring-1 ring-foreground/10">
                         {tasks.length}
                     </span>
-                    <Button
-                        aria-label={t("columns.deleteAria")}
-                        className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100"
-                        onClick={handleDeleteClick}
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <Trash2 className="size-3.5" />
-                    </Button>
+                    {canManageBoard ? (
+                        <Button
+                            aria-label={t("columns.deleteAria")}
+                            className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100"
+                            onClick={handleDeleteClick}
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            <Trash2 className="size-3.5" />
+                        </Button>
+                    ) : undefined}
                 </header>
 
                 <div className="scrollbar-board flex flex-1 flex-col gap-2 overflow-y-auto">
