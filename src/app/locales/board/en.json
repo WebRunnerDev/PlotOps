@@ -24,6 +24,11 @@
     "deletedWithMove": "Moved {{count}} task(s) to “{{target}}” and deleted “{{name}}”",
     "dragAria": "Drag to reorder status"
   },
+  "tasks": {
+    "add": "Add task",
+    "addPlaceholder": "Task title…",
+    "createFailed": "Could not create task"
+  },
   "prLink": "Pull request #{{number}} ({{state}})",
   "prTooltip": "PR #{{number}} · {{state}}",
   "prState": {

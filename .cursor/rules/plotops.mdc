@@ -61,3 +61,9 @@ Tables: `profiles`, `projects`, `tasks`, `activity_log`. Enable **RLS** from day
 ## Design
 
 Dark, strict, Linear/Neobrutalism-inspired: sharp borders, monospace for git elements, neon accents on build statuses (green success, red failure). No gratuitous gradients.
+
+## Git commits
+
+**Never add Cursor attribution to commits or PRs.** Do not append `Co-authored-by: Cursor`, `Made-with: Cursor`, `--trailer`, or any similar AI/tool footer to commit messages. Use only the subject and body you write (`git commit -m "…"` or `-F` file). If a hook or environment still injects attribution, amend the message to remove it before finishing — do not leave it in history.
+
+When the user asks for a commit, follow their commit message only; never add co-author or attribution lines on your own.

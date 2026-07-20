@@ -24,6 +24,11 @@
     "deletedWithMove": "Перенесено задач: {{count}} → «{{target}}», статус «{{name}}» удалён",
     "dragAria": "Перетащить статус"
   },
+  "tasks": {
+    "add": "Добавить задачу",
+    "addPlaceholder": "Название задачи…",
+    "createFailed": "Не удалось создать задачу"
+  },
   "prLink": "Pull request #{{number}} ({{state}})",
   "prTooltip": "PR #{{number}} · {{state}}",
   "prState": {

@@ -5,8 +5,8 @@ import {
     type ProjectLabel,
     type Task,
     TaskCard,
-    useTasksStore,
 } from "@/features/tasks";
+import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { cn } from "@/shared/lib/utils";
 
 type DraggableTaskCardProperties = {
@@ -18,7 +18,7 @@ export function DraggableTaskCard({
     labels,
     task,
 }: DraggableTaskCardProperties) {
-    const selectTask = useTasksStore((state) => state.selectTask);
+    const selectTask = useTasksUiStore((state) => state.selectTask);
     const {
         attributes,
         isDragging,

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { ProjectLabel } from "@/features/tasks/model/types";
 
 import { getLabelDotProps } from "@/features/tasks/model/constants";
-import { useTasksStore } from "@/features/tasks/model/use-tasks-store";
+import { useBoardContext } from "@/features/tasks/model/board-context";
 import { cn } from "@/shared/lib/utils";
 import {
     Combobox,
@@ -40,8 +40,7 @@ export function TaskLabelsField({
     taskId,
 }: TaskLabelsFieldProperties) {
     const { t } = useTranslation("board");
-    const addLabel = useTasksStore((state) => state.addLabel);
-    const updateTaskDetails = useTasksStore((state) => state.updateTaskDetails);
+    const { addLabel, updateTaskDetails } = useBoardContext();
     const anchor = useComboboxAnchor();
 
     const [query, setQuery] = useState("");
@@ -80,8 +79,8 @@ export function TaskLabelsField({
         });
     };
 
-    const handleCreate = (name: string, current: ProjectLabel[]) => {
-        const id = addLabel(projectId, name);
+    const handleCreate = async (name: string, current: ProjectLabel[]) => {
+        const id = await addLabel(name);
         if (!id) {
             toast.error(t("labels.createFailed"));
             return;

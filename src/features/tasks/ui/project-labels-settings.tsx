@@ -17,7 +17,7 @@ import {
     LABEL_COLORS,
     LABEL_DOT_CLASS,
 } from "@/features/tasks/model/constants";
-import { useTasksStore } from "@/features/tasks/model/use-tasks-store";
+import { useBoard } from "@/features/tasks/model/use-board";
 import { useProjects } from "@/features/projects/model/use-projects";
 import type { Project } from "@/features/projects/model/types";
 import { cn } from "@/shared/lib/utils";
@@ -85,20 +85,15 @@ export function ProjectLabelsSettings({
     projectId,
 }: ProjectLabelsSettingsProperties) {
     const { t } = useTranslation("board");
-    const labels = useTasksStore((state) => state.labels);
-    const tasks = useTasksStore((state) => state.tasks);
-    const addLabel = useTasksStore((state) => state.addLabel);
-    const ensureProjectLabels = useTasksStore(
-        (state) => state.ensureProjectLabels,
-    );
+    const {
+        addLabel,
+        labels,
+        tasks,
+    } = useBoard(projectId);
 
     const { data: projects } = useProjects();
 
     const [newName, setNewName] = useState("");
-
-    useEffect(() => {
-        ensureProjectLabels(projectId);
-    }, [ensureProjectLabels, projectId]);
 
     const projectLabels = useMemo(
         () =>
@@ -128,11 +123,11 @@ export function ProjectLabelsSettings({
         [projects, projectId],
     );
 
-    const handleCreate = () => {
+    const handleCreate = async () => {
         const trimmed = newName.trim();
         if (!trimmed) return;
 
-        const id = addLabel(projectId, trimmed);
+        const id = await addLabel(trimmed);
         if (!id) {
             toast.error(t("labels.createFailed"));
             return;
@@ -193,6 +188,7 @@ export function ProjectLabelsSettings({
                             key={label.id}
                             label={label}
                             otherProjects={otherProjects}
+                            projectId={projectId}
                             taggedTasks={tasksByLabel.get(label.id) ?? EMPTY_TASKS}
                         />
                     ))}
@@ -205,23 +201,25 @@ export function ProjectLabelsSettings({
 type LabelRowProperties = {
     label: ProjectLabel;
     otherProjects: Project[];
+    projectId: string;
     taggedTasks: Task[];
 };
 
-function LabelRow({ label, otherProjects, taggedTasks }: LabelRowProperties) {
+function LabelRow({
+    label,
+    otherProjects,
+    projectId,
+    taggedTasks,
+}: LabelRowProperties) {
     const { t } = useTranslation("board");
-    const renameLabel = useTasksStore((state) => state.renameLabel);
-    const updateLabelColor = useTasksStore((state) => state.updateLabelColor);
-    const setLabelCustomColor = useTasksStore(
-        (state) => state.setLabelCustomColor,
-    );
-    const deleteLabel = useTasksStore((state) => state.deleteLabel);
-    const copyLabelToProject = useTasksStore(
-        (state) => state.copyLabelToProject,
-    );
-    const moveLabelToProject = useTasksStore(
-        (state) => state.moveLabelToProject,
-    );
+    const {
+        copyLabelToProject,
+        deleteLabel,
+        moveLabelToProject,
+        renameLabel,
+        setLabelCustomColor,
+        updateLabelColor,
+    } = useBoard(projectId);
 
     const [draft, setDraft] = useState(label.name);
     const [colorOpen, setColorOpen] = useState(false);
@@ -261,7 +259,7 @@ function LabelRow({ label, otherProjects, taggedTasks }: LabelRowProperties) {
             toast.error(t("labelSettings.customColorInvalid"));
             return;
         }
-        setLabelCustomColor(label.id, normalized);
+        void setLabelCustomColor(label.id, normalized);
         setColorOpen(false);
     };
 
@@ -273,29 +271,29 @@ function LabelRow({ label, otherProjects, taggedTasks }: LabelRowProperties) {
         if (transferOpen) setTargetProjectId(otherProjects[0]?.id);
     }, [otherProjects, transferOpen]);
 
-    const commitRename = () => {
+    const commitRename = async () => {
         const trimmed = draft.trim();
         if (!trimmed || trimmed === label.name) {
             setDraft(label.name);
             return;
         }
 
-        const ok = renameLabel(label.id, trimmed);
+        const ok = await renameLabel(label.id, trimmed);
         if (!ok) {
             toast.error(t("labels.createFailed"));
             setDraft(label.name);
         }
     };
 
-    const handleConfirmDelete = () => {
-        deleteLabel(label.id);
+    const handleConfirmDelete = async () => {
+        await deleteLabel(label.id);
         toast.success(t("labelSettings.deleted", { name: label.name }));
         setDeleteOpen(false);
     };
 
-    const handleCopy = () => {
+    const handleCopy = async () => {
         if (!targetProjectId) return;
-        const id = copyLabelToProject(label.id, targetProjectId);
+        const id = await copyLabelToProject(label.id, targetProjectId);
         const target = otherProjects.find(
             (project) => project.id === targetProjectId,
         );
@@ -314,13 +312,13 @@ function LabelRow({ label, otherProjects, taggedTasks }: LabelRowProperties) {
         setTransferOpen(false);
     };
 
-    const handleMove = () => {
+    const handleMove = async () => {
         if (!targetProjectId) return;
         const target = otherProjects.find(
             (project) => project.id === targetProjectId,
         );
 
-        moveLabelToProject(label.id, targetProjectId);
+        await moveLabelToProject(label.id, targetProjectId);
         toast.success(
             t("labelSettings.moved", {
                 name: label.name,
@@ -361,7 +359,7 @@ function LabelRow({ label, otherProjects, taggedTasks }: LabelRowProperties) {
                                     )}
                                     key={color}
                                     onClick={() => {
-                                        updateLabelColor(label.id, color);
+                                        void updateLabelColor(label.id, color);
                                         setColorOpen(false);
                                     }}
                                     type="button"

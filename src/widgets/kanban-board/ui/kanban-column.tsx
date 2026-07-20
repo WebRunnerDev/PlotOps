@@ -13,8 +13,8 @@ import {
     type ProjectLabel,
     type Task,
     type TaskStatus,
-    useTasksStore,
 } from "@/features/tasks";
+import { useBoardContext } from "@/features/tasks/model/board-context";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -34,10 +34,10 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
 } from "@/shared/shadcn/ui/select";
 
 import { DraggableTaskCard } from "./draggable-task-card";
+import { KanbanAddTask } from "./kanban-add-task";
 
 type KanbanColumnProperties = {
     labelsByTaskId: Map<string, ProjectLabel[]>;
@@ -55,9 +55,7 @@ export function KanbanColumn({
     tasks,
 }: KanbanColumnProperties) {
     const { t } = useTranslation("board");
-    const columns = useTasksStore((state) => state.columns);
-    const renameColumn = useTasksStore((state) => state.renameColumn);
-    const deleteColumn = useTasksStore((state) => state.deleteColumn);
+    const { columns, deleteColumn, renameColumn } = useBoardContext();
 
     const {
         attributes,
@@ -82,6 +80,9 @@ export function KanbanColumn({
     const [moveTo, setMoveTo] = useState<TaskStatus | undefined>(
         otherColumns[0]?.id,
     );
+    const moveToColumnName = otherColumns.find(
+        (column) => column.id === moveTo,
+    )?.name;
 
     useEffect(() => {
         if (startEditing) setIsEditing(true);
@@ -104,7 +105,7 @@ export function KanbanColumn({
         setMoveTo(columns.find((column) => column.id !== status)?.id);
     }, [columns, deleteOpen, status]);
 
-    const commitRename = () => {
+    const commitRename = async () => {
         const trimmed = draft.trim();
         if (!trimmed || trimmed === name) {
             setDraft(name);
@@ -112,7 +113,7 @@ export function KanbanColumn({
             return;
         }
 
-        const ok = renameColumn(status, trimmed);
+        const ok = await renameColumn(status, trimmed);
         if (!ok) {
             toast.error(t("columns.renameFailed"));
             setDraft(name);
@@ -128,11 +129,11 @@ export function KanbanColumn({
         setDeleteOpen(true);
     };
 
-    const handleConfirmDelete = () => {
+    const handleConfirmDelete = async () => {
         const ok =
             tasks.length > 0
-                ? deleteColumn(status, moveTo)
-                : deleteColumn(status);
+                ? await deleteColumn(status, moveTo)
+                : await deleteColumn(status);
 
         if (!ok) {
             toast.error(t("columns.deleteFailed"));
@@ -234,6 +235,7 @@ export function KanbanColumn({
                             />
                         ))}
                     </SortableContext>
+                    <KanbanAddTask status={status} />
                 </div>
             </section>
 
@@ -272,7 +274,9 @@ export function KanbanColumn({
                                     className="w-full"
                                     id={`move-tasks-${status}`}
                                 >
-                                    <SelectValue />
+                                    <span>
+                                        {moveToColumnName}
+                                    </span>
                                 </SelectTrigger>
                                 <SelectContent alignItemWithTrigger={false}>
                                     {otherColumns.map((column) => (

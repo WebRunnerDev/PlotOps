@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, GitBranch, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { BoardProvider } from "@/features/tasks/model/board-context";
 import { useProject } from "@/features/projects/model/use-projects";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -107,7 +108,9 @@ export function BoardPage({ projectId }: BoardPageProperties) {
                 </header>
 
                 <div className="min-h-0 min-w-0 flex-1 px-12">
-                    <KanbanBoard projectId={projectId} />
+                    <BoardProvider projectId={projectId}>
+                        <KanbanBoard projectId={projectId} />
+                    </BoardProvider>
                 </div>
             </div>
         </div>

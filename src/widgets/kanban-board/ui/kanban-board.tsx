@@ -28,9 +28,11 @@ import {
     type Task,
     TaskCard,
     TaskDrawer,
-    useTasksStore,
 } from "@/features/tasks";
+import { useBoardContext } from "@/features/tasks/model/board-context";
+import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 import { KanbanColumn } from "./kanban-column";
 import { KanbanFilters } from "./kanban-filters";
@@ -74,16 +76,17 @@ type KanbanBoardProperties = {
 
 export function KanbanBoard({ projectId }: KanbanBoardProperties) {
     const { t } = useTranslation("board");
-    const tasks = useTasksStore((state) => state.tasks);
-    const columns = useTasksStore((state) => state.columns);
-    const labels = useTasksStore((state) => state.labels);
-    const addColumn = useTasksStore((state) => state.addColumn);
-    const ensureProjectLabels = useTasksStore(
-        (state) => state.ensureProjectLabels,
-    );
-    const reorderColumns = useTasksStore((state) => state.reorderColumns);
-    const moveTaskToColumn = useTasksStore((state) => state.moveTaskToColumn);
-    const reorderTaskWithin = useTasksStore((state) => state.reorderTaskWithin);
+    const {
+        addColumn,
+        columns,
+        error,
+        isLoading,
+        labels,
+        moveTaskToColumn,
+        reorderColumns,
+        reorderTaskWithin,
+        tasks,
+    } = useBoardContext();
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
@@ -128,10 +131,6 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
         }
         return map;
     }, [filteredTasks, labelsById]);
-
-    useEffect(() => {
-        ensureProjectLabels(projectId);
-    }, [ensureProjectLabels, projectId]);
 
     useEffect(() => {
         setFilters(EMPTY_BOARD_FILTERS);
@@ -210,18 +209,35 @@ export function KanbanBoard({ projectId }: KanbanBoardProperties) {
     };
 
     const handleAddColumn = () => {
-        const id = addColumn(t("columns.newStatus"));
-        setFocusColumnId(id);
+        void addColumn(t("columns.newStatus")).then((id) => {
+            setFocusColumnId(id);
 
-        globalThis.requestAnimationFrame(() => {
-            const node = document.querySelector(`[data-column-id="${id}"]`);
-            node?.scrollIntoView({
-                behavior: "smooth",
-                block: "nearest",
-                inline: "end",
+            globalThis.requestAnimationFrame(() => {
+                const node = document.querySelector(`[data-column-id="${id}"]`);
+                node?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                    inline: "end",
+                });
             });
         });
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-1 items-center justify-center py-16">
+                <Spinner className="size-8 text-primary" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <Alert variant="destructive">
+                <AlertDescription>{t("projectError")}</AlertDescription>
+            </Alert>
+        );
+    }
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">

@@ -16,7 +16,8 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
-import { useTasksStore } from "@/features/tasks/model/use-tasks-store";
+import { useBoardContext } from "@/features/tasks/model/board-context";
+import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { cn } from "@/shared/lib/utils";
@@ -43,7 +44,6 @@ import {
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
 } from "@/shared/shadcn/ui/select";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { Separator } from "@/shared";
@@ -63,13 +63,15 @@ type TaskDrawerProperties = {
 
 export function TaskDrawer({ projectId }: TaskDrawerProperties) {
     const { t } = useTranslation("board");
-    const selectedTaskId = useTasksStore((state) => state.selectedTaskId);
-    const tasks = useTasksStore((state) => state.tasks);
-    const columns = useTasksStore((state) => state.columns);
-    const labels = useTasksStore((state) => state.labels);
-    const clearSelectedTask = useTasksStore((state) => state.clearSelectedTask);
-    const updateTaskDetails = useTasksStore((state) => state.updateTaskDetails);
-    const updateTaskStatus = useTasksStore((state) => state.updateTaskStatus);
+    const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
+    const {
+        columns,
+        labels,
+        tasks,
+        updateTaskDetails,
+        updateTaskStatus,
+    } = useBoardContext();
+    const clearSelectedTask = useTasksUiStore((state) => state.clearSelectedTask);
 
     const task = tasks.find((item) => item.id === selectedTaskId);
 
@@ -273,7 +275,11 @@ export function TaskDrawer({ projectId }: TaskDrawerProperties) {
                                                 className="w-full"
                                                 id="task-priority"
                                             >
-                                                <SelectValue />
+                                                <span>
+                                                    {task.priority
+                                                        ? t(`priority.${task.priority}`)
+                                                        : t("priority.none")}
+                                                </span>
                                             </SelectTrigger>
                                             <SelectContent alignItemWithTrigger={false}>
                                                 <SelectItem value={PRIORITY_NONE}>

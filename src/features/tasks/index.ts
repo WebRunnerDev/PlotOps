@@ -24,7 +24,7 @@ export {
     PRIORITY_CLASS,
     TASK_PRIORITIES,
 } from "./model/constants";
-export { MOCK_TASKS } from "./model/mock-tasks";
+export { BoardProvider, useBoardContext } from "./model/board-context";
 export type {
     BoardColumn,
     LabelColor,
@@ -33,7 +33,9 @@ export type {
     TaskPriority,
     TaskStatus,
 } from "./model/types";
-export { useTasksStore } from "./model/use-tasks-store";
+export { taskKeys } from "./model/query-keys";
+export { useBoard } from "./model/use-board";
+export { useTasksUiStore } from "./model/use-tasks-ui-store";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { ProjectLabelsSettings } from "./ui/project-labels-settings";
 export { TaskCard } from "./ui/task-card";
