@@ -1,13 +1,40 @@
 {
+  "checkEmail": {
+    "description": "Мы отправили ссылку подтверждения на {{email}}. Откройте её, чтобы завершить регистрацию.",
+    "resend": "Отправить письмо ещё раз",
+    "resendLoading": "Отправка...",
+    "resent": "Письмо с подтверждением отправлено повторно.",
+    "title": "Проверьте почту"
+  },
+  "confirmPassword": "Подтвердите пароль",
   "email": "Email",
   "emailPlaceholder": "you@example.com",
+  "errors": {
+    "emailNotConfirmed": "Подтвердите email перед входом. Проверьте почту — там ссылка.",
+    "generic": "Что-то пошло не так. Попробуйте ещё раз.",
+    "invalidCredentials": "Неверный email или пароль.",
+    "passwordMismatch": "Пароли не совпадают.",
+    "userAlreadyRegistered": "Аккаунт с этим email уже есть. Войдите.",
+    "weakPassword": "Пароль должен быть не короче 6 символов."
+  },
   "githubRedirecting": "Перенаправление...",
   "githubSignIn": "Войти через GitHub",
+  "links": {
+    "backToSignIn": "Назад ко входу",
+    "hasAccount": "Уже есть аккаунт?",
+    "noAccount": "Нет аккаунта?",
+    "signIn": "Войти",
+    "signUp": "Создать аккаунт"
+  },
   "or": "или",
   "password": "Пароль",
   "passwordPlaceholder": "••••••••",
   "signIn": "Войти",
   "signInLoading": "Вход...",
   "signInSubtitle": "Войдите через GitHub или email и пароль",
-  "signInTitle": "Войти в PlotOps"
+  "signInTitle": "Войти в PlotOps",
+  "signUp": "Создать аккаунт",
+  "signUpLoading": "Создание аккаунта...",
+  "signUpSubtitle": "Регистрация по email — нужна для приглашений без GitHub",
+  "signUpTitle": "Создать аккаунт PlotOps"
 }

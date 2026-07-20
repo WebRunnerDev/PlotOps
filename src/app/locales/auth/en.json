@@ -1,13 +1,40 @@
 {
+  "checkEmail": {
+    "description": "We sent a confirmation link to {{email}}. Open it to finish creating your account.",
+    "resend": "Resend confirmation email",
+    "resendLoading": "Sending...",
+    "resent": "Confirmation email sent again.",
+    "title": "Check your email"
+  },
+  "confirmPassword": "Confirm password",
   "email": "Email",
   "emailPlaceholder": "you@example.com",
+  "errors": {
+    "emailNotConfirmed": "Confirm your email before signing in. Check your inbox for the link.",
+    "generic": "Something went wrong. Please try again.",
+    "invalidCredentials": "Invalid email or password.",
+    "passwordMismatch": "Passwords do not match.",
+    "userAlreadyRegistered": "An account with this email already exists. Sign in instead.",
+    "weakPassword": "Password must be at least 6 characters."
+  },
   "githubRedirecting": "Redirecting...",
   "githubSignIn": "Sign in with GitHub",
+  "links": {
+    "backToSignIn": "Back to sign in",
+    "hasAccount": "Already have an account?",
+    "noAccount": "No account yet?",
+    "signIn": "Sign in",
+    "signUp": "Create account"
+  },
   "or": "or",
   "password": "Password",
   "passwordPlaceholder": "••••••••",
   "signIn": "Sign in",
   "signInLoading": "Signing in...",
   "signInSubtitle": "Sign in with GitHub or email and password",
-  "signInTitle": "Sign in to PlotOps"
+  "signInTitle": "Sign in to PlotOps",
+  "signUp": "Create account",
+  "signUpLoading": "Creating account...",
+  "signUpSubtitle": "Register with email — required for project invites without GitHub",
+  "signUpTitle": "Create your PlotOps account"
 }

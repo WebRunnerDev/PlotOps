@@ -28,6 +28,17 @@ Supabase MCP is account-scoped, not project-scoped. Agents must use **project_id
 
 If MCP cannot access PlotOps, use CLI (`db:push`) or SQL Editor in the PlotOps dashboard.
 
+## Auth (email signup + confirm)
+
+Local (`supabase/config.toml`): `auth.email.enable_confirmations = true`, `site_url` / redirect URLs point at Vite (`:5173`).
+
+**Remote Dashboard (required — not applied by migrations):**
+
+1. Authentication → Providers → Email → enable **Confirm email**
+2. Authentication → URL Configuration → add app origins to **Redirect URLs** (local Vite + production), and set **Site URL** to the production origin
+
+Without Confirm email ON remotely, `signUp` returns a session immediately and the check-email UI never appears.
+
 ## Migrations
 
 - `supabase/migrations/20260710120000_create_projects.sql` — `projects` table, RLS, GitHub fields (idempotent)

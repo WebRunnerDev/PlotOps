@@ -1,8 +1,9 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
+    getAuthErrorKey,
     signInWithGitHub,
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
@@ -35,7 +36,7 @@ export function LoginForm() {
         const { error: authError } = await signInWithGitHub();
 
         setIsGitHubLoading(false);
-        if (authError) setError(authError.message);
+        if (authError) setError(t(getAuthErrorKey(authError)));
     };
 
     const handleEmailLogin = async (event: FormEvent) => {
@@ -51,7 +52,18 @@ export function LoginForm() {
         setIsEmailLoading(false);
 
         if (authError) {
-            setError(authError.message);
+            setError(t(getAuthErrorKey(authError)));
+            return;
+        }
+
+        const pendingInvite =
+            globalThis.sessionStorage.getItem("plotops_pending_invite");
+        if (pendingInvite) {
+            globalThis.sessionStorage.removeItem("plotops_pending_invite");
+            navigate({
+                params: { token: pendingInvite },
+                to: "/invite/$token",
+            });
             return;
         }
 
@@ -66,11 +78,11 @@ export function LoginForm() {
             </CardHeader>
 
             <CardContent className="flex flex-col gap-6">
-                {error && (
+                {error ? (
                     <Alert variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
-                )}
+                ) : undefined}
 
                 <Button
                     className="w-full"
@@ -127,6 +139,13 @@ export function LoginForm() {
                         {isEmailLoading ? t("signInLoading") : t("signIn")}
                     </Button>
                 </form>
+
+                <p className="text-center text-meta text-muted-foreground">
+                    {t("links.noAccount")}{" "}
+                    <Link className="underline underline-offset-2" to="/sign-up">
+                        {t("links.signUp")}
+                    </Link>
+                </p>
             </CardContent>
         </Card>
     );
