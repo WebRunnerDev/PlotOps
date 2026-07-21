@@ -27,6 +27,7 @@ type CreateLabelOption = ProjectLabel & { isCreate: true };
 type LabelOption = CreateLabelOption | ProjectLabel;
 
 type TaskLabelsFieldProperties = {
+    disabled?: boolean;
     labels: ProjectLabel[];
     projectId: string;
     selectedIds: string[];
@@ -34,6 +35,7 @@ type TaskLabelsFieldProperties = {
 };
 
 export function TaskLabelsField({
+    disabled = false,
     labels,
     projectId,
     selectedIds,
@@ -110,6 +112,7 @@ export function TaskLabelsField({
     return (
         <Combobox
             autoHighlight
+            disabled={disabled}
             inputValue={query}
             isItemEqualToValue={(a, b) => a.id === b.id}
             items={items}
@@ -117,8 +120,11 @@ export function TaskLabelsField({
                 isCreateOption(item) ? query : item.name
             }
             multiple
-            onInputValueChange={(value) => setQuery(value)}
+            onInputValueChange={(value) => {
+                if (!disabled) setQuery(value);
+            }}
             onValueChange={(value) => {
+                if (disabled) return;
                 handleValueChange(value ?? []);
             }}
             value={selectedLabels}

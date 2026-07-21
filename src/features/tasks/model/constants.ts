@@ -103,3 +103,12 @@ export const PRIORITY_CLASS: Record<TaskPriority, string> = {
     medium: "text-sky-500",
     urgent: "text-red-500",
 };
+
+/** Max stored HTML length for task descriptions (~128 KiB). */
+export const TASK_DESCRIPTION_MAX_LENGTH = 131_072;
+
+/** Max stored HTML length for a single task comment (~32 KiB). */
+export const TASK_COMMENT_MAX_LENGTH = 32_768;
+
+/** Soft UI cap for activity feed rows (SPEC: last 50–100). */
+export const TASK_ACTIVITY_FEED_LIMIT = 100;

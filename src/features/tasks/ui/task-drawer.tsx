@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Archive, RotateCcw, Trash2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,16 +12,21 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { fetchBoardColumns } from "@/features/tasks/api/boards-api";
-import { TASK_PRIORITIES, TASK_TYPES } from "@/features/tasks/model/constants";
+import { TASK_DESCRIPTION_MAX_LENGTH, TASK_PRIORITIES, TASK_TYPES } from "@/features/tasks/model/constants";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
 import { useBoardContext } from "@/features/tasks/model/board-context";
+import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
+import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
 import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
+import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -57,6 +62,7 @@ import {
     SelectTrigger,
 } from "@/shared/shadcn/ui/select";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
+import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
 import { Separator } from "@/shared";
 
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
@@ -83,11 +89,13 @@ export function TaskDrawer({
     const { t } = useTranslation("board");
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const {
+        archiveTask,
         boardId,
         columns,
         deleteTask,
         labels,
         moveTaskToOtherBoard,
+        restoreTask,
         tasks,
         updateTaskDetails,
         updateTaskStatus,
@@ -98,7 +106,17 @@ export function TaskDrawer({
     const { canDeleteTasks, canEditTasks } = useProjectAccess(projectId);
     const clearSelectedTask = useTasksUiStore((state) => state.clearSelectedTask);
 
-    const task = tasks.find((item) => item.id === selectedTaskId);
+    const boardTask = tasks.find((item) => item.id === selectedTaskId);
+    const { data: archivedTasks = [] } = useArchivedTasks(
+        projectId,
+        boardId,
+        Boolean(selectedTaskId) && !boardTask,
+    );
+    const task =
+        boardTask ??
+        archivedTasks.find((item) => item.id === selectedTaskId);
+    const isArchived = Boolean(task?.archivedAt);
+    const canEdit = canEditTasks && !isArchived;
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -113,9 +131,12 @@ export function TaskDrawer({
         title: string;
     } | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isArchiving, setIsArchiving] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
     const [moveTarget, setMoveTarget] = useState<MoveBoardTarget | null>(null);
     const [isMoving, setIsMoving] = useState(false);
     const [isLoadingMoveColumns, setIsLoadingMoveColumns] = useState(false);
+    const [activityOpen, setActivityOpen] = useState(false);
 
     const selectedColumn = columns.find((column) => column.id === task?.status);
     const moveToColumnName =
@@ -128,8 +149,12 @@ export function TaskDrawer({
         setDescription(task.description ?? "");
     }, [task]);
 
+    useEffect(() => {
+        setActivityOpen(false);
+    }, [task?.id]);
+
     const commitTitle = () => {
-        if (!task) return;
+        if (!task || !canEdit) return;
         const next = title.trim();
         if (!next || next === task.title) {
             setTitle(task.title);
@@ -139,13 +164,47 @@ export function TaskDrawer({
     };
 
     const commitDescription = () => {
-        if (!task) return;
+        if (!task || !canEdit) return;
         const next = description;
         const current = task.description ?? "";
         if (next === current) return;
+        if (!isRichTextWithinLimit(next, TASK_DESCRIPTION_MAX_LENGTH)) {
+            toast.error(t("fields.descriptionTooLong"));
+            setDescription(current);
+            return;
+        }
         updateTaskDetails(task.id, {
             description: next.length > 0 ? next : undefined,
         });
+    };
+
+    const handleArchive = async () => {
+        if (!task || isArchiving || isArchived) return;
+        const { id, key } = task;
+        setIsArchiving(true);
+        // Clear first so archived-query fallback cannot reopen the drawer.
+        clearSelectedTask();
+        try {
+            await archiveTask(id);
+            toast.success(t("archive.archived", { key }));
+        } catch {
+            toast.error(t("archive.archiveFailed"));
+        } finally {
+            setIsArchiving(false);
+        }
+    };
+
+    const handleRestore = async () => {
+        if (!task || isRestoring || !isArchived) return;
+        setIsRestoring(true);
+        try {
+            await restoreTask(task.id);
+            toast.success(t("archive.restored", { key: task.key }));
+        } catch {
+            toast.error(t("archive.restoreFailed"));
+        } finally {
+            setIsRestoring(false);
+        }
     };
 
     const handleConfirmDelete = async () => {
@@ -166,7 +225,13 @@ export function TaskDrawer({
     };
 
     const openMoveToBoard = async (targetBoardId: string) => {
-        if (!task || targetBoardId === boardId || isLoadingMoveColumns) return;
+        if (
+            !task ||
+            isArchived ||
+            targetBoardId === boardId ||
+            isLoadingMoveColumns
+        )
+            return;
 
         setIsLoadingMoveColumns(true);
         try {
@@ -249,12 +314,17 @@ export function TaskDrawer({
                         <DrawerHeader className="text-left p-2">
                             <p className="text-meta font-mono text-muted-foreground">
                                 {task.key}
+                                {isArchived
+                                    ? ` · ${t("archive.badge")}`
+                                    : undefined}
                             </p>
                             <DrawerTitle className="sr-only">
                                 {task.title}
                             </DrawerTitle>
                             <DrawerDescription>
-                                {t("drawerDescription")}
+                                {isArchived
+                                    ? t("archive.drawerDescription")
+                                    : t("drawerDescription")}
                             </DrawerDescription>
                         </DrawerHeader>
 
@@ -267,7 +337,7 @@ export function TaskDrawer({
                                     </Label>
                                     <Input
                                         className="text-h3 font-medium"
-                                        disabled={!canEditTasks}
+                                        disabled={!canEdit}
                                         id="task-title"
                                         onBlur={commitTitle}
                                         onChange={(event) =>
@@ -291,17 +361,37 @@ export function TaskDrawer({
                                     </Label>
                                     <RichTextEditor
                                         id="task-description"
+                                        maxLength={TASK_DESCRIPTION_MAX_LENGTH}
                                         onBlur={commitDescription}
                                         onChange={setDescription}
-                                        onUploadImage={(file) =>
-                                            uploadTaskMedia(file, task.id)
+                                        onUploadImage={
+                                            canEdit
+                                                ? (file) =>
+                                                      uploadTaskMedia(
+                                                          file,
+                                                          task.id,
+                                                      )
+                                                : undefined
                                         }
                                         placeholder={t(
                                             "fields.descriptionPlaceholder",
                                         )}
+                                        readOnly={!canEdit}
                                         value={description}
                                     />
                                 </div>
+
+                                <TaskCommentsSection
+                                    projectId={projectId}
+                                    readOnly={isArchived}
+                                    taskId={task.id}
+                                />
+
+                                <TaskActivitySection
+                                    onOpenChange={setActivityOpen}
+                                    open={activityOpen}
+                                    taskId={task.id}
+                                />
                             </div>
                             <Separator
                                 className="hidden shrink-0 md:block"
@@ -315,6 +405,7 @@ export function TaskDrawer({
                                             {t("fields.type")}
                                         </Label>
                                         <Select
+                                            disabled={!canEdit}
                                             onValueChange={(value) => {
                                                 updateTaskDetails(task.id, {
                                                     type: value as TaskType,
@@ -348,6 +439,7 @@ export function TaskDrawer({
                                             {t("fields.status")}
                                         </Label>
                                         <Combobox
+                                            disabled={!canEdit}
                                             isItemEqualToValue={(a, b) =>
                                                 a.id === b.id
                                             }
@@ -356,7 +448,7 @@ export function TaskDrawer({
                                                 item.name
                                             }
                                             onValueChange={(value) => {
-                                                if (value) {
+                                                if (value && canEdit) {
                                                     updateTaskStatus(
                                                         task.id,
                                                         value.id,
@@ -405,7 +497,7 @@ export function TaskDrawer({
                                                 }}
                                                 value={boardId}
                                                 disabled={
-                                                    !canEditTasks ||
+                                                    !canEdit ||
                                                     isLoadingMoveColumns ||
                                                     isMoving
                                                 }
@@ -438,6 +530,7 @@ export function TaskDrawer({
                                             {t("fields.priority")}
                                         </Label>
                                         <Select
+                                            disabled={!canEdit}
                                             onValueChange={(value) => {
                                                 if (typeof value !== "string") {
                                                     return;
@@ -482,8 +575,10 @@ export function TaskDrawer({
                                             {t("fields.deadline")}
                                         </Label>
                                         <Input
+                                            disabled={!canEdit}
                                             id="task-deadline"
                                             onChange={(event) => {
+                                                if (!canEdit) return;
                                                 const next = event.target.value;
                                                 updateTaskDetails(task.id, {
                                                     deadline:
@@ -498,9 +593,46 @@ export function TaskDrawer({
                                     </div>
                                 </div>
 
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="task-author">
+                                            {t("fields.author")}
+                                        </Label>
+                                        <TaskMemberField
+                                            disabled={!canEdit}
+                                            id="task-author"
+                                            onChange={(author) => {
+                                                updateTaskDetails(task.id, {
+                                                    author,
+                                                });
+                                            }}
+                                            projectId={projectId}
+                                            value={task.author}
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="task-assignee">
+                                            {t("fields.assignee")}
+                                        </Label>
+                                        <TaskMemberField
+                                            disabled={!canEdit}
+                                            id="task-assignee"
+                                            onChange={(assignee) => {
+                                                updateTaskDetails(task.id, {
+                                                    assignee,
+                                                });
+                                            }}
+                                            projectId={projectId}
+                                            value={task.assignee}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="flex flex-col gap-2">
                                     <Label>{t("fields.labels")}</Label>
                                     <TaskLabelsField
+                                        disabled={!canEdit}
                                         labels={projectLabels}
                                         projectId={projectId}
                                         selectedIds={task.labelIds ?? []}
@@ -508,25 +640,35 @@ export function TaskDrawer({
                                     />
                                 </div>
 
-                                <TaskGithubPanel
-                                    allowedHeadPatterns={
-                                        currentBoard?.allowedHeadPatterns ?? []
-                                    }
-                                    baseBranch={
-                                        currentBoard?.baseBranch ?? "main"
-                                    }
-                                    githubToken={githubToken}
-                                    onBranchChange={(branchName) => {
-                                        updateTaskDetails(task.id, {
-                                            branchName,
-                                        });
-                                    }}
-                                    onPrChange={(pr) => {
-                                        updateTaskDetails(task.id, { pr });
-                                    }}
-                                    repoFullName={repoFullName}
-                                    task={task}
-                                />
+                                {isArchived ? (
+                                    task.branchName || task.pr ? (
+                                        <GithubTaskMeta
+                                            branchName={task.branchName}
+                                            pr={task.pr}
+                                        />
+                                    ) : undefined
+                                ) : (
+                                    <TaskGithubPanel
+                                        allowedHeadPatterns={
+                                            currentBoard?.allowedHeadPatterns ??
+                                            []
+                                        }
+                                        baseBranch={
+                                            currentBoard?.baseBranch ?? "main"
+                                        }
+                                        githubToken={githubToken}
+                                        onBranchChange={(branchName) => {
+                                            updateTaskDetails(task.id, {
+                                                branchName,
+                                            });
+                                        }}
+                                        onPrChange={(pr) => {
+                                            updateTaskDetails(task.id, { pr });
+                                        }}
+                                        repoFullName={repoFullName}
+                                        task={task}
+                                    />
+                                )}
 
                                 {/* Live Git data — only when branch is set and token available */}
                                 {task.branchName &&
@@ -542,24 +684,52 @@ export function TaskDrawer({
                                         />
                                     )}
 
-                                <div className="mt-auto border-t border-foreground/10 pt-4">
-                                    {canDeleteTasks ? (
+                                <div className="mt-auto flex flex-col gap-2 border-t border-foreground/10 pt-4">
+                                    {canDeleteTasks && !isArchived ? (
                                         <Button
                                             className="w-full"
-                                            disabled={isDeleting}
-                                            onClick={() =>
-                                                setDeleteTarget({
-                                                    id: task.id,
-                                                    key: task.key,
-                                                    title: task.title,
-                                                })
-                                            }
+                                            disabled={isArchiving}
+                                            onClick={() => {
+                                                void handleArchive();
+                                            }}
                                             type="button"
-                                            variant="destructive"
+                                            variant="outline"
                                         >
-                                            <Trash2 data-icon="inline-start" />
-                                            {t("tasks.delete")}
+                                            <Archive data-icon="inline-start" />
+                                            {t("archive.action")}
                                         </Button>
+                                    ) : undefined}
+                                    {canDeleteTasks && isArchived ? (
+                                        <>
+                                            <Button
+                                                className="w-full"
+                                                disabled={isRestoring}
+                                                onClick={() => {
+                                                    void handleRestore();
+                                                }}
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                <RotateCcw data-icon="inline-start" />
+                                                {t("archive.restore")}
+                                            </Button>
+                                            <Button
+                                                className="w-full"
+                                                disabled={isDeleting}
+                                                onClick={() =>
+                                                    setDeleteTarget({
+                                                        id: task.id,
+                                                        key: task.key,
+                                                        title: task.title,
+                                                    })
+                                                }
+                                                type="button"
+                                                variant="destructive"
+                                            >
+                                                <Trash2 data-icon="inline-start" />
+                                                {t("tasks.delete")}
+                                            </Button>
+                                        </>
                                     ) : undefined}
                                 </div>
                             </div>

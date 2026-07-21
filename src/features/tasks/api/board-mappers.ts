@@ -31,8 +31,13 @@ export type DbProfile = {
 };
 
 export type DbTask = {
+    archived_at: string | null;
+    archived_by: string | null;
+    archived_by_profile: DbProfile | DbProfile[] | null;
     assignee: DbProfile | DbProfile[] | null;
     assignee_id: string | null;
+    author: DbProfile | DbProfile[] | null;
+    author_id: string | null;
     board_id: string;
     branch_name: string | null;
     created_at: string;
@@ -111,19 +116,30 @@ export function mapDbLabel(row: DbLabel): ProjectLabel {
     };
 }
 
+function toTaskPerson(profile: DbProfile | null | undefined) {
+    if (!profile?.username) return undefined;
+    return {
+        avatarUrl: profile.avatar_url ?? undefined,
+        id: profile.id,
+        name: profile.username,
+    };
+}
+
 export function mapDbTask(row: DbTask): Task {
     const labelIds = row.task_labels?.map((item) => item.label_id) ?? [];
     const assignee = Array.isArray(row.assignee)
         ? row.assignee[0]
         : row.assignee;
+    const author = Array.isArray(row.author) ? row.author[0] : row.author;
+    const archivedBy = Array.isArray(row.archived_by_profile)
+        ? row.archived_by_profile[0]
+        : row.archived_by_profile;
 
     return {
-        assignee: assignee?.username
-            ? {
-                  avatarUrl: assignee.avatar_url ?? undefined,
-                  name: assignee.username,
-              }
-            : undefined,
+        archivedAt: row.archived_at ?? undefined,
+        archivedBy: toTaskPerson(archivedBy),
+        assignee: toTaskPerson(assignee),
+        author: toTaskPerson(author),
         boardId: row.board_id,
         branchName: row.branch_name ?? undefined,
         deadline: row.deadline ?? undefined,

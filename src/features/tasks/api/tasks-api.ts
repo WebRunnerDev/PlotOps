@@ -40,6 +40,9 @@ const TASK_SELECT = `
   deadline,
   branch_name,
   assignee_id,
+  author_id,
+  archived_at,
+  archived_by,
   position,
   pr_number,
   pr_state,
@@ -48,6 +51,16 @@ const TASK_SELECT = `
   task_type,
   created_at,
   assignee:profiles!tasks_assignee_id_fkey (
+    id,
+    username,
+    avatar_url
+  ),
+  author:profiles!tasks_author_id_fkey (
+    id,
+    username,
+    avatar_url
+  ),
+  archived_by_profile:profiles!tasks_archived_by_fkey (
     id,
     username,
     avatar_url
@@ -102,6 +115,7 @@ export async function fetchProjectBoard(
             .from("tasks")
             .select(TASK_SELECT)
             .eq("board_id", boardId)
+            .is("archived_at", null)
             .order("position", { ascending: true })
             .order("created_at", { ascending: true }),
     ]);
@@ -183,9 +197,21 @@ export async function deleteBoardColumn(
             .from("tasks")
             .update({ status: moveTasksTo })
             .eq("board_id", boardId)
-            .eq("status", columnId);
+            .eq("status", columnId)
+            .is("archived_at", null);
 
         if (moveError) throw moveError;
+
+        // Archived tasks keep their column status for Restore; managers may
+        // re-point them so a deleted column id is not left dangling.
+        const { error: archivedMoveError } = await supabase
+            .from("tasks")
+            .update({ status: moveTasksTo })
+            .eq("board_id", boardId)
+            .eq("status", columnId)
+            .not("archived_at", "is", null);
+
+        if (archivedMoveError) throw archivedMoveError;
     }
 
     const { error } = await supabase
@@ -226,6 +252,7 @@ export async function createTaskRecord(
         .select("position")
         .eq("board_id", boardId)
         .eq("status", status)
+        .is("archived_at", null)
         .order("position", { ascending: false })
         .limit(1);
 
@@ -233,9 +260,14 @@ export async function createTaskRecord(
 
     const position = (existing?.[0]?.position ?? -1) + 1;
 
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
         .from("tasks")
         .insert({
+            author_id: user?.id ?? null,
             board_id: boardId,
             position,
             project_id: projectId,
@@ -253,6 +285,8 @@ export async function createTaskRecord(
 export async function updateTaskRecord(
     taskId: string,
     patch: {
+        assignee_id?: string | null;
+        author_id?: string | null;
         board_id?: string;
         branch_name?: string | null;
         deadline?: string | null;
@@ -289,6 +323,7 @@ export async function moveTaskToBoard(
         .select("position")
         .eq("board_id", targetBoardId)
         .eq("status", targetStatus)
+        .is("archived_at", null)
         .order("position", { ascending: false })
         .limit(1);
 
@@ -312,6 +347,66 @@ export async function moveTaskToBoard(
 
 export async function deleteTaskRecord(taskId: string) {
     const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (error) throw error;
+}
+
+export async function fetchArchivedTasks(boardId: string): Promise<Task[]> {
+    const { data, error } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("board_id", boardId)
+        .not("archived_at", "is", null)
+        .order("archived_at", { ascending: false });
+
+    if (error) throw error;
+    return ((data ?? []) as DbTask[]).map(mapDbTask);
+}
+
+/** Signal archive; DB trigger sets `archived_at` / `archived_by`. */
+export async function archiveTaskRecord(taskId: string) {
+    const { error } = await supabase
+        .from("tasks")
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", taskId)
+        .is("archived_at", null);
+
+    if (error) throw error;
+}
+
+/** Restore to board; DB trigger clears archive columns. Re-appends to column. */
+export async function restoreTaskRecord(taskId: string, boardId: string) {
+    const { data: task, error: taskError } = await supabase
+        .from("tasks")
+        .select("status")
+        .eq("id", taskId)
+        .single();
+
+    if (taskError) throw taskError;
+
+    const status = task.status as TaskStatus;
+
+    const { data: existing, error: existingError } = await supabase
+        .from("tasks")
+        .select("position")
+        .eq("board_id", boardId)
+        .eq("status", status)
+        .is("archived_at", null)
+        .order("position", { ascending: false })
+        .limit(1);
+
+    if (existingError) throw existingError;
+
+    const position = (existing?.[0]?.position ?? -1) + 1;
+
+    const { error } = await supabase
+        .from("tasks")
+        .update({
+            archived_at: null,
+            position,
+        })
+        .eq("id", taskId)
+        .not("archived_at", "is", null);
+
     if (error) throw error;
 }
 
