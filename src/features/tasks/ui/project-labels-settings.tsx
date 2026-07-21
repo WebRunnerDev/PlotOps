@@ -2,6 +2,7 @@ import {
     ArrowRightLeft,
     ChevronLeft,
     ChevronRight,
+    PanelRight,
     Plus,
     Trash2,
 } from "lucide-react";
@@ -11,16 +12,21 @@ import { toast } from "sonner";
 
 import type { ProjectLabel, Task } from "@/features/tasks/model/types";
 
+import { useAuth } from "@/features/auth/model/use-auth";
+import type { Project } from "@/features/projects/model/types";
+import { useProject, useProjects } from "@/features/projects/model/use-projects";
 import {
     getLabelDotProps,
     isValidHexColor,
     LABEL_COLORS,
     LABEL_DOT_CLASS,
 } from "@/features/tasks/model/constants";
+import { BoardProvider } from "@/features/tasks/model/board-context";
+import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useBoard } from "@/features/tasks/model/use-board";
 import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
-import { useProjects } from "@/features/projects/model/use-projects";
-import type { Project } from "@/features/projects/model/types";
+import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { TaskDrawer } from "@/features/tasks/ui/task-drawer";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -86,9 +92,16 @@ export function ProjectLabelsSettings({
     projectId,
 }: ProjectLabelsSettingsProperties) {
     const { t } = useTranslation("board");
+    const { githubAccessToken } = useAuth();
+    const { data: project } = useProject(projectId);
     const { data: boards = [] } = useProjectBoards(projectId);
     const defaultBoardId = boards[0]?.id ?? "";
     const board = useBoard(projectId, defaultBoardId);
+    const { data: archivedTasks = [] } = useArchivedTasks(
+        projectId,
+        defaultBoardId,
+        Boolean(defaultBoardId),
+    );
 
     const { data: projects } = useProjects();
 
@@ -104,7 +117,10 @@ export function ProjectLabelsSettings({
 
     const tasksByLabel = useMemo(() => {
         const map = new Map<string, Task[]>();
-        for (const task of board.tasks) {
+        const seen = new Set<string>();
+        for (const task of [...board.tasks, ...archivedTasks]) {
+            if (seen.has(task.id)) continue;
+            seen.add(task.id);
             for (const id of task.labelIds ?? []) {
                 const list = map.get(id);
                 if (list) {
@@ -115,10 +131,10 @@ export function ProjectLabelsSettings({
             }
         }
         return map;
-    }, [board.tasks]);
+    }, [archivedTasks, board.tasks]);
 
     const otherProjects = useMemo(
-        () => (projects ?? []).filter((project) => project.id !== projectId),
+        () => (projects ?? []).filter((projectItem) => projectItem.id !== projectId),
         [projects, projectId],
     );
 
@@ -141,63 +157,75 @@ export function ProjectLabelsSettings({
     }
 
     return (
-        <section className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-                <h2 className="text-h4 font-medium">
-                    {t("labelSettings.title")}
-                </h2>
-                <p className="text-ui text-muted-foreground">
-                    {t("labelSettings.description")}
-                </p>
-            </div>
+        <BoardProvider boardId={defaultBoardId} projectId={projectId}>
+            <section className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                    <h2 className="text-h4 font-medium">
+                        {t("labelSettings.title")}
+                    </h2>
+                    <p className="text-ui text-muted-foreground">
+                        {t("labelSettings.description")}
+                    </p>
+                </div>
 
-            <div className="flex items-center gap-2">
-                <Input
-                    aria-label={t("labelSettings.newPlaceholder")}
-                    className="max-w-xs"
-                    onChange={(event) => setNewName(event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            event.preventDefault();
-                            handleCreate();
-                        }
-                    }}
-                    placeholder={t("labelSettings.newPlaceholder")}
-                    value={newName}
-                />
-                <Button
-                    disabled={newName.trim().length === 0}
-                    onClick={handleCreate}
-                    type="button"
-                >
-                    <Plus data-icon="inline-start" />
-                    {t("labelSettings.create")}
-                </Button>
-            </div>
+                <div className="flex items-center gap-2">
+                    <Input
+                        aria-label={t("labelSettings.newPlaceholder")}
+                        className="max-w-xs"
+                        onChange={(event) => setNewName(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                                event.preventDefault();
+                                handleCreate();
+                            }
+                        }}
+                        placeholder={t("labelSettings.newPlaceholder")}
+                        value={newName}
+                    />
+                    <Button
+                        disabled={newName.trim().length === 0}
+                        onClick={handleCreate}
+                        type="button"
+                    >
+                        <Plus data-icon="inline-start" />
+                        {t("labelSettings.create")}
+                    </Button>
+                </div>
 
-            {projectLabels.length === 0 ? (
-                <Empty>
-                    <EmptyHeader>
-                        <EmptyTitle>{t("labelSettings.emptyTitle")}</EmptyTitle>
-                        <EmptyDescription>
-                            {t("labelSettings.emptyDescription")}
-                        </EmptyDescription>
-                    </EmptyHeader>
-                </Empty>
-            ) : (
-                <ul className="flex flex-col gap-1.5">
-                    {projectLabels.map((label) => (
-                        <LabelRow
-                            board={board}
-                            key={label.id}
-                            label={label}
-                            otherProjects={otherProjects}
-                            taggedTasks={tasksByLabel.get(label.id) ?? EMPTY_TASKS}
-                        />
-                    ))}
-                </ul>
-            )}
-        </section>
+                {projectLabels.length === 0 ? (
+                    <Empty>
+                        <EmptyHeader>
+                            <EmptyTitle>
+                                {t("labelSettings.emptyTitle")}
+                            </EmptyTitle>
+                            <EmptyDescription>
+                                {t("labelSettings.emptyDescription")}
+                            </EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
+                ) : (
+                    <ul className="flex flex-col gap-1.5">
+                        {projectLabels.map((label) => (
+                            <LabelRow
+                                board={board}
+                                key={label.id}
+                                label={label}
+                                otherProjects={otherProjects}
+                                taggedTasks={
+                                    tasksByLabel.get(label.id) ?? EMPTY_TASKS
+                                }
+                            />
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <TaskDrawer
+                githubToken={githubAccessToken}
+                projectId={projectId}
+                repoFullName={project?.github_full_name}
+            />
+        </BoardProvider>
     );
 }
 
@@ -217,6 +245,7 @@ function LabelRow({
     taggedTasks,
 }: LabelRowProperties) {
     const { t } = useTranslation("board");
+    const selectTask = useTasksUiStore((state) => state.selectTask);
     const {
         copyLabelToProject,
         deleteLabel,
@@ -239,6 +268,10 @@ function LabelRow({
     );
 
     const usageCount = taggedTasks.length;
+    const archivedUsageCount = taggedTasks.filter((task) =>
+        Boolean(task.archivedAt),
+    ).length;
+    const hasArchivedUsage = archivedUsageCount > 0;
     const totalTaskPages = Math.max(
         1,
         Math.ceil(usageCount / TASKS_PAGE_SIZE),
@@ -291,9 +324,15 @@ function LabelRow({
     };
 
     const handleConfirmDelete = async () => {
-        await deleteLabel(label.id);
-        toast.success(t("labelSettings.deleted", { name: label.name }));
-        setDeleteOpen(false);
+        if (hasArchivedUsage) return;
+
+        try {
+            await deleteLabel(label.id);
+            toast.success(t("labelSettings.deleted", { name: label.name }));
+            setDeleteOpen(false);
+        } catch {
+            toast.error(t("labelSettings.deleteFailed"));
+        }
     };
 
     const handleCopy = async () => {
@@ -318,19 +357,28 @@ function LabelRow({
     };
 
     const handleMove = async () => {
-        if (!targetProjectId) return;
+        if (!targetProjectId || hasArchivedUsage) return;
         const target = otherProjects.find(
             (project) => project.id === targetProjectId,
         );
 
-        await moveLabelToProject(label.id, targetProjectId);
-        toast.success(
-            t("labelSettings.moved", {
-                name: label.name,
-                target: target?.name ?? "",
-            }),
-        );
-        setTransferOpen(false);
+        try {
+            await moveLabelToProject(label.id, targetProjectId);
+            toast.success(
+                t("labelSettings.moved", {
+                    name: label.name,
+                    target: target?.name ?? "",
+                }),
+            );
+            setTransferOpen(false);
+        } catch {
+            toast.error(t("labelSettings.deleteFailed"));
+        }
+    };
+
+    const openTask = (task: Task) => {
+        selectTask(task.id);
+        setDeleteOpen(false);
     };
 
     const triggerDot = getLabelDotProps(label);
@@ -482,11 +530,16 @@ function LabelRow({
                             {t("labelSettings.deleteTitle", { name: label.name })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {usageCount > 0
-                                ? t("labelSettings.deleteWithTasks", {
+                            {hasArchivedUsage
+                                ? t("labelSettings.deleteWithArchived", {
+                                      archived: archivedUsageCount,
                                       count: usageCount,
                                   })
-                                : t("labelSettings.deleteEmpty")}
+                                : usageCount > 0
+                                  ? t("labelSettings.deleteWithTasks", {
+                                        count: usageCount,
+                                    })
+                                  : t("labelSettings.deleteEmpty")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
 
@@ -506,12 +559,33 @@ function LabelRow({
                                             )}
                                             style={triggerDot.style}
                                         />
-                                        <span className="min-w-0 flex-1 truncate">
+                                        <button
+                                            className="min-w-0 flex-1 truncate text-left hover:underline"
+                                            onClick={() => openTask(task)}
+                                            type="button"
+                                        >
                                             {task.title}
-                                        </span>
+                                        </button>
+                                        {task.archivedAt ? (
+                                            <Badge
+                                                className="shrink-0 font-mono text-[0.625rem]"
+                                                variant="outline"
+                                            >
+                                                {t("archive.badge")}
+                                            </Badge>
+                                        ) : undefined}
                                         <span className="shrink-0 font-mono text-[0.625rem] text-muted-foreground">
-                                            {task.id}
+                                            {task.key}
                                         </span>
+                                        <Button
+                                            aria-label={t("archive.view")}
+                                            onClick={() => openTask(task)}
+                                            size="icon-sm"
+                                            type="button"
+                                            variant="ghost"
+                                        >
+                                            <PanelRight className="size-3.5" />
+                                        </Button>
                                     </li>
                                 ))}
                             </ul>
@@ -567,6 +641,7 @@ function LabelRow({
                             {t("labelSettings.cancel")}
                         </AlertDialogCancel>
                         <AlertDialogAction
+                            disabled={hasArchivedUsage}
                             onClick={handleConfirmDelete}
                             variant="destructive"
                         >
@@ -585,7 +660,11 @@ function LabelRow({
                             })}
                         </DialogTitle>
                         <DialogDescription>
-                            {t("labelSettings.transferDescription")}
+                            {hasArchivedUsage
+                                ? t("labelSettings.transferWithArchived", {
+                                      archived: archivedUsageCount,
+                                  })
+                                : t("labelSettings.transferDescription")}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -635,7 +714,7 @@ function LabelRow({
                             {t("labelSettings.copy")}
                         </Button>
                         <Button
-                            disabled={!targetProjectId}
+                            disabled={!targetProjectId || hasArchivedUsage}
                             onClick={handleMove}
                             type="button"
                         >

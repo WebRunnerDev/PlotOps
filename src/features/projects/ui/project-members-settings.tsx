@@ -235,7 +235,17 @@ export function ProjectMembersSettings({
                                             value={member.role}
                                         >
                                             <SelectTrigger className="h-8 w-36">
-                                                <SelectValue />
+                                                <SelectValue>
+                                                    {(value) =>
+                                                        typeof value ===
+                                                        "string"
+                                                            ? roleLabel(
+                                                                  value,
+                                                                  t,
+                                                              )
+                                                            : null
+                                                    }
+                                                </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {invitableRoles.map((item) => (
@@ -349,7 +359,13 @@ export function ProjectMembersSettings({
                                 value={role}
                             >
                                 <SelectTrigger>
-                                    <SelectValue />
+                                    <SelectValue>
+                                        {(value) =>
+                                            typeof value === "string"
+                                                ? roleLabel(value, t)
+                                                : null
+                                        }
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {invitableRoles.map((item) => (
@@ -370,7 +386,15 @@ export function ProjectMembersSettings({
                                 value={ttl}
                             >
                                 <SelectTrigger>
-                                    <SelectValue />
+                                    <SelectValue>
+                                        {(value) =>
+                                            typeof value === "string"
+                                                ? t(
+                                                      `members.ttlOptions.${value}`,
+                                                  )
+                                                : null
+                                        }
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {INVITE_TTL_OPTIONS.map((item) => (
