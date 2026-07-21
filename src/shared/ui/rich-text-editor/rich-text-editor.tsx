@@ -50,6 +50,7 @@ import { toast } from "sonner";
 
 import {
     normalizeEditorContent,
+    richTextLength,
     toEditorContent,
 } from "@/shared/ui/rich-text-editor/content";
 import {
@@ -113,11 +114,14 @@ const SLASH_SHORTCUTS: Record<string, string> = {
 
 type RichTextEditorProperties = {
     className?: string;
+    compact?: boolean;
     id?: string;
+    maxLength?: number;
     onBlur?: () => void;
     onChange?: (value: string) => void;
     onUploadImage?: ImageUploadFn;
     placeholder?: string;
+    readOnly?: boolean;
     value: string;
 };
 
@@ -363,11 +367,14 @@ function ToolbarButton({
 
 export function RichTextEditor({
     className,
+    compact = false,
     id,
+    maxLength,
     onBlur,
     onChange,
     onUploadImage,
     placeholder,
+    readOnly = false,
     value,
 }: RichTextEditorProperties) {
     const { t } = useTranslation("board");
@@ -404,8 +411,10 @@ export function RichTextEditor({
     const editorAttributes = useMemo(() => {
         const attributes: Record<string, string> = {
             class: cn(
-                "min-h-40 w-full max-w-full overflow-x-hidden break-words px-6 py-6 text-sm leading-7 border border-input rounded-lg [overflow-wrap:anywhere]",
+                compact ? "min-h-24" : "min-h-40",
+                "w-full max-w-full overflow-x-hidden break-words px-6 py-6 text-sm leading-7 border border-input rounded-lg [overflow-wrap:anywhere]",
                 "focus:outline-none focus:border-input focus:ring-0",
+                readOnly && "cursor-default bg-muted/20",
             ),
         };
 
@@ -415,7 +424,11 @@ export function RichTextEditor({
         }
 
         return attributes;
-    }, [id]);
+    }, [compact, id, readOnly]);
+
+    const contentLength = richTextLength(value);
+    const isOverLimit =
+        maxLength !== undefined && contentLength > maxLength;
 
     const closeMenu = useCallback(() => {
         setMenu(EMPTY_MENU);
@@ -423,6 +436,7 @@ export function RichTextEditor({
 
     const editor = useEditor({
         content: toEditorContent(value),
+        editable: !readOnly,
         editorProps: {
             attributes: editorAttributes,
             handleDOMEvents: {
@@ -631,6 +645,11 @@ export function RichTextEditor({
             }
         },
     });
+
+    useEffect(() => {
+        if (!editor) return;
+        editor.setEditable(!readOnly);
+    }, [editor, readOnly]);
 
     useEffect(() => {
         editorRef.current = editor;
@@ -1126,7 +1145,10 @@ export function RichTextEditor({
             <EditorContent
                 className={cn(
                     "rich-text-editor block min-w-0 max-w-full overflow-hidden",
-                    "[&_.ProseMirror]:min-h-40 [&_.ProseMirror]:w-full [&_.ProseMirror]:max-w-full [&_.ProseMirror]:overflow-x-hidden [&_.ProseMirror]:outline-none [&_.ProseMirror]:wrap-anywhere",
+                    compact
+                        ? "[&_.ProseMirror]:min-h-24"
+                        : "[&_.ProseMirror]:min-h-40",
+                    "[&_.ProseMirror]:w-full [&_.ProseMirror]:max-w-full [&_.ProseMirror]:overflow-x-hidden [&_.ProseMirror]:outline-none [&_.ProseMirror]:wrap-anywhere",
                     "[&_.ProseMirror_*]:max-w-full",
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
@@ -1149,12 +1171,31 @@ export function RichTextEditor({
                 editor={editor}
             />
 
-            <p
-                aria-hidden
-                className="pointer-events-none mt-1 px-1 text-[0.6875rem] leading-tight text-muted-foreground opacity-0 transition-opacity duration-150 group-focus-within/rich-text:opacity-100"
-            >
-                {t("richText.hint")}
-            </p>
+            {!readOnly ? (
+                <div className="mt-1 flex items-start justify-between gap-3 px-1 text-[0.6875rem] leading-tight">
+                    <p
+                        aria-hidden
+                        className="pointer-events-none min-w-0 text-muted-foreground opacity-0 transition-opacity duration-150 group-focus-within/rich-text:opacity-100"
+                    >
+                        {t("richText.hint")}
+                    </p>
+                    {maxLength !== undefined ? (
+                        <p
+                            className={cn(
+                                "shrink-0 tabular-nums",
+                                isOverLimit
+                                    ? "text-destructive"
+                                    : "text-muted-foreground",
+                            )}
+                        >
+                            {t("richText.length", {
+                                current: contentLength.toLocaleString(),
+                                max: maxLength.toLocaleString(),
+                            })}
+                        </p>
+                    ) : undefined}
+                </div>
+            ) : null}
         </div>
     );
 }

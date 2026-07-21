@@ -45,6 +45,7 @@ export {
     useProjectBoards,
 } from "./model/use-project-boards";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
+export { BoardArchiveDialog } from "./ui/board-archive-dialog";
 export { BoardSwitcher } from "./ui/board-switcher";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { ProjectBoardsSettings } from "./ui/project-boards-settings";

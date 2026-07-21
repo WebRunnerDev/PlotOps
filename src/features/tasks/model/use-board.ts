@@ -1,14 +1,29 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
+
 import {
+    type QueryClient,
     useMutation,
     useQuery,
     useQueryClient,
-    type QueryClient,
 } from "@tanstack/react-query";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+import type { ProjectBoardRecord } from "@/features/tasks/api/boards-api";
+import type {
+    BoardColumn,
+    LabelColor,
+    ProjectLabel,
+    Task,
+    TaskActivityChange,
+    TaskPullRequest,
+    TaskStatus,
+    TaskType,
+} from "@/features/tasks/model/types";
+
+import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
+    archiveTaskRecord,
     createBoardColumn,
     createProjectLabel,
     createTaskRecord,
@@ -19,24 +34,22 @@ import {
     moveTaskToBoard,
     orderColumnsByIds,
     persistTaskMoves,
+    type ProjectBoard,
     renameBoardColumn,
     reorderBoardColumns,
     replaceTaskLabels,
-    type ProjectBoard,
+    restoreTaskRecord,
     updateProjectLabel,
     updateTaskRecord,
 } from "@/features/tasks/api/tasks-api";
+import {
+    applyDetailsToSnapshot,
+    buildTaskActivityChanges,
+    toTaskActivitySnapshot,
+} from "@/features/tasks/lib/build-task-activity-changes";
 import { LABEL_COLORS } from "@/features/tasks/model/constants";
 import { boardKeys, taskKeys } from "@/features/tasks/model/query-keys";
-import type {
-    BoardColumn,
-    LabelColor,
-    ProjectLabel,
-    Task,
-    TaskPullRequest,
-    TaskStatus,
-    TaskType,
-} from "@/features/tasks/model/types";
+import { activityKey } from "@/features/tasks/model/use-task-activity";
 import { supabase } from "@/shared/api/supabase";
 
 /** Ref-count Realtime channels so multiple `useBoard` mounts share one subscription. */
@@ -45,70 +58,12 @@ const boardChannels = new Map<
     { channel: RealtimeChannel; subscribers: number }
 >();
 
-function subscribeBoardChannel(
-    projectId: string,
-    onChange: () => void,
-): () => void {
-    const existing = boardChannels.get(projectId);
-    if (existing) {
-        existing.subscribers += 1;
-        return () => releaseBoardChannel(projectId);
-    }
-
-    const channel = supabase
-        // Unique topic: `supabase.channel(name)` reuses an existing channel, and
-        // `.on()` after `subscribe()` throws. Ref-counting + a fresh name avoids both.
-        .channel(`board:${projectId}:${crypto.randomUUID()}`)
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                filter: `project_id=eq.${projectId}`,
-                schema: "public",
-                table: "tasks",
-            },
-            onChange,
-        )
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                filter: `project_id=eq.${projectId}`,
-                schema: "public",
-                table: "board_columns",
-            },
-            onChange,
-        )
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                filter: `project_id=eq.${projectId}`,
-                schema: "public",
-                table: "labels",
-            },
-            onChange,
-        )
-        .subscribe();
-
-    boardChannels.set(projectId, { channel, subscribers: 1 });
-    return () => releaseBoardChannel(projectId);
-}
-
-function releaseBoardChannel(projectId: string) {
-    const entry = boardChannels.get(projectId);
-    if (!entry) return;
-
-    entry.subscribers -= 1;
-    if (entry.subscribers > 0) return;
-
-    boardChannels.delete(projectId);
-    void supabase.removeChannel(entry.channel);
-}
-
 type TaskDetailsUpdate = Partial<
-    Omit<Task, "branchName" | "id" | "pr" | "status">
+    Omit<Task, "assignee" | "author" | "branchName" | "id" | "pr" | "status">
 > & {
+    /** Pass `null` to clear assignee or author. */
+    assignee?: null | Task["assignee"];
+    author?: null | Task["author"];
     /** Pass `null` to clear a linked branch. */
     branchName?: null | string;
     /** Pass `null` to clear a linked pull request. */
@@ -120,137 +75,6 @@ type TaskMoveUpdate = {
     position: number;
     status: TaskStatus;
 };
-
-function boardQueryKey(projectId: string, boardId: string) {
-    return taskKeys.board(projectId, boardId);
-}
-
-function invalidateProjectBoards(queryClient: QueryClient, projectId: string) {
-    void queryClient.invalidateQueries({
-        queryKey: [...taskKeys.all, "board", projectId],
-    });
-}
-
-function getBoardSnapshot(
-    queryClient: QueryClient,
-    projectId: string,
-    boardId: string,
-): ProjectBoard | undefined {
-    return queryClient.getQueryData<ProjectBoard>(boardQueryKey(projectId, boardId));
-}
-
-function setBoardSnapshot(
-    queryClient: QueryClient,
-    projectId: string,
-    boardId: string,
-    updater: (current: ProjectBoard) => ProjectBoard,
-) {
-    queryClient.setQueryData<ProjectBoard>(boardQueryKey(projectId, boardId), (current) => {
-        if (!current) return current;
-        return updater(current);
-    });
-}
-
-function applyTaskUpdates(
-    board: ProjectBoard,
-    updates: TaskMoveUpdate[],
-): ProjectBoard {
-    const statusById = new Map(updates.map((update) => [update.id, update.status]));
-    const positionById = new Map(
-        updates.map((update) => [update.id, update.position]),
-    );
-
-    return {
-        ...board,
-        taskPositions: new Map([...board.taskPositions, ...positionById]),
-        tasks: board.tasks.map((task) => ({
-            ...task,
-            status: statusById.get(task.id) ?? task.status,
-        })),
-    };
-}
-
-function reorderTasksInMemory(
-    tasks: Task[],
-    activeId: string,
-    overId: string,
-): { tasks: Task[]; updates: TaskMoveUpdate[] } | undefined {
-    const activeIndex = tasks.findIndex((task) => task.id === activeId);
-    const overIndex = tasks.findIndex((task) => task.id === overId);
-    if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
-        return undefined;
-    }
-
-    const next = [...tasks];
-    const [moved] = next.splice(activeIndex, 1);
-    if (!moved) return undefined;
-    next.splice(overIndex, 0, moved);
-
-    const status = moved.status;
-    const columnTasks = next.filter((task) => task.status === status);
-    const updates = columnTasks.map((task, position) => ({
-        id: task.id,
-        position,
-        status,
-    }));
-
-    return { tasks: next, updates };
-}
-
-function moveTaskToColumnInMemory(
-    tasks: Task[],
-    columns: BoardColumn[],
-    activeId: string,
-    overId: string,
-): { tasks: Task[]; updates: TaskMoveUpdate[] } | undefined {
-    const activeIndex = tasks.findIndex((task) => task.id === activeId);
-    if (activeIndex === -1) return undefined;
-
-    const activeTask = tasks[activeIndex]!;
-    const overTask = tasks.find((task) => task.id === overId);
-    const overIsColumn = columns.some((column) => column.id === overId);
-    if (!overTask && !overIsColumn) return undefined;
-
-    const targetStatus = overTask ? overTask.status : overId;
-    if (activeTask.status === targetStatus) return undefined;
-
-    const withoutActive = tasks.filter((task) => task.id !== activeId);
-    const updatedTask = { ...activeTask, status: targetStatus };
-
-    let insertIndex: number;
-    if (overTask) {
-        insertIndex = withoutActive.findIndex((task) => task.id === overId);
-        if (insertIndex === -1) insertIndex = withoutActive.length;
-    } else {
-        let lastIndex = -1;
-        for (const [index, task] of withoutActive.entries()) {
-            if (task.status === targetStatus) lastIndex = index;
-        }
-        insertIndex = lastIndex + 1;
-    }
-
-    const next = [...withoutActive];
-    next.splice(insertIndex, 0, updatedTask);
-
-    const affectedStatuses = new Set<TaskStatus>([
-        activeTask.status,
-        targetStatus,
-    ]);
-    const updates: TaskMoveUpdate[] = [];
-
-    for (const status of affectedStatuses) {
-        const columnTasks = next.filter((task) => task.status === status);
-        for (const [position, task] of columnTasks.entries()) {
-            updates.push({
-                id: task.id,
-                position,
-                status,
-            });
-        }
-    }
-
-    return { tasks: next, updates };
-}
 
 export function useBoard(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
@@ -314,8 +138,26 @@ export function useBoard(projectId: string, boardId: string) {
     });
 
     const moveTaskMutation = useMutation({
-        mutationFn: (updates: TaskMoveUpdate[]) =>
-            persistTaskMoves(boardId, updates),
+        mutationFn: async ({
+            activity,
+            updates,
+        }: {
+            activity?: {
+                changes: TaskActivityChange[];
+                taskId: string;
+            };
+            updates: TaskMoveUpdate[];
+        }) => {
+            await persistTaskMoves(boardId, updates);
+            if (activity) {
+                await recordTaskActivity({
+                    changes: activity.changes,
+                    projectId,
+                    queryClient,
+                    taskId: activity.taskId,
+                });
+            }
+        },
         onSettled: () => {
             invalidateProjectBoards(queryClient, projectId);
         },
@@ -323,11 +165,13 @@ export function useBoard(projectId: string, boardId: string) {
 
     const updateTaskDetailsMutation = useMutation({
         mutationFn: async ({
-            id,
+            activityChanges,
             details,
+            id,
         }: {
-            id: string;
+            activityChanges: TaskActivityChange[];
             details: TaskDetailsUpdate;
+            id: string;
         }) => {
             const patch: Parameters<typeof updateTaskRecord>[1] = {};
             if (details.title !== undefined) patch.title = details.title;
@@ -357,12 +201,25 @@ export function useBoard(projectId: string, boardId: string) {
             if (details.type !== undefined) {
                 patch.task_type = details.type;
             }
+            if (details.assignee !== undefined) {
+                patch.assignee_id = details.assignee?.id ?? null;
+            }
+            if (details.author !== undefined) {
+                patch.author_id = details.author?.id ?? null;
+            }
 
             await updateTaskRecord(id, patch);
 
             if (details.labelIds !== undefined) {
                 await replaceTaskLabels(id, details.labelIds ?? []);
             }
+
+            await recordTaskActivity({
+                changes: activityChanges,
+                projectId,
+                queryClient,
+                taskId: id,
+            });
         },
         onSettled: () => {
             invalidateProjectBoards(queryClient, projectId);
@@ -370,8 +227,23 @@ export function useBoard(projectId: string, boardId: string) {
     });
 
     const updateTaskStatusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string; status: TaskStatus }) =>
-            updateTaskRecord(id, { status }),
+        mutationFn: async ({
+            activityChanges,
+            id,
+            status,
+        }: {
+            activityChanges: TaskActivityChange[];
+            id: string;
+            status: TaskStatus;
+        }) => {
+            await updateTaskRecord(id, { status });
+            await recordTaskActivity({
+                changes: activityChanges,
+                projectId,
+                queryClient,
+                taskId: id,
+            });
+        },
         onSettled: () => {
             invalidateProjectBoards(queryClient, projectId);
         },
@@ -481,15 +353,25 @@ export function useBoard(projectId: string, boardId: string) {
     });
 
     const moveTaskToBoardMutation = useMutation({
-        mutationFn: ({
+        mutationFn: async ({
+            activityChanges,
             targetBoardId,
             targetStatus,
             taskId,
         }: {
+            activityChanges: TaskActivityChange[];
             targetBoardId: string;
             targetStatus: TaskStatus;
             taskId: string;
-        }) => moveTaskToBoard(taskId, targetBoardId, targetStatus),
+        }) => {
+            await moveTaskToBoard(taskId, targetBoardId, targetStatus);
+            await recordTaskActivity({
+                changes: activityChanges,
+                projectId,
+                queryClient,
+                taskId,
+            });
+        },
         onSuccess: () => {
             invalidateProjectBoards(queryClient, projectId);
             void queryClient.invalidateQueries({ queryKey: boardKeys.list(projectId) });
@@ -523,9 +405,67 @@ export function useBoard(projectId: string, boardId: string) {
         mutationFn: (taskId: string) => deleteTaskRecord(taskId),
         onError: () => {
             invalidateProjectBoards(queryClient, projectId);
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
         },
         onSettled: () => {
             invalidateProjectBoards(queryClient, projectId);
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
+        },
+    });
+
+    const archiveTaskMutation = useMutation({
+        mutationFn: async (taskId: string) => {
+            await archiveTaskRecord(taskId);
+            const { error } = await insertTaskActivityEvent({
+                action: "updated",
+                changes: [{ field: "archived", from: false, to: true }],
+                projectId,
+                taskId,
+            });
+            if (error) throw error;
+        },
+        onError: () => {
+            invalidateProjectBoards(queryClient, projectId);
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
+        },
+        onSettled: (_data, _error, taskId) => {
+            invalidateProjectBoards(queryClient, projectId);
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
+            void queryClient.invalidateQueries({ queryKey: activityKey(taskId) });
+        },
+    });
+
+    const restoreTaskMutation = useMutation({
+        mutationFn: async (taskId: string) => {
+            await restoreTaskRecord(taskId, boardId);
+            const { error } = await insertTaskActivityEvent({
+                action: "updated",
+                changes: [{ field: "archived", from: true, to: false }],
+                projectId,
+                taskId,
+            });
+            if (error) throw error;
+        },
+        onError: () => {
+            invalidateProjectBoards(queryClient, projectId);
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
+        },
+        onSettled: (_data, _error, taskId) => {
+            invalidateProjectBoards(queryClient, projectId);
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
+            void queryClient.invalidateQueries({ queryKey: activityKey(taskId) });
         },
     });
 
@@ -545,9 +485,20 @@ export function useBoard(projectId: string, boardId: string) {
             });
             return label.id;
         },
+        archiveTask: async (taskId: string) => {
+            setBoardSnapshot(queryClient, projectId, boardId, (current) => {
+                const nextPositions = new Map(current.taskPositions);
+                nextPositions.delete(taskId);
+                return {
+                    ...current,
+                    taskPositions: nextPositions,
+                    tasks: current.tasks.filter((task) => task.id !== taskId),
+                };
+            });
+            await archiveTaskMutation.mutateAsync(taskId);
+        },
+        boardId,
         columns: board?.columns ?? [],
-        createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
-            createTaskMutation.mutateAsync({ status, taskType, title }),
         copyLabelToProject: async (labelId: string, targetProjectId: string) => {
             const label = board?.labels.find((item) => item.id === labelId);
             if (!label || label.projectId === targetProjectId) return;
@@ -557,6 +508,8 @@ export function useBoard(projectId: string, boardId: string) {
             });
             return created.id;
         },
+        createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
+            createTaskMutation.mutateAsync({ status, taskType, title }),
         deleteColumn: async (
             columnId: TaskStatus,
             moveTasksTo?: TaskStatus,
@@ -577,6 +530,11 @@ export function useBoard(projectId: string, boardId: string) {
                     tasks: current.tasks.filter((task) => task.id !== taskId),
                 };
             });
+            void queryClient.setQueryData<Task[]>(
+                taskKeys.archived(projectId, boardId),
+                (current) =>
+                    current?.filter((task) => task.id !== taskId) ?? current,
+            );
             await deleteTaskMutation.mutateAsync(taskId);
         },
         error: boardQuery.error,
@@ -587,20 +545,9 @@ export function useBoard(projectId: string, boardId: string) {
             if (!label || label.projectId === targetProjectId) return;
             await moveLabelMutation.mutateAsync({ label, targetProjectId });
         },
-        moveTaskToOtherBoard: async (
-            taskId: string,
-            targetBoardId: string,
-            targetStatus: TaskStatus,
-        ) => {
-            const task = board?.tasks.find((item) => item.id === taskId);
-            if (!task || targetBoardId === boardId) return;
-            await moveTaskToBoardMutation.mutateAsync({
-                targetBoardId,
-                targetStatus,
-                taskId,
-            });
+        restoreTask: async (taskId: string) => {
+            await restoreTaskMutation.mutateAsync(taskId);
         },
-        boardId,
         moveTaskToColumn: (activeId: string, overId: string) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!snapshot) return;
@@ -613,11 +560,85 @@ export function useBoard(projectId: string, boardId: string) {
             );
             if (!result) return;
 
+            const previous = snapshot.tasks.find((task) => task.id === activeId);
+            const next = result.tasks.find((task) => task.id === activeId);
+            let activity:
+                | undefined
+                | { changes: TaskActivityChange[]; taskId: string };
+            if (
+                previous &&
+                next &&
+                previous.status !== next.status
+            ) {
+                const before = toTaskActivitySnapshot(previous, {
+                    labelNames: resolveLabelNames(
+                        snapshot.labels,
+                        previous.labelIds,
+                    ),
+                    statusName: resolveStatusName(
+                        snapshot.columns,
+                        previous.status,
+                    ),
+                });
+                const after = {
+                    ...before,
+                    status: {
+                        id: next.status,
+                        name: resolveStatusName(snapshot.columns, next.status),
+                    },
+                };
+                activity = {
+                    changes: buildTaskActivityChanges(before, after),
+                    taskId: activeId,
+                };
+            }
+
             setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
                 ...applyTaskUpdates(current, result.updates),
                 tasks: result.tasks,
             }));
-            moveTaskMutation.mutate(result.updates);
+            moveTaskMutation.mutate({ activity, updates: result.updates });
+        },
+        moveTaskToOtherBoard: async (
+            taskId: string,
+            targetBoardId: string,
+            targetStatus: TaskStatus,
+        ) => {
+            const task = board?.tasks.find((item) => item.id === taskId);
+            if (!task || targetBoardId === boardId) return;
+
+            const boards = queryClient.getQueryData<ProjectBoardRecord[]>(
+                boardKeys.list(projectId),
+            );
+            const before = toTaskActivitySnapshot(task, {
+                board: {
+                    id: boardId,
+                    name: resolveBoardName(boards, boardId),
+                },
+                labelNames: resolveLabelNames(
+                    board?.labels ?? [],
+                    task.labelIds,
+                ),
+                statusName: resolveStatusName(board?.columns ?? [], task.status),
+            });
+            const after = {
+                ...before,
+                board: {
+                    id: targetBoardId,
+                    name: resolveBoardName(boards, targetBoardId),
+                },
+                status: {
+                    id: targetStatus,
+                    name: targetStatus,
+                },
+            };
+
+            await moveTaskToBoardMutation.mutateAsync({
+                activityChanges: buildTaskActivityChanges(before, after),
+                targetBoardId,
+                targetStatus,
+                taskId,
+            });
         },
         projectId,
         renameColumn: async (columnId: TaskStatus, name: string) => {
@@ -677,7 +698,8 @@ export function useBoard(projectId: string, boardId: string) {
                 ...applyTaskUpdates(current, result.updates),
                 tasks: result.tasks,
             }));
-            moveTaskMutation.mutate(result.updates);
+            // Position-only reorders are intentionally not logged (SPEC).
+            moveTaskMutation.mutate({ updates: result.updates });
         },
         setLabelCustomColor: (labelId: string, hex: string) =>
             setLabelCustomColorMutation.mutateAsync({ hex, labelId }),
@@ -685,11 +707,47 @@ export function useBoard(projectId: string, boardId: string) {
         updateLabelColor: (labelId: string, color: LabelColor) =>
             updateLabelColorMutation.mutateAsync({ color, labelId }),
         updateTaskDetails: (id: string, details: TaskDetailsUpdate) => {
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const previous = snapshot?.tasks.find((task) => task.id === id);
+            let activityChanges: TaskActivityChange[] = [];
+
+            if (previous && snapshot) {
+                const before = toTaskActivitySnapshot(previous, {
+                    labelNames: resolveLabelNames(
+                        snapshot.labels,
+                        previous.labelIds,
+                    ),
+                    statusName: resolveStatusName(
+                        snapshot.columns,
+                        previous.status,
+                    ),
+                });
+                const after = applyDetailsToSnapshot(before, {
+                    assignee: details.assignee,
+                    branchName: details.branchName,
+                    deadline: details.deadline,
+                    labelNames:
+                        details.labelIds === undefined
+                            ? undefined
+                            : resolveLabelNames(
+                                  snapshot.labels,
+                                  details.labelIds ?? [],
+                              ),
+                    pr: details.pr,
+                    priority: details.priority,
+                    title: details.title,
+                    type: details.type,
+                });
+                activityChanges = buildTaskActivityChanges(before, after);
+            }
+
             setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
                 ...current,
                 tasks: current.tasks.map((task) => {
                     if (task.id !== id) return task;
                     const {
+                        assignee: nextAssignee,
+                        author: nextAuthor,
                         branchName: nextBranch,
                         pr: nextPr,
                         ...rest
@@ -697,25 +755,290 @@ export function useBoard(projectId: string, boardId: string) {
                     return {
                         ...task,
                         ...rest,
-                        ...(nextBranch !== undefined
-                            ? { branchName: nextBranch ?? undefined }
-                            : {}),
-                        ...(nextPr !== undefined
-                            ? { pr: nextPr ?? undefined }
-                            : {}),
+                        ...(nextAssignee === undefined
+                            ? {}
+                            : { assignee: nextAssignee ?? undefined }),
+                        ...(nextAuthor === undefined
+                            ? {}
+                            : { author: nextAuthor ?? undefined }),
+                        ...(nextBranch === undefined
+                            ? {}
+                            : { branchName: nextBranch ?? undefined }),
+                        ...(nextPr === undefined
+                            ? {}
+                            : { pr: nextPr ?? undefined }),
                     };
                 }),
             }));
-            updateTaskDetailsMutation.mutate({ details, id });
+            updateTaskDetailsMutation.mutate({ activityChanges, details, id });
         },
         updateTaskStatus: (id: string, status: TaskStatus) => {
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const previous = snapshot?.tasks.find((task) => task.id === id);
+            let activityChanges: TaskActivityChange[] = [];
+
+            if (previous && snapshot && previous.status !== status) {
+                const before = toTaskActivitySnapshot(previous, {
+                    labelNames: resolveLabelNames(
+                        snapshot.labels,
+                        previous.labelIds,
+                    ),
+                    statusName: resolveStatusName(
+                        snapshot.columns,
+                        previous.status,
+                    ),
+                });
+                const after = {
+                    ...before,
+                    status: {
+                        id: status,
+                        name: resolveStatusName(snapshot.columns, status),
+                    },
+                };
+                activityChanges = buildTaskActivityChanges(before, after);
+            }
+
             setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
                 ...current,
                 tasks: current.tasks.map((task) =>
                     task.id === id ? { ...task, status } : task,
                 ),
             }));
-            updateTaskStatusMutation.mutate({ id, status });
+            updateTaskStatusMutation.mutate({ activityChanges, id, status });
         },
     };
+}
+
+function applyTaskUpdates(
+    board: ProjectBoard,
+    updates: TaskMoveUpdate[],
+): ProjectBoard {
+    const statusById = new Map(updates.map((update) => [update.id, update.status]));
+    const positionById = new Map(
+        updates.map((update) => [update.id, update.position]),
+    );
+
+    return {
+        ...board,
+        taskPositions: new Map([...board.taskPositions, ...positionById]),
+        tasks: board.tasks.map((task) => ({
+            ...task,
+            status: statusById.get(task.id) ?? task.status,
+        })),
+    };
+}
+
+function boardQueryKey(projectId: string, boardId: string) {
+    return taskKeys.board(projectId, boardId);
+}
+
+function getBoardSnapshot(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string,
+): ProjectBoard | undefined {
+    return queryClient.getQueryData<ProjectBoard>(boardQueryKey(projectId, boardId));
+}
+
+function invalidateProjectBoards(queryClient: QueryClient, projectId: string) {
+    void queryClient.invalidateQueries({
+        queryKey: [...taskKeys.all, "board", projectId],
+    });
+}
+
+function moveTaskToColumnInMemory(
+    tasks: Task[],
+    columns: BoardColumn[],
+    activeId: string,
+    overId: string,
+): undefined | { tasks: Task[]; updates: TaskMoveUpdate[] } {
+    const activeIndex = tasks.findIndex((task) => task.id === activeId);
+    if (activeIndex === -1) return undefined;
+
+    const activeTask = tasks[activeIndex]!;
+    const overTask = tasks.find((task) => task.id === overId);
+    const overIsColumn = columns.some((column) => column.id === overId);
+    if (!overTask && !overIsColumn) return undefined;
+
+    const targetStatus = overTask ? overTask.status : overId;
+    if (activeTask.status === targetStatus) return undefined;
+
+    const withoutActive = tasks.filter((task) => task.id !== activeId);
+    const updatedTask = { ...activeTask, status: targetStatus };
+
+    let insertIndex: number;
+    if (overTask) {
+        insertIndex = withoutActive.findIndex((task) => task.id === overId);
+        if (insertIndex === -1) insertIndex = withoutActive.length;
+    } else {
+        let lastIndex = -1;
+        for (const [index, task] of withoutActive.entries()) {
+            if (task.status === targetStatus) lastIndex = index;
+        }
+        insertIndex = lastIndex + 1;
+    }
+
+    const next = [...withoutActive];
+    next.splice(insertIndex, 0, updatedTask);
+
+    const affectedStatuses = new Set<TaskStatus>([
+        activeTask.status,
+        targetStatus,
+    ]);
+    const updates: TaskMoveUpdate[] = [];
+
+    for (const status of affectedStatuses) {
+        const columnTasks = next.filter((task) => task.status === status);
+        for (const [position, task] of columnTasks.entries()) {
+            updates.push({
+                id: task.id,
+                position,
+                status,
+            });
+        }
+    }
+
+    return { tasks: next, updates };
+}
+
+async function recordTaskActivity(input: {
+    changes: TaskActivityChange[];
+    projectId: string;
+    queryClient: QueryClient;
+    taskId: string;
+}) {
+    if (input.changes.length === 0) return;
+
+    try {
+        const { error } = await insertTaskActivityEvent({
+            action: "task_updated",
+            changes: input.changes,
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+        if (error) return;
+        void input.queryClient.invalidateQueries({
+            queryKey: activityKey(input.taskId),
+        });
+    } catch {
+        // Activity is best-effort — never block the primary task write.
+    }
+}
+
+function releaseBoardChannel(projectId: string) {
+    const entry = boardChannels.get(projectId);
+    if (!entry) return;
+
+    entry.subscribers -= 1;
+    if (entry.subscribers > 0) return;
+
+    boardChannels.delete(projectId);
+    void supabase.removeChannel(entry.channel);
+}
+
+function reorderTasksInMemory(
+    tasks: Task[],
+    activeId: string,
+    overId: string,
+): undefined | { tasks: Task[]; updates: TaskMoveUpdate[] } {
+    const activeIndex = tasks.findIndex((task) => task.id === activeId);
+    const overIndex = tasks.findIndex((task) => task.id === overId);
+    if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
+        return undefined;
+    }
+
+    const next = [...tasks];
+    const [moved] = next.splice(activeIndex, 1);
+    if (!moved) return undefined;
+    next.splice(overIndex, 0, moved);
+
+    const status = moved.status;
+    const columnTasks = next.filter((task) => task.status === status);
+    const updates = columnTasks.map((task, position) => ({
+        id: task.id,
+        position,
+        status,
+    }));
+
+    return { tasks: next, updates };
+}
+
+function resolveBoardName(
+    boards: ProjectBoardRecord[] | undefined,
+    id: string,
+) {
+    return boards?.find((board) => board.id === id)?.name ?? id;
+}
+
+function resolveLabelNames(labels: ProjectLabel[], labelIds: string[] = []) {
+    const byId = new Map(labels.map((label) => [label.id, label.name]));
+    return labelIds
+        .map((id) => byId.get(id))
+        .filter((name): name is string => Boolean(name));
+}
+
+function resolveStatusName(columns: BoardColumn[], status: TaskStatus) {
+    return columns.find((column) => column.id === status)?.name ?? status;
+}
+
+function setBoardSnapshot(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string,
+    updater: (current: ProjectBoard) => ProjectBoard,
+) {
+    queryClient.setQueryData<ProjectBoard>(boardQueryKey(projectId, boardId), (current) => {
+        if (!current) return current;
+        return updater(current);
+    });
+}
+
+function subscribeBoardChannel(
+    projectId: string,
+    onChange: () => void,
+): () => void {
+    const existing = boardChannels.get(projectId);
+    if (existing) {
+        existing.subscribers += 1;
+        return () => releaseBoardChannel(projectId);
+    }
+
+    const channel = supabase
+        // Unique topic: `supabase.channel(name)` reuses an existing channel, and
+        // `.on()` after `subscribe()` throws. Ref-counting + a fresh name avoids both.
+        .channel(`board:${projectId}:${crypto.randomUUID()}`)
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                filter: `project_id=eq.${projectId}`,
+                schema: "public",
+                table: "tasks",
+            },
+            onChange,
+        )
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                filter: `project_id=eq.${projectId}`,
+                schema: "public",
+                table: "board_columns",
+            },
+            onChange,
+        )
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                filter: `project_id=eq.${projectId}`,
+                schema: "public",
+                table: "labels",
+            },
+            onChange,
+        )
+        .subscribe();
+
+    boardChannels.set(projectId, { channel, subscribers: 1 });
+    return () => releaseBoardChannel(projectId);
 }

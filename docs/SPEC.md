@@ -16,8 +16,9 @@
 | Guest mode | ⬜ Not started |
 | Database schema + RLS (`projects`) | ✅ Done |
 | GitHub project import (home page) | ✅ Done |
-| Kanban board | ✅ Done (custom columns, labels/priority/deadline on tasks; board filters by priority/deadline/labels; DnD polish deferred) |
+| Kanban board | ✅ Done (custom columns, labels/priority/deadline; board filters; comments; soft-archive + board archive dialog; DnD polish deferred) |
 | Task rich text + media (Storage) | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket) |
+| Task activity feed (`activity_log`) | ✅ Done (collapsible drawer section; app-level batched writes; Query on expand) |
 | Git integration (PR, diff, branches) | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer) |
 | CI/CD dashboard | ⬜ Not started |
 | Command palette | ⬜ Not started |
@@ -52,6 +53,10 @@
 | Board-level permission overrides | Notion `view` / `edit` / `manage` per board beyond Project Role. |
 | Assigned-only Contributor edits | Rejected for MVP (Contributor may update any Task); revisit if needed. |
 | Granular permission flags per Member | Roles only for MVP; no custom `tasks:create`-style flags. |
+| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body. |
+| Realtime on `activity_log` | Rejected for MVP; TanStack Query + invalidate is enough. |
+| Activity retention cron / per-task cap | Rejected for MVP; store all rows, UI shows last 50–100. |
+| Archive auto-purge (TTL) | Rejected for MVP on free tier; manual Delete from archive only. |
 
 ## Tech Stack
 
@@ -162,7 +167,7 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 
 ### SQL Triggers
 
-- Example: when task status → `DONE`, auto-insert into `activity_log`: "User X closed task Y".
+- Prefer app-level writes for curated activity (see **Task activity feed**). Triggers remain optional for other automations (e.g. webhook-driven status sync).
 
 ### Edge Functions
 
@@ -178,11 +183,55 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 | `projects` | `id`, `name`, `slug`, `owner_id` → profiles |
 | `boards` | `id`, `project_id`, `name`, `position`, `base_branch`, `allowed_head_patterns` |
 | `board_columns` | `(board_id, id)` PK, `project_id`, `name`, `position` |
-| `tasks` | `id`, `project_id`, `board_id`, `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id` |
+| `tasks` | `id`, `project_id`, `board_id`, `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id`, `author_id`, `archived_at`, `archived_by` |
+| `task_comments` | `id`, `task_id`, `project_id`, `author_id`, `body`, `created_at`, `updated_at` |
 | `labels` | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`) |
-| `activity_log` | `id`, `task_id`, `user_id`, `text`, `created_at` |
+| `activity_log` | `id`, `task_id`, `project_id`, `user_id` → profiles, `action` (text), `metadata` (jsonb), `created_at` |
 
 Enable RLS and base policies before writing frontend code.
+
+---
+
+## Task activity feed
+
+> Locked in grilling (2026-07-21). Context feed for the task drawer — **not** a Jira-style audit with description diffs. Keep payloads small for Supabase Free (500 MB DB).
+
+### Product intent
+
+- Show **who changed what** on a task so teammates have context.
+- Not for rollback/restore, not for compliance-grade audit.
+
+### What to log
+
+| Include | Exclude |
+|---------|---------|
+| status, assignee, priority, deadline | description (no body, no “description updated”) |
+| title, type, labels | comments (stay in `task_comments` only) |
+| branch / PR link or unlink | position-only DnD reorders within a column (optional; skip if noisy) |
+| move to another board | |
+| archive / restore (`field: "archived"`) | |
+
+### Event shape
+
+- One **batch event per save** (one mutation / one logical update), not one row per field.
+- Columns: `action` + `metadata` (jsonb), e.g. `action: "task_updated"`, `metadata: { changes: [{ field, from, to }, ...] }`.
+- Client i18n renders copy from `action` + `metadata` (do not store localized `text` as source of truth).
+
+### Write path
+
+- **Application-level** inserts from `use-board` mutations (and equivalent APIs): drawer details, status select, kanban DnD status change, label replace, board move — all paths that change logged fields.
+- Do **not** rely on a Postgres `UPDATE tasks` trigger for MVP (harder to filter curated fields).
+
+### Read / UI
+
+- Collapsible **Activity** section in the task drawer (collapsed by default).
+- TanStack Query: load on expand; invalidate after own mutations. **No** Realtime subscription on `activity_log` for MVP.
+- Soft UI cap: show the latest **50–100** events; keep all rows in DB (no retention job yet).
+
+### Free-tier notes
+
+- Enum/title/label metadata ≈ hundreds of bytes per event → negligible vs 500 MB.
+- Storing old/new rich-text description (up to ~128 KiB) would dominate storage — explicitly out of scope.
 
 ---
 

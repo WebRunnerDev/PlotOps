@@ -26,7 +26,10 @@ export type ProjectLabel = {
 };
 
 export type Task = {
+    archivedAt?: string;
+    archivedBy?: TaskAssignee;
     assignee?: TaskAssignee;
+    author?: TaskAssignee;
     boardId: string;
     branchName?: string;
     /** ISO calendar date `YYYY-MM-DD`. */
@@ -47,7 +50,50 @@ export type TaskType = "bug" | "feature" | "task";
 
 export type TaskAssignee = {
     avatarUrl?: string;
+    id: string;
     name: string;
+};
+
+export type TaskComment = {
+    author?: TaskAssignee;
+    body: string;
+    createdAt: string;
+    id: string;
+    taskId: string;
+    updatedAt: string;
+};
+
+/** Fields included in the task activity feed (see SPEC — Task activity feed). */
+export type TaskActivityField =
+    | "archived"
+    | "assignee"
+    | "board"
+    | "branch"
+    | "deadline"
+    | "labels"
+    | "pr"
+    | "priority"
+    | "status"
+    | "title"
+    | "type";
+
+export type TaskActivityChange = {
+    field: TaskActivityField;
+    from: unknown;
+    to: unknown;
+};
+
+export type TaskActivityMetadata = {
+    changes: TaskActivityChange[];
+};
+
+export type TaskActivityEvent = {
+    action: string;
+    createdAt: string;
+    id: string;
+    metadata: TaskActivityMetadata;
+    taskId: string;
+    user?: TaskAssignee;
 };
 
 export type TaskPriority = "high" | "low" | "medium" | "urgent";
