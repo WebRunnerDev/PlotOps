@@ -34,3 +34,11 @@ export function normalizeEditorContent(value: string): string {
     if (EMPTY_HTML_VALUES.has(trimmed)) return "";
     return trimmed;
 }
+
+export function richTextLength(value: string): number {
+    return normalizeEditorContent(value).length;
+}
+
+export function isRichTextWithinLimit(value: string, maxLength: number): boolean {
+    return richTextLength(value) <= maxLength;
+}
