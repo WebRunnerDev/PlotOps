@@ -6,20 +6,20 @@ Collaboration and access are scoped to a **Project** — there is no separate Te
 
 ## Features
 
-| Area | Status |
-|------|--------|
-| Auth (GitHub OAuth + email signup/confirm) | Done |
-| GitHub project import | Done |
-| Kanban board (columns, labels, priority, deadline, filters, comments, soft-archive) | Done |
-| Multi-board + branch mapping (base branch, allowed head patterns) | Done |
-| Task rich text + media (TipTap, Storage) | Done |
-| Task activity feed | Done |
-| Team & permissions (`project_members`, roles, invites) | In progress |
-| Git integration (PR, diff, branches) | In progress |
-| Guest mode | Not started |
-| CI/CD dashboard | Not started |
-| Command palette (`Ctrl/Cmd+K`) | Not started |
-| GitHub webhooks + Edge Function | Not started |
+| Area                                                                                | Status      |
+| ----------------------------------------------------------------------------------- | ----------- |
+| Auth (GitHub OAuth + email signup/confirm)                                          | Done        |
+| GitHub project import                                                               | Done        |
+| Kanban board (columns, labels, priority, deadline, filters, comments, soft-archive) | Done        |
+| Multi-board + branch mapping (base branch, allowed head patterns)                   | Done        |
+| Task rich text + media (TipTap, Storage)                                            | Done        |
+| Task activity feed                                                                  | Done        |
+| Team & permissions (`project_members`, roles, invites)                              | In progress |
+| Git integration (PR, diff, branches)                                                | In progress |
+| Guest mode                                                                          | Not started |
+| CI/CD dashboard                                                                     | Not started |
+| Command palette (`Ctrl/Cmd+K`)                                                      | Not started |
+| GitHub webhooks + Edge Function                                                     | Not started |
 
 **Roadmap highlights**
 
@@ -31,29 +31,29 @@ Collaboration and access are scoped to a **Project** — there is no separate Te
 
 ## Domain (MVP)
 
-| Term | Meaning |
-|------|---------|
-| **Project** | Unit of ownership and collaboration (members, boards, tasks, linked GitHub repo) |
-| **Board** | Kanban workflow inside a Project; owns columns, base branch, and allowed head patterns |
-| **Task** | Unit of work on exactly one Board; may link a Git branch and/or PR |
-| **Member / Role** | Project membership with Admin, Manager, Contributor, or Viewer |
-| **Owner** | `projects.owner_id` — full control; not a `project_members` row |
-| **Invite** | Email-addressed join offer; copy-link delivery (no SMTP in MVP) |
+| Term              | Meaning                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| **Project**       | Unit of ownership and collaboration (members, boards, tasks, linked GitHub repo)       |
+| **Board**         | Kanban workflow inside a Project; owns columns, base branch, and allowed head patterns |
+| **Task**          | Unit of work on exactly one Board; may link a Git branch and/or PR                     |
+| **Member / Role** | Project membership with Admin, Manager, Contributor, or Viewer                         |
+| **Owner**         | `projects.owner_id` — full control; not a `project_members` row                        |
+| **Invite**        | Email-addressed join offer; copy-link delivery (no SMTP in MVP)                        |
 
 See [`CONTEXT.md`](CONTEXT.md) for full glossary and role capabilities.
 
 ## Tech Stack
 
-| Layer | Choice |
-|-------|--------|
-| Build | Vite 8 |
-| UI | React 19, Tailwind CSS 4, shadcn/ui |
-| Routing | TanStack Router |
-| Server state | TanStack Query |
-| UI state | Zustand (when needed) |
-| i18n | i18next |
-| Backend | Supabase (PostgreSQL, Auth, Realtime, Storage, Edge Functions) |
-| Architecture | Feature-Sliced Design |
+| Layer        | Choice                                                         |
+| ------------ | -------------------------------------------------------------- |
+| Build        | Vite 8                                                         |
+| UI           | React 19, Tailwind CSS 4, shadcn/ui                            |
+| Routing      | TanStack Router                                                |
+| Server state | TanStack Query                                                 |
+| UI state     | Zustand (when needed)                                          |
+| i18n         | i18next                                                        |
+| Backend      | Supabase (PostgreSQL, Auth, Realtime, Storage, Edge Functions) |
+| Architecture | Feature-Sliced Design                                          |
 
 ```
 src/
@@ -100,13 +100,17 @@ npm run dev
 
 ### Other scripts
 
-| Script | Purpose |
-|--------|---------|
-| `npm run build` | Typecheck + production build |
-| `npm run lint` | ESLint |
-| `npm run db:status` | List linked migrations |
-| `npm run db:new -- <name>` | Create a new migration |
-| `npm run shadcn:add -- <name>` | Add a shadcn/ui component |
+| Script                         | Purpose                        |
+| ------------------------------ | ------------------------------ |
+| `npm run build`                | Typecheck + production build   |
+| `npm run typecheck`            | TypeScript project build check |
+| `npm run lint`                 | ESLint                         |
+| `npm run format`               | Format with Prettier           |
+| `npm run db:status`            | List linked migrations         |
+| `npm run db:new -- <name>`     | Create a new migration         |
+| `npm run shadcn:add -- <name>` | Add a shadcn/ui component      |
+
+Pre-commit (Husky + lint-staged): ESLint `--fix` and Prettier on staged files. Hooks install via `npm install` (`prepare`).
 
 ## Design
 
@@ -114,12 +118,12 @@ Dark, strict, Linear / Neobrutalism-inspired: sharp borders, monospace for git e
 
 ## Docs
 
-| Doc | Contents |
-|-----|----------|
-| [`docs/SPEC.md`](docs/SPEC.md) | Product & technical specification, progress, roadmap |
-| [`CONTEXT.md`](CONTEXT.md) | Ubiquitous language (Project, Board, roles, invites, …) |
-| [`docs/SUPABASE.md`](docs/SUPABASE.md) | Supabase project / CLI notes |
-| [`docs/adr/`](docs/adr/) | Architecture decision records |
+| Doc                                    | Contents                                                |
+| -------------------------------------- | ------------------------------------------------------- |
+| [`docs/SPEC.md`](docs/SPEC.md)         | Product & technical specification, progress, roadmap    |
+| [`CONTEXT.md`](CONTEXT.md)             | Ubiquitous language (Project, Board, roles, invites, …) |
+| [`docs/SUPABASE.md`](docs/SUPABASE.md) | Supabase project / CLI notes                            |
+| [`docs/adr/`](docs/adr/)               | Architecture decision records                           |
 
 ## License
 

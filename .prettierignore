@@ -1,0 +1,9 @@
+dist
+node_modules
+coverage
+.tanstack
+src/app/routeTree.gen.ts
+src/shared/shadcn/ui
+supabase/.temp
+supabase/.branches
+*.tsbuildinfo
