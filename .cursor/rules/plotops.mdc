@@ -50,7 +50,7 @@ Tables: `profiles`, `projects`, `tasks`, `activity_log`. Enable **RLS** from day
 
 ## UI Components (shadcn/ui)
 
-**Prefer shadcn/ui over raw HTML** — use existing primitives from `@/shared/shadcn/ui` instead of hand-rolling `<button>`, `<input>`, `<dialog>`, cards, dropdowns, etc.
+**Prefer shadcn/ui over raw HTML** — use existing primitives from `@/shared/shadcn/ui` instead of hand-rolling `<button>`, `<input>`, `<dialog>`, `<select>` cards, dropdowns, etc.
 
 - **Import path:** `@/shared/shadcn/ui/<component>` (see `components.json` aliases)
 - **Before writing UI:** check `src/shared/shadcn/ui/` — reuse what's already installed
