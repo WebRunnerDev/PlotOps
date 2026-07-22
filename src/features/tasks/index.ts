@@ -17,6 +17,7 @@ export {
     normalizeBranchName,
 } from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
+export { BoardProvider, useBoardContext } from "./model/board-context";
 export {
     DEFAULT_KANBAN_COLUMNS,
     getLabelChipProps,
@@ -29,7 +30,7 @@ export {
     PRIORITY_CLASS,
     TASK_PRIORITIES,
 } from "./model/constants";
-export { BoardProvider, useBoardContext } from "./model/board-context";
+export { boardKeys, labelKeys, taskKeys } from "./model/query-keys";
 export type {
     BoardColumn,
     LabelColor,
@@ -38,7 +39,6 @@ export type {
     TaskPriority,
     TaskStatus,
 } from "./model/types";
-export { boardKeys, taskKeys } from "./model/query-keys";
 export { useBoard } from "./model/use-board";
 export {
     useBoardMutations,

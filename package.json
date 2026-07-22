@@ -17,7 +17,9 @@
         "db:new": "supabase migration new",
         "shadcn:add": "node scripts/shadcn-add.mjs",
         "shadcn:exports": "node scripts/generate-shadcn-index.mjs",
-        "prepare": "husky"
+        "prepare": "husky",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "@base-ui/react": "^1.6.0",
@@ -34,6 +36,7 @@
         "@tanstack/react-query": "^5.101.2",
         "@tanstack/react-router": "^1.170.17",
         "@tanstack/react-router-devtools": "^1.167.0",
+        "@tanstack/react-table": "^8.21.3",
         "@tiptap/extension-character-count": "^3.28.0",
         "@tiptap/extension-code-block-lowlight": "^3.28.0",
         "@tiptap/extension-file-handler": "^3.28.0",
@@ -85,6 +88,7 @@
         "supabase": "^2.109.1",
         "typescript": "~6.0.2",
         "typescript-eslint": "^8.50.0",
-        "vite": "^8.1.1"
+        "vite": "^8.1.1",
+        "vitest": "^3.2.7"
     }
 }
