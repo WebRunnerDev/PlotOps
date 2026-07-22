@@ -1029,7 +1029,12 @@ function resolveBoardName(
 
 function resolveLabelNames(labels: ProjectLabel[], labelIds: string[] = []) {
     const byId = new Map(labels.map((label) => [label.id, label.name]));
-    return labelIds.map((id) => byId.get(id)).filter(Boolean);
+    const names: string[] = [];
+    for (const id of labelIds) {
+        const name = byId.get(id);
+        if (name) names.push(name);
+    }
+    return names;
 }
 
 function resolveStatusName(columns: BoardColumn[], status: TaskStatus) {
