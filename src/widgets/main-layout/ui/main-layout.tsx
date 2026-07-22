@@ -1,5 +1,4 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { motion } from "motion/react";
 
 import { cn } from "@/shared/lib/utils";
 import { AppDock } from "@/widgets/dock";
@@ -9,10 +8,15 @@ export function MainLayoutWidget() {
 }
 
 function MainLayoutContent() {
-    const pathname = useRouterState({
-        select: (state) => state.location.pathname,
+    // Use settled location — pending navigations update `location` immediately while
+    // home is still painted; flipping layout then strips max-w-5xl for ~1s (board fetch).
+    const isBoard = useRouterState({
+        select: (state) => {
+            const path =
+                state.resolvedLocation?.pathname ?? state.location.pathname;
+            return path.startsWith("/projects/");
+        },
     });
-    const isBoard = pathname.startsWith("/projects/");
 
     return (
         <>
@@ -21,36 +25,20 @@ function MainLayoutContent() {
                     "w-full",
                     isBoard
                         ? "flex h-dvh flex-col overflow-hidden"
-                        : "mx-auto max-w-5xl p-4 pb-24",
+                        : "min-h-dvh"
                 )}
             >
                 {isBoard ? (
                     <div className="min-h-0 flex-1 overflow-hidden">
-                        <RouteTransition />
+                        <Outlet />
                     </div>
                 ) : (
-                    <RouteTransition />
+                    <div className="mx-auto w-full max-w-5xl p-4 pb-24">
+                        <Outlet />
+                    </div>
                 )}
             </div>
             <AppDock />
         </>
-    );
-}
-
-function RouteTransition() {
-    const pathname = useRouterState({
-        select: (state) => state.location.pathname,
-    });
-
-    return (
-        <motion.div
-            animate={{ opacity: 1, y: 0 }}
-            className="h-full min-h-0"
-            initial={{ opacity: 0, y: 8 }}
-            key={pathname}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-        >
-            <Outlet />
-        </motion.div>
     );
 }

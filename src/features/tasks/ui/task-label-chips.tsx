@@ -1,6 +1,6 @@
 import type { ProjectLabel } from "@/features/tasks/model/types";
 
-import { getLabelChipProps } from "@/features/tasks/model/constants";
+import { getLabelChipProperties } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 
@@ -23,12 +23,12 @@ export function TaskLabelChips({
     return (
         <div className={cn("flex flex-wrap items-center gap-1", className)}>
             {visible.map((label) => {
-                const chip = getLabelChipProps(label);
+                const chip = getLabelChipProperties(label);
                 return (
                     <Badge
                         className={cn(
                             "border-0 font-mono text-[0.625rem] font-medium tracking-wide uppercase ring-1",
-                            chip.className,
+                            chip.className
                         )}
                         key={label.id}
                         style={chip.style}
@@ -39,7 +39,9 @@ export function TaskLabelChips({
                 );
             })}
             {hidden > 0 ? (
-                <span className="text-meta text-muted-foreground">+{hidden}</span>
+                <span className="text-meta text-muted-foreground">
+                    +{hidden}
+                </span>
             ) : undefined}
         </div>
     );

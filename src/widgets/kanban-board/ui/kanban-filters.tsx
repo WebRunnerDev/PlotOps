@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
     type BoardTaskFilters,
     DEADLINE_FILTER_VALUES,
-    getLabelDotProps,
+    getLabelDotProperties,
     isBoardFiltersActive,
     type PriorityFilterValue,
     type ProjectLabel,
@@ -65,7 +65,9 @@ export function KanbanFilters({
                 label={t("fields.priority")}
             >
                 <DropdownMenuGroup>
-                    <DropdownMenuLabel>{t("fields.priority")}</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                        {t("fields.priority")}
+                    </DropdownMenuLabel>
                     {PRIORITY_FILTER_VALUES.map((priority) => (
                         <DropdownMenuCheckboxItem
                             checked={filters.priorities.includes(priority)}
@@ -75,7 +77,7 @@ export function KanbanFilters({
                                     ...filters,
                                     priorities: toggleFilterValue(
                                         filters.priorities,
-                                        priority,
+                                        priority
                                     ),
                                 });
                             }}
@@ -92,7 +94,9 @@ export function KanbanFilters({
                 label={t("fields.deadline")}
             >
                 <DropdownMenuGroup>
-                    <DropdownMenuLabel>{t("fields.deadline")}</DropdownMenuLabel>
+                    <DropdownMenuLabel>
+                        {t("fields.deadline")}
+                    </DropdownMenuLabel>
                     {DEADLINE_FILTER_VALUES.map((deadline) => (
                         <DropdownMenuCheckboxItem
                             checked={filters.deadlines.includes(deadline)}
@@ -102,7 +106,7 @@ export function KanbanFilters({
                                     ...filters,
                                     deadlines: toggleFilterValue(
                                         filters.deadlines,
-                                        deadline,
+                                        deadline
                                     ),
                                 });
                             }}
@@ -127,11 +131,11 @@ export function KanbanFilters({
                         </p>
                     ) : (
                         labels.map((label) => {
-                            const dot = getLabelDotProps(label);
+                            const dot = getLabelDotProperties(label);
                             return (
                                 <DropdownMenuCheckboxItem
                                     checked={filters.labelIds.includes(
-                                        label.id,
+                                        label.id
                                     )}
                                     key={label.id}
                                     onCheckedChange={() => {
@@ -139,7 +143,7 @@ export function KanbanFilters({
                                             ...filters,
                                             labelIds: toggleFilterValue(
                                                 filters.labelIds,
-                                                label.id,
+                                                label.id
                                             ),
                                         });
                                     }}
@@ -148,7 +152,7 @@ export function KanbanFilters({
                                         aria-hidden
                                         className={cn(
                                             "size-2 shrink-0 rounded-full",
-                                            dot.className,
+                                            dot.className
                                         )}
                                         style={dot.style}
                                     />
@@ -193,7 +197,7 @@ function FilterMenu({
             <DropdownMenuTrigger
                 className={cn(
                     "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium outline-none select-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-expanded:bg-muted",
-                    activeCount > 0 && "border-primary/40 bg-primary/5",
+                    activeCount > 0 && "border-primary/40 bg-primary/5"
                 )}
                 disabled={disabled}
             >

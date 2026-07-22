@@ -20,8 +20,8 @@ export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export { BoardProvider, useBoardContext } from "./model/board-context";
 export {
     DEFAULT_KANBAN_COLUMNS,
-    getLabelChipProps,
-    getLabelDotProps,
+    getLabelChipProperties,
+    getLabelDotProperties,
     isValidHexColor,
     KANBAN_COLUMNS,
     LABEL_COLOR_CLASS,

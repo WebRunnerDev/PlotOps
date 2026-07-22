@@ -4,8 +4,8 @@ import { toast } from "sonner";
 
 import type { ProjectLabel } from "@/features/tasks/model/types";
 
-import { getLabelDotProps } from "@/features/tasks/model/constants";
 import { useBoardContext } from "@/features/tasks/model/board-context";
+import { getLabelDotProperties } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
 import {
     Combobox,
@@ -49,15 +49,14 @@ export function TaskLabelsField({
 
     const selectedLabels = useMemo(
         () => labels.filter((label) => selectedIds.includes(label.id)),
-        [labels, selectedIds],
+        [labels, selectedIds]
     );
 
     const trimmedQuery = query.trim();
     const canCreate =
         trimmedQuery.length > 0 &&
         !labels.some(
-            (label) =>
-                label.name.toLowerCase() === trimmedQuery.toLowerCase(),
+            (label) => label.name.toLowerCase() === trimmedQuery.toLowerCase()
         );
 
     const createOption: CreateLabelOption | undefined = canCreate
@@ -98,7 +97,7 @@ export function TaskLabelsField({
     const handleValueChange = (next: LabelOption[]) => {
         const create = next.find((option) => isCreateOption(option));
         const real = next.filter(
-            (option): option is ProjectLabel => !isCreateOption(option),
+            (option): option is ProjectLabel => !isCreateOption(option)
         );
 
         if (create) {
@@ -134,14 +133,14 @@ export function TaskLabelsField({
                     {(values: ProjectLabel[]) => (
                         <Fragment>
                             {values.map((label) => {
-                                const dot = getLabelDotProps(label);
+                                const dot = getLabelDotProperties(label);
                                 return (
                                     <ComboboxChip key={label.id}>
                                         <span
                                             aria-hidden
                                             className={cn(
                                                 "size-2 shrink-0 rounded-full",
-                                                dot.className,
+                                                dot.className
                                             )}
                                             style={dot.style}
                                         />
@@ -174,9 +173,9 @@ export function TaskLabelsField({
                                     aria-hidden
                                     className={cn(
                                         "size-2.5 shrink-0 rounded-full",
-                                        getLabelDotProps(item).className,
+                                        getLabelDotProperties(item).className
                                     )}
-                                    style={getLabelDotProps(item).style}
+                                    style={getLabelDotProperties(item).style}
                                 />
                                 {item.name}
                             </ComboboxItem>

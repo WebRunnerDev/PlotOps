@@ -66,24 +66,12 @@ export const LABEL_DOT_CLASS: Record<LabelColor, string> = {
 /** Matches `#rgb` or `#rrggbb`. Custom label colors are stored as hex. */
 export const HEX_COLOR_PATTERN = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
 
-export function isValidHexColor(value: string): boolean {
-    return HEX_COLOR_PATTERN.test(value.trim());
-}
+type ColorRender = { className?: string; style?: CSSProperties };
 
 type LabelColorInput = Pick<ProjectLabel, "color" | "customColor">;
 
-type ColorRender = { className?: string; style?: CSSProperties };
-
-/** Dot swatch styling — inline color when custom, preset class otherwise. */
-export function getLabelDotProps(label: LabelColorInput): ColorRender {
-    if (label.customColor) {
-        return { style: { backgroundColor: label.customColor } };
-    }
-    return { className: LABEL_DOT_CLASS[label.color] };
-}
-
 /** Chip/badge styling — translucent fill + ring derived from the hex when custom. */
-export function getLabelChipProps(label: LabelColorInput): ColorRender {
+export function getLabelChipProperties(label: LabelColorInput): ColorRender {
     if (label.customColor) {
         const hex = label.customColor;
         return {
@@ -97,12 +85,50 @@ export function getLabelChipProps(label: LabelColorInput): ColorRender {
     return { className: LABEL_COLOR_CLASS[label.color] };
 }
 
+/** Dot swatch styling — inline color when custom, preset class otherwise. */
+export function getLabelDotProperties(label: LabelColorInput): ColorRender {
+    if (label.customColor) {
+        return { style: { backgroundColor: label.customColor } };
+    }
+    return { className: LABEL_DOT_CLASS[label.color] };
+}
+
+export function isValidHexColor(value: string): boolean {
+    return HEX_COLOR_PATTERN.test(value.trim());
+}
+
 export const PRIORITY_CLASS: Record<TaskPriority, string> = {
     high: "text-orange-500",
     low: "text-muted-foreground",
     medium: "text-sky-500",
     urgent: "text-red-500",
 };
+
+/** Compact priority marker for Make-style task cards. */
+export const PRIORITY_DOT_CLASS: Record<TaskPriority, string> = {
+    high: "bg-orange-500",
+    low: "bg-muted-foreground/70",
+    medium: "bg-sky-500",
+    urgent: "bg-red-500",
+};
+
+/** Column header accent squares (Make kanban). */
+export const COLUMN_ACCENT_CLASS = [
+    "bg-muted-foreground/55",
+    "bg-sky-500",
+    "bg-blue-500",
+    "bg-violet-500",
+    "bg-emerald-500",
+    "bg-amber-500",
+] as const;
+
+export function columnAccentClass(seed: string): string {
+    let hash = 0;
+    for (let index = 0; index < seed.length; index += 1) {
+        hash = (hash * 31 + (seed.codePointAt(index) ?? 0)) >>> 0;
+    }
+    return COLUMN_ACCENT_CLASS[hash % COLUMN_ACCENT_CLASS.length]!;
+}
 
 /** Max stored HTML length for task descriptions (~128 KiB). */
 export const TASK_DESCRIPTION_MAX_LENGTH = 131_072;

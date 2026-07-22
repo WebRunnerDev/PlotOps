@@ -10,18 +10,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { Project } from "@/features/projects/model/types";
 import type { ProjectLabel, Task } from "@/features/tasks/model/types";
 
 import { useAuth } from "@/features/auth/model/use-auth";
-import type { Project } from "@/features/projects/model/types";
-import { useProject, useProjects } from "@/features/projects/model/use-projects";
 import {
-    getLabelDotProps,
+    useProject,
+    useProjects,
+} from "@/features/projects/model/use-projects";
+import { BoardProvider } from "@/features/tasks/model/board-context";
+import {
+    getLabelDotProperties,
     isValidHexColor,
     LABEL_COLORS,
     LABEL_DOT_CLASS,
 } from "@/features/tasks/model/constants";
-import { BoardProvider } from "@/features/tasks/model/board-context";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useBoard } from "@/features/tasks/model/use-board";
 import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
@@ -73,16 +76,14 @@ import {
 const EMPTY_TASKS: Task[] = [];
 const TASKS_PAGE_SIZE = 5;
 
-/** Normalize a hex string to lowercase `#rrggbb`, expanding shorthand. Returns undefined if invalid. */
-function normalizeHex(value: string): string | undefined {
-    const trimmed = value.trim().toLowerCase();
-    if (!isValidHexColor(trimmed)) return undefined;
-    if (trimmed.length === 4) {
-        const [, r, g, b] = trimmed;
-        return `#${r}${r}${g}${g}${b}${b}`;
-    }
-    return trimmed;
-}
+type BoardActions = ReturnType<typeof useBoard>;
+
+type LabelRowProperties = {
+    board: BoardActions;
+    label: ProjectLabel;
+    otherProjects: Project[];
+    taggedTasks: Task[];
+};
 
 type ProjectLabelsSettingsProperties = {
     projectId: string;
@@ -100,7 +101,7 @@ export function ProjectLabelsSettings({
     const { data: archivedTasks = [] } = useArchivedTasks(
         projectId,
         defaultBoardId,
-        Boolean(defaultBoardId),
+        Boolean(defaultBoardId)
     );
 
     const { data: projects } = useProjects();
@@ -111,8 +112,8 @@ export function ProjectLabelsSettings({
         () =>
             board.labels
                 .filter((label) => label.projectId === projectId)
-                .sort((a, b) => a.name.localeCompare(b.name)),
-        [board.labels, projectId],
+                .toSorted((a, b) => a.name.localeCompare(b.name)),
+        [board.labels, projectId]
     );
 
     const tasksByLabel = useMemo(() => {
@@ -134,8 +135,11 @@ export function ProjectLabelsSettings({
     }, [archivedTasks, board.tasks]);
 
     const otherProjects = useMemo(
-        () => (projects ?? []).filter((projectItem) => projectItem.id !== projectId),
-        [projects, projectId],
+        () =>
+            (projects ?? []).filter(
+                (projectItem) => projectItem.id !== projectId
+            ),
+        [projects, projectId]
     );
 
     const handleCreate = async () => {
@@ -229,15 +233,6 @@ export function ProjectLabelsSettings({
     );
 }
 
-type BoardActions = ReturnType<typeof useBoard>;
-
-type LabelRowProperties = {
-    board: BoardActions;
-    label: ProjectLabel;
-    otherProjects: Project[];
-    taggedTasks: Task[];
-};
-
 function LabelRow({
     board,
     label,
@@ -258,27 +253,24 @@ function LabelRow({
     const [draft, setDraft] = useState(label.name);
     const [colorOpen, setColorOpen] = useState(false);
     const [customDraft, setCustomDraft] = useState(
-        label.customColor ?? "#6366f1",
+        label.customColor ?? "#6366f1"
     );
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [transferOpen, setTransferOpen] = useState(false);
     const [taskPage, setTaskPage] = useState(0);
     const [targetProjectId, setTargetProjectId] = useState<string | undefined>(
-        otherProjects[0]?.id,
+        otherProjects[0]?.id
     );
 
     const usageCount = taggedTasks.length;
     const archivedUsageCount = taggedTasks.filter((task) =>
-        Boolean(task.archivedAt),
+        Boolean(task.archivedAt)
     ).length;
     const hasArchivedUsage = archivedUsageCount > 0;
-    const totalTaskPages = Math.max(
-        1,
-        Math.ceil(usageCount / TASKS_PAGE_SIZE),
-    );
+    const totalTaskPages = Math.max(1, Math.ceil(usageCount / TASKS_PAGE_SIZE));
     const pageTasks = taggedTasks.slice(
         taskPage * TASKS_PAGE_SIZE,
-        taskPage * TASKS_PAGE_SIZE + TASKS_PAGE_SIZE,
+        taskPage * TASKS_PAGE_SIZE + TASKS_PAGE_SIZE
     );
 
     useEffect(() => {
@@ -339,7 +331,7 @@ function LabelRow({
         if (!targetProjectId) return;
         const id = await copyLabelToProject(label.id, targetProjectId);
         const target = otherProjects.find(
-            (project) => project.id === targetProjectId,
+            (project) => project.id === targetProjectId
         );
 
         if (!id) {
@@ -351,7 +343,7 @@ function LabelRow({
             t("labelSettings.copied", {
                 name: label.name,
                 target: target?.name ?? "",
-            }),
+            })
         );
         setTransferOpen(false);
     };
@@ -359,7 +351,7 @@ function LabelRow({
     const handleMove = async () => {
         if (!targetProjectId || hasArchivedUsage) return;
         const target = otherProjects.find(
-            (project) => project.id === targetProjectId,
+            (project) => project.id === targetProjectId
         );
 
         try {
@@ -368,7 +360,7 @@ function LabelRow({
                 t("labelSettings.moved", {
                     name: label.name,
                     target: target?.name ?? "",
-                }),
+                })
             );
             setTransferOpen(false);
         } catch {
@@ -381,7 +373,7 @@ function LabelRow({
         setDeleteOpen(false);
     };
 
-    const triggerDot = getLabelDotProps(label);
+    const triggerDot = getLabelDotProperties(label);
 
     return (
         <li className="flex items-center gap-2 rounded-lg bg-muted/30 px-2 py-1.5 ring-1 ring-foreground/10">
@@ -393,7 +385,7 @@ function LabelRow({
                     <span
                         className={cn(
                             "size-3.5 rounded-full",
-                            triggerDot.className,
+                            triggerDot.className
                         )}
                         style={triggerDot.style}
                     />
@@ -408,7 +400,7 @@ function LabelRow({
                                         "flex size-7 items-center justify-center rounded-md outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring",
                                         !label.customColor &&
                                             color === label.color &&
-                                            "bg-foreground/10",
+                                            "bg-foreground/10"
                                     )}
                                     key={color}
                                     onClick={() => {
@@ -420,7 +412,7 @@ function LabelRow({
                                     <span
                                         className={cn(
                                             "size-3.5 rounded-full",
-                                            LABEL_DOT_CLASS[color],
+                                            LABEL_DOT_CLASS[color]
                                         )}
                                     />
                                 </button>
@@ -527,7 +519,9 @@ function LabelRow({
                 >
                     <AlertDialogHeader>
                         <AlertDialogTitle>
-                            {t("labelSettings.deleteTitle", { name: label.name })}
+                            {t("labelSettings.deleteTitle", {
+                                name: label.name,
+                            })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                             {hasArchivedUsage
@@ -555,7 +549,7 @@ function LabelRow({
                                             aria-hidden
                                             className={cn(
                                                 "size-2 shrink-0 rounded-full",
-                                                triggerDot.className,
+                                                triggerDot.className
                                             )}
                                             style={triggerDot.style}
                                         />
@@ -597,7 +591,7 @@ function LabelRow({
                                         disabled={taskPage === 0}
                                         onClick={() =>
                                             setTaskPage((page) =>
-                                                Math.max(0, page - 1),
+                                                Math.max(0, page - 1)
                                             )
                                         }
                                         size="icon-sm"
@@ -621,8 +615,8 @@ function LabelRow({
                                             setTaskPage((page) =>
                                                 Math.min(
                                                     totalTaskPages - 1,
-                                                    page + 1,
-                                                ),
+                                                    page + 1
+                                                )
                                             )
                                         }
                                         size="icon-sm"
@@ -700,9 +694,7 @@ function LabelRow({
                     </div>
 
                     <DialogFooter>
-                        <DialogClose
-                            render={<Button variant="outline" />}
-                        >
+                        <DialogClose render={<Button variant="outline" />}>
                             {t("labelSettings.cancel")}
                         </DialogClose>
                         <Button
@@ -725,4 +717,15 @@ function LabelRow({
             </Dialog>
         </li>
     );
+}
+
+/** Normalize a hex string to lowercase `#rrggbb`, expanding shorthand. Returns undefined if invalid. */
+function normalizeHex(value: string): string | undefined {
+    const trimmed = value.trim().toLowerCase();
+    if (!isValidHexColor(trimmed)) return undefined;
+    if (trimmed.length === 4) {
+        const [, r, g, b] = trimmed;
+        return `#${r}${r}${g}${g}${b}${b}`;
+    }
+    return trimmed;
 }

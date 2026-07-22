@@ -1,24 +1,32 @@
-import { Calendar, Flag, GitBranch, User } from "lucide-react";
+import { Calendar, GitBranch, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel, Task } from "@/features/tasks/model/types";
 
-import { formatDeadline, isDeadlineOverdue } from "@/features/tasks/lib/format-deadline";
-import { PRIORITY_CLASS } from "@/features/tasks/model/constants";
-import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
+import {
+    formatBranchName,
+    isSharedBranch,
+} from "@/features/tasks/lib/format-branch";
+import {
+    formatDeadline,
+    isDeadlineOverdue,
+} from "@/features/tasks/lib/format-deadline";
+import { PRIORITY_DOT_CLASS } from "@/features/tasks/model/constants";
 import { TaskLabelChips } from "@/features/tasks/ui/task-label-chips";
 import { cn } from "@/shared/lib/utils";
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/shared/shadcn/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from "@/shared/shadcn/ui/card";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/shared/shadcn/ui/tooltip";
 
 type TaskCardProperties = {
     labels: ProjectLabel[];
@@ -28,88 +36,135 @@ type TaskCardProperties = {
 export function TaskCard({ labels, task }: TaskCardProperties) {
     const { i18n, t } = useTranslation("board");
     const assigneeName = task.assignee?.name;
-    const hasGithubMeta = Boolean(task.branchName || task.pr);
     const overdue =
         task.deadline !== undefined && isDeadlineOverdue(task.deadline);
+    const shared = task.branchName ? isSharedBranch(task.branchName) : false;
 
     return (
         <Card
-            className="cursor-grab transition-colors hover:ring-primary/40 active:cursor-grabbing"
+            className="cursor-grab rounded-lg ring-border/80 transition-colors hover:ring-primary/35 active:cursor-grabbing"
             size="sm"
         >
-            <CardHeader className="gap-1.5">
+            <CardHeader className="gap-2">
                 <div className="flex items-center justify-between gap-2">
-                    <span className="text-meta font-mono text-muted-foreground">
-                        {task.key}
-                    </span>
-                    {task.priority ? (
-                        <span
-                            className={cn(
-                                "inline-flex items-center gap-1 text-meta",
-                                PRIORITY_CLASS[task.priority],
-                            )}
-                        >
-                            <Flag aria-hidden className="size-3" />
-                            {t(`priority.${task.priority}`)}
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                        {task.priority ? (
+                            <span
+                                aria-hidden
+                                className={cn(
+                                    "size-1.5 shrink-0 rounded-full",
+                                    PRIORITY_DOT_CLASS[task.priority]
+                                )}
+                            />
+                        ) : undefined}
+                        <span className="truncate text-meta text-muted-foreground">
+                            {task.key}
                         </span>
+                    </span>
+                    {task.pr ? (
+                        <a
+                            aria-label={t("prLink", {
+                                number: task.pr.number,
+                                state: t(`prState.${task.pr.state}`),
+                            })}
+                            className="shrink-0 text-code text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                            href={task.pr.url}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                            }}
+                            onPointerDown={(event) => {
+                                event.stopPropagation();
+                            }}
+                            rel="noreferrer"
+                            target="_blank"
+                        >
+                            PR #{task.pr.number}
+                        </a>
                     ) : undefined}
                 </div>
-                <CardTitle className="line-clamp-2 text-ui leading-snug">
+
+                <CardTitle className="line-clamp-2 text-ui font-semibold leading-snug text-foreground">
                     {task.title}
                 </CardTitle>
+
+                {task.branchName ? (
+                    <TooltipProvider delay={200}>
+                        <Tooltip>
+                            <TooltipTrigger
+                                className={cn(
+                                    "inline-flex min-w-0 max-w-full cursor-default items-center gap-1.5 text-code",
+                                    shared
+                                        ? "text-muted-foreground/70"
+                                        : "text-muted-foreground"
+                                )}
+                                render={<span />}
+                            >
+                                <GitBranch
+                                    aria-hidden
+                                    className="size-3 shrink-0"
+                                />
+                                <span className="truncate">
+                                    {formatBranchName(task.branchName)}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                                {shared
+                                    ? `${task.branchName} · ${t("github.sharedBranchTitle")}`
+                                    : task.branchName}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                ) : undefined}
+
                 {labels.length > 0 ? (
                     <TaskLabelChips labels={labels} />
                 ) : undefined}
             </CardHeader>
 
             <CardContent className="flex items-center justify-between gap-2 pt-0">
-                <div className="flex min-w-0 items-center gap-2">
-                    <Avatar size="sm">
-                        {task.assignee?.avatarUrl ? (
-                            <AvatarImage
-                                alt={assigneeName ?? ""}
-                                src={task.assignee.avatarUrl}
-                            />
-                        ) : undefined}
-                        <AvatarFallback className="text-meta">
-                            {assigneeName ? (
-                                initials(assigneeName)
-                            ) : (
-                                <User className="size-3" />
-                            )}
-                        </AvatarFallback>
-                    </Avatar>
-
-                    {task.deadline ? (
-                        <span
-                            className={cn(
-                                "inline-flex items-center gap-1 text-code",
-                                overdue
-                                    ? "text-red-500"
-                                    : "text-muted-foreground",
-                            )}
-                        >
-                            <Calendar aria-hidden className="size-3 shrink-0" />
+                {task.deadline ? (
+                    <span
+                        className={cn(
+                            "inline-flex min-w-0 items-center gap-1 text-code",
+                            overdue
+                                ? "text-destructive"
+                                : "text-muted-foreground"
+                        )}
+                    >
+                        <Calendar aria-hidden className="size-3 shrink-0" />
+                        <span className="truncate">
                             {formatDeadline(task.deadline, i18n.language)}
                         </span>
-                    ) : undefined}
-                </div>
-
-                {hasGithubMeta ? (
-                    <GithubTaskMeta branchName={task.branchName} pr={task.pr} />
-                ) : (
-                    <span className="inline-flex items-center gap-1 text-code text-muted-foreground/50">
-                        <GitBranch aria-hidden className="size-3 shrink-0" />
-                        <span>—</span>
                     </span>
+                ) : (
+                    <span />
                 )}
+
+                <Avatar size="sm">
+                    {task.assignee?.avatarUrl ? (
+                        <AvatarImage
+                            alt={assigneeName ?? ""}
+                            src={task.assignee.avatarUrl}
+                        />
+                    ) : undefined}
+                    <AvatarFallback className="text-meta">
+                        {assigneeName ? (
+                            initials(assigneeName)
+                        ) : (
+                            <User className="size-3" />
+                        )}
+                    </AvatarFallback>
+                </Avatar>
             </CardContent>
         </Card>
     );
 }
 
 function initials(name: string): string {
-    const parts = name.trim().split(/[\s_-]+/).filter(Boolean);
+    const parts = name
+        .trim()
+        .split(/[\s_-]+/)
+        .filter(Boolean);
 
     if (parts.length >= 2) {
         return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
