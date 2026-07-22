@@ -23,5 +23,6 @@ export * from "./ui/separator";
 export * from "./ui/skeleton";
 export * from "./ui/sonner";
 export * from "./ui/spinner";
+export * from "./ui/table";
 export * from "./ui/textarea";
 export * from "./ui/tooltip";

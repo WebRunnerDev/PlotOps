@@ -30,7 +30,13 @@ export {
     PRIORITY_CLASS,
     TASK_PRIORITIES,
 } from "./model/constants";
-export { boardKeys, labelKeys, taskKeys } from "./model/query-keys";
+export { boardKeys, labelKeys, sprintKeys, taskKeys } from "./model/query-keys";
+export type {
+    BoardSprintScope,
+    Sprint,
+    SprintEvent,
+    SprintState,
+} from "./model/sprint-types";
 export type {
     BoardColumn,
     LabelColor,
@@ -44,8 +50,11 @@ export {
     useBoardMutations,
     useProjectBoards,
 } from "./model/use-project-boards";
+export { useBoardSprints, useSprintMutations } from "./model/use-sprints";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
+export { BacklogPage } from "./ui/backlog-page";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
+export { BoardSprintControls } from "./ui/board-sprint-controls";
 export { BoardSwitcher } from "./ui/board-switcher";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { ProjectBoardsSettings } from "./ui/project-boards-settings";

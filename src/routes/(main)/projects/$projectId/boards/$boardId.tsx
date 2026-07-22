@@ -1,15 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-import { BoardPage } from "@/widgets/kanban-board";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute(
-    "/(main)/projects/$projectId/boards/$boardId",
+    "/(main)/projects/$projectId/boards/$boardId"
 )({
-    component: ProjectBoardRoute,
+    component: ProjectBoardLayout,
 });
 
-function ProjectBoardRoute() {
-    const { boardId, projectId } = Route.useParams();
-
-    return <BoardPage boardId={boardId} projectId={projectId} />;
+function ProjectBoardLayout() {
+    return <Outlet />;
 }

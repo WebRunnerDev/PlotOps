@@ -8,11 +8,12 @@ import { useProject } from "@/features/projects/model/use-projects";
 import { BoardProvider } from "@/features/tasks/model/board-context";
 import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
 import { BoardArchiveDialog } from "@/features/tasks/ui/board-archive-dialog";
+import { BoardSprintControls } from "@/features/tasks/ui/board-sprint-controls";
 import { BoardSwitcher } from "@/features/tasks/ui/board-switcher";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
-import { Spinner } from "@/shared/shadcn/ui/spinner";
 
+import { BoardLoading } from "./board-loading";
 import { KanbanBoard } from "./kanban-board";
 
 type BoardPageProperties = {
@@ -29,11 +30,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     const currentBoard = boards.find((board) => board.id === boardId);
 
     if (isLoading) {
-        return (
-            <div className="flex justify-center py-16">
-                <Spinner className="size-8 text-primary" />
-            </div>
-        );
+        return <BoardLoading />;
     }
 
     if (error || !project) {
@@ -58,12 +55,12 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     return (
         <BoardProvider boardId={boardId} projectId={projectId}>
             <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
-                <div className="flex h-full w-max min-w-full flex-col gap-6 pt-4 pb-24">
-                    <header className="sticky left-0 z-10 w-[100cqw] shrink-0 bg-background/95 px-12 backdrop-blur-sm">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex h-full w-max min-w-full flex-col gap-4 pt-3 pb-24">
+                    <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-12 py-3 backdrop-blur-sm">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex flex-col gap-2">
                                 <Button
-                                    className="w-fit"
+                                    className="w-fit text-muted-foreground"
                                     nativeButton={false}
                                     render={<Link to="/home" />}
                                     size="sm"
@@ -72,21 +69,25 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                                     <ArrowLeft data-icon="inline-start" />
                                     {t("backToProjects")}
                                 </Button>
-                                <div className="flex flex-col gap-1">
-                                    <h1>{project.name}</h1>
+                                <div className="flex flex-col gap-0.5">
+                                    <h1 className="text-h2">{project.name}</h1>
                                     <p className="text-code text-muted-foreground">
                                         {project.github_full_name}
                                     </p>
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <BoardSwitcher
                                     boardId={boardId}
                                     canManage={canManageBoard}
                                     defaultBaseBranch={
                                         project.github_default_branch ?? "main"
                                     }
+                                    projectId={projectId}
+                                />
+                                <BoardSprintControls
+                                    boardId={boardId}
                                     projectId={projectId}
                                 />
                                 <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
@@ -138,9 +139,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                         <KanbanBoard
                             githubToken={githubAccessToken}
                             projectId={projectId}
-                            repoFullName={
-                                project.github_full_name ?? undefined
-                            }
+                            repoFullName={project.github_full_name ?? undefined}
                         />
                     </div>
                 </div>

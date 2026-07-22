@@ -12,12 +12,12 @@ import { DEFAULT_KANBAN_COLUMNS } from "@/features/tasks/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 import {
-    type DbBoardColumn as DatabaseBoardColumn,
-    type DbLabel as DatabaseLabel,
-    type DbTask as DatabaseTask,
-    mapDbColumn as mapDatabaseColumn,
-    mapDbLabel as mapDatabaseLabel,
-    mapDbTask as mapDatabaseTask,
+    type DatabaseBoardColumn,
+    type DatabaseLabel,
+    type DatabaseTask,
+    mapDatabaseColumn,
+    mapDatabaseLabel,
+    mapDatabaseTask,
     sortColumns,
     sortTasksByPosition,
 } from "./board-mappers";
@@ -39,6 +39,8 @@ const TASK_SELECT = `
   id,
   project_id,
   board_id,
+  sprint_id,
+  sprint_position,
   title,
   description,
   status,

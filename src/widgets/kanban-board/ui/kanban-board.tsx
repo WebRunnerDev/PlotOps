@@ -19,6 +19,7 @@ import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
     type BoardColumn,
     type BoardTaskFilters,
@@ -30,11 +31,12 @@ import {
     TaskDrawer,
 } from "@/features/tasks";
 import { useBoardContext } from "@/features/tasks/model/board-context";
-import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useBoardSprints } from "@/features/tasks/model/use-sprints";
+import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
-import { Spinner } from "@/shared/shadcn/ui/spinner";
 
+import { BoardLoading } from "./board-loading";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanFilters } from "./kanban-filters";
 
@@ -56,19 +58,22 @@ const dropAnimation: DropAnimation = {
 // rather than the dragged rect's center — a wide column overlay would otherwise
 // bias the collision to the neighbor on its right. Tasks keep the corner-based
 // detection for accurate cross-column placement.
-const collisionDetection: CollisionDetection = (args) => {
-    if (args.active.data.current?.type === "column") {
-        const columnContainers = args.droppableContainers.filter(
-            (container) => container.data.current?.type === "column",
+const collisionDetection: CollisionDetection = (arguments_) => {
+    if (arguments_.active.data.current?.type === "column") {
+        const columnContainers = arguments_.droppableContainers.filter(
+            (container) => container.data.current?.type === "column"
         );
         const pointerCollisions = pointerWithin({
-            ...args,
+            ...arguments_,
             droppableContainers: columnContainers,
         });
         if (pointerCollisions.length > 0) return pointerCollisions;
-        return closestCenter({ ...args, droppableContainers: columnContainers });
+        return closestCenter({
+            ...arguments_,
+            droppableContainers: columnContainers,
+        });
     }
-    return closestCorners(args);
+    return closestCorners(arguments_);
 };
 
 type KanbanBoardProperties = {
@@ -85,6 +90,7 @@ export function KanbanBoard({
     const { t } = useTranslation("board");
     const {
         addColumn,
+        boardId,
         columns,
         error,
         isLoading,
@@ -95,6 +101,9 @@ export function KanbanBoard({
         tasks,
     } = useBoardContext();
     const { canManageBoard } = useProjectAccess(projectId);
+    const { data: sprints = [] } = useBoardSprints(boardId);
+    const boardSprintScope = useTasksUiStore((state) => state.boardSprintScope);
+    const activeSprint = sprints.find((sprint) => sprint.state === "active");
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
@@ -104,14 +113,14 @@ export function KanbanBoard({
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: { distance: 6 },
-        }),
+        })
     );
 
     const columnIds = columns.map((column) => column.id);
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
-        [labels, projectId],
+        [labels, projectId]
     );
 
     const labelsById = useMemo(() => {
@@ -122,10 +131,13 @@ export function KanbanBoard({
         return map;
     }, [projectLabels]);
 
-    const filteredTasks = useMemo(
-        () => filterTasks(tasks, filters),
-        [filters, tasks],
-    );
+    const filteredTasks = useMemo(() => {
+        const scoped =
+            boardSprintScope === "active" && activeSprint
+                ? tasks.filter((task) => task.sprintId === activeSprint.id)
+                : tasks;
+        return filterTasks(scoped, filters);
+    }, [activeSprint, boardSprintScope, filters, tasks]);
 
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
@@ -133,8 +145,9 @@ export function KanbanBoard({
             const resolved =
                 task.labelIds
                     ?.map((id) => labelsById.get(id))
-                    .filter((label): label is ProjectLabel => label !== undefined) ??
-                [];
+                    .filter(
+                        (label): label is ProjectLabel => label !== undefined
+                    ) ?? [];
             map.set(task.id, resolved);
         }
         return map;
@@ -162,14 +175,14 @@ export function KanbanBoard({
 
         if (type === "column") {
             setActiveColumn(
-                columns.find((column) => column.id === event.active.id),
+                columns.find((column) => column.id === event.active.id)
             );
             return;
         }
 
         if (type === "task") {
             setActiveTask(
-                filteredTasks.find((item) => item.id === event.active.id),
+                filteredTasks.find((item) => item.id === event.active.id)
             );
         }
     };
@@ -232,11 +245,7 @@ export function KanbanBoard({
     };
 
     if (isLoading) {
-        return (
-            <div className="flex flex-1 items-center justify-center py-16">
-                <Spinner className="size-8 text-primary" />
-            </div>
-        );
+        return <BoardLoading variant="columns" />;
     }
 
     if (error) {
@@ -265,8 +274,11 @@ export function KanbanBoard({
                 onDragStart={handleDragStart}
                 sensors={sensors}
             >
-                <SortableContext items={columnIds} strategy={rectSortingStrategy}>
-                    <div className="flex min-h-0 min-w-full w-max flex-1 gap-3">
+                <SortableContext
+                    items={columnIds}
+                    strategy={rectSortingStrategy}
+                >
+                    <div className="flex min-h-0 min-w-full w-max flex-1 gap-0">
                         {columns.map((column) => (
                             <KanbanColumn
                                 key={column.id}
@@ -275,7 +287,7 @@ export function KanbanBoard({
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
                                 tasks={filteredTasks.filter(
-                                    (task) => task.status === column.id,
+                                    (task) => task.status === column.id
                                 )}
                             />
                         ))}
@@ -306,8 +318,8 @@ export function KanbanBoard({
                         </div>
                     ) : undefined}
                     {activeColumn ? (
-                        <div className="flex h-40 w-72 items-start rounded-xl bg-muted/80 p-3 opacity-95 shadow-lg ring-1 ring-primary/40">
-                            <p className="text-ui font-medium">
+                        <div className="flex h-40 w-72 items-start border border-border bg-card/95 p-3 opacity-95 shadow-lg ring-1 ring-primary/40">
+                            <p className="text-meta font-medium">
                                 {activeColumn.name}
                             </p>
                         </div>

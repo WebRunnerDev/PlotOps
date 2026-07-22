@@ -22,6 +22,8 @@ import { Route as mainProjectsProjectIdRouteRouteImport } from './../routes/(mai
 import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(main)/projects/$projectId/index'
 import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
 import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
+import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
+import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
 
 const mainRouteRoute = mainRouteRouteImport.update({
   id: '/(main)',
@@ -91,6 +93,18 @@ const mainProjectsProjectIdBoardsBoardIdRoute =
     path: '/boards/$boardId',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainProjectsProjectIdBoardsBoardIdIndexRoute =
+  mainProjectsProjectIdBoardsBoardIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => mainProjectsProjectIdBoardsBoardIdRoute,
+  } as any)
+const mainProjectsProjectIdBoardsBoardIdBacklogRoute =
+  mainProjectsProjectIdBoardsBoardIdBacklogRouteImport.update({
+    id: '/backlog',
+    path: '/backlog',
+    getParentRoute: () => mainProjectsProjectIdBoardsBoardIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -104,7 +118,9 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
-  '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRoute
+  '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
+  '/projects/$projectId/boards/$boardId/': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,7 +133,8 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
-  '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRoute
+  '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
+  '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,7 +150,9 @@ export interface FileRoutesById {
   '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/(main)/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
-  '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRoute
+  '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  '/(main)/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
+  '/(main)/projects/$projectId/boards/$boardId/': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +169,8 @@ export interface FileRouteTypes {
     | '/projects/$projectId/settings'
     | '/projects/$projectId/'
     | '/projects/$projectId/boards/$boardId'
+    | '/projects/$projectId/boards/$boardId/backlog'
+    | '/projects/$projectId/boards/$boardId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -162,6 +183,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/projects/$projectId/settings'
     | '/projects/$projectId'
+    | '/projects/$projectId/boards/$boardId/backlog'
     | '/projects/$projectId/boards/$boardId'
   id:
     | '__root__'
@@ -178,6 +200,8 @@ export interface FileRouteTypes {
     | '/(main)/projects/$projectId/settings'
     | '/(main)/projects/$projectId/'
     | '/(main)/projects/$projectId/boards/$boardId'
+    | '/(main)/projects/$projectId/boards/$boardId/backlog'
+    | '/(main)/projects/$projectId/boards/$boardId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -281,13 +305,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
+    '/(main)/projects/$projectId/boards/$boardId/': {
+      id: '/(main)/projects/$projectId/boards/$boardId/'
+      path: '/'
+      fullPath: '/projects/$projectId/boards/$boardId/'
+      preLoaderRoute: typeof mainProjectsProjectIdBoardsBoardIdIndexRouteImport
+      parentRoute: typeof mainProjectsProjectIdBoardsBoardIdRoute
+    }
+    '/(main)/projects/$projectId/boards/$boardId/backlog': {
+      id: '/(main)/projects/$projectId/boards/$boardId/backlog'
+      path: '/backlog'
+      fullPath: '/projects/$projectId/boards/$boardId/backlog'
+      preLoaderRoute: typeof mainProjectsProjectIdBoardsBoardIdBacklogRouteImport
+      parentRoute: typeof mainProjectsProjectIdBoardsBoardIdRoute
+    }
   }
 }
+
+interface mainProjectsProjectIdBoardsBoardIdRouteChildren {
+  mainProjectsProjectIdBoardsBoardIdBacklogRoute: typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
+  mainProjectsProjectIdBoardsBoardIdIndexRoute: typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
+}
+
+const mainProjectsProjectIdBoardsBoardIdRouteChildren: mainProjectsProjectIdBoardsBoardIdRouteChildren =
+  {
+    mainProjectsProjectIdBoardsBoardIdBacklogRoute:
+      mainProjectsProjectIdBoardsBoardIdBacklogRoute,
+    mainProjectsProjectIdBoardsBoardIdIndexRoute:
+      mainProjectsProjectIdBoardsBoardIdIndexRoute,
+  }
+
+const mainProjectsProjectIdBoardsBoardIdRouteWithChildren =
+  mainProjectsProjectIdBoardsBoardIdRoute._addFileChildren(
+    mainProjectsProjectIdBoardsBoardIdRouteChildren,
+  )
 
 interface mainProjectsProjectIdRouteRouteChildren {
   mainProjectsProjectIdSettingsRoute: typeof mainProjectsProjectIdSettingsRoute
   mainProjectsProjectIdIndexRoute: typeof mainProjectsProjectIdIndexRoute
-  mainProjectsProjectIdBoardsBoardIdRoute: typeof mainProjectsProjectIdBoardsBoardIdRoute
+  mainProjectsProjectIdBoardsBoardIdRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
 }
 
 const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteChildren =
@@ -295,7 +351,7 @@ const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteCh
     mainProjectsProjectIdSettingsRoute: mainProjectsProjectIdSettingsRoute,
     mainProjectsProjectIdIndexRoute: mainProjectsProjectIdIndexRoute,
     mainProjectsProjectIdBoardsBoardIdRoute:
-      mainProjectsProjectIdBoardsBoardIdRoute,
+      mainProjectsProjectIdBoardsBoardIdRouteWithChildren,
   }
 
 const mainProjectsProjectIdRouteRouteWithChildren =
