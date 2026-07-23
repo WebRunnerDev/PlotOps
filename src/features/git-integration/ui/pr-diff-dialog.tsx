@@ -33,11 +33,20 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type DiffTheme = "dark" | "light";
 
+type PrDiffDialogProperties = {
+    onClose: () => void;
+    open: boolean;
+    prNumber: number;
+    prTitle: string;
+    repoFullName: string;
+    token: string;
+};
+
 function useDocumentTheme(): DiffTheme {
     const [theme, setTheme] = useState<DiffTheme>(() =>
         globalThis.document?.documentElement.classList.contains("dark")
             ? "dark"
-            : "light",
+            : "light"
     );
 
     useEffect(() => {
@@ -57,130 +66,12 @@ function useDocumentTheme(): DiffTheme {
     return theme;
 }
 
-type PrDiffDialogProperties = {
-    onClose: () => void;
-    open: boolean;
-    prNumber: number;
-    prTitle: string;
-    repoFullName: string;
-    token: string;
-};
-
 const STATUS_CLASS: Record<string, string> = {
     added: "text-emerald-500",
     modified: "text-sky-400",
     removed: "text-red-500",
     renamed: "text-amber-400",
 };
-
-function FileEntry({
-    file,
-    isActive,
-    onClick,
-}: {
-    file: GitPrFile;
-    isActive: boolean;
-    onClick: () => void;
-}) {
-    const short = file.filename.split("/").pop() ?? file.filename;
-    return (
-        <button
-            className={cn(
-                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-ui transition-colors hover:bg-muted",
-                isActive && "bg-muted",
-            )}
-            onClick={onClick}
-            title={file.filename}
-            type="button"
-        >
-            <FileCode
-                aria-hidden
-                className={cn(
-                    "size-3.5 shrink-0",
-                    STATUS_CLASS[file.status] ?? "text-muted-foreground",
-                )}
-            />
-            <span className="min-w-0 flex-1 truncate font-mono text-xs">
-                {short}
-            </span>
-            <span className="flex shrink-0 items-center gap-1 text-meta">
-                <Plus aria-hidden className="size-3 text-emerald-500" />
-                <span className="text-emerald-500">{file.additions}</span>
-                <Minus aria-hidden className="size-3 text-red-500" />
-                <span className="text-red-500">{file.deletions}</span>
-            </span>
-        </button>
-    );
-}
-
-function FileDiffPanel({
-    file,
-    mode,
-    theme,
-}: {
-    file: GitPrFile;
-    mode: DiffModeEnum;
-    theme: DiffTheme;
-}) {
-    const { t } = useTranslation("board");
-
-    const diffFile = useMemo(() => {
-        const hunk = wrapGithubPatch(file);
-        if (!hunk) return undefined;
-
-        const lang = langFromFilename(file.filename);
-        const oldName =
-            file.status === "added"
-                ? "/dev/null"
-                : (file.previous_filename ?? file.filename);
-        const newName =
-            file.status === "removed" ? "/dev/null" : file.filename;
-
-        const instance = new DiffFile(
-            oldName,
-            "",
-            newName,
-            "",
-            [hunk],
-            lang,
-            lang,
-        );
-        instance.initTheme(theme);
-        instance.init();
-        instance.buildSplitDiffLines();
-        instance.buildUnifiedDiffLines();
-        return instance;
-    }, [file, theme]);
-
-    if (!file.patch) {
-        return (
-            <div className="flex h-full min-h-48 items-center justify-center text-muted-foreground text-ui">
-                {t("git.binaryFile")}
-            </div>
-        );
-    }
-
-    if (!diffFile || diffFile.splitLineLength === 0) {
-        return (
-            <pre className="overflow-auto p-4 font-mono text-code text-foreground whitespace-pre-wrap">
-                {file.patch}
-            </pre>
-        );
-    }
-
-    return (
-        <div className="min-h-0 w-full">
-            <DiffView
-                diffFile={diffFile}
-                diffViewFontSize={12}
-                diffViewHighlight
-                diffViewMode={mode}
-                diffViewTheme={theme}
-                diffViewWrap
-            />
-        </div>
-    );
-}
 
 export function PrDiffDialog({
     onClose,
@@ -240,24 +131,22 @@ export function PrDiffDialog({
             }
         };
 
-        window.addEventListener("keydown", onKeyDown, true);
-        return () => window.removeEventListener("keydown", onKeyDown, true);
+        globalThis.addEventListener("keydown", onKeyDown, true);
+        return () => globalThis.removeEventListener("keydown", onKeyDown, true);
     }, [fullscreen]);
 
     const displayFile =
         files.find((file) => file.filename === activeFilename) ?? files[0];
 
-    const totals = useMemo(
-        () =>
-            files.reduce(
-                (acc, file) => ({
-                    additions: acc.additions + file.additions,
-                    deletions: acc.deletions + file.deletions,
-                }),
-                { additions: 0, deletions: 0 },
-            ),
-        [files],
-    );
+    const totals = useMemo(() => {
+        let additions = 0;
+        let deletions = 0;
+        for (const file of files) {
+            additions += file.additions;
+            deletions += file.deletions;
+        }
+        return { additions, deletions };
+    }, [files]);
 
     return (
         <Dialog
@@ -271,7 +160,7 @@ export function PrDiffDialog({
                     "flex max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none",
                     fullscreen
                         ? "inset-0 top-0 left-0 h-dvh w-screen max-h-none translate-x-0 translate-y-0 rounded-none"
-                        : "h-[85vh] w-[min(96vw,72rem)]",
+                        : "h-[85vh] w-[min(96vw,72rem)]"
                 )}
                 showCloseButton={false}
             >
@@ -382,14 +271,14 @@ export function PrDiffDialog({
                         {t("git.noFiles")}
                     </div>
                 ) : (
-                    <div className="flex min-h-0 flex-1">
-                        <aside className="flex w-56 shrink-0 flex-col border-r border-border md:w-64">
-                            <p className="px-3 py-2 text-meta text-muted-foreground">
+                    <div className="flex min-h-0 flex-1 overflow-hidden">
+                        <aside className="flex min-h-0 w-56 shrink-0 flex-col overflow-hidden border-r border-border md:w-64">
+                            <p className="shrink-0 px-3 py-2 text-meta text-muted-foreground">
                                 {t("git.filesChanged", {
                                     count: files.length,
                                 })}
                             </p>
-                            <ScrollArea className="flex-1">
+                            <ScrollArea className="min-h-0 flex-1">
                                 <div className="flex flex-col gap-0.5 px-2 pb-2">
                                     {files.map((file) => (
                                         <FileEntry
@@ -436,5 +325,113 @@ export function PrDiffDialog({
                 )}
             </DialogContent>
         </Dialog>
+    );
+}
+
+function FileDiffPanel({
+    file,
+    mode,
+    theme,
+}: {
+    file: GitPrFile;
+    mode: DiffModeEnum;
+    theme: DiffTheme;
+}) {
+    const { t } = useTranslation("board");
+
+    const diffFile = useMemo(() => {
+        const hunk = wrapGithubPatch(file);
+        if (!hunk) return;
+
+        const lang = langFromFilename(file.filename);
+        const oldName =
+            file.status === "added"
+                ? "/dev/null"
+                : (file.previous_filename ?? file.filename);
+        const newName = file.status === "removed" ? "/dev/null" : file.filename;
+
+        const instance = new DiffFile(
+            oldName,
+            "",
+            newName,
+            "",
+            [hunk],
+            lang,
+            lang
+        );
+        instance.initTheme(theme);
+        instance.init();
+        instance.buildSplitDiffLines();
+        instance.buildUnifiedDiffLines();
+        return instance;
+    }, [file, theme]);
+
+    if (!file.patch) {
+        return (
+            <div className="flex h-full min-h-48 items-center justify-center text-muted-foreground text-ui">
+                {t("git.binaryFile")}
+            </div>
+        );
+    }
+
+    if (!diffFile || diffFile.splitLineLength === 0) {
+        return (
+            <pre className="overflow-auto p-4 font-mono text-code text-foreground whitespace-pre-wrap">
+                {file.patch}
+            </pre>
+        );
+    }
+
+    return (
+        <div className="min-h-0 w-full">
+            <DiffView
+                diffFile={diffFile}
+                diffViewFontSize={12}
+                diffViewHighlight
+                diffViewMode={mode}
+                diffViewTheme={theme}
+                diffViewWrap
+            />
+        </div>
+    );
+}
+
+function FileEntry({
+    file,
+    isActive,
+    onClick,
+}: {
+    file: GitPrFile;
+    isActive: boolean;
+    onClick: () => void;
+}) {
+    const short = file.filename.split("/").pop() ?? file.filename;
+    return (
+        <button
+            className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-ui transition-colors hover:bg-muted",
+                isActive && "bg-muted"
+            )}
+            onClick={onClick}
+            title={file.filename}
+            type="button"
+        >
+            <FileCode
+                aria-hidden
+                className={cn(
+                    "size-3.5 shrink-0",
+                    STATUS_CLASS[file.status] ?? "text-muted-foreground"
+                )}
+            />
+            <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                {short}
+            </span>
+            <span className="flex shrink-0 items-center gap-1 text-meta">
+                <Plus aria-hidden className="size-3 text-emerald-500" />
+                <span className="text-emerald-500">{file.additions}</span>
+                <Minus aria-hidden className="size-3 text-red-500" />
+                <span className="text-red-500">{file.deletions}</span>
+            </span>
+        </button>
     );
 }

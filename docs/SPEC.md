@@ -62,26 +62,27 @@
 
 > Captured during domain grilling (Team & Permissions). Not in current MVP scope — do not implement until explicitly pulled in.
 
-| Item                                     | Notes                                                                                           |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Separate **Team** entity above Project   | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed.      |
-| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Project”.                              |
-| Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough. |
-| Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                       |
-| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Project Role.                                |
-| Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                          |
-| Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                       |
-| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.               |
-| Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                        |
-| Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                         |
-| Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                 |
-| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).     |
-| Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                          |
-| Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                             |
-| Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                     |
-| Per-task carryover targets on Close      | MVP: one target for all incomplete (Backlog or chosen Draft).                                   |
-| Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                    |
-| Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                         |
+| Item                                     | Notes                                                                                                                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Separate **Team** entity above Project   | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed.                                             |
+| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Project”.                                                                     |
+| Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough.                                        |
+| Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                                                              |
+| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Project Role.                                                                       |
+| Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                 |
+| Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                                                              |
+| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.                                                      |
+| Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                                                               |
+| Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                                                                |
+| Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                                                        |
+| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).                                            |
+| Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                                                                 |
+| Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                                                                    |
+| Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                                                            |
+| Per-task carryover targets on Close      | MVP: one target for all incomplete (Backlog or chosen Draft).                                                                          |
+| Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                                                           |
+| Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                                                                |
+| In-app PR merge / approve / open PR      | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
 
 ## Deferred from Figma Make
 
@@ -144,7 +145,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 
 - In-task tab: commits, PR status (Open / Merged / Draft), and **code diff** — without leaving the app.
 - Diff rendering via `react-diff-viewer` or similar.
-- Branch generator: `git checkout -b feature/issue-42-login-fix` from task ID + title.
+- Branch generator: `git checkout -b feature/issue-42-login-form` from task ID + title.
+- **Merge stays on GitHub.** PlotOps is view/link/sync only (diff, status, branch/PR link). No in-app Merge / Approve / create-PR write actions. After a merge on GitHub, `github-webhook` updates the linked task (e.g. → `DONE`).
 
 ### 3. CI/CD Dashboard
 
@@ -303,11 +305,12 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 - Code diff viewer for PRs (`@git-diff-view`: split/unified, syntax highlight, file list).
 - Branch name generator, link existing branch, or skip dedicated branch.
 - Link PR by number/URL → persist `pr_*` on task; view diff without a feature branch.
+- No Merge button in-app — merge happens on GitHub (see Core Features §2 / Deferred).
 
 ### Stage 5: Webhooks (Week 4)
 
 - Register GitHub App; webhooks for `pull_request`, `push`.
-- Edge Function `github-webhook` syncs merge → task `DONE`.
+- Edge Function `github-webhook` syncs merge on GitHub → task `DONE` (not an in-app merge).
 
 ### Stage 6: Polish & Deploy (Final)
 
