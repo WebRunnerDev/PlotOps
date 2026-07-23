@@ -1,12 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
 
+import type { ProjectLabel } from "@/features/labels/model/types";
 import type {
     BoardTasksCache,
     ProjectBoard,
 } from "@/features/tasks/api/tasks-api";
-import type { BoardColumn, ProjectLabel } from "@/features/tasks/model/types";
+import type { BoardColumn } from "@/features/tasks/model/types";
 
-import { boardKeys, labelKeys, taskKeys } from "./query-keys";
+import { labelKeys } from "@/features/labels/model/query-keys";
+
+import { boardKeys, taskKeys } from "./query-keys";
 
 export type { BoardTasksCache } from "@/features/tasks/api/tasks-api";
 

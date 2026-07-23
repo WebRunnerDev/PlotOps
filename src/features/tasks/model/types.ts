@@ -4,26 +4,8 @@ export type BoardColumn = {
     name: string;
 };
 
-export type LabelColor =
-    | "amber"
-    | "blue"
-    | "cyan"
-    | "gray"
-    | "green"
-    | "orange"
-    | "pink"
-    | "purple"
-    | "red";
-
-/** Project-scoped label. Future: copy/import labels across projects. */
-export type ProjectLabel = {
-    color: LabelColor;
-    /** Custom hex color (`#rrggbb`). Overrides the `color` preset when set. */
-    customColor?: string;
-    id: string;
-    name: string;
-    projectId: string;
-};
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export type { LabelColor, ProjectLabel } from "@/features/labels/model/types";
 
 export type Task = {
     archivedAt?: string;

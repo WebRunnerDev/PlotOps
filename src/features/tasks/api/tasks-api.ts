@@ -1,27 +1,33 @@
+import type { ProjectLabel } from "@/features/labels/model/types";
 import type {
     BoardColumn,
-    LabelColor,
-    ProjectLabel,
     Task,
     TaskPriority,
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
 
+import { fetchProjectLabels } from "@/features/labels/api/labels-api";
 import { DEFAULT_KANBAN_COLUMNS } from "@/features/tasks/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 import {
     type DatabaseBoardColumn,
-    type DatabaseLabel,
     type DatabaseTask,
     mapDatabaseColumn,
-    mapDatabaseLabel,
     mapDatabaseTask,
     sortColumns,
     sortTasksByPosition,
 } from "./board-mappers";
 import { fetchBoardColumnIds } from "./boards-api";
+
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export {
+    createProjectLabel,
+    deleteProjectLabel,
+    fetchProjectLabels,
+    updateProjectLabel,
+} from "@/features/labels/api/labels-api";
 
 export type BoardTasksCache = {
     taskPositions: Map<string, number>;
@@ -125,27 +131,6 @@ export async function createBoardColumn(
     return id as TaskStatus;
 }
 
-export async function createProjectLabel(
-    projectId: string,
-    name: string,
-    color: LabelColor,
-    customColor?: string
-) {
-    const { data, error } = await supabase
-        .from("labels")
-        .insert({
-            color,
-            custom_color: customColor ?? null,
-            name,
-            project_id: projectId,
-        })
-        .select("id, project_id, name, color, custom_color")
-        .single();
-
-    if (error) throw error;
-    return mapDatabaseLabel(data as DatabaseLabel);
-}
-
 export async function createTaskRecord(
     projectId: string,
     boardId: string,
@@ -221,11 +206,6 @@ export async function deleteBoardColumn(
         .eq("board_id", boardId)
         .eq("id", columnId);
 
-    if (error) throw error;
-}
-
-export async function deleteProjectLabel(labelId: string) {
-    const { error } = await supabase.from("labels").delete().eq("id", labelId);
     if (error) throw error;
 }
 
@@ -306,21 +286,6 @@ export async function fetchProjectBoard(
         taskPositions: tasksCache.taskPositions,
         tasks: tasksCache.tasks,
     };
-}
-
-export async function fetchProjectLabels(
-    projectId: string
-): Promise<ProjectLabel[]> {
-    const { data, error } = await supabase
-        .from("labels")
-        .select("id, project_id, name, color, custom_color")
-        .eq("project_id", projectId)
-        .order("name", { ascending: true });
-
-    if (error) throw error;
-    return ((data ?? []) as DatabaseLabel[]).map((row) =>
-        mapDatabaseLabel(row)
-    );
 }
 
 export async function moveTaskToBoard(
@@ -486,22 +451,6 @@ export function sortBoardColumns(
     positions: Map<string, number>
 ) {
     return sortColumns(columns, positions);
-}
-
-export async function updateProjectLabel(
-    labelId: string,
-    patch: {
-        color?: LabelColor;
-        custom_color?: null | string;
-        name?: string;
-        project_id?: string;
-    }
-) {
-    const { error } = await supabase
-        .from("labels")
-        .update(patch)
-        .eq("id", labelId);
-    if (error) throw error;
 }
 
 export async function updateTaskRecord(

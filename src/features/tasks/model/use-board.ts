@@ -12,8 +12,6 @@ import { toast } from "sonner";
 import type { ProjectBoardRecord } from "@/features/tasks/api/boards-api";
 import type {
     BoardColumn,
-    LabelColor,
-    ProjectLabel,
     Task,
     TaskActivityChange,
     TaskPullRequest,
@@ -21,18 +19,17 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
+import { resolveLabelNames } from "@/features/labels/model/resolve-label-names";
+import { useProjectLabels } from "@/features/labels/model/use-project-labels";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
     createBoardColumn,
-    createProjectLabel,
     createTaskRecord,
     deleteBoardColumn,
-    deleteProjectLabel,
     deleteTaskRecord,
     fetchBoardColumns,
     fetchBoardTasks,
-    fetchProjectLabels,
     moveTaskToBoard,
     orderColumnsByIds,
     persistTaskMoves,
@@ -41,7 +38,6 @@ import {
     reorderBoardColumns,
     replaceTaskLabels,
     restoreTaskRecord,
-    updateProjectLabel,
     updateTaskRecord,
 } from "@/features/tasks/api/tasks-api";
 import {
@@ -56,12 +52,7 @@ import {
     invalidateBoardWorkspaceSlice,
     setBoardSnapshot,
 } from "@/features/tasks/model/board-query-cache";
-import { LABEL_COLORS } from "@/features/tasks/model/constants";
-import {
-    boardKeys,
-    labelKeys,
-    taskKeys,
-} from "@/features/tasks/model/query-keys";
+import { boardKeys, taskKeys } from "@/features/tasks/model/query-keys";
 import { activityKey } from "@/features/tasks/model/use-task-activity";
 import { supabase } from "@/shared/api/supabase";
 
@@ -91,17 +82,12 @@ type TaskMoveUpdate = {
 
 export function useBoard(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
+    const labelsApi = useProjectLabels(projectId);
 
     const columnsQuery = useQuery({
         enabled: Boolean(projectId && boardId),
         queryFn: () => fetchBoardColumns(projectId, boardId),
         queryKey: boardKeys.columns(projectId, boardId),
-    });
-
-    const labelsQuery = useQuery({
-        enabled: Boolean(projectId),
-        queryFn: () => fetchProjectLabels(projectId),
-        queryKey: labelKeys.project(projectId),
     });
 
     const tasksQuery = useQuery({
@@ -120,9 +106,6 @@ export function useBoard(projectId: string, boardId: string) {
                     projectId,
                     "columns"
                 );
-            },
-            onLabelsChange: () => {
-                invalidateBoardWorkspaceSlice(queryClient, projectId, "labels");
             },
             onTasksChange: () => {
                 invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -287,116 +270,6 @@ export function useBoard(projectId: string, boardId: string) {
         },
     });
 
-    const addLabelMutation = useMutation({
-        mutationFn: ({
-            color,
-            customColor,
-            name,
-        }: {
-            color?: LabelColor;
-            customColor?: string;
-            name: string;
-        }) => {
-            const projectLabels =
-                getBoardSnapshot(queryClient, projectId, boardId)?.labels ?? [];
-            const nextColor =
-                color ??
-                LABEL_COLORS[projectLabels.length % LABEL_COLORS.length]!;
-            return createProjectLabel(projectId, name, nextColor, customColor);
-        },
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const renameLabelMutation = useMutation({
-        mutationFn: ({ labelId, name }: { labelId: string; name: string }) =>
-            updateProjectLabel(labelId, { name }),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const updateLabelColorMutation = useMutation({
-        mutationFn: ({
-            color,
-            labelId,
-        }: {
-            color: LabelColor;
-            labelId: string;
-        }) => updateProjectLabel(labelId, { color, custom_color: null }),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const setLabelCustomColorMutation = useMutation({
-        mutationFn: ({ hex, labelId }: { hex: string; labelId: string }) =>
-            updateProjectLabel(labelId, { custom_color: hex }),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const deleteLabelMutation = useMutation({
-        mutationFn: (labelId: string) => deleteProjectLabel(labelId),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const copyLabelMutation = useMutation({
-        mutationFn: ({
-            label,
-            targetProjectId,
-        }: {
-            label: ProjectLabel;
-            targetProjectId: string;
-        }) =>
-            createProjectLabel(
-                targetProjectId,
-                label.name,
-                label.color,
-                label.customColor
-            ),
-        onSuccess: (_data, variables) => {
-            void queryClient.invalidateQueries({
-                queryKey: labelKeys.project(projectId),
-            });
-            void queryClient.invalidateQueries({
-                queryKey: labelKeys.project(variables.targetProjectId),
-            });
-            void queryClient.invalidateQueries({ queryKey: taskKeys.all });
-        },
-    });
-
-    const moveLabelMutation = useMutation({
-        mutationFn: async ({
-            label,
-            targetProjectId,
-        }: {
-            label: ProjectLabel;
-            targetProjectId: string;
-        }) => {
-            await createProjectLabel(
-                targetProjectId,
-                label.name,
-                label.color,
-                label.customColor
-            );
-            await deleteProjectLabel(label.id);
-        },
-        onSuccess: (_data, variables) => {
-            void queryClient.invalidateQueries({
-                queryKey: labelKeys.project(projectId),
-            });
-            void queryClient.invalidateQueries({
-                queryKey: labelKeys.project(variables.targetProjectId),
-            });
-            void queryClient.invalidateQueries({ queryKey: taskKeys.all });
-        },
-    });
-
     const moveTaskToBoardMutation = useMutation({
         mutationFn: async ({
             activityChanges,
@@ -521,28 +394,17 @@ export function useBoard(projectId: string, boardId: string) {
     });
 
     const board =
-        columnsQuery.data && labelsQuery.data && tasksQuery.data
+        columnsQuery.data && tasksQuery.data && !labelsApi.isLoading
             ? composeProjectBoard(
                   columnsQuery.data,
-                  labelsQuery.data,
+                  labelsApi.labels,
                   tasksQuery.data
               )
             : undefined;
 
     return {
         addColumn: (name: string) => addColumnMutation.mutateAsync(name),
-        addLabel: async (
-            name: string,
-            color?: LabelColor,
-            customColor?: string
-        ) => {
-            const label = await addLabelMutation.mutateAsync({
-                color,
-                customColor,
-                name,
-            });
-            return label.id;
-        },
+        addLabel: labelsApi.addLabel,
         archiveTask: async (taskId: string) => {
             setBoardSnapshot(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
@@ -557,18 +419,7 @@ export function useBoard(projectId: string, boardId: string) {
         },
         boardId,
         columns: board?.columns ?? [],
-        copyLabelToProject: async (
-            labelId: string,
-            targetProjectId: string
-        ) => {
-            const label = board?.labels.find((item) => item.id === labelId);
-            if (!label || label.projectId === targetProjectId) return;
-            const created = await copyLabelMutation.mutateAsync({
-                label,
-                targetProjectId,
-            });
-            return created.id;
-        },
+        copyLabelToProject: labelsApi.copyLabelToProject,
         createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
             createTaskMutation.mutateAsync({ status, taskType, title }),
         deleteColumn: async (
@@ -579,8 +430,7 @@ export function useBoard(projectId: string, boardId: string) {
             await deleteColumnMutation.mutateAsync({ columnId, moveTasksTo });
             return true;
         },
-        deleteLabel: (labelId: string) =>
-            deleteLabelMutation.mutateAsync(labelId),
+        deleteLabel: labelsApi.deleteLabel,
         deleteTask: async (taskId: string) => {
             setBoardSnapshot(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
@@ -599,20 +449,13 @@ export function useBoard(projectId: string, boardId: string) {
             await deleteTaskMutation.mutateAsync(taskId);
         },
         error:
-            columnsQuery.error ?? labelsQuery.error ?? tasksQuery.error ?? null,
+            columnsQuery.error ?? labelsApi.error ?? tasksQuery.error ?? null,
         isLoading:
             columnsQuery.isLoading ||
-            labelsQuery.isLoading ||
+            labelsApi.isLoading ||
             tasksQuery.isLoading,
-        labels: board?.labels ?? [],
-        moveLabelToProject: async (
-            labelId: string,
-            targetProjectId: string
-        ) => {
-            const label = board?.labels.find((item) => item.id === labelId);
-            if (!label || label.projectId === targetProjectId) return;
-            await moveLabelMutation.mutateAsync({ label, targetProjectId });
-        },
+        labels: labelsApi.labels,
+        moveLabelToProject: labelsApi.moveLabelToProject,
         moveTaskToColumn: (activeId: string, overId: string) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!snapshot) return;
@@ -718,18 +561,7 @@ export function useBoard(projectId: string, boardId: string) {
             await renameColumnMutation.mutateAsync({ columnId, name: trimmed });
             return true;
         },
-        renameLabel: async (labelId: string, name: string) => {
-            const trimmed = name.trim();
-            if (!trimmed) return false;
-            const duplicate = (board?.labels ?? []).some(
-                (label) =>
-                    label.id !== labelId &&
-                    label.name.toLowerCase() === trimmed.toLowerCase()
-            );
-            if (duplicate) return false;
-            await renameLabelMutation.mutateAsync({ labelId, name: trimmed });
-            return true;
-        },
+        renameLabel: labelsApi.renameLabel,
         reorderColumns: (activeId: TaskStatus, overId: TaskStatus) => {
             const current = board?.columns ?? [];
             const oldIndex = current.findIndex(
@@ -774,11 +606,9 @@ export function useBoard(projectId: string, boardId: string) {
         restoreTask: async (taskId: string) => {
             await restoreTaskMutation.mutateAsync(taskId);
         },
-        setLabelCustomColor: (labelId: string, hex: string) =>
-            setLabelCustomColorMutation.mutateAsync({ hex, labelId }),
+        setLabelCustomColor: labelsApi.setLabelCustomColor,
         tasks: board?.tasks ?? [],
-        updateLabelColor: (labelId: string, color: LabelColor) =>
-            updateLabelColorMutation.mutateAsync({ color, labelId }),
+        updateLabelColor: labelsApi.updateLabelColor,
         updateTaskDetails: (id: string, details: TaskDetailsUpdate) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             const previous = snapshot?.tasks.find((task) => task.id === id);
@@ -1027,16 +857,6 @@ function resolveBoardName(
     return boards?.find((board) => board.id === id)?.name ?? id;
 }
 
-function resolveLabelNames(labels: ProjectLabel[], labelIds: string[] = []) {
-    const byId = new Map(labels.map((label) => [label.id, label.name]));
-    const names: string[] = [];
-    for (const id of labelIds) {
-        const name = byId.get(id);
-        if (name) names.push(name);
-    }
-    return names;
-}
-
 function resolveStatusName(columns: BoardColumn[], status: TaskStatus) {
     return columns.find((column) => column.id === status)?.name ?? status;
 }
@@ -1045,7 +865,6 @@ function subscribeBoardChannel(
     projectId: string,
     handlers: {
         onColumnsChange: () => void;
-        onLabelsChange: () => void;
         onTasksChange: () => void;
     }
 ): () => void {
@@ -1078,16 +897,6 @@ function subscribeBoardChannel(
                 table: "board_columns",
             },
             handlers.onColumnsChange
-        )
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                filter: `project_id=eq.${projectId}`,
-                schema: "public",
-                table: "labels",
-            },
-            handlers.onLabelsChange
         )
         .subscribe();
 

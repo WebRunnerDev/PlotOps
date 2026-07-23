@@ -20,17 +20,11 @@ export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export { BoardProvider, useBoardContext } from "./model/board-context";
 export {
     DEFAULT_KANBAN_COLUMNS,
-    getLabelChipProperties,
-    getLabelDotProperties,
-    isValidHexColor,
     KANBAN_COLUMNS,
-    LABEL_COLOR_CLASS,
-    LABEL_COLORS,
-    LABEL_DOT_CLASS,
     PRIORITY_CLASS,
     TASK_PRIORITIES,
 } from "./model/constants";
-export { boardKeys, labelKeys, taskKeys } from "./model/query-keys";
+export { boardKeys, taskKeys } from "./model/query-keys";
 export type {
     BoardSprintScope,
     Sprint,
@@ -39,8 +33,6 @@ export type {
 } from "./model/sprint-types";
 export type {
     BoardColumn,
-    LabelColor,
-    ProjectLabel,
     Task,
     TaskPriority,
     TaskStatus,
@@ -61,12 +53,28 @@ export { BoardSprintControls } from "./ui/board-sprint-controls";
 export { BoardSwitcher } from "./ui/board-switcher";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { ProjectBoardsSettings } from "./ui/project-boards-settings";
+/** @deprecated Import from `@/features/labels` — temporary shim. */
 export { ProjectLabelsSettings } from "./ui/project-labels-settings";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
 export { TaskGithubPanel } from "./ui/task-github-panel";
+/** @deprecated Import from `@/features/labels` — temporary shim. */
 export { TaskLabelChips } from "./ui/task-label-chips";
+/** @deprecated Import from `@/features/labels` — temporary shim. */
 export { TaskLabelsField } from "./ui/task-labels-field";
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export {
+    getLabelChipProperties,
+    getLabelDotProperties,
+    isValidHexColor,
+    LABEL_COLOR_CLASS,
+    LABEL_COLORS,
+    LABEL_DOT_CLASS,
+} from "@/features/labels";
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export { labelKeys } from "@/features/labels";
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export type { LabelColor, ProjectLabel } from "@/features/labels";
 /** @deprecated Import from `@/features/sprints` — temporary shim. */
 export { sprintKeys } from "@/features/sprints";
 /** @deprecated Import from `@/features/sprints` — temporary shim. */

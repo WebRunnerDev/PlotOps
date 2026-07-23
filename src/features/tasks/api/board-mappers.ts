@@ -1,26 +1,22 @@
 import type {
     BoardColumn,
-    LabelColor,
-    ProjectLabel,
     Task,
     TaskPriority,
     TaskPullRequest,
     TaskType,
 } from "@/features/tasks/model/types";
 
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export {
+    type DatabaseLabel,
+    mapDatabaseLabel,
+} from "@/features/labels/api/label-mappers";
+
 export type DatabaseBoardColumn = {
     board_id: string;
     id: string;
     name: string;
     position: number;
-    project_id: string;
-};
-
-export type DatabaseLabel = {
-    color: string;
-    custom_color: null | string;
-    id: string;
-    name: string;
     project_id: string;
 };
 
@@ -59,18 +55,6 @@ export type DatabaseTask = {
     title: string;
 };
 
-const LABEL_COLORS = new Set<string>([
-    "amber",
-    "blue",
-    "cyan",
-    "gray",
-    "green",
-    "orange",
-    "pink",
-    "purple",
-    "red",
-]);
-
 const TASK_PRIORITIES = new Set<string>(["high", "low", "medium", "urgent"]);
 
 const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
@@ -86,16 +70,6 @@ export function mapDatabaseColumn(row: DatabaseBoardColumn): BoardColumn {
     return {
         id: row.id,
         name: row.name,
-    };
-}
-
-export function mapDatabaseLabel(row: DatabaseLabel): ProjectLabel {
-    return {
-        color: toLabelColor(row.color),
-        customColor: row.custom_color ?? undefined,
-        id: row.id,
-        name: row.name,
-        projectId: row.project_id,
     };
 }
 
@@ -149,10 +123,6 @@ export function sortTasksByPosition(
         (left, right) =>
             (positions.get(left.id) ?? 0) - (positions.get(right.id) ?? 0)
     );
-}
-
-function toLabelColor(value: string): LabelColor {
-    return LABEL_COLORS.has(value) ? (value as LabelColor) : "gray";
 }
 
 function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {

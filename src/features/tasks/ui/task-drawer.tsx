@@ -713,9 +713,13 @@ export function TaskDrawer({
                                         <TaskLabelsField
                                             disabled={!canEdit}
                                             labels={projectLabels}
+                                            onLabelIdsChange={(labelIds) => {
+                                                updateTaskDetails(task.id, {
+                                                    labelIds,
+                                                });
+                                            }}
                                             projectId={projectId}
                                             selectedIds={task.labelIds ?? []}
-                                            taskId={task.id}
                                         />
                                     </div>
 
