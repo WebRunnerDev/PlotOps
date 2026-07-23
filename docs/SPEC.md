@@ -27,12 +27,13 @@
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
+| App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
 
 ## Sprints (MVP)
 
 > Domain glossary: `CONTEXT.md` (Planning). Decision: `docs/adr/0008`.
 
-**Model:** Sprint ⊆ Board. States: `draft` → `active` → `closed` | `canceled`. ≤1 Active per Board; many Drafts. Backlog = Tasks with no `sprint_id`. Start → Commitment snapshot; Active add/remove → Scope change events. Close → user confirms completed (recommend last column) + Carryover incomplete to Backlog or a Draft. Cancel → all Tasks to Backlog. Dates required at Start. Manager+ plans; Contributor views. Kanban toggle: Active sprint | Entire board. No points/KPI/burndown in MVP.
+**Model:** Sprint ⊆ Board. States: `draft` → `active` → `closed` | `canceled`. ≤1 Active per Board; many Drafts. Backlog = Tasks with no `sprint_id`. Start → Commitment snapshot; Active add/remove → Scope change events. Close → user confirms completed (recommend last column) + Carryover incomplete to Backlog or a Draft. Cancel → all Tasks to Backlog (canceled sprints appear in Backlog **Sprint history**). Manager+ may permanently delete closed/canceled history (and cascaded `sprint_events`) for free-tier hygiene. Dates required at Start. Manager+ plans; Contributor views. Kanban toggle: Active sprint | Entire board. No points/KPI/burndown in MVP.
 
 ### Implementation plan
 
@@ -74,6 +75,7 @@
 | Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                        |
 | Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                         |
 | Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                 |
+| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).     |
 | Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                          |
 | Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                             |
 | Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                     |
@@ -85,15 +87,15 @@
 
 > Visual redesign source: Dark-themed CRM Interface Design. Policy: ADR 0007 — skin only; keep existing feature structure. Rows below are Make UI/ideas with **no** matching PlotOps feature yet — do not implement in the redesign pass.
 
-| Item                                                                            | Notes                                                                                                          |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Command palette in board header (`⌘K` search chip)                              | Make chrome; product Cmd+K is still Not started (Progress).                                                    |
-| **Group by** board control                                                      | Not in PlotOps; Make-only.                                                                                     |
-| **Display** board control                                                       | Not in PlotOps; Make-only.                                                                                     |
-| Dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Our dock is account/theme/home-oriented; CI/CD dashboard Not started; do not replace dock IA in the skin pass. |
-| Header **+ New Task** as primary CTA                                            | We add tasks per column; optional later if we want a board-level create entry.                                 |
-| Make Task drawer **two-column** layout (content + meta sidebar)                 | Visual reference only — keep current drawer sections/fields (ADR 0007).                                        |
-| Drawer **DIFF PREVIEW** / **RECENT COMMITS** as first-class Make sections       | Git/diff already live under existing Git tab / panels; do not restructure drawer around Make sections.         |
+| Item                                                                                 | Notes                                                                                                                                          |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command palette in board header (`⌘K` search chip)                                   | Make chrome; product Cmd+K is still Not started (Progress).                                                                                    |
+| **Group by** board control                                                           | Not in PlotOps; Make-only.                                                                                                                     |
+| **Display** board control                                                            | Not in PlotOps; Make-only.                                                                                                                     |
+| Make dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Bottom dock removed — global chrome is top `AppChrome` (account/theme/lang). Board/CI/CD/Branches IA still deferred until those features ship. |
+| Header **+ New Task** as primary CTA                                                 | We add tasks per column; optional later if we want a board-level create entry.                                                                 |
+| Make Task drawer **two-column** layout (content + meta sidebar)                      | Visual reference only — keep current drawer sections/fields (ADR 0007).                                                                        |
+| Drawer **DIFF PREVIEW** / **RECENT COMMITS** as first-class Make sections            | Git/diff already live under existing Git tab / panels; do not restructure drawer around Make sections.                                         |
 
 ## Tech Stack
 
