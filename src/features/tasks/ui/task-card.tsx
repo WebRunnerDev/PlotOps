@@ -23,6 +23,7 @@ import {
     isDeadlineOverdue,
 } from "@/features/tasks/lib/format-deadline";
 import {
+    PRIORITY_CLASS,
     PRIORITY_DOT_CLASS,
     TASK_TYPE_CARD_CLASS,
     TASK_TYPE_ICON_CLASS,
@@ -80,18 +81,26 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
                                 TASK_TYPE_ICON_CLASS[task.type]
                             )}
                         />
-                        {task.priority ? (
-                            <span
-                                aria-hidden
-                                className={cn(
-                                    "size-1.5 shrink-0 rounded-full",
-                                    PRIORITY_DOT_CLASS[task.priority]
-                                )}
-                            />
-                        ) : undefined}
                         <span className="truncate text-meta text-muted-foreground">
                             {task.key}
                         </span>
+                        {task.priority ? (
+                            <span
+                                className={cn(
+                                    "inline-flex shrink-0 items-center gap-1 text-meta",
+                                    PRIORITY_CLASS[task.priority]
+                                )}
+                            >
+                                <span
+                                    aria-hidden
+                                    className={cn(
+                                        "size-1.5 shrink-0 rounded-full",
+                                        PRIORITY_DOT_CLASS[task.priority]
+                                    )}
+                                />
+                                {t(`priority.${task.priority}`)}
+                            </span>
+                        ) : undefined}
                     </span>
                     {task.pr ? (
                         <a

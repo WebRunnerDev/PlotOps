@@ -8,7 +8,10 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { fetchBoardColumnIds } from "@/features/boards";
-import { TASK_TITLE_MAX_LENGTH } from "@/features/tasks/model/constants";
+import {
+    DEFAULT_TASK_PRIORITY,
+    TASK_TITLE_MAX_LENGTH,
+} from "@/features/tasks/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 import {
@@ -126,6 +129,7 @@ export async function createTaskRecord(
             author_id: user?.id ?? null,
             board_id: boardId,
             position,
+            priority: DEFAULT_TASK_PRIORITY,
             project_id: projectId,
             status,
             task_type: taskType,

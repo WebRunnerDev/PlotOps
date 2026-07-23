@@ -19,6 +19,7 @@ export {
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export {
     columnAccentClass,
+    DEFAULT_TASK_PRIORITY,
     PRIORITY_CLASS,
     PRIORITY_DOT_CLASS,
     TASK_PRIORITIES,

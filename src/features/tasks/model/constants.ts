@@ -9,6 +9,9 @@ export const TASK_PRIORITIES: TaskPriority[] = [
     "low",
 ];
 
+/** Default priority for newly created tasks. */
+export const DEFAULT_TASK_PRIORITY: TaskPriority = "medium";
+
 export const PRIORITY_CLASS: Record<TaskPriority, string> = {
     high: "text-orange-500",
     low: "text-muted-foreground",
