@@ -7,7 +7,7 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useBoardSprints } from "@/features/sprints/model/use-sprints";
 import { useSprintsUiStore } from "@/features/sprints/model/use-sprints-ui-store";
 import { StartSprintDialog } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
-import { useBoardContext } from "@/features/tasks/model/board-context";
+import { useBoardTasks } from "@/features/tasks";
 import { Button } from "@/shared/shadcn/ui/button";
 
 type BoardSprintControlsProperties = {
@@ -22,7 +22,7 @@ export function BoardSprintControls({
     const { t } = useTranslation("board");
     const navigate = useNavigate();
     const { canManageBoard } = useProjectAccess(projectId);
-    const { tasks } = useBoardContext();
+    const { tasks } = useBoardTasks(projectId, boardId);
     const { data: sprints = [] } = useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope

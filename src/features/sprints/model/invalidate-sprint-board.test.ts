@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
-import { taskKeys } from "@/features/tasks/model/query-keys";
+import { taskKeys } from "@/features/tasks";
 
 import { invalidateSprintBoardCaches } from "./invalidate-sprint-board";
 import { sprintKeys } from "./query-keys";

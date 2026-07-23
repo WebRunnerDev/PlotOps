@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import { taskKeys } from "@/features/tasks/model/query-keys";
+import { taskKeys } from "@/features/tasks";
 
 import { sprintKeys } from "./query-keys";
 

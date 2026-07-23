@@ -5,19 +5,6 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export {
-    type DatabaseBoardColumn,
-    mapDatabaseColumn,
-    sortColumns,
-} from "@/features/boards/api/board-mappers";
-
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export {
-    type DatabaseLabel,
-    mapDatabaseLabel,
-} from "@/features/labels/api/label-mappers";
-
 export type DatabaseProfile = {
     avatar_url: null | string;
     id: string;

@@ -1,11 +1,5 @@
 import type { TaskPriority, TaskType } from "./types";
 
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export {
-    DEFAULT_KANBAN_COLUMNS,
-    KANBAN_COLUMNS,
-} from "@/features/boards/model/constants";
-
 export const TASK_TYPES: TaskType[] = ["task", "bug", "feature"];
 
 export const TASK_PRIORITIES: TaskPriority[] = [
@@ -14,17 +8,6 @@ export const TASK_PRIORITIES: TaskPriority[] = [
     "medium",
     "low",
 ];
-
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export {
-    getLabelChipProperties,
-    getLabelDotProperties,
-    HEX_COLOR_PATTERN,
-    isValidHexColor,
-    LABEL_COLOR_CLASS,
-    LABEL_COLORS,
-    LABEL_DOT_CLASS,
-} from "@/features/labels/model/constants";
 
 export const PRIORITY_CLASS: Record<TaskPriority, string> = {
     high: "text-orange-500",

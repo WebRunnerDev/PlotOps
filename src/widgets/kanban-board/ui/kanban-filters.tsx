@@ -3,13 +3,12 @@ import type { ReactNode } from "react";
 import { Calendar, Flag, ListFilter, Tag, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { getLabelDotProperties, type ProjectLabel } from "@/features/labels";
 import {
     type BoardTaskFilters,
     DEADLINE_FILTER_VALUES,
-    getLabelDotProperties,
     isBoardFiltersActive,
     type PriorityFilterValue,
-    type ProjectLabel,
     TASK_PRIORITIES,
     toggleFilterValue,
 } from "@/features/tasks";

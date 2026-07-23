@@ -8,9 +8,8 @@ import {
 } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import type { ProjectBoardRecord } from "@/features/boards/model/types";
+import type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
 import type {
-    BoardColumn,
     Task,
     TaskActivityChange,
     TaskPullRequest,
@@ -18,19 +17,17 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
-import { boardKeys } from "@/features/boards/model/query-keys";
-import { useBoardColumns } from "@/features/boards/model/use-board-columns";
-import { resolveLabelNames } from "@/features/labels/model/resolve-label-names";
-import { useProjectLabels } from "@/features/labels/model/use-project-labels";
+import { boardKeys } from "@/features/boards";
+import { resolveLabelNames } from "@/features/labels";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
+    type BoardTasksCache,
     createTaskRecord,
     deleteTaskRecord,
     fetchBoardTasks,
     moveTaskToBoard,
     persistTaskMoves,
-    type ProjectBoard,
     replaceTaskLabels,
     restoreTaskRecord,
     updateTaskRecord,
@@ -41,17 +38,16 @@ import {
     toTaskActivitySnapshot,
 } from "@/features/tasks/lib/build-task-activity-changes";
 import {
-    composeProjectBoard,
     getBoardSnapshot,
     invalidateBoardWorkspace,
     invalidateBoardWorkspaceSlice,
-    setBoardSnapshot,
+    setTasksCache,
 } from "@/features/tasks/model/board-query-cache";
 import { taskKeys } from "@/features/tasks/model/query-keys";
 import { activityKey } from "@/features/tasks/model/use-task-activity";
 import { supabase } from "@/shared/api/supabase";
 
-/** Ref-count Realtime channels so multiple `useBoard` mounts share one `tasks` subscription. */
+/** Ref-count Realtime channels so multiple mounts share one `tasks` subscription. */
 const taskChannels = new Map<
     string,
     { channel: RealtimeChannel; subscribers: number }
@@ -75,10 +71,12 @@ type TaskMoveUpdate = {
     status: TaskStatus;
 };
 
-export function useBoard(projectId: string, boardId: string) {
+/**
+ * Board Tasks only — columns and Labels come from `@/features/boards` /
+ * `@/features/labels`. Composition lives in the board page / kanban widget.
+ */
+export function useBoardTasks(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
-    const labelsApi = useProjectLabels(projectId);
-    const columnsApi = useBoardColumns(projectId, boardId);
 
     const tasksQuery = useQuery({
         enabled: Boolean(projectId && boardId),
@@ -245,8 +243,7 @@ export function useBoard(projectId: string, boardId: string) {
             title: string;
         }) => createTaskRecord(projectId, boardId, status, title, taskType),
         onSuccess: (task) => {
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
-                ...current,
+            setTasksCache(queryClient, projectId, boardId, (current) => ({
                 taskPositions: new Map([
                     ...current.taskPositions,
                     [task.id, current.taskPositions.get(task.id) ?? 0],
@@ -329,24 +326,14 @@ export function useBoard(projectId: string, boardId: string) {
         },
     });
 
-    const board =
-        columnsApi.columnsReady && tasksQuery.data && !labelsApi.isLoading
-            ? composeProjectBoard(
-                  columnsApi.columns,
-                  labelsApi.labels,
-                  tasksQuery.data
-              )
-            : undefined;
+    const tasks = tasksQuery.data?.tasks ?? [];
 
     return {
-        addColumn: columnsApi.addColumn,
-        addLabel: labelsApi.addLabel,
         archiveTask: async (taskId: string) => {
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => {
+            setTasksCache(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
                 nextPositions.delete(taskId);
                 return {
-                    ...current,
                     taskPositions: nextPositions,
                     tasks: current.tasks.filter((task) => task.id !== taskId),
                 };
@@ -354,33 +341,13 @@ export function useBoard(projectId: string, boardId: string) {
             await archiveTaskMutation.mutateAsync(taskId);
         },
         boardId,
-        columns: board?.columns ?? columnsApi.columns,
-        copyLabelToProject: labelsApi.copyLabelToProject,
         createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
             createTaskMutation.mutateAsync({ status, taskType, title }),
-        deleteColumn: async (
-            columnId: TaskStatus,
-            moveTasksTo?: TaskStatus
-        ) => {
-            const deleted = await columnsApi.deleteColumn(
-                columnId,
-                moveTasksTo
-            );
-            if (deleted && moveTasksTo) {
-                invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
-                void queryClient.invalidateQueries({
-                    queryKey: taskKeys.archived(projectId, boardId),
-                });
-            }
-            return deleted;
-        },
-        deleteLabel: labelsApi.deleteLabel,
         deleteTask: async (taskId: string) => {
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => {
+            setTasksCache(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
                 nextPositions.delete(taskId);
                 return {
-                    ...current,
                     taskPositions: nextPositions,
                     tasks: current.tasks.filter((task) => task.id !== taskId),
                 };
@@ -392,11 +359,8 @@ export function useBoard(projectId: string, boardId: string) {
             );
             await deleteTaskMutation.mutateAsync(taskId);
         },
-        error: columnsApi.error ?? labelsApi.error ?? tasksQuery.error ?? null,
-        isLoading:
-            columnsApi.isLoading || labelsApi.isLoading || tasksQuery.isLoading,
-        labels: labelsApi.labels,
-        moveLabelToProject: labelsApi.moveLabelToProject,
+        error: tasksQuery.error ?? null,
+        isLoading: tasksQuery.isLoading,
         moveTaskToColumn: (activeId: string, overId: string) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!snapshot) return;
@@ -439,10 +403,9 @@ export function useBoard(projectId: string, boardId: string) {
                 };
             }
 
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
-                ...applyTaskUpdates(current, result.updates),
-                tasks: result.tasks,
-            }));
+            setTasksCache(queryClient, projectId, boardId, (current) =>
+                applyTaskUpdates(current, result.updates, result.tasks)
+            );
             moveTaskMutation.mutate({ activity, updates: result.updates });
         },
         moveTaskToOtherBoard: async (
@@ -450,7 +413,8 @@ export function useBoard(projectId: string, boardId: string) {
             targetBoardId: string,
             targetStatus: TaskStatus
         ) => {
-            const task = board?.tasks.find((item) => item.id === taskId);
+            const task = tasks.find((item) => item.id === taskId);
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!task || targetBoardId === boardId) return;
 
             const boards = queryClient.getQueryData<ProjectBoardRecord[]>(
@@ -462,11 +426,11 @@ export function useBoard(projectId: string, boardId: string) {
                     name: resolveBoardName(boards, boardId),
                 },
                 labelNames: resolveLabelNames(
-                    board?.labels ?? [],
+                    snapshot?.labels ?? [],
                     task.labelIds
                 ),
                 statusName: resolveStatusName(
-                    board?.columns ?? [],
+                    snapshot?.columns ?? [],
                     task.status
                 ),
             });
@@ -490,33 +454,25 @@ export function useBoard(projectId: string, boardId: string) {
             });
         },
         projectId,
-        renameColumn: columnsApi.renameColumn,
-        renameLabel: labelsApi.renameLabel,
-        reorderColumns: columnsApi.reorderColumns,
         reorderTaskWithin: (activeId: string, overId: string) => {
-            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
-            if (!snapshot) return;
-
-            const result = reorderTasksInMemory(
-                snapshot.tasks,
-                activeId,
-                overId
+            const cache = queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
             );
+            if (!cache) return;
+
+            const result = reorderTasksInMemory(cache.tasks, activeId, overId);
             if (!result) return;
 
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
-                ...applyTaskUpdates(current, result.updates),
-                tasks: result.tasks,
-            }));
+            setTasksCache(queryClient, projectId, boardId, (current) =>
+                applyTaskUpdates(current, result.updates, result.tasks)
+            );
             // Position-only reorders are intentionally not logged (SPEC).
             moveTaskMutation.mutate({ updates: result.updates });
         },
         restoreTask: async (taskId: string) => {
             await restoreTaskMutation.mutateAsync(taskId);
         },
-        setLabelCustomColor: labelsApi.setLabelCustomColor,
-        tasks: board?.tasks ?? [],
-        updateLabelColor: labelsApi.updateLabelColor,
+        tasks,
         updateTaskDetails: (id: string, details: TaskDetailsUpdate) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             const previous = snapshot?.tasks.find((task) => task.id === id);
@@ -552,7 +508,7 @@ export function useBoard(projectId: string, boardId: string) {
                 activityChanges = buildTaskActivityChanges(before, after);
             }
 
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
+            setTasksCache(queryClient, projectId, boardId, (current) => ({
                 ...current,
                 tasks: current.tasks.map((task) => {
                     if (task.id !== id) return task;
@@ -609,7 +565,7 @@ export function useBoard(projectId: string, boardId: string) {
                 activityChanges = buildTaskActivityChanges(before, after);
             }
 
-            setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
+            setTasksCache(queryClient, projectId, boardId, (current) => ({
                 ...current,
                 tasks: current.tasks.map((task) =>
                     task.id === id ? { ...task, status } : task
@@ -621,23 +577,17 @@ export function useBoard(projectId: string, boardId: string) {
 }
 
 function applyTaskUpdates(
-    board: ProjectBoard,
-    updates: TaskMoveUpdate[]
-): ProjectBoard {
-    const statusById = new Map(
-        updates.map((update) => [update.id, update.status])
-    );
+    cache: BoardTasksCache,
+    updates: TaskMoveUpdate[],
+    tasks: Task[]
+): BoardTasksCache {
     const positionById = new Map(
         updates.map((update) => [update.id, update.position])
     );
 
     return {
-        ...board,
-        taskPositions: new Map([...board.taskPositions, ...positionById]),
-        tasks: board.tasks.map((task) => ({
-            ...task,
-            status: statusById.get(task.id) ?? task.status,
-        })),
+        taskPositions: new Map([...cache.taskPositions, ...positionById]),
+        tasks,
     };
 }
 

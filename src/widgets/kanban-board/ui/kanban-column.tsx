@@ -4,19 +4,22 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useQueryClient } from "@tanstack/react-query";
 import { GripVertical, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { ProjectLabel } from "@/features/labels";
+
+import { useBoardColumns } from "@/features/boards";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
-    type ProjectLabel,
+    columnAccentClass,
     type Task,
+    taskKeys,
     type TaskStatus,
 } from "@/features/tasks";
-import { useBoardContext } from "@/features/tasks/model/board-context";
-import { columnAccentClass } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -42,23 +45,30 @@ import { DraggableTaskCard } from "./draggable-task-card";
 import { KanbanAddTask } from "./kanban-add-task";
 
 type KanbanColumnProperties = {
+    boardId: string;
     labelsByTaskId: Map<string, ProjectLabel[]>;
     name: string;
+    projectId: string;
     startEditing?: boolean;
     status: TaskStatus;
     tasks: Task[];
 };
 
 export function KanbanColumn({
+    boardId,
     labelsByTaskId,
     name,
+    projectId,
     startEditing = false,
     status,
     tasks,
 }: KanbanColumnProperties) {
     const { t } = useTranslation("board");
-    const { columns, deleteColumn, projectId, renameColumn } =
-        useBoardContext();
+    const queryClient = useQueryClient();
+    const { columns, deleteColumn, renameColumn } = useBoardColumns(
+        projectId,
+        boardId
+    );
     const { canManageBoard } = useProjectAccess(projectId);
     const accentClass = columnAccentClass(status);
 
@@ -135,18 +145,27 @@ export function KanbanColumn({
     };
 
     const handleConfirmDelete = async () => {
-        const ok =
-            tasks.length > 0
-                ? await deleteColumn(status, moveTo)
-                : await deleteColumn(status);
+        const movedTasks = tasks.length > 0;
+        const ok = movedTasks
+            ? await deleteColumn(status, moveTo)
+            : await deleteColumn(status);
 
         if (!ok) {
             toast.error(t("columns.deleteFailed"));
             return;
         }
 
+        if (movedTasks) {
+            void queryClient.invalidateQueries({
+                queryKey: [...taskKeys.all, "board", projectId],
+            });
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.archived(projectId, boardId),
+            });
+        }
+
         toast.success(
-            tasks.length > 0
+            movedTasks
                 ? t("columns.deletedWithMove", {
                       count: tasks.length,
                       name,
@@ -256,7 +275,11 @@ export function KanbanColumn({
                             />
                         ))}
                     </SortableContext>
-                    <KanbanAddTask status={status} />
+                    <KanbanAddTask
+                        boardId={boardId}
+                        projectId={projectId}
+                        status={status}
+                    />
                 </div>
             </section>
 

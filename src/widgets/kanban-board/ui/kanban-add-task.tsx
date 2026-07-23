@@ -3,20 +3,28 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type { TaskStatus } from "@/features/tasks";
-import { useBoardContext } from "@/features/tasks/model/board-context";
-import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import {
+    type TaskStatus,
+    useBoardTasks,
+    useTasksUiStore,
+} from "@/features/tasks";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
 
 type KanbanAddTaskProperties = {
+    boardId: string;
+    projectId: string;
     status: TaskStatus;
 };
 
-export function KanbanAddTask({ status }: KanbanAddTaskProperties) {
+export function KanbanAddTask({
+    boardId,
+    projectId,
+    status,
+}: KanbanAddTaskProperties) {
     const { t } = useTranslation("board");
-    const { createTask, projectId } = useBoardContext();
+    const { createTask } = useBoardTasks(projectId, boardId);
     const { canCreateTasks } = useProjectAccess(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);

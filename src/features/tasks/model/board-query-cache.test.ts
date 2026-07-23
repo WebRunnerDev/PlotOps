@@ -1,19 +1,20 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 
-import type {
-    BoardColumn,
-    ProjectLabel,
-    Task,
-} from "@/features/tasks/model/types";
+import type { BoardColumn } from "@/features/boards";
+import type { ProjectLabel } from "@/features/labels";
+import type { Task } from "@/features/tasks";
+
+import { boardKeys } from "@/features/boards";
+import { labelKeys } from "@/features/labels";
+import { taskKeys } from "@/features/tasks";
 
 import {
     composeProjectBoard,
     getBoardSnapshot,
     invalidateBoardWorkspaceSlice,
-    setBoardSnapshot,
+    setTasksCache,
 } from "./board-query-cache";
-import { boardKeys, labelKeys, taskKeys } from "./query-keys";
 
 const projectId = "proj_1";
 const boardId = "board_1";
@@ -120,7 +121,7 @@ describe("board workspace query cache seam", () => {
         expect(queryClient.getQueryData(tasksKey)).toMatchObject({ tasks });
     });
 
-    it("writes optimistic façade updates back into the separate caches", () => {
+    it("writes optimistic Task updates into the tasks cache only", () => {
         const queryClient = new QueryClient();
 
         queryClient.setQueryData(
@@ -133,7 +134,7 @@ describe("board workspace query cache seam", () => {
             tasks,
         });
 
-        setBoardSnapshot(queryClient, projectId, boardId, (current) => ({
+        setTasksCache(queryClient, projectId, boardId, (current) => ({
             ...current,
             tasks: current.tasks.map((task) =>
                 task.id === "task_1"

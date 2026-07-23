@@ -1,8 +1,10 @@
 import { Calendar, GitBranch, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectLabel, Task } from "@/features/tasks/model/types";
+import type { ProjectLabel } from "@/features/labels";
+import type { Task } from "@/features/tasks/model/types";
 
+import { TaskLabelChips } from "@/features/labels";
 import {
     formatBranchName,
     isSharedBranch,
@@ -12,7 +14,6 @@ import {
     isDeadlineOverdue,
 } from "@/features/tasks/lib/format-deadline";
 import { PRIORITY_DOT_CLASS } from "@/features/tasks/model/constants";
-import { TaskLabelChips } from "@/features/tasks/ui/task-label-chips";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import {

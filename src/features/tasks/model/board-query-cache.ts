@@ -1,15 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import type { BoardColumn } from "@/features/boards/model/types";
-import type { ProjectLabel } from "@/features/labels/model/types";
+import type { BoardColumn } from "@/features/boards";
+import type { ProjectLabel } from "@/features/labels";
 import type {
     BoardTasksCache,
     ProjectBoard,
 } from "@/features/tasks/api/tasks-api";
 
-import { invalidateBoardColumns } from "@/features/boards/model/invalidate-boards";
-import { boardKeys } from "@/features/boards/model/query-keys";
-import { labelKeys } from "@/features/labels/model/query-keys";
+import { boardKeys, invalidateBoardColumns } from "@/features/boards";
+import { labelKeys } from "@/features/labels";
 
 import { taskKeys } from "./query-keys";
 
@@ -83,23 +82,19 @@ export function invalidateBoardWorkspaceSlice(
     }
 }
 
-export function setBoardSnapshot(
+/** Optimistic update of the Board Tasks cache only (columns/Labels unchanged). */
+export function setTasksCache(
     queryClient: QueryClient,
     projectId: string,
     boardId: string,
-    updater: (current: ProjectBoard) => ProjectBoard
+    updater: (current: BoardTasksCache) => BoardTasksCache
 ) {
-    const current = getBoardSnapshot(queryClient, projectId, boardId);
-    if (!current) return;
-
-    const next = updater(current);
-    queryClient.setQueryData(
-        boardKeys.columns(projectId, boardId),
-        next.columns
+    const current = queryClient.getQueryData<BoardTasksCache>(
+        taskKeys.board(projectId, boardId)
     );
-    queryClient.setQueryData(labelKeys.project(projectId), next.labels);
-    queryClient.setQueryData(taskKeys.board(projectId, boardId), {
-        taskPositions: next.taskPositions,
-        tasks: next.tasks,
-    } satisfies BoardTasksCache);
+    if (!current) return;
+    queryClient.setQueryData(
+        taskKeys.board(projectId, boardId),
+        updater(current)
+    );
 }

@@ -19,8 +19,9 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { Sprint } from "@/features/sprints/model/types";
-import type { Task } from "@/features/tasks/model/types";
+import type { Task } from "@/features/tasks";
 
+import { useBoardColumns } from "@/features/boards";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
     useBoardSprints,
@@ -39,10 +40,7 @@ import {
     sprintDropId,
     SprintTaskTable,
 } from "@/features/sprints/ui/sprint-task-table";
-import {
-    BoardProvider,
-    useBoardContext,
-} from "@/features/tasks/model/board-context";
+import { useBoardTasks } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
@@ -66,21 +64,15 @@ type BacklogPageProperties = {
     projectId: string;
 };
 
-export function BacklogPage(properties: BacklogPageProperties) {
-    return (
-        <BoardProvider
-            boardId={properties.boardId}
-            projectId={properties.projectId}
-        >
-            <BacklogPageInner {...properties} />
-        </BoardProvider>
-    );
-}
-
-function BacklogPageInner({ boardId, projectId }: BacklogPageProperties) {
+export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const { t } = useTranslation("board");
     const { canManageBoard } = useProjectAccess(projectId);
-    const { columns, error, isLoading, tasks } = useBoardContext();
+    const columnsApi = useBoardColumns(projectId, boardId);
+    const tasksApi = useBoardTasks(projectId, boardId);
+    const { columns } = columnsApi;
+    const { tasks } = tasksApi;
+    const error = columnsApi.error ?? tasksApi.error;
+    const isLoading = columnsApi.isLoading || tasksApi.isLoading;
     const { data: sprints = [], isLoading: sprintsLoading } =
         useBoardSprints(boardId);
     const { createDraft, moveTasks } = useSprintMutations(projectId, boardId);

@@ -15,9 +15,9 @@ import { toast } from "sonner";
 
 import type { Task, TaskPullRequest } from "@/features/tasks/model/types";
 
+import { matchesAllowedHeadPatterns } from "@/features/boards";
 import { fetchPullRequest } from "@/features/git-integration/api/github-git-api";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
-import { matchesAllowedHeadPatterns } from "@/features/tasks/lib/allowed-head-patterns";
 import {
     generateBranchName,
     isSharedBranch,
@@ -139,7 +139,7 @@ export function TaskGithubPanel({
 
     const handleLinkPrConfirm = async () => {
         const number = parsePrNumber(prDraft);
-        if (number == null) {
+        if (number == undefined) {
             toast.error(t("github.prRequired"));
             return;
         }
@@ -153,7 +153,7 @@ export function TaskGithubPanel({
             const remote = await fetchPullRequest(
                 repoFullName,
                 number,
-                githubToken,
+                githubToken
             );
             const pr: TaskPullRequest = {
                 number: remote.number,
@@ -163,9 +163,7 @@ export function TaskGithubPanel({
             onPrChange(pr);
             setLinkingPr(false);
             setPrDraft("");
-            toast.success(
-                t("github.prLinkedToast", { number: pr.number }),
-            );
+            toast.success(t("github.prLinkedToast", { number: pr.number }));
         } catch {
             toast.error(t("github.prNotFound", { number }));
         } finally {
@@ -186,26 +184,20 @@ export function TaskGithubPanel({
                 <a
                     className={cn(
                         "inline-flex min-w-0 items-center gap-1.5 text-ui underline-offset-4 hover:underline",
-                        PR_STATE_CLASS[task.pr.state],
+                        PR_STATE_CLASS[task.pr.state]
                     )}
                     href={task.pr.url}
                     rel="noreferrer"
                     target="_blank"
                 >
-                    <GitPullRequest
-                        aria-hidden
-                        className="size-3.5 shrink-0"
-                    />
+                    <GitPullRequest aria-hidden className="size-3.5 shrink-0" />
                     <span className="truncate">
                         {t("github.prLink", {
                             number: task.pr.number,
                             state: t(`prState.${task.pr.state}`),
                         })}
                     </span>
-                    <ExternalLink
-                        aria-hidden
-                        className="size-3 shrink-0"
-                    />
+                    <ExternalLink aria-hidden className="size-3 shrink-0" />
                 </a>
                 <Button
                     aria-label={t("github.unlinkPr")}
@@ -240,9 +232,7 @@ export function TaskGithubPanel({
                     autoFocus
                     className="font-mono text-code"
                     disabled={prLoading}
-                    onChange={(event) =>
-                        setPrDraft(event.target.value)
-                    }
+                    onChange={(event) => setPrDraft(event.target.value)}
                     onKeyDown={(event) => {
                         if (event.key === "Enter") {
                             event.preventDefault();
@@ -293,11 +283,7 @@ export function TaskGithubPanel({
                 disabled={!canFetchGithub}
                 onClick={() => setLinkingPr(true)}
                 size="xs"
-                title={
-                    canFetchGithub
-                        ? undefined
-                        : t("github.prNeedsGithub")
-                }
+                title={canFetchGithub ? undefined : t("github.prNeedsGithub")}
                 type="button"
                 variant="outline"
             >
@@ -309,147 +295,159 @@ export function TaskGithubPanel({
 
     return (
         <>
-        <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
-            <div className="flex flex-col gap-0.5">
-                <p className="text-meta text-muted-foreground">{t("github.title")}</p>
-                <p className="text-meta font-mono text-muted-foreground">
-                    {t("github.prTarget", { branch: baseBranch })}
-                </p>
-            </div>
+            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-meta text-muted-foreground">
+                        {t("github.title")}
+                    </p>
+                    <p className="text-meta font-mono text-muted-foreground">
+                        {t("github.prTarget", { branch: baseBranch })}
+                    </p>
+                </div>
 
-            {branchName ? (
-                <>
-                    <div className="flex flex-col gap-2">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
-                                <GitBranch
-                                    aria-hidden
-                                    className="size-3.5 shrink-0"
-                                />
-                                {t("github.checkout")}
-                            </span>
-                            <Button
-                                aria-label={t("github.unlinkBranch")}
-                                onClick={handleUnlinkBranch}
-                                size="icon-xs"
-                                type="button"
-                                variant="ghost"
-                            >
-                                <Unlink className="size-3.5" />
-                            </Button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
-                                {checkoutCommand}
-                            </code>
-                            <Button
-                                aria-label={t("github.copy")}
-                                onClick={() => {
-                                    void handleCopyCheckout();
-                                }}
-                                size="icon-sm"
-                                type="button"
-                                variant="outline"
-                            >
-                                {copied ? (
-                                    <Check className="text-emerald-500" />
-                                ) : (
-                                    <Copy />
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-
-                    {prSection}
-                </>
-            ) : (
-                <>
-                    {prSection}
-
-                    {linkingBranch ? (
+                {branchName ? (
+                    <>
                         <div className="flex flex-col gap-2">
-                            <p className="text-ui text-muted-foreground">
-                                {t("github.linkBranchHint")}
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    aria-label={t("github.linkBranchPlaceholder")}
-                                    autoFocus
-                                    className="font-mono text-code"
-                                    onChange={(event) =>
-                                        setBranchDraft(event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            event.preventDefault();
-                                            handleLinkBranchConfirm();
-                                        }
-                                        if (event.key === "Escape") {
-                                            setLinkingBranch(false);
-                                            setBranchDraft("");
-                                        }
-                                    }}
-                                    placeholder={t("github.linkBranchPlaceholder")}
-                                    value={branchDraft}
-                                />
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
+                                    <GitBranch
+                                        aria-hidden
+                                        className="size-3.5 shrink-0"
+                                    />
+                                    {t("github.checkout")}
+                                </span>
                                 <Button
-                                    aria-label={t("github.linkConfirm")}
-                                    onClick={handleLinkBranchConfirm}
+                                    aria-label={t("github.unlinkBranch")}
+                                    onClick={handleUnlinkBranch}
+                                    size="icon-xs"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <Unlink className="size-3.5" />
+                                </Button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
+                                    {checkoutCommand}
+                                </code>
+                                <Button
+                                    aria-label={t("github.copy")}
+                                    onClick={() => {
+                                        void handleCopyCheckout();
+                                    }}
                                     size="icon-sm"
                                     type="button"
                                     variant="outline"
                                 >
-                                    <Check />
-                                </Button>
-                                <Button
-                                    aria-label={t("github.linkCancel")}
-                                    onClick={() => {
-                                        setLinkingBranch(false);
-                                        setBranchDraft("");
-                                    }}
-                                    size="icon-sm"
-                                    type="button"
-                                    variant="ghost"
-                                >
-                                    <X />
+                                    {copied ? (
+                                        <Check className="text-emerald-500" />
+                                    ) : (
+                                        <Copy />
+                                    )}
                                 </Button>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex items-center justify-between gap-2 rounded-md border border-foreground/10 px-2.5 py-1.5">
-                            <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
-                                <GitBranch aria-hidden className="size-3.5 shrink-0" />
-                                {t("github.skipBranch")}
-                            </span>
-                            <div className="flex shrink-0 gap-1">
-                                <Button
-                                    onClick={handleGenerate}
-                                    size="icon-xs"
-                                    title={t("github.generateBranch")}
-                                    type="button"
-                                    variant="ghost"
-                                >
-                                    <Sparkles aria-hidden className="size-3.5" />
-                                </Button>
-                                <Button
-                                    onClick={() => setLinkingBranch(true)}
-                                    size="icon-xs"
-                                    title={t("github.linkBranch")}
-                                    type="button"
-                                    variant="ghost"
-                                >
-                                    <Link2 aria-hidden className="size-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </>
-            )}
 
-            {diffOpen &&
-                task.pr &&
-                githubToken &&
-                repoFullName && (
+                        {prSection}
+                    </>
+                ) : (
+                    <>
+                        {prSection}
+
+                        {linkingBranch ? (
+                            <div className="flex flex-col gap-2">
+                                <p className="text-ui text-muted-foreground">
+                                    {t("github.linkBranchHint")}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        aria-label={t(
+                                            "github.linkBranchPlaceholder"
+                                        )}
+                                        autoFocus
+                                        className="font-mono text-code"
+                                        onChange={(event) =>
+                                            setBranchDraft(event.target.value)
+                                        }
+                                        onKeyDown={(event) => {
+                                            if (event.key === "Enter") {
+                                                event.preventDefault();
+                                                handleLinkBranchConfirm();
+                                            }
+                                            if (event.key === "Escape") {
+                                                setLinkingBranch(false);
+                                                setBranchDraft("");
+                                            }
+                                        }}
+                                        placeholder={t(
+                                            "github.linkBranchPlaceholder"
+                                        )}
+                                        value={branchDraft}
+                                    />
+                                    <Button
+                                        aria-label={t("github.linkConfirm")}
+                                        onClick={handleLinkBranchConfirm}
+                                        size="icon-sm"
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        <Check />
+                                    </Button>
+                                    <Button
+                                        aria-label={t("github.linkCancel")}
+                                        onClick={() => {
+                                            setLinkingBranch(false);
+                                            setBranchDraft("");
+                                        }}
+                                        size="icon-sm"
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <X />
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between gap-2 rounded-md border border-foreground/10 px-2.5 py-1.5">
+                                <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
+                                    <GitBranch
+                                        aria-hidden
+                                        className="size-3.5 shrink-0"
+                                    />
+                                    {t("github.skipBranch")}
+                                </span>
+                                <div className="flex shrink-0 gap-1">
+                                    <Button
+                                        onClick={handleGenerate}
+                                        size="icon-xs"
+                                        title={t("github.generateBranch")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Sparkles
+                                            aria-hidden
+                                            className="size-3.5"
+                                        />
+                                    </Button>
+                                    <Button
+                                        onClick={() => setLinkingBranch(true)}
+                                        size="icon-xs"
+                                        title={t("github.linkBranch")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Link2
+                                            aria-hidden
+                                            className="size-3.5"
+                                        />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {diffOpen && task.pr && githubToken && repoFullName && (
                     <PrDiffDialog
                         onClose={() => setDiffOpen(false)}
                         open
@@ -462,48 +460,50 @@ export function TaskGithubPanel({
                         token={githubToken}
                     />
                 )}
-        </div>
+            </div>
 
-        <AlertDialog
-            onOpenChange={(open) => {
-                if (!open) setPendingBranch(null);
-            }}
-            open={Boolean(pendingBranch)}
-        >
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>
-                        {t("github.patternMismatchTitle")}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {t("github.patternMismatchBody", {
-                            branch: pendingBranch ?? "",
-                            patterns: allowedHeadPatterns.join(", "),
-                        })}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>{t("github.patternMismatchCancel")}</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={() => {
-                            if (!pendingBranch) return;
-                            const next = pendingBranch;
-                            setPendingBranch(null);
-                            onBranchChange(next);
-                            if (isSharedBranch(next)) {
-                                toast.message(
-                                    t("github.sharedLinkedToast", {
-                                        branch: next,
-                                    }),
-                                );
-                            }
-                        }}
-                    >
-                        {t("github.patternMismatchConfirm")}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open) setPendingBranch(null);
+                }}
+                open={Boolean(pendingBranch)}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("github.patternMismatchTitle")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("github.patternMismatchBody", {
+                                branch: pendingBranch ?? "",
+                                patterns: allowedHeadPatterns.join(", "),
+                            })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>
+                            {t("github.patternMismatchCancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (!pendingBranch) return;
+                                const next = pendingBranch;
+                                setPendingBranch(null);
+                                onBranchChange(next);
+                                if (isSharedBranch(next)) {
+                                    toast.message(
+                                        t("github.sharedLinkedToast", {
+                                            branch: next,
+                                        })
+                                    );
+                                }
+                            }}
+                        >
+                            {t("github.patternMismatchConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

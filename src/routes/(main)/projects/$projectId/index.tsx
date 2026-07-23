@@ -2,7 +2,7 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
+import { useProjectBoards } from "@/features/boards";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { BoardLoading } from "@/widgets/kanban-board/ui/board-loading";

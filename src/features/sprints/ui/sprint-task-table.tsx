@@ -11,7 +11,7 @@ import {
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Task } from "@/features/tasks/model/types";
+import type { Task } from "@/features/tasks";
 
 import { cn } from "@/shared/lib/utils";
 import { Checkbox } from "@/shared/shadcn/ui/checkbox";

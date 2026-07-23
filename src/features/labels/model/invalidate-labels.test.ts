@@ -4,7 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { boardKeys, taskKeys } from "@/features/tasks/model/query-keys";
+import { boardKeys } from "@/features/boards";
+import { taskKeys } from "@/features/tasks";
 
 import { invalidateProjectLabels } from "./invalidate-labels";
 import { labelKeys } from "./query-keys";

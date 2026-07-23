@@ -1,5 +1,5 @@
-import type { BoardColumn } from "@/features/boards/model/types";
-import type { ProjectLabel } from "@/features/labels/model/types";
+import type { BoardColumn } from "@/features/boards";
+import type { ProjectLabel } from "@/features/labels";
 import type {
     Task,
     TaskPriority,
@@ -7,13 +7,7 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
-import {
-    type DatabaseBoardColumn,
-    fetchBoardColumnIds,
-    fetchBoardColumns,
-    sortColumns,
-} from "@/features/boards";
-import { fetchProjectLabels } from "@/features/labels/api/labels-api";
+import { fetchBoardColumnIds } from "@/features/boards";
 import { supabase } from "@/shared/api/supabase";
 
 import {
@@ -21,24 +15,6 @@ import {
     mapDatabaseTask,
     sortTasksByPosition,
 } from "./board-mappers";
-
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export {
-    createBoardColumn,
-    deleteBoardColumn,
-    fetchBoardColumns,
-    orderColumnsByIds,
-    renameBoardColumn,
-    reorderBoardColumns,
-} from "@/features/boards";
-
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export {
-    createProjectLabel,
-    deleteProjectLabel,
-    fetchProjectLabels,
-    updateProjectLabel,
-} from "@/features/labels/api/labels-api";
 
 export type BoardTasksCache = {
     taskPositions: Map<string, number>;
@@ -104,12 +80,6 @@ export async function archiveTaskRecord(taskId: string) {
         .is("archived_at", null);
 
     if (error) throw error;
-}
-
-export function buildColumnPositions(columns: DatabaseBoardColumn[]) {
-    return new Map(
-        columns.map((column) => [column.id, column.position] as const)
-    );
 }
 
 export async function createTaskRecord(
@@ -193,25 +163,6 @@ export async function fetchBoardTasks(
     return {
         taskPositions,
         tasks: sortTasksByPosition(tasks, taskPositions),
-    };
-}
-
-/** Composes the three board workspace fetches (tests / one-shot loads). */
-export async function fetchProjectBoard(
-    projectId: string,
-    boardId: string
-): Promise<ProjectBoard> {
-    const [columns, labels, tasksCache] = await Promise.all([
-        fetchBoardColumns(projectId, boardId),
-        fetchProjectLabels(projectId),
-        fetchBoardTasks(boardId),
-    ]);
-
-    return {
-        columns,
-        labels,
-        taskPositions: tasksCache.taskPositions,
-        tasks: tasksCache.tasks,
     };
 }
 
@@ -330,13 +281,6 @@ export async function restoreTaskRecord(taskId: string, boardId: string) {
         .not("archived_at", "is", null);
 
     if (error) throw error;
-}
-
-export function sortBoardColumns(
-    columns: BoardColumn[],
-    positions: Map<string, number>
-) {
-    return sortColumns(columns, positions);
 }
 
 export async function updateTaskRecord(

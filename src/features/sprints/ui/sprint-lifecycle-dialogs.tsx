@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { Sprint } from "@/features/sprints/model/types";
-import type { Task } from "@/features/tasks/model/types";
+import type { Task } from "@/features/tasks";
 
 import {
     defaultSprintEndDate,

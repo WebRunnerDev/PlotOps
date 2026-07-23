@@ -5,31 +5,34 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
-    BoardColumn,
     TaskPriority,
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
 
+import {
+    type BoardColumn,
+    fetchBoardColumns,
+    useBoardColumns,
+    useProjectBoards,
+} from "@/features/boards";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
+import { TaskLabelsField, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import { fetchBoardColumns } from "@/features/tasks/api/boards-api";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
-import { useBoardContext } from "@/features/tasks/model/board-context";
 import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
     TASK_TYPES,
 } from "@/features/tasks/model/constants";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
-import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
+import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
 import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
 import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
-import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
 import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
 import { Separator } from "@/shared";
 import {
@@ -82,30 +85,31 @@ type MoveBoardTarget = {
 };
 
 type TaskDrawerProperties = {
+    boardId: string;
     githubToken: null | string;
     projectId: string;
     repoFullName: string | undefined;
 };
 
 export function TaskDrawer({
+    boardId,
     githubToken,
     projectId,
     repoFullName,
 }: TaskDrawerProperties) {
     const { t } = useTranslation("board");
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
+    const { columns } = useBoardColumns(projectId, boardId);
+    const { labels } = useProjectLabels(projectId);
     const {
         archiveTask,
-        boardId,
-        columns,
         deleteTask,
-        labels,
         moveTaskToOtherBoard,
         restoreTask,
         tasks,
         updateTaskDetails,
         updateTaskStatus,
-    } = useBoardContext();
+    } = useBoardTasks(projectId, boardId);
     const { data: boards = [] } = useProjectBoards(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
@@ -242,7 +246,10 @@ export function TaskDrawer({
 
         setIsLoadingMoveColumns(true);
         try {
-            const targetColumns = await fetchBoardColumns(targetBoardId);
+            const targetColumns = await fetchBoardColumns(
+                projectId,
+                targetBoardId
+            );
             if (targetColumns.length === 0) {
                 toast.error(t("boards.taskMoveFailed"));
                 return;

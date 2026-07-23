@@ -1,5 +1,4 @@
 import {
-    closestCenter,
     closestCorners,
     type CollisionDetection,
     defaultDropAnimationSideEffects,
@@ -19,19 +18,19 @@ import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { type BoardColumn, useBoardColumns } from "@/features/boards";
+import { type ProjectLabel, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useBoardSprints, useSprintsUiStore } from "@/features/sprints";
 import {
-    type BoardColumn,
     type BoardTaskFilters,
     EMPTY_BOARD_FILTERS,
     filterTasks,
-    type ProjectLabel,
     type Task,
     TaskCard,
     TaskDrawer,
+    useBoardTasks,
 } from "@/features/tasks";
-import { useBoardContext } from "@/features/tasks/model/board-context";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 
@@ -67,38 +66,27 @@ const collisionDetection: CollisionDetection = (arguments_) => {
             droppableContainers: columnContainers,
         });
         if (pointerCollisions.length > 0) return pointerCollisions;
-        return closestCenter({
-            ...arguments_,
-            droppableContainers: columnContainers,
-        });
     }
     return closestCorners(arguments_);
 };
 
 type KanbanBoardProperties = {
+    boardId: string;
     githubToken: null | string;
     projectId: string;
     repoFullName: string | undefined;
 };
 
 export function KanbanBoard({
+    boardId,
     githubToken,
     projectId,
     repoFullName,
 }: KanbanBoardProperties) {
     const { t } = useTranslation("board");
-    const {
-        addColumn,
-        boardId,
-        columns,
-        error,
-        isLoading,
-        labels,
-        moveTaskToColumn,
-        reorderColumns,
-        reorderTaskWithin,
-        tasks,
-    } = useBoardContext();
+    const columnsApi = useBoardColumns(projectId, boardId);
+    const labelsApi = useProjectLabels(projectId);
+    const tasksApi = useBoardTasks(projectId, boardId);
     const { canManageBoard } = useProjectAccess(projectId);
     const { data: sprints = [] } = useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
@@ -117,7 +105,14 @@ export function KanbanBoard({
         })
     );
 
+    const { columns } = columnsApi;
+    const { labels } = labelsApi;
+    const { moveTaskToColumn, reorderTaskWithin, tasks } = tasksApi;
     const columnIds = columns.map((column) => column.id);
+
+    const isLoading =
+        columnsApi.isLoading || labelsApi.isLoading || tasksApi.isLoading;
+    const error = columnsApi.error ?? labelsApi.error ?? tasksApi.error;
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -199,7 +194,7 @@ export function KanbanBoard({
             // exactly where it lands (like a task). Collision is pointer-based
             // and restricted to columns, so `over` is always a column and this
             // stays stable (no oscillation).
-            reorderColumns(String(active.id), String(over.id));
+            columnsApi.reorderColumns(String(active.id), String(over.id));
             return;
         }
 
@@ -231,7 +226,7 @@ export function KanbanBoard({
     };
 
     const handleAddColumn = () => {
-        void addColumn(t("columns.newStatus")).then((id) => {
+        void columnsApi.addColumn(t("columns.newStatus")).then((id) => {
             setFocusColumnId(id);
 
             globalThis.requestAnimationFrame(() => {
@@ -282,9 +277,11 @@ export function KanbanBoard({
                     <div className="flex min-h-0 min-w-full w-max flex-1 gap-0">
                         {columns.map((column) => (
                             <KanbanColumn
+                                boardId={boardId}
                                 key={column.id}
                                 labelsByTaskId={labelsByTaskId}
                                 name={column.name}
+                                projectId={projectId}
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
                                 tasks={filteredTasks.filter(
@@ -329,6 +326,7 @@ export function KanbanBoard({
             </DndContext>
 
             <TaskDrawer
+                boardId={boardId}
                 githubToken={githubToken}
                 projectId={projectId}
                 repoFullName={repoFullName}

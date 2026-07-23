@@ -17,61 +17,17 @@ export {
     normalizeBranchName,
 } from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
-export { BoardProvider, useBoardContext } from "./model/board-context";
-export { PRIORITY_CLASS, TASK_PRIORITIES } from "./model/constants";
+export {
+    columnAccentClass,
+    PRIORITY_CLASS,
+    TASK_PRIORITIES,
+} from "./model/constants";
 export { taskKeys } from "./model/query-keys";
-export type {
-    BoardSprintScope,
-    Sprint,
-    SprintEvent,
-    SprintState,
-} from "./model/sprint-types";
-export type { Task, TaskPriority, TaskStatus } from "./model/types";
-export { useBoard } from "./model/use-board";
-/** @deprecated Import from `@/features/sprints` — temporary shim. */
-export { useBoardSprints, useSprintMutations } from "./model/use-sprints";
+export type { Task, TaskPriority, TaskStatus, TaskType } from "./model/types";
+export { useBoardTasks } from "./model/use-board-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
-/** @deprecated Import from `@/features/sprints` — temporary shim. */
-export { BacklogPage } from "./ui/backlog-page";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
-/** @deprecated Import from `@/features/sprints` — temporary shim. */
-export { BoardSprintControls } from "./ui/board-sprint-controls";
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export { BoardSwitcher } from "./ui/board-switcher";
 export { GithubTaskMeta } from "./ui/github-task-meta";
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export { ProjectBoardsSettings } from "./ui/project-boards-settings";
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export { ProjectLabelsSettings } from "./ui/project-labels-settings";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
 export { TaskGithubPanel } from "./ui/task-github-panel";
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export { TaskLabelChips } from "./ui/task-label-chips";
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export { TaskLabelsField } from "./ui/task-labels-field";
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export { DEFAULT_KANBAN_COLUMNS, KANBAN_COLUMNS } from "@/features/boards";
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export { boardKeys } from "@/features/boards";
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export { useBoardMutations, useProjectBoards } from "@/features/boards";
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export {
-    getLabelChipProperties,
-    getLabelDotProperties,
-    isValidHexColor,
-    LABEL_COLOR_CLASS,
-    LABEL_COLORS,
-    LABEL_DOT_CLASS,
-} from "@/features/labels";
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export { labelKeys } from "@/features/labels";
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export type { LabelColor, ProjectLabel } from "@/features/labels";
-/** @deprecated Import from `@/features/sprints` — temporary shim. */
-export { sprintKeys } from "@/features/sprints";
-/** @deprecated Import from `@/features/sprints` — temporary shim. */
-export { useSprintsUiStore } from "@/features/sprints";

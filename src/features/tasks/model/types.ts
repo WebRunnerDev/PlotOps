@@ -1,9 +1,3 @@
-/** @deprecated Import from `@/features/boards` — temporary shim. */
-export type { BoardColumn } from "@/features/boards/model/types";
-
-/** @deprecated Import from `@/features/labels` — temporary shim. */
-export type { LabelColor, ProjectLabel } from "@/features/labels/model/types";
-
 export type Task = {
     archivedAt?: string;
     archivedBy?: TaskAssignee;

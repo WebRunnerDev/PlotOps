@@ -1,8 +1,9 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { type ProjectLabel, type Task, TaskCard } from "@/features/tasks";
-import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import type { ProjectLabel } from "@/features/labels";
+
+import { type Task, TaskCard, useTasksUiStore } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 
 type DraggableTaskCardProperties = {

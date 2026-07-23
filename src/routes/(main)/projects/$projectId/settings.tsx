@@ -3,15 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
+import { ProjectBoardsSettings, useProjectBoards } from "@/features/boards";
 import { ProjectLabelsSettings } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { ProjectMembersSettings } from "@/features/projects/ui/project-members-settings";
-import { BoardProvider } from "@/features/tasks/model/board-context";
-import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
-import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
-import { ProjectBoardsSettings } from "@/features/tasks/ui/project-boards-settings";
-import { TaskDrawer } from "@/features/tasks/ui/task-drawer";
+import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -82,18 +79,12 @@ function ProjectSettingsRoute() {
                                     projectId={projectId}
                                 />
                                 {defaultBoardId ? (
-                                    <BoardProvider
+                                    <TaskDrawer
                                         boardId={defaultBoardId}
+                                        githubToken={githubAccessToken}
                                         projectId={projectId}
-                                    >
-                                        <TaskDrawer
-                                            githubToken={githubAccessToken}
-                                            projectId={projectId}
-                                            repoFullName={
-                                                project.github_full_name
-                                            }
-                                        />
-                                    </BoardProvider>
+                                        repoFullName={project.github_full_name}
+                                    />
                                 ) : undefined}
                             </>
                         ) : undefined}
