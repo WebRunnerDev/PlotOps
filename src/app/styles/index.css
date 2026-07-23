@@ -55,7 +55,8 @@
     --chart-4: #cbd5e1;
     --chart-5: #238636;
 
-    --radius: 0.5rem;
+    /* Sharp / neobrutalism — all rounded-* tokens derive from this */
+    --radius: 0;
 
     /* Sidebar */
     --sidebar: #f8fafc;
@@ -69,41 +70,42 @@
 }
 
 .dark {
-    --background: #0a0f1d;
-    --foreground: #f8fafc;
-    --card: #111827;
-    --card-foreground: #f8fafc;
-    --popover: #111827;
-    --popover-foreground: #f8fafc;
-    --primary: #38bdf8;
-    --primary-foreground: #0a0f1d;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --muted: #1e293b;
-    --muted-foreground: #64748b;
-    --grid: #1e293b;
-    --accent: #0ea5e9;
-    --accent-foreground: #f8fafc;
-    --destructive: #da3633;
-    --destructive-foreground: #f8fafc;
-    --success: #238636;
-    --success-foreground: #f8fafc;
-    --border: color-mix(in oklab, #38bdf8 28%, #0a0f1d);
-    --input: #1e293b;
-    --ring: #0ea5e9;
-    --chart-1: #38bdf8;
-    --chart-2: #0ea5e9;
-    --chart-3: #64748b;
-    --chart-4: #1e293b;
-    --chart-5: #238636;
-    --sidebar: #0a0f1d;
-    --sidebar-foreground: #f8fafc;
-    --sidebar-primary: #38bdf8;
-    --sidebar-primary-foreground: #0a0f1d;
-    --sidebar-accent: #1e293b;
-    --sidebar-accent-foreground: #f8fafc;
-    --sidebar-border: color-mix(in oklab, #38bdf8 28%, #0a0f1d);
-    --sidebar-ring: #0ea5e9;
+    /* Figma Make skin — near-black surfaces, cyan accent (ADR 0007) */
+    --background: #08090e;
+    --foreground: #f0f2f5;
+    --card: #12151c;
+    --card-foreground: #f0f2f5;
+    --popover: #12151c;
+    --popover-foreground: #f0f2f5;
+    --primary: #3ecfff;
+    --primary-foreground: #08090e;
+    --secondary: #181c24;
+    --secondary-foreground: #f0f2f5;
+    --muted: #161a22;
+    --muted-foreground: #8b929e;
+    --grid: #141820;
+    --accent: #2bb8e8;
+    --accent-foreground: #f0f2f5;
+    --destructive: #f85149;
+    --destructive-foreground: #f0f2f5;
+    --success: #3fb950;
+    --success-foreground: #08090e;
+    --border: #1e2535;
+    --input: #1e2535;
+    --ring: #3ecfff;
+    --chart-1: #3ecfff;
+    --chart-2: #2bb8e8;
+    --chart-3: #8b929e;
+    --chart-4: #181c24;
+    --chart-5: #3fb950;
+    --sidebar: #08090e;
+    --sidebar-foreground: #f0f2f5;
+    --sidebar-primary: #3ecfff;
+    --sidebar-primary-foreground: #08090e;
+    --sidebar-accent: #181c24;
+    --sidebar-accent-foreground: #f0f2f5;
+    --sidebar-border: color-mix(in oklab, #ffffff 9%, #08090e);
+    --sidebar-ring: #3ecfff;
 }
 
 @theme inline {
@@ -224,7 +226,11 @@
 
 /* Page-level board scroll — thin thumb, track blends with surface */
 @utility scrollbar-board {
-    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent)
+    scrollbar-color: color-mix(
+            in oklab,
+            var(--muted-foreground) 45%,
+            transparent
+        )
         transparent;
     scrollbar-width: thin;
 
@@ -288,5 +294,142 @@
     kbd,
     samp {
         @apply font-mono text-code;
+    }
+}
+
+/* Full-page route transitions (View Transitions API via TanStack Router) */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+}
+
+::view-transition-group(root),
+::view-transition-group(app-chrome),
+::view-transition-group(page-backdrop),
+::view-transition-group(main-content) {
+    /* Skip width/height morph — default group animation stretches snapshots
+       when going between constrained home and full-bleed board. */
+    animation: none;
+}
+
+::view-transition-old(app-chrome),
+::view-transition-new(app-chrome),
+::view-transition-old(page-backdrop),
+::view-transition-new(page-backdrop) {
+    animation: none;
+}
+
+::view-transition-old(main-content),
+::view-transition-new(main-content) {
+    /* Default object-fit:fill stretches the home snapshot to board size. */
+    height: 100%;
+    object-fit: none;
+    object-position: top center;
+    width: 100%;
+}
+
+html:active-view-transition-type(slide-left) {
+    &::view-transition-old(main-content) {
+        animation: 420ms cubic-bezier(0.16, 1, 0.3, 1) both page-slide-out-left;
+    }
+
+    &::view-transition-new(main-content) {
+        animation: 420ms cubic-bezier(0.16, 1, 0.3, 1) both page-slide-in-left;
+    }
+}
+
+html:active-view-transition-type(slide-right) {
+    &::view-transition-old(main-content) {
+        animation: 420ms cubic-bezier(0.16, 1, 0.3, 1) both page-slide-out-right;
+    }
+
+    &::view-transition-new(main-content) {
+        animation: 420ms cubic-bezier(0.16, 1, 0.3, 1) both page-slide-in-right;
+    }
+}
+
+html:active-view-transition-type(fade) {
+    &::view-transition-old(main-content) {
+        animation: 280ms cubic-bezier(0.16, 1, 0.3, 1) both page-fade-out;
+    }
+
+    &::view-transition-new(main-content) {
+        animation: 320ms cubic-bezier(0.16, 1, 0.3, 1) both page-fade-in;
+    }
+}
+
+@keyframes page-slide-out-left {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-28%);
+    }
+}
+
+@keyframes page-slide-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(28%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes page-slide-out-right {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(28%);
+    }
+}
+
+@keyframes page-slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(-28%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes page-fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes page-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
     }
 }

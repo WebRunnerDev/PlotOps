@@ -1,4 +1,5 @@
 import eslint from '@eslint/js';
+import eslintConfigPrettier from 'eslint-config-prettier';
 import { flatConfigs as importXFlatConfigs } from 'eslint-plugin-import-x';
 import { configs as perfectionistConfigs } from 'eslint-plugin-perfectionist';
 import unicorn from 'eslint-plugin-unicorn';
@@ -48,4 +49,5 @@ export default config(
       'unicorn/filename-case': 'off',
     },
   },
+  eslintConfigPrettier,
 );

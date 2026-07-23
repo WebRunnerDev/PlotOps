@@ -7,24 +7,42 @@
 
 > **Maintainers:** update this section when a roadmap item or stage is done. Agents: update after completing a feature in the same change set.
 
-| Area | Status |
-|------|--------|
-| Project scaffold (Vite, FSD, ESLint) | ✅ Done |
-| Routing (TanStack Router) | ✅ Done |
-| i18n (i18next) | ✅ Done |
-| Auth (Supabase, GitHub OAuth + email signup/confirm) | ✅ Done |
-| Guest mode | ⬜ Not started |
-| Database schema + RLS (`projects`) | ✅ Done |
-| GitHub project import (home page) | ✅ Done |
-| Kanban board | ✅ Done (custom columns, labels/priority/deadline; board filters; comments; soft-archive + board archive dialog; DnD polish deferred) |
-| Task rich text + media (Storage) | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket) |
-| Task activity feed (`activity_log`) | ✅ Done (collapsible drawer section; app-level batched writes; Query on expand) |
-| Git integration (PR, diff, branches) | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer) |
-| CI/CD dashboard | ⬜ Not started |
-| Command palette | ⬜ Not started |
-| GitHub webhooks + Edge Function | ⬜ Not started |
-| Team & permissions (`project_members`, roles, invites) | 🟡 In progress (schema+RLS+settings/invite UI; polish gating next) |
-| Multi-board + branch mapping | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn) |
+| Area                                                   | Status                                                                                                                                                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project scaffold (Vite, FSD, ESLint)                   | ✅ Done                                                                                                                                                                                |
+| Routing (TanStack Router)                              | ✅ Done                                                                                                                                                                                |
+| i18n (i18next)                                         | ✅ Done                                                                                                                                                                                |
+| Auth (Supabase, GitHub OAuth + email signup/confirm)   | ✅ Done                                                                                                                                                                                |
+| Guest mode                                             | ⬜ Not started                                                                                                                                                                         |
+| Database schema + RLS (`projects`)                     | ✅ Done                                                                                                                                                                                |
+| GitHub project import (home page)                      | ✅ Done                                                                                                                                                                                |
+| Kanban board                                           | ✅ Done (custom columns, labels/priority/deadline; board filters; comments; soft-archive + board archive dialog; Make skin pass on board/cards/drawer — ADR 0007; DnD polish deferred) |
+| Task rich text + media (Storage)                       | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket)                                                                                           |
+| Task activity feed (`activity_log`)                    | ✅ Done (collapsible drawer section; app-level batched writes; Query on expand)                                                                                                        |
+| Git integration (PR, diff, branches)                   | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer)                                                                                                  |
+| CI/CD dashboard                                        | ⬜ Not started                                                                                                                                                                         |
+| Command palette                                        | ⬜ Not started                                                                                                                                                                         |
+| GitHub webhooks + Edge Function                        | ⬜ Not started                                                                                                                                                                         |
+| Team & permissions (`project_members`, roles, invites) | 🟡 In progress (schema+RLS+settings/invite UI; polish gating next)                                                                                                                     |
+| Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
+| Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
+| Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
+| App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
+
+## Sprints (MVP)
+
+> Domain glossary: `CONTEXT.md` (Planning). Decision: `docs/adr/0008`.
+
+**Model:** Sprint ⊆ Board. States: `draft` → `active` → `closed` | `canceled`. ≤1 Active per Board; many Drafts. Backlog = Tasks with no `sprint_id`. Start → Commitment snapshot; Active add/remove → Scope change events. Close → user confirms completed (recommend last column) + Carryover incomplete to Backlog or a Draft. Cancel → all Tasks to Backlog (canceled sprints appear in Backlog **Sprint history**). Manager+ may permanently delete closed/canceled history (and cascaded `sprint_events`) for free-tier hygiene. Dates required at Start. Manager+ plans; Contributor views. Kanban toggle: Active sprint | Entire board. No points/KPI/burndown in MVP.
+
+### Implementation plan
+
+1. **Schema + RLS** — `sprints`, `sprint_events`, `tasks.sprint_id`; unique Active per Board; clear `sprint_id` on archive / board move (+ scope event when leaving Active).
+2. **API + hooks** — CRUD Draft, assign/reorder, Start / Close / Cancel, report reads; `canManageBoard` for mutations.
+3. **Backlog route** — `/projects/$projectId/boards/$boardId/backlog`: Draft/Active sections + Backlog; DnD membership (Manager+).
+4. **Lifecycle dialogs** — Start (dates, default 14d), Close (completed checkboxes + carryover), Cancel confirm; Sprint report for Closed.
+5. **Board chrome** — link to Backlog; scope toggle Active sprint | Entire board; optional sprint badge on cards.
+6. **Progress** — mark Done when the slice above ships. ✅
 
 ## Team & permissions (MVP)
 
@@ -44,32 +62,53 @@
 
 > Captured during domain grilling (Team & Permissions). Not in current MVP scope — do not implement until explicitly pulled in.
 
-| Item | Notes |
-|------|--------|
-| Separate **Team** entity above Project | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed. |
-| GitHub collaborator auto-suggest | On repo connect, list GH collaborators and offer “Add to Project”. |
-| Custom SMTP / real invite emails | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough. |
-| Open invite link (no email binding) | Role + TTL link anyone can redeem — separate from email-targeted Invites. |
-| Board-level permission overrides | Notion `view` / `edit` / `manage` per board beyond Project Role. |
-| Assigned-only Contributor edits | Rejected for MVP (Contributor may update any Task); revisit if needed. |
-| Granular permission flags per Member | Roles only for MVP; no custom `tasks:create`-style flags. |
-| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body. |
-| Realtime on `activity_log` | Rejected for MVP; TanStack Query + invalidate is enough. |
-| Activity retention cron / per-task cap | Rejected for MVP; store all rows, UI shows last 50–100. |
-| Archive auto-purge (TTL) | Rejected for MVP on free tier; manual Delete from archive only. |
+| Item                                     | Notes                                                                                           |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Separate **Team** entity above Project   | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed.      |
+| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Project”.                              |
+| Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough. |
+| Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                       |
+| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Project Role.                                |
+| Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                          |
+| Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                       |
+| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.               |
+| Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                        |
+| Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                         |
+| Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                 |
+| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).     |
+| Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                          |
+| Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                             |
+| Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                     |
+| Per-task carryover targets on Close      | MVP: one target for all incomplete (Backlog or chosen Draft).                                   |
+| Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                    |
+| Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                         |
+
+## Deferred from Figma Make
+
+> Visual redesign source: Dark-themed CRM Interface Design. Policy: ADR 0007 — skin only; keep existing feature structure. Rows below are Make UI/ideas with **no** matching PlotOps feature yet — do not implement in the redesign pass.
+
+| Item                                                                                 | Notes                                                                                                                                          |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command palette in board header (`⌘K` search chip)                                   | Make chrome; product Cmd+K is still Not started (Progress).                                                                                    |
+| **Group by** board control                                                           | Not in PlotOps; Make-only.                                                                                                                     |
+| **Display** board control                                                            | Not in PlotOps; Make-only.                                                                                                                     |
+| Make dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Bottom dock removed — global chrome is top `AppChrome` (account/theme/lang). Board/CI/CD/Branches IA still deferred until those features ship. |
+| Header **+ New Task** as primary CTA                                                 | We add tasks per column; optional later if we want a board-level create entry.                                                                 |
+| Make Task drawer **two-column** layout (content + meta sidebar)                      | Visual reference only — keep current drawer sections/fields (ADR 0007).                                                                        |
+| Drawer **DIFF PREVIEW** / **RECENT COMMITS** as first-class Make sections            | Git/diff already live under existing Git tab / panels; do not restructure drawer around Make sections.                                         |
 
 ## Tech Stack
 
-| Layer | Choice |
-|-------|--------|
-| Build | Vite 8 |
-| UI | React 19, Tailwind CSS 4, shadcn/ui |
-| Routing | TanStack Router |
-| Server state | TanStack Query |
-| UI state | Zustand (when local `useState` is not enough) |
-| i18n | i18next + react-i18next |
-| Backend | Supabase (PostgreSQL, Auth, Realtime, Storage, Edge Functions) |
-| Architecture | Feature-Sliced Design |
+| Layer        | Choice                                                         |
+| ------------ | -------------------------------------------------------------- |
+| Build        | Vite 8                                                         |
+| UI           | React 19, Tailwind CSS 4, shadcn/ui                            |
+| Routing      | TanStack Router                                                |
+| Server state | TanStack Query                                                 |
+| UI state     | Zustand (when local `useState` is not enough)                  |
+| i18n         | i18next + react-i18next                                        |
+| Backend      | Supabase (PostgreSQL, Auth, Realtime, Storage, Edge Functions) |
+| Architecture | Feature-Sliced Design                                          |
 
 ### Project Structure (FSD)
 
@@ -99,6 +138,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 - Shared/base branches (`main`, `dev`, …) may be linked but do not load full commit/PR lists.
 - Tasks can link a pull request by number/URL (works without a dedicated branch); diff opens in-app.
 - Drag-and-drop between columns updates task status; optionally syncs with linked pull requests.
+- **Sprints** (ADR 0008): Board-scoped timeboxes; Backlog screen; Commitment / Scope change / Close report — see **Sprints (MVP)** above.
 
 ### 2. Mini-GitHub (PR & Code Diff)
 
@@ -128,15 +168,15 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 
 Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by **role**, not by wanting a larger size.
 
-| Role | Token | When |
-|------|-------|------|
-| Page title | `text-h1` | One per screen (`h1`). Scales 28px → 33px at `md` |
-| Section | `text-h2` | Blocks inside a page (`h2`) |
-| Title | `text-h3` | Card / dialog / panel headers (`h3`; bare `h4` maps here) |
-| Body | `text-body` | Paragraphs, long descriptions |
-| UI | `text-ui` | Nav, forms, list rows, dense chrome |
-| Code | `text-code` | Branches, paths, diffs, commits |
-| Meta | `text-meta` | Uppercase micro-labels: statuses, task keys, chips, avatar initials |
+| Role       | Token       | When                                                                |
+| ---------- | ----------- | ------------------------------------------------------------------- |
+| Page title | `text-h1`   | One per screen (`h1`). Scales 28px → 33px at `md`                   |
+| Section    | `text-h2`   | Blocks inside a page (`h2`)                                         |
+| Title      | `text-h3`   | Card / dialog / panel headers (`h3`; bare `h4` maps here)           |
+| Body       | `text-body` | Paragraphs, long descriptions                                       |
+| UI         | `text-ui`   | Nav, forms, list rows, dense chrome                                 |
+| Code       | `text-code` | Branches, paths, diffs, commits                                     |
+| Meta       | `text-meta` | Uppercase micro-labels: statuses, task keys, chips, avatar initials |
 
 **Fonts:** Space Grotesk (headings), IBM Plex Sans (body/ui), JetBrains Mono (code/meta).
 
@@ -177,16 +217,18 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 
 ## Database Schema
 
-| Table | Key columns |
-|-------|-------------|
-| `profiles` | `id` (uuid → auth.users), `username`, `avatar_url` |
-| `projects` | `id`, `name`, `slug`, `owner_id` → profiles |
-| `boards` | `id`, `project_id`, `name`, `position`, `base_branch`, `allowed_head_patterns` |
-| `board_columns` | `(board_id, id)` PK, `project_id`, `name`, `position` |
-| `tasks` | `id`, `project_id`, `board_id`, `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id`, `author_id`, `archived_at`, `archived_by` |
-| `task_comments` | `id`, `task_id`, `project_id`, `author_id`, `body`, `created_at`, `updated_at` |
-| `labels` | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`) |
-| `activity_log` | `id`, `task_id`, `project_id`, `user_id` → profiles, `action` (text), `metadata` (jsonb), `created_at` |
+| Table           | Key columns                                                                                                                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profiles`      | `id` (uuid → auth.users), `username`, `avatar_url`                                                                                                                                                                                           |
+| `projects`      | `id`, `name`, `slug`, `owner_id` → profiles                                                                                                                                                                                                  |
+| `boards`        | `id`, `project_id`, `name`, `position`, `base_branch`, `allowed_head_patterns`                                                                                                                                                               |
+| `board_columns` | `(board_id, id)` PK, `project_id`, `name`, `position`                                                                                                                                                                                        |
+| `tasks`         | `id`, `project_id`, `board_id`, `sprint_id` (nullable → sprints), `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id`, `author_id`, `archived_at`, `archived_by`                                          |
+| `sprints`       | `id`, `board_id`, `project_id`, `name`, `goal`, `state` (`draft`/`active`/`closed`/`canceled`), `starts_on`, `ends_on`, `committed_task_ids` (uuid[]), `completed_task_ids` (uuid[]), `started_at`, `closed_at`, `canceled_at`, `created_at` |
+| `sprint_events` | `id`, `sprint_id`, `project_id`, `actor_id`, `event_type` (`task_added`/`task_removed`/`started`/`closed`/`canceled`), `task_id` (nullable), `payload` (jsonb), `created_at`                                                                 |
+| `task_comments` | `id`, `task_id`, `project_id`, `author_id`, `body`, `created_at`, `updated_at`                                                                                                                                                               |
+| `labels`        | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`)                                                                                                                                                 |
+| `activity_log`  | `id`, `task_id`, `project_id`, `user_id` → profiles, `action` (text), `metadata` (jsonb), `created_at`                                                                                                                                       |
 
 Enable RLS and base policies before writing frontend code.
 
@@ -203,13 +245,13 @@ Enable RLS and base policies before writing frontend code.
 
 ### What to log
 
-| Include | Exclude |
-|---------|---------|
-| status, assignee, priority, deadline | description (no body, no “description updated”) |
-| title, type, labels | comments (stay in `task_comments` only) |
-| branch / PR link or unlink | position-only DnD reorders within a column (optional; skip if noisy) |
-| move to another board | |
-| archive / restore (`field: "archived"`) | |
+| Include                                 | Exclude                                                              |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| status, assignee, priority, deadline    | description (no body, no “description updated”)                      |
+| title, type, labels                     | comments (stay in `task_comments` only)                              |
+| branch / PR link or unlink              | position-only DnD reorders within a column (optional; skip if noisy) |
+| move to another board                   |                                                                      |
+| archive / restore (`field: "archived"`) |                                                                      |
 
 ### Event shape
 
@@ -278,11 +320,11 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 
 ## Hosting Cost (Demo)
 
-| Service | Cost |
-|---------|------|
-| Frontend (Vercel Hobby / Cloudflare Pages) | $0 |
-| Supabase Free (500 MB DB, 1 GB storage, 50k MAU) | $0 |
-| GitHub API | $0 |
+| Service                                          | Cost |
+| ------------------------------------------------ | ---- |
+| Frontend (Vercel Hobby / Cloudflare Pages)       | $0   |
+| Supabase Free (500 MB DB, 1 GB storage, 50k MAU) | $0   |
+| GitHub API                                       | $0   |
 
 **Pitfall:** Supabase free tier pauses DB after 7 days idle. Fix: UptimeRobot pings every few minutes.
 

@@ -1,32 +1,48 @@
-import { Archive, RotateCcw, Trash2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { Archive, CalendarIcon, RotateCcw, Trash2, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { enUS, ru } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
-    BoardColumn,
     TaskPriority,
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
 
-import { fetchBoardColumns } from "@/features/tasks/api/boards-api";
-import { TASK_DESCRIPTION_MAX_LENGTH, TASK_PRIORITIES, TASK_TYPES } from "@/features/tasks/model/constants";
-import { isSharedBranch } from "@/features/tasks/lib/format-branch";
+import {
+    type BoardColumn,
+    fetchBoardColumns,
+    useBoardColumns,
+    useProjectBoards,
+} from "@/features/boards";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
-import { useBoardContext } from "@/features/tasks/model/board-context";
+import { TaskLabelsField, useProjectLabels } from "@/features/labels";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
+import { isSharedBranch } from "@/features/tasks/lib/format-branch";
+import {
+    formatDeadlineLong,
+    parseIsoDate,
+    toIsoDate,
+} from "@/features/tasks/lib/format-deadline";
+import {
+    TASK_DESCRIPTION_MAX_LENGTH,
+    TASK_PRIORITIES,
+    TASK_TITLE_MAX_LENGTH,
+    TASK_TYPES,
+} from "@/features/tasks/model/constants";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
-import { useProjectBoards } from "@/features/tasks/model/use-project-boards";
+import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
 import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
 import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
-import { TaskLabelsField } from "@/features/tasks/ui/task-labels-field";
 import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
-import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
-import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
+import { Separator } from "@/shared";
+import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -38,6 +54,7 @@ import {
     AlertDialogTitle,
 } from "@/shared/shadcn/ui/alert-dialog";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Calendar } from "@/shared/shadcn/ui/calendar";
 import {
     Combobox,
     ComboboxContent,
@@ -56,6 +73,11 @@ import {
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/shared/shadcn/ui/popover";
+import {
     Select,
     SelectContent,
     SelectItem,
@@ -63,10 +85,11 @@ import {
 } from "@/shared/shadcn/ui/select";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
-import { Separator } from "@/shared";
 
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
 const PRIORITY_NONE = "__none__";
+const FIELD_LABEL_CLASS = "text-meta text-muted-foreground";
+const FIELD_CONTROL_CLASS = "w-full font-mono text-code";
 
 type MoveBoardTarget = {
     boardId: string;
@@ -76,60 +99,62 @@ type MoveBoardTarget = {
 };
 
 type TaskDrawerProperties = {
+    boardId: string;
     githubToken: null | string;
     projectId: string;
     repoFullName: string | undefined;
 };
 
 export function TaskDrawer({
+    boardId,
     githubToken,
     projectId,
     repoFullName,
 }: TaskDrawerProperties) {
     const { t } = useTranslation("board");
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
+    const { columns } = useBoardColumns(projectId, boardId);
+    const { labels } = useProjectLabels(projectId);
     const {
         archiveTask,
-        boardId,
-        columns,
         deleteTask,
-        labels,
         moveTaskToOtherBoard,
         restoreTask,
         tasks,
         updateTaskDetails,
         updateTaskStatus,
-    } = useBoardContext();
+    } = useBoardTasks(projectId, boardId);
     const { data: boards = [] } = useProjectBoards(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
     const { canDeleteTasks, canEditTasks } = useProjectAccess(projectId);
-    const clearSelectedTask = useTasksUiStore((state) => state.clearSelectedTask);
+    const clearSelectedTask = useTasksUiStore(
+        (state) => state.clearSelectedTask
+    );
 
     const boardTask = tasks.find((item) => item.id === selectedTaskId);
     const { data: archivedTasks = [] } = useArchivedTasks(
         projectId,
         boardId,
-        Boolean(selectedTaskId) && !boardTask,
+        Boolean(selectedTaskId) && !boardTask
     );
     const task =
-        boardTask ??
-        archivedTasks.find((item) => item.id === selectedTaskId);
+        boardTask ?? archivedTasks.find((item) => item.id === selectedTaskId);
     const isArchived = Boolean(task?.archivedAt);
     const canEdit = canEditTasks && !isArchived;
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
-        [labels, projectId],
+        [labels, projectId]
     );
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
-    const [deleteTarget, setDeleteTarget] = useState<{
+    const [deleteTarget, setDeleteTarget] = useState<null | {
         id: string;
         key: string;
         title: string;
-    } | null>(null);
+    }>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
@@ -235,7 +260,10 @@ export function TaskDrawer({
 
         setIsLoadingMoveColumns(true);
         try {
-            const targetColumns = await fetchBoardColumns(targetBoardId);
+            const targetColumns = await fetchBoardColumns(
+                projectId,
+                targetBoardId
+            );
             if (targetColumns.length === 0) {
                 toast.error(t("boards.taskMoveFailed"));
                 return;
@@ -245,7 +273,7 @@ export function TaskDrawer({
                 ? targetColumns.find(
                       (column) =>
                           column.name.trim().toLowerCase() ===
-                          selectedColumn.name.trim().toLowerCase(),
+                          selectedColumn.name.trim().toLowerCase()
                   )
                 : undefined;
 
@@ -275,7 +303,7 @@ export function TaskDrawer({
             await moveTaskToOtherBoard(
                 task.id,
                 moveTarget.boardId,
-                moveTarget.columnId,
+                moveTarget.columnId
             );
             setMoveTarget(null);
             clearSelectedTask();
@@ -296,557 +324,714 @@ export function TaskDrawer({
 
     return (
         <>
-        <Drawer
-            onOpenChange={(open) => {
-                if (!open) {
-                    commitDescription();
-                    clearSelectedTask();
-                }
-            }}
-            open={Boolean(task)}
-            showSwipeHandle
-            snapPoints={[...TASK_DRAWER_SNAP_POINTS]}
-            swipeDirection="down"
-        >
-            <DrawerContent>
-                {task ? (
-                    <>
-                        <DrawerHeader className="text-left p-2">
-                            <p className="text-meta font-mono text-muted-foreground">
-                                {task.key}
-                                {isArchived
-                                    ? ` · ${t("archive.badge")}`
-                                    : undefined}
-                            </p>
-                            <DrawerTitle className="sr-only">
-                                {task.title}
-                            </DrawerTitle>
-                            <DrawerDescription>
-                                {isArchived
-                                    ? t("archive.drawerDescription")
-                                    : t("drawerDescription")}
-                            </DrawerDescription>
-                        </DrawerHeader>
+            <Drawer
+                onOpenChange={(open) => {
+                    if (!open) {
+                        commitDescription();
+                        clearSelectedTask();
+                    }
+                }}
+                open={Boolean(task)}
+                showSwipeHandle
+                snapPoints={[...TASK_DRAWER_SNAP_POINTS]}
+                swipeDirection="down"
+            >
+                <DrawerContent>
+                    {task ? (
+                        <>
+                            <DrawerHeader className="border-b border-border p-4 text-left">
+                                <p className="text-meta text-muted-foreground">
+                                    {task.key}
+                                    {isArchived
+                                        ? ` · ${t("archive.badge")}`
+                                        : undefined}
+                                </p>
+                                <DrawerTitle className="sr-only">
+                                    {task.title}
+                                </DrawerTitle>
+                                <DrawerDescription className="text-code text-muted-foreground">
+                                    {isArchived
+                                        ? t("archive.drawerDescription")
+                                        : t("drawerDescription")}
+                                </DrawerDescription>
+                            </DrawerHeader>
 
-                        <div className="mx-auto flex min-h-0 w-full min-w-7xl max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row">
-                            {/* Title and Description */}
-                            <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="task-title">
-                                        {t("fields.title")}
-                                    </Label>
-                                    <Input
-                                        className="text-h3 font-medium"
-                                        disabled={!canEdit}
-                                        id="task-title"
-                                        onBlur={commitTitle}
-                                        onChange={(event) =>
-                                            setTitle(event.target.value)
-                                        }
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter") {
-                                                event.currentTarget.blur();
-                                            }
-                                        }}
-                                        value={title}
-                                    />
-                                </div>
-
-                                <div className="flex min-w-0 flex-col gap-2">
-                                    <Label
-                                        htmlFor="task-description"
-                                        id="task-description-label"
-                                    >
-                                        {t("fields.description")}
-                                    </Label>
-                                    <RichTextEditor
-                                        id="task-description"
-                                        maxLength={TASK_DESCRIPTION_MAX_LENGTH}
-                                        onBlur={commitDescription}
-                                        onChange={setDescription}
-                                        onUploadImage={
-                                            canEdit
-                                                ? (file) =>
-                                                      uploadTaskMedia(
-                                                          file,
-                                                          task.id,
-                                                      )
-                                                : undefined
-                                        }
-                                        placeholder={t(
-                                            "fields.descriptionPlaceholder",
-                                        )}
-                                        readOnly={!canEdit}
-                                        value={description}
-                                    />
-                                </div>
-
-                                <TaskCommentsSection
-                                    projectId={projectId}
-                                    readOnly={isArchived}
-                                    taskId={task.id}
-                                />
-
-                                <TaskActivitySection
-                                    onOpenChange={setActivityOpen}
-                                    open={activityOpen}
-                                    taskId={task.id}
-                                />
-                            </div>
-                            <Separator
-                                className="hidden shrink-0 md:block"
-                                orientation="vertical"
-                            />
-                            {/* Type, Status, Priority, Deadline */}
-                            <div className="flex min-w-0 flex-[1_1_0%] flex-col gap-6">
-                                <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+                            <div className="scrollbar-board mx-auto flex min-h-0 w-full min-w-7xl max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
+                                {/* Title and Description */}
+                                <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
                                     <div className="flex flex-col gap-2">
-                                        <Label htmlFor="task-type">
-                                            {t("fields.type")}
-                                        </Label>
-                                        <Select
-                                            disabled={!canEdit}
-                                            onValueChange={(value) => {
-                                                updateTaskDetails(task.id, {
-                                                    type: value as TaskType,
-                                                });
-                                            }}
-                                            value={task.type}
+                                        <Label
+                                            className={FIELD_LABEL_CLASS}
+                                            htmlFor="task-title"
                                         >
-                                            <SelectTrigger
-                                                className="w-full"
-                                                id="task-type"
-                                            >
-                                                <span>
-                                                    {t(`taskType.${task.type}`)}
-                                                </span>
-                                            </SelectTrigger>
-                                            <SelectContent alignItemWithTrigger={false}>
-                                                {TASK_TYPES.map((type) => (
-                                                    <SelectItem
-                                                        key={type}
-                                                        value={type}
-                                                    >
-                                                        {t(`taskType.${type}`)}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2">
-                                        <Label htmlFor="task-status">
-                                            {t("fields.status")}
+                                            {t("fields.title")}
                                         </Label>
-                                        <Combobox
+                                        <Input
+                                            className="h-auto text-h3 font-semibold"
                                             disabled={!canEdit}
-                                            isItemEqualToValue={(a, b) =>
-                                                a.id === b.id
+                                            id="task-title"
+                                            maxLength={TASK_TITLE_MAX_LENGTH}
+                                            onBlur={commitTitle}
+                                            onChange={(event) =>
+                                                setTitle(event.target.value)
                                             }
-                                            items={columns}
-                                            itemToStringLabel={(item) =>
-                                                item.name
-                                            }
-                                            onValueChange={(value) => {
-                                                if (value && canEdit) {
-                                                    updateTaskStatus(
-                                                        task.id,
-                                                        value.id,
-                                                    );
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter") {
+                                                    event.currentTarget.blur();
                                                 }
                                             }}
-                                            value={selectedColumn ?? null}
-                                        >
-                                            <ComboboxInput
-                                                className="w-full"
-                                                id="task-status"
-                                            />
-                                            <ComboboxContent>
-                                                <ComboboxEmpty>
-                                                    {t("columns.noResults")}
-                                                </ComboboxEmpty>
-                                                <ComboboxList>
-                                                    {(column: BoardColumn) => (
-                                                        <ComboboxItem
-                                                            key={column.id}
-                                                            value={column}
-                                                        >
-                                                            {column.name}
-                                                        </ComboboxItem>
-                                                    )}
-                                                </ComboboxList>
-                                            </ComboboxContent>
-                                        </Combobox>
+                                            value={title}
+                                        />
                                     </div>
 
-                                    {boards.length > 1 ? (
-                                        <div className="flex flex-col gap-2">
-                                            <Label htmlFor="task-board">
-                                                {t("fields.board")}
+                                    <div className="flex min-w-0 flex-col gap-2">
+                                        <Label
+                                            className={FIELD_LABEL_CLASS}
+                                            htmlFor="task-description"
+                                            id="task-description-label"
+                                        >
+                                            {t("fields.description")}
+                                        </Label>
+                                        <RichTextEditor
+                                            id="task-description"
+                                            maxLength={
+                                                TASK_DESCRIPTION_MAX_LENGTH
+                                            }
+                                            onBlur={commitDescription}
+                                            onChange={setDescription}
+                                            onUploadImage={
+                                                canEdit
+                                                    ? (file) =>
+                                                          uploadTaskMedia(
+                                                              file,
+                                                              task.id
+                                                          )
+                                                    : undefined
+                                            }
+                                            placeholder={t(
+                                                "fields.descriptionPlaceholder"
+                                            )}
+                                            readOnly={!canEdit}
+                                            value={description}
+                                        />
+                                    </div>
+
+                                    <TaskCommentsSection
+                                        projectId={projectId}
+                                        readOnly={isArchived}
+                                        taskId={task.id}
+                                    />
+
+                                    <TaskActivitySection
+                                        onOpenChange={setActivityOpen}
+                                        open={activityOpen}
+                                        taskId={task.id}
+                                    />
+                                </div>
+                                <Separator
+                                    className="hidden shrink-0 md:block"
+                                    orientation="vertical"
+                                />
+                                {/* Type, Status, Priority, Deadline */}
+                                <div className="flex min-w-0 flex-[1_1_0%] flex-col gap-5">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-type"
+                                            >
+                                                {t("fields.type")}
                                             </Label>
                                             <Select
+                                                disabled={!canEdit}
                                                 onValueChange={(value) => {
-                                                    if (
-                                                        typeof value !==
-                                                            "string" ||
-                                                        value === boardId
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    void openMoveToBoard(value);
+                                                    updateTaskDetails(task.id, {
+                                                        type: value as TaskType,
+                                                    });
                                                 }}
-                                                value={boardId}
-                                                disabled={
-                                                    !canEdit ||
-                                                    isLoadingMoveColumns ||
-                                                    isMoving
-                                                }
+                                                value={task.type}
                                             >
                                                 <SelectTrigger
-                                                    className="w-full"
-                                                    id="task-board"
+                                                    className={
+                                                        FIELD_CONTROL_CLASS
+                                                    }
+                                                    id="task-type"
                                                 >
                                                     <span>
-                                                        {currentBoard?.name ??
-                                                            t("boards.loading")}
+                                                        {t(
+                                                            `taskType.${task.type}`
+                                                        )}
                                                     </span>
                                                 </SelectTrigger>
-                                                <SelectContent>
-                                                    {boards.map((board) => (
+                                                <SelectContent
+                                                    alignItemWithTrigger={false}
+                                                >
+                                                    {TASK_TYPES.map((type) => (
                                                         <SelectItem
-                                                            key={board.id}
-                                                            value={board.id}
+                                                            key={type}
+                                                            value={type}
                                                         >
-                                                            {board.name}
+                                                            {t(
+                                                                `taskType.${type}`
+                                                            )}
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                    ) : undefined}
 
-                                    <div className="flex flex-col gap-2">
-                                        <Label htmlFor="task-priority">
-                                            {t("fields.priority")}
-                                        </Label>
-                                        <Select
-                                            disabled={!canEdit}
-                                            onValueChange={(value) => {
-                                                if (typeof value !== "string") {
-                                                    return;
-                                                }
-                                                updateTaskDetails(task.id, {
-                                                    priority:
-                                                        value === PRIORITY_NONE
-                                                            ? undefined
-                                                            : (value as TaskPriority),
-                                                });
-                                            }}
-                                            value={task.priority ?? PRIORITY_NONE}
-                                        >
-                                            <SelectTrigger
-                                                className="w-full"
-                                                id="task-priority"
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-status"
                                             >
-                                                <span>
-                                                    {task.priority
-                                                        ? t(`priority.${task.priority}`)
-                                                        : t("priority.none")}
-                                                </span>
-                                            </SelectTrigger>
-                                            <SelectContent alignItemWithTrigger={false}>
-                                                <SelectItem value={PRIORITY_NONE}>
-                                                    {t("priority.none")}
-                                                </SelectItem>
-                                                {TASK_PRIORITIES.map((priority) => (
-                                                    <SelectItem
-                                                        key={priority}
-                                                        value={priority}
+                                                {t("fields.status")}
+                                            </Label>
+                                            <Combobox
+                                                disabled={!canEdit}
+                                                isItemEqualToValue={(a, b) =>
+                                                    a.id === b.id
+                                                }
+                                                items={columns}
+                                                itemToStringLabel={(item) =>
+                                                    item.name
+                                                }
+                                                onValueChange={(value) => {
+                                                    if (value && canEdit) {
+                                                        updateTaskStatus(
+                                                            task.id,
+                                                            value.id
+                                                        );
+                                                    }
+                                                }}
+                                                value={selectedColumn ?? null}
+                                            >
+                                                <ComboboxInput
+                                                    className={
+                                                        FIELD_CONTROL_CLASS
+                                                    }
+                                                    id="task-status"
+                                                />
+                                                <ComboboxContent>
+                                                    <ComboboxEmpty>
+                                                        {t("columns.noResults")}
+                                                    </ComboboxEmpty>
+                                                    <ComboboxList>
+                                                        {(
+                                                            column: BoardColumn
+                                                        ) => (
+                                                            <ComboboxItem
+                                                                key={column.id}
+                                                                value={column}
+                                                            >
+                                                                {column.name}
+                                                            </ComboboxItem>
+                                                        )}
+                                                    </ComboboxList>
+                                                </ComboboxContent>
+                                            </Combobox>
+                                        </div>
+
+                                        {boards.length > 1 ? (
+                                            <div className="flex flex-col gap-1.5">
+                                                <Label
+                                                    className={
+                                                        FIELD_LABEL_CLASS
+                                                    }
+                                                    htmlFor="task-board"
+                                                >
+                                                    {t("fields.board")}
+                                                </Label>
+                                                <Select
+                                                    disabled={
+                                                        !canEdit ||
+                                                        isLoadingMoveColumns ||
+                                                        isMoving
+                                                    }
+                                                    onValueChange={(value) => {
+                                                        if (
+                                                            typeof value !==
+                                                                "string" ||
+                                                            value === boardId
+                                                        ) {
+                                                            return;
+                                                        }
+                                                        void openMoveToBoard(
+                                                            value
+                                                        );
+                                                    }}
+                                                    value={boardId}
+                                                >
+                                                    <SelectTrigger
+                                                        className={
+                                                            FIELD_CONTROL_CLASS
+                                                        }
+                                                        id="task-board"
                                                     >
-                                                        {t(`priority.${priority}`)}
+                                                        <span>
+                                                            {currentBoard?.name ??
+                                                                t(
+                                                                    "boards.loading"
+                                                                )}
+                                                        </span>
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {boards.map((board) => (
+                                                            <SelectItem
+                                                                key={board.id}
+                                                                value={board.id}
+                                                            >
+                                                                {board.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        ) : undefined}
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-priority"
+                                            >
+                                                {t("fields.priority")}
+                                            </Label>
+                                            <Select
+                                                disabled={!canEdit}
+                                                onValueChange={(value) => {
+                                                    if (
+                                                        typeof value !==
+                                                        "string"
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    updateTaskDetails(task.id, {
+                                                        priority:
+                                                            value ===
+                                                            PRIORITY_NONE
+                                                                ? undefined
+                                                                : (value as TaskPriority),
+                                                    });
+                                                }}
+                                                value={
+                                                    task.priority ??
+                                                    PRIORITY_NONE
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    className={
+                                                        FIELD_CONTROL_CLASS
+                                                    }
+                                                    id="task-priority"
+                                                >
+                                                    <span>
+                                                        {task.priority
+                                                            ? t(
+                                                                  `priority.${task.priority}`
+                                                              )
+                                                            : t(
+                                                                  "priority.none"
+                                                              )}
+                                                    </span>
+                                                </SelectTrigger>
+                                                <SelectContent
+                                                    alignItemWithTrigger={false}
+                                                >
+                                                    <SelectItem
+                                                        value={PRIORITY_NONE}
+                                                    >
+                                                        {t("priority.none")}
                                                     </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                                    {TASK_PRIORITIES.map(
+                                                        (priority) => (
+                                                            <SelectItem
+                                                                key={priority}
+                                                                value={priority}
+                                                            >
+                                                                {t(
+                                                                    `priority.${priority}`
+                                                                )}
+                                                            </SelectItem>
+                                                        )
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-deadline"
+                                            >
+                                                {t("fields.deadline")}
+                                            </Label>
+                                            <TaskDeadlineField
+                                                disabled={!canEdit}
+                                                id="task-deadline"
+                                                onChange={(deadline) => {
+                                                    updateTaskDetails(task.id, {
+                                                        deadline,
+                                                    });
+                                                }}
+                                                value={task.deadline}
+                                            />
+                                        </div>
                                     </div>
 
-                                    <div className="flex flex-col gap-2">
-                                        <Label htmlFor="task-deadline">
-                                            {t("fields.deadline")}
-                                        </Label>
-                                        <Input
-                                            disabled={!canEdit}
-                                            id="task-deadline"
-                                            onChange={(event) => {
-                                                if (!canEdit) return;
-                                                const next = event.target.value;
-                                                updateTaskDetails(task.id, {
-                                                    deadline:
-                                                        next.length > 0
-                                                            ? next
-                                                            : undefined,
-                                                });
-                                            }}
-                                            type="date"
-                                            value={task.deadline ?? ""}
-                                        />
-                                    </div>
-                                </div>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-author"
+                                            >
+                                                {t("fields.author")}
+                                            </Label>
+                                            <TaskMemberField
+                                                disabled={!canEdit}
+                                                id="task-author"
+                                                onChange={(author) => {
+                                                    updateTaskDetails(task.id, {
+                                                        author,
+                                                    });
+                                                }}
+                                                projectId={projectId}
+                                                value={task.author}
+                                            />
+                                        </div>
 
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="flex flex-col gap-2">
-                                        <Label htmlFor="task-author">
-                                            {t("fields.author")}
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-assignee"
+                                            >
+                                                {t("fields.assignee")}
+                                            </Label>
+                                            <TaskMemberField
+                                                disabled={!canEdit}
+                                                id="task-assignee"
+                                                onChange={(assignee) => {
+                                                    updateTaskDetails(task.id, {
+                                                        assignee,
+                                                    });
+                                                }}
+                                                projectId={projectId}
+                                                value={task.assignee}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label className={FIELD_LABEL_CLASS}>
+                                            {t("fields.labels")}
                                         </Label>
-                                        <TaskMemberField
+                                        <TaskLabelsField
                                             disabled={!canEdit}
-                                            id="task-author"
-                                            onChange={(author) => {
+                                            labels={projectLabels}
+                                            onLabelIdsChange={(labelIds) => {
                                                 updateTaskDetails(task.id, {
-                                                    author,
+                                                    labelIds,
                                                 });
                                             }}
                                             projectId={projectId}
-                                            value={task.author}
+                                            selectedIds={task.labelIds ?? []}
                                         />
                                     </div>
 
-                                    <div className="flex flex-col gap-2">
-                                        <Label htmlFor="task-assignee">
-                                            {t("fields.assignee")}
-                                        </Label>
-                                        <TaskMemberField
-                                            disabled={!canEdit}
-                                            id="task-assignee"
-                                            onChange={(assignee) => {
+                                    {isArchived ? (
+                                        task.branchName || task.pr ? (
+                                            <GithubTaskMeta
+                                                branchName={task.branchName}
+                                                pr={task.pr}
+                                            />
+                                        ) : undefined
+                                    ) : (
+                                        <TaskGithubPanel
+                                            allowedHeadPatterns={
+                                                currentBoard?.allowedHeadPatterns ??
+                                                []
+                                            }
+                                            baseBranch={
+                                                currentBoard?.baseBranch ??
+                                                "main"
+                                            }
+                                            githubToken={githubToken}
+                                            onBranchChange={(branchName) => {
                                                 updateTaskDetails(task.id, {
-                                                    assignee,
+                                                    branchName,
                                                 });
                                             }}
-                                            projectId={projectId}
-                                            value={task.assignee}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-2">
-                                    <Label>{t("fields.labels")}</Label>
-                                    <TaskLabelsField
-                                        disabled={!canEdit}
-                                        labels={projectLabels}
-                                        projectId={projectId}
-                                        selectedIds={task.labelIds ?? []}
-                                        taskId={task.id}
-                                    />
-                                </div>
-
-                                {isArchived ? (
-                                    task.branchName || task.pr ? (
-                                        <GithubTaskMeta
-                                            branchName={task.branchName}
-                                            pr={task.pr}
-                                        />
-                                    ) : undefined
-                                ) : (
-                                    <TaskGithubPanel
-                                        allowedHeadPatterns={
-                                            currentBoard?.allowedHeadPatterns ??
-                                            []
-                                        }
-                                        baseBranch={
-                                            currentBoard?.baseBranch ?? "main"
-                                        }
-                                        githubToken={githubToken}
-                                        onBranchChange={(branchName) => {
-                                            updateTaskDetails(task.id, {
-                                                branchName,
-                                            });
-                                        }}
-                                        onPrChange={(pr) => {
-                                            updateTaskDetails(task.id, { pr });
-                                        }}
-                                        repoFullName={repoFullName}
-                                        task={task}
-                                    />
-                                )}
-
-                                {/* Live Git data — only when branch is set and token available */}
-                                {task.branchName &&
-                                    githubToken &&
-                                    repoFullName && (
-                                        <TaskGitTab
-                                            branchName={task.branchName}
-                                            isShared={isSharedBranch(
-                                                task.branchName,
-                                            )}
+                                            onPrChange={(pr) => {
+                                                updateTaskDetails(task.id, {
+                                                    pr,
+                                                });
+                                            }}
                                             repoFullName={repoFullName}
-                                            token={githubToken}
+                                            task={task}
                                         />
                                     )}
 
-                                <div className="mt-auto flex flex-col gap-2 border-t border-foreground/10 pt-4">
-                                    {canDeleteTasks && !isArchived ? (
-                                        <Button
-                                            className="w-full"
-                                            disabled={isArchiving}
-                                            onClick={() => {
-                                                void handleArchive();
-                                            }}
-                                            type="button"
-                                            variant="outline"
-                                        >
-                                            <Archive data-icon="inline-start" />
-                                            {t("archive.action")}
-                                        </Button>
-                                    ) : undefined}
-                                    {canDeleteTasks && isArchived ? (
-                                        <>
+                                    {/* Live Git data — only when branch is set and token available */}
+                                    {task.branchName &&
+                                        githubToken &&
+                                        repoFullName && (
+                                            <TaskGitTab
+                                                branchName={task.branchName}
+                                                isShared={isSharedBranch(
+                                                    task.branchName
+                                                )}
+                                                repoFullName={repoFullName}
+                                                token={githubToken}
+                                            />
+                                        )}
+
+                                    <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
+                                        {canDeleteTasks && !isArchived ? (
                                             <Button
                                                 className="w-full"
-                                                disabled={isRestoring}
+                                                disabled={isArchiving}
                                                 onClick={() => {
-                                                    void handleRestore();
+                                                    void handleArchive();
                                                 }}
                                                 type="button"
                                                 variant="outline"
                                             >
-                                                <RotateCcw data-icon="inline-start" />
-                                                {t("archive.restore")}
+                                                <Archive data-icon="inline-start" />
+                                                {t("archive.action")}
                                             </Button>
-                                            <Button
-                                                className="w-full"
-                                                disabled={isDeleting}
-                                                onClick={() =>
-                                                    setDeleteTarget({
-                                                        id: task.id,
-                                                        key: task.key,
-                                                        title: task.title,
-                                                    })
-                                                }
-                                                type="button"
-                                                variant="destructive"
-                                            >
-                                                <Trash2 data-icon="inline-start" />
-                                                {t("tasks.delete")}
-                                            </Button>
-                                        </>
-                                    ) : undefined}
+                                        ) : undefined}
+                                        {canDeleteTasks && isArchived ? (
+                                            <>
+                                                <Button
+                                                    className="w-full"
+                                                    disabled={isRestoring}
+                                                    onClick={() => {
+                                                        void handleRestore();
+                                                    }}
+                                                    type="button"
+                                                    variant="outline"
+                                                >
+                                                    <RotateCcw data-icon="inline-start" />
+                                                    {t("archive.restore")}
+                                                </Button>
+                                                <Button
+                                                    className="w-full"
+                                                    disabled={isDeleting}
+                                                    onClick={() =>
+                                                        setDeleteTarget({
+                                                            id: task.id,
+                                                            key: task.key,
+                                                            title: task.title,
+                                                        })
+                                                    }
+                                                    type="button"
+                                                    variant="destructive"
+                                                >
+                                                    <Trash2 data-icon="inline-start" />
+                                                    {t("tasks.delete")}
+                                                </Button>
+                                            </>
+                                        ) : undefined}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </>
-                ) : undefined}
-            </DrawerContent>
-        </Drawer>
+                        </>
+                    ) : undefined}
+                </DrawerContent>
+            </Drawer>
 
-        <AlertDialog
-            onOpenChange={(open) => {
-                if (!open && !isDeleting) setDeleteTarget(null);
-            }}
-            open={deleteTarget !== null}
-        >
-            <AlertDialogContent size="sm">
-                <AlertDialogHeader>
-                    <AlertDialogTitle>
-                        {t("tasks.deleteTitle", {
-                            key: deleteTarget?.key ?? "",
-                        })}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {t("tasks.deleteDescription", {
-                            title: deleteTarget?.title ?? "",
-                        })}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeleting}>
-                        {t("tasks.deleteCancel")}
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                        disabled={isDeleting}
-                        onClick={() => {
-                            void handleConfirmDelete();
-                        }}
-                        variant="destructive"
-                    >
-                        {t("tasks.deleteConfirm")}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog
-            onOpenChange={(open) => {
-                if (!open && !isMoving) setMoveTarget(null);
-            }}
-            open={moveTarget !== null}
-        >
-            <AlertDialogContent className="sm:max-w-sm" size="sm">
-                <AlertDialogHeader>
-                    <AlertDialogTitle>
-                        {t("boards.moveTitle", {
-                            board: moveTarget?.boardName ?? "",
-                        })}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {t("boards.moveDescription")}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-
-                {moveTarget ? (
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="move-task-column">
-                            {t("boards.moveToColumn")}
-                        </Label>
-                        <Select
-                            onValueChange={(value) => {
-                                if (typeof value !== "string") return;
-                                setMoveTarget((current) =>
-                                    current
-                                        ? {
-                                              ...current,
-                                              columnId: value as TaskStatus,
-                                          }
-                                        : current,
-                                );
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open && !isDeleting) setDeleteTarget(null);
+                }}
+                open={deleteTarget !== null}
+            >
+                <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("tasks.deleteTitle", {
+                                key: deleteTarget?.key ?? "",
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("tasks.deleteDescription", {
+                                title: deleteTarget?.title ?? "",
+                            })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>
+                            {t("tasks.deleteCancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isDeleting}
+                            onClick={() => {
+                                void handleConfirmDelete();
                             }}
-                            value={moveTarget.columnId}
+                            variant="destructive"
                         >
-                            <SelectTrigger
-                                className="w-full"
-                                id="move-task-column"
-                            >
-                                <span>{moveToColumnName}</span>
-                            </SelectTrigger>
-                            <SelectContent alignItemWithTrigger={false}>
-                                {moveTarget.columns.map((column) => (
-                                    <SelectItem
-                                        key={column.id}
-                                        value={column.id}
-                                    >
-                                        {column.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                ) : undefined}
+                            {t("tasks.deleteConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isMoving}>
-                        {t("boards.cancel")}
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                        disabled={isMoving || !moveTarget?.columnId}
-                        onClick={() => {
-                            void handleConfirmMove();
-                        }}
-                    >
-                        {t("boards.moveConfirm")}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open && !isMoving) setMoveTarget(null);
+                }}
+                open={moveTarget !== null}
+            >
+                <AlertDialogContent className="sm:max-w-sm" size="sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("boards.moveTitle", {
+                                board: moveTarget?.boardName ?? "",
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("boards.moveDescription")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    {moveTarget ? (
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="move-task-column">
+                                {t("boards.moveToColumn")}
+                            </Label>
+                            <Select
+                                onValueChange={(value) => {
+                                    if (typeof value !== "string") return;
+                                    setMoveTarget((current) =>
+                                        current
+                                            ? {
+                                                  ...current,
+                                                  columnId: value as TaskStatus,
+                                              }
+                                            : current
+                                    );
+                                }}
+                                value={moveTarget.columnId}
+                            >
+                                <SelectTrigger
+                                    className="w-full"
+                                    id="move-task-column"
+                                >
+                                    <span>{moveToColumnName}</span>
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                    {moveTarget.columns.map((column) => (
+                                        <SelectItem
+                                            key={column.id}
+                                            value={column.id}
+                                        >
+                                            {column.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    ) : undefined}
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isMoving}>
+                            {t("boards.cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isMoving || !moveTarget?.columnId}
+                            onClick={() => {
+                                void handleConfirmMove();
+                            }}
+                        >
+                            {t("boards.moveConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
+    );
+}
+
+const DEADLINE_START_MONTH = new Date(2000, 0);
+const DEADLINE_END_MONTH = new Date(new Date().getFullYear() + 10, 11);
+
+type TaskDeadlineFieldProperties = {
+    disabled?: boolean;
+    id: string;
+    onChange: (deadline: null | string) => void;
+    value?: string;
+};
+
+function TaskDeadlineField({
+    disabled = false,
+    id,
+    onChange,
+    value,
+}: TaskDeadlineFieldProperties) {
+    const { i18n, t } = useTranslation("board");
+    const [open, setOpen] = useState(false);
+    const selected = value ? parseIsoDate(value) : undefined;
+    const locale = i18n.language.startsWith("ru") ? ru : enUS;
+
+    return (
+        <div className="flex gap-1.5">
+            <Popover
+                onOpenChange={(next) => {
+                    if (disabled) return;
+                    setOpen(next);
+                }}
+                open={open}
+            >
+                <PopoverTrigger
+                    render={
+                        <Button
+                            className={cn(
+                                FIELD_CONTROL_CLASS,
+                                "flex-1 justify-start font-normal",
+                                !selected && "text-muted-foreground"
+                            )}
+                            disabled={disabled}
+                            id={id}
+                            variant="outline"
+                        />
+                    }
+                >
+                    <CalendarIcon data-icon="inline-start" />
+                    <span className="truncate">
+                        {selected && value
+                            ? formatDeadlineLong(value, i18n.language)
+                            : t("fields.deadlinePlaceholder")}
+                    </span>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                        captionLayout="dropdown"
+                        disabled={disabled}
+                        endMonth={DEADLINE_END_MONTH}
+                        locale={locale}
+                        mode="single"
+                        onSelect={(date) => {
+                            if (!date) return;
+                            onChange(toIsoDate(date));
+                            setOpen(false);
+                        }}
+                        selected={selected}
+                        startMonth={DEADLINE_START_MONTH}
+                    />
+                </PopoverContent>
+            </Popover>
+            {selected && !disabled ? (
+                <Button
+                    aria-label={t("fields.deadlineClear")}
+                    onClick={() => {
+                        onChange(null);
+                    }}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                >
+                    <XIcon />
+                </Button>
+            ) : undefined}
+        </div>
     );
 }

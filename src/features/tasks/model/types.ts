@@ -1,30 +1,3 @@
-/** Column id and task status are the same value — every status has a board column. */
-export type BoardColumn = {
-    id: TaskStatus;
-    name: string;
-};
-
-export type LabelColor =
-    | "amber"
-    | "blue"
-    | "cyan"
-    | "gray"
-    | "green"
-    | "orange"
-    | "pink"
-    | "purple"
-    | "red";
-
-/** Project-scoped label. Future: copy/import labels across projects. */
-export type ProjectLabel = {
-    color: LabelColor;
-    /** Custom hex color (`#rrggbb`). Overrides the `color` preset when set. */
-    customColor?: string;
-    id: string;
-    name: string;
-    projectId: string;
-};
-
 export type Task = {
     archivedAt?: string;
     archivedBy?: TaskAssignee;
@@ -41,26 +14,28 @@ export type Task = {
     labelIds?: string[];
     pr?: TaskPullRequest;
     priority?: TaskPriority;
+    /** Board Sprint membership; absent ⇒ Backlog. */
+    sprintId?: string;
+    /** Order within the Sprint section or Backlog. */
+    sprintPosition?: number;
     status: TaskStatus;
     title: string;
     type: TaskType;
 };
 
-export type TaskType = "bug" | "feature" | "task";
-
-export type TaskAssignee = {
-    avatarUrl?: string;
-    id: string;
-    name: string;
+export type TaskActivityChange = {
+    field: TaskActivityField;
+    from: unknown;
+    to: unknown;
 };
 
-export type TaskComment = {
-    author?: TaskAssignee;
-    body: string;
+export type TaskActivityEvent = {
+    action: string;
     createdAt: string;
     id: string;
+    metadata: TaskActivityMetadata;
     taskId: string;
-    updatedAt: string;
+    user?: TaskAssignee;
 };
 
 /** Fields included in the task activity feed (see SPEC — Task activity feed). */
@@ -77,23 +52,23 @@ export type TaskActivityField =
     | "title"
     | "type";
 
-export type TaskActivityChange = {
-    field: TaskActivityField;
-    from: unknown;
-    to: unknown;
-};
-
 export type TaskActivityMetadata = {
     changes: TaskActivityChange[];
 };
 
-export type TaskActivityEvent = {
-    action: string;
+export type TaskAssignee = {
+    avatarUrl?: string;
+    id: string;
+    name: string;
+};
+
+export type TaskComment = {
+    author?: TaskAssignee;
+    body: string;
     createdAt: string;
     id: string;
-    metadata: TaskActivityMetadata;
     taskId: string;
-    user?: TaskAssignee;
+    updatedAt: string;
 };
 
 export type TaskPriority = "high" | "low" | "medium" | "urgent";
@@ -105,3 +80,5 @@ export type TaskPullRequest = {
 };
 
 export type TaskStatus = string;
+
+export type TaskType = "bug" | "feature" | "task";

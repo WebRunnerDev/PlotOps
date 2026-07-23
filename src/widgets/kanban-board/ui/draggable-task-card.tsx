@@ -1,12 +1,9 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import {
-    type ProjectLabel,
-    type Task,
-    TaskCard,
-} from "@/features/tasks";
-import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import type { ProjectLabel } from "@/features/labels";
+
+import { type Task, TaskCard, useTasksUiStore } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 
 type DraggableTaskCardProperties = {
@@ -36,7 +33,7 @@ export function DraggableTaskCard({
             className={cn(
                 "touch-none outline-none transition-opacity duration-150",
                 isDragging &&
-                    "rounded-xl opacity-40 ring-2 ring-primary/50 ring-offset-2 ring-offset-background",
+                    "rounded-lg opacity-40 ring-2 ring-primary/50 ring-offset-2 ring-offset-background"
             )}
             ref={setNodeRef}
             style={{

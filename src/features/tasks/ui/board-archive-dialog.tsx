@@ -1,12 +1,12 @@
-import { Archive, PanelRight, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, PanelBottom, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { useBoardContext } from "@/features/tasks/model/board-context";
-import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
-import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
+import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
+import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -38,24 +38,25 @@ export function BoardArchiveDialog({
     boardId,
     projectId,
 }: BoardArchiveDialogProperties) {
-    const { t, i18n } = useTranslation("board");
+    const { i18n, t } = useTranslation("board");
     const [open, setOpen] = useState(false);
     const { canDeleteTasks } = useProjectAccess(projectId);
-    const { deleteTask, restoreTask } = useBoardContext();
+    const { deleteTask, restoreTask } = useBoardTasks(projectId, boardId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
-    const { data: archived = [], isLoading, isError } = useArchivedTasks(
-        projectId,
-        boardId,
-        open,
-    );
+    const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
+    const {
+        data: archived = [],
+        isError,
+        isLoading,
+    } = useArchivedTasks(projectId, boardId, open);
 
-    const [deleteTarget, setDeleteTarget] = useState<{
+    const [deleteTarget, setDeleteTarget] = useState<null | {
         id: string;
         key: string;
         title: string;
-    } | null>(null);
+    }>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [busyId, setBusyId] = useState<string | null>(null);
+    const [busyId, setBusyId] = useState<null | string>(null);
 
     const handleRestore = async (taskId: string, key: string) => {
         if (busyId) return;
@@ -87,7 +88,14 @@ export function BoardArchiveDialog({
 
     return (
         <>
-            <Dialog onOpenChange={setOpen} open={open}>
+            <Dialog
+                onOpenChange={(next) => {
+                    // Stay open under the task drawer so multiple archived tasks can be reviewed.
+                    if (!next && selectedTaskId) return;
+                    setOpen(next);
+                }}
+                open={open}
+            >
                 <DialogTrigger
                     render={
                         <Button size="xs" type="button" variant="outline" />
@@ -126,7 +134,7 @@ export function BoardArchiveDialog({
                                               {
                                                   dateStyle: "medium",
                                                   timeStyle: "short",
-                                              },
+                                              }
                                           ).format(new Date(task.archivedAt))
                                         : undefined;
 
@@ -153,14 +161,14 @@ export function BoardArchiveDialog({
                                                                   when:
                                                                       archivedLabel ??
                                                                       "",
-                                                              },
+                                                              }
                                                           )
                                                         : archivedLabel
                                                           ? t(
                                                                 "archive.archivedAt",
                                                                 {
                                                                     when: archivedLabel,
-                                                                },
+                                                                }
                                                             )
                                                           : null}
                                                 </span>
@@ -170,13 +178,12 @@ export function BoardArchiveDialog({
                                                 <Button
                                                     onClick={() => {
                                                         selectTask(task.id);
-                                                        setOpen(false);
                                                     }}
                                                     size="xs"
                                                     type="button"
                                                     variant="outline"
                                                 >
-                                                    <PanelRight data-icon="inline-start" />
+                                                    <PanelBottom data-icon="inline-start" />
                                                     {t("archive.view")}
                                                 </Button>
                                                 {canDeleteTasks ? (
@@ -189,7 +196,7 @@ export function BoardArchiveDialog({
                                                             onClick={() => {
                                                                 void handleRestore(
                                                                     task.id,
-                                                                    task.key,
+                                                                    task.key
                                                                 );
                                                             }}
                                                             size="xs"
@@ -198,7 +205,7 @@ export function BoardArchiveDialog({
                                                         >
                                                             <RotateCcw data-icon="inline-start" />
                                                             {t(
-                                                                "archive.restore",
+                                                                "archive.restore"
                                                             )}
                                                         </Button>
                                                         <Button
@@ -208,11 +215,13 @@ export function BoardArchiveDialog({
                                                                 isDeleting
                                                             }
                                                             onClick={() =>
-                                                                setDeleteTarget({
-                                                                    id: task.id,
-                                                                    key: task.key,
-                                                                    title: task.title,
-                                                                })
+                                                                setDeleteTarget(
+                                                                    {
+                                                                        id: task.id,
+                                                                        key: task.key,
+                                                                        title: task.title,
+                                                                    }
+                                                                )
                                                             }
                                                             size="xs"
                                                             type="button"
