@@ -1,25 +1,36 @@
+import type { BoardColumn } from "@/features/boards/model/types";
 import type { ProjectLabel } from "@/features/labels/model/types";
 import type {
-    BoardColumn,
     Task,
     TaskPriority,
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
 
+import {
+    type DatabaseBoardColumn,
+    fetchBoardColumnIds,
+    fetchBoardColumns,
+    sortColumns,
+} from "@/features/boards";
 import { fetchProjectLabels } from "@/features/labels/api/labels-api";
-import { DEFAULT_KANBAN_COLUMNS } from "@/features/tasks/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 import {
-    type DatabaseBoardColumn,
     type DatabaseTask,
-    mapDatabaseColumn,
     mapDatabaseTask,
-    sortColumns,
     sortTasksByPosition,
 } from "./board-mappers";
-import { fetchBoardColumnIds } from "./boards-api";
+
+/** @deprecated Import from `@/features/boards` — temporary shim. */
+export {
+    createBoardColumn,
+    deleteBoardColumn,
+    fetchBoardColumns,
+    orderColumnsByIds,
+    renameBoardColumn,
+    reorderBoardColumns,
+} from "@/features/boards";
 
 /** @deprecated Import from `@/features/labels` — temporary shim. */
 export {
@@ -101,36 +112,6 @@ export function buildColumnPositions(columns: DatabaseBoardColumn[]) {
     );
 }
 
-export async function createBoardColumn(
-    projectId: string,
-    boardId: string,
-    name: string
-) {
-    const id = `col_${crypto.randomUUID().slice(0, 8)}`;
-
-    const { data: existing, error: existingError } = await supabase
-        .from("board_columns")
-        .select("position")
-        .eq("board_id", boardId)
-        .order("position", { ascending: false })
-        .limit(1);
-
-    if (existingError) throw existingError;
-
-    const position = (existing?.[0]?.position ?? -1) + 1;
-
-    const { error } = await supabase.from("board_columns").insert({
-        board_id: boardId,
-        id,
-        name,
-        position,
-        project_id: projectId,
-    });
-
-    if (error) throw error;
-    return id as TaskStatus;
-}
-
 export async function createTaskRecord(
     projectId: string,
     boardId: string,
@@ -173,42 +154,6 @@ export async function createTaskRecord(
     return mapDatabaseTask(data as DatabaseTask);
 }
 
-export async function deleteBoardColumn(
-    boardId: string,
-    columnId: TaskStatus,
-    moveTasksTo?: TaskStatus
-) {
-    if (moveTasksTo) {
-        const { error: moveError } = await supabase
-            .from("tasks")
-            .update({ status: moveTasksTo })
-            .eq("board_id", boardId)
-            .eq("status", columnId)
-            .is("archived_at", null);
-
-        if (moveError) throw moveError;
-
-        // Archived tasks keep their column status for Restore; managers may
-        // re-point them so a deleted column id is not left dangling.
-        const { error: archivedMoveError } = await supabase
-            .from("tasks")
-            .update({ status: moveTasksTo })
-            .eq("board_id", boardId)
-            .eq("status", columnId)
-            .not("archived_at", "is", null);
-
-        if (archivedMoveError) throw archivedMoveError;
-    }
-
-    const { error } = await supabase
-        .from("board_columns")
-        .delete()
-        .eq("board_id", boardId)
-        .eq("id", columnId);
-
-    if (error) throw error;
-}
-
 export async function deleteTaskRecord(taskId: string) {
     const { error } = await supabase.from("tasks").delete().eq("id", taskId);
     if (error) throw error;
@@ -224,24 +169,6 @@ export async function fetchArchivedTasks(boardId: string): Promise<Task[]> {
 
     if (error) throw error;
     return ((data ?? []) as DatabaseTask[]).map((row) => mapDatabaseTask(row));
-}
-
-export async function fetchBoardColumns(
-    projectId: string,
-    boardId: string
-): Promise<BoardColumn[]> {
-    await ensureDefaultColumns(projectId, boardId);
-
-    const { data, error } = await supabase
-        .from("board_columns")
-        .select("id, project_id, board_id, name, position")
-        .eq("board_id", boardId)
-        .order("position", { ascending: true });
-
-    if (error) throw error;
-    return ((data ?? []) as DatabaseBoardColumn[]).map((row) =>
-        mapDatabaseColumn(row)
-    );
 }
 
 export async function fetchBoardTasks(
@@ -328,16 +255,6 @@ export async function moveTaskToBoard(
     return { status: targetStatus };
 }
 
-export function orderColumnsByIds(
-    columns: BoardColumn[],
-    columnIds: TaskStatus[]
-): BoardColumn[] {
-    const byId = new Map(columns.map((column) => [column.id, column] as const));
-    return columnIds
-        .map((id) => byId.get(id))
-        .filter((column): column is BoardColumn => column !== undefined);
-}
-
 export async function persistTaskMoves(
     boardId: string,
     updates: Array<{ id: string; position: number; status: TaskStatus }>
@@ -355,37 +272,6 @@ export async function persistTaskMoves(
         )
     );
 
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
-}
-
-export async function renameBoardColumn(
-    boardId: string,
-    columnId: TaskStatus,
-    name: string
-) {
-    const { error } = await supabase
-        .from("board_columns")
-        .update({ name })
-        .eq("board_id", boardId)
-        .eq("id", columnId);
-
-    if (error) throw error;
-}
-
-export async function reorderBoardColumns(
-    boardId: string,
-    columnIds: TaskStatus[]
-) {
-    const updates = columnIds.map((id, position) =>
-        supabase
-            .from("board_columns")
-            .update({ position })
-            .eq("board_id", boardId)
-            .eq("id", id)
-    );
-
-    const results = await Promise.all(updates);
     const failed = results.find((result) => result.error);
     if (failed?.error) throw failed.error;
 }
@@ -477,28 +363,4 @@ export async function updateTaskRecord(
         .update(patch)
         .eq("id", taskId);
     if (error) throw error;
-}
-
-async function ensureDefaultColumns(projectId: string, boardId: string) {
-    const { count, error } = await supabase
-        .from("board_columns")
-        .select("id", { count: "exact", head: true })
-        .eq("board_id", boardId);
-
-    if (error) throw error;
-    if ((count ?? 0) > 0) return;
-
-    const rows = DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
-        board_id: boardId,
-        id: column.id,
-        name: column.name,
-        position: index,
-        project_id: projectId,
-    }));
-
-    const { error: insertError } = await supabase
-        .from("board_columns")
-        .insert(rows);
-
-    if (insertError) throw insertError;
 }

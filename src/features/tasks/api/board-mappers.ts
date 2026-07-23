@@ -1,24 +1,22 @@
 import type {
-    BoardColumn,
     Task,
     TaskPriority,
     TaskPullRequest,
     TaskType,
 } from "@/features/tasks/model/types";
 
+/** @deprecated Import from `@/features/boards` — temporary shim. */
+export {
+    type DatabaseBoardColumn,
+    mapDatabaseColumn,
+    sortColumns,
+} from "@/features/boards/api/board-mappers";
+
 /** @deprecated Import from `@/features/labels` — temporary shim. */
 export {
     type DatabaseLabel,
     mapDatabaseLabel,
 } from "@/features/labels/api/label-mappers";
-
-export type DatabaseBoardColumn = {
-    board_id: string;
-    id: string;
-    name: string;
-    position: number;
-    project_id: string;
-};
 
 export type DatabaseProfile = {
     avatar_url: null | string;
@@ -66,13 +64,6 @@ function toTaskType(value: null | string): TaskType {
 
 const PR_STATES = new Set<string>(["closed", "merged", "open"]);
 
-export function mapDatabaseColumn(row: DatabaseBoardColumn): BoardColumn {
-    return {
-        id: row.id,
-        name: row.name,
-    };
-}
-
 export function mapDatabaseTask(row: DatabaseTask): Task {
     const labelIds = row.task_labels?.map((item) => item.label_id) ?? [];
     const assignee = Array.isArray(row.assignee)
@@ -103,16 +94,6 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         title: row.title,
         type: toTaskType(row.task_type),
     };
-}
-
-export function sortColumns(
-    columns: BoardColumn[],
-    positions: Map<string, number>
-) {
-    return [...columns].toSorted(
-        (left, right) =>
-            (positions.get(left.id) ?? 0) - (positions.get(right.id) ?? 0)
-    );
 }
 
 export function sortTasksByPosition(

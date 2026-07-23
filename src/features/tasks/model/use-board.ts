@@ -7,9 +7,8 @@ import {
     useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { toast } from "sonner";
 
-import type { ProjectBoardRecord } from "@/features/tasks/api/boards-api";
+import type { ProjectBoardRecord } from "@/features/boards/model/types";
 import type {
     BoardColumn,
     Task,
@@ -19,23 +18,19 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
+import { boardKeys } from "@/features/boards/model/query-keys";
+import { useBoardColumns } from "@/features/boards/model/use-board-columns";
 import { resolveLabelNames } from "@/features/labels/model/resolve-label-names";
 import { useProjectLabels } from "@/features/labels/model/use-project-labels";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
-    createBoardColumn,
     createTaskRecord,
-    deleteBoardColumn,
     deleteTaskRecord,
-    fetchBoardColumns,
     fetchBoardTasks,
     moveTaskToBoard,
-    orderColumnsByIds,
     persistTaskMoves,
     type ProjectBoard,
-    renameBoardColumn,
-    reorderBoardColumns,
     replaceTaskLabels,
     restoreTaskRecord,
     updateTaskRecord,
@@ -52,12 +47,12 @@ import {
     invalidateBoardWorkspaceSlice,
     setBoardSnapshot,
 } from "@/features/tasks/model/board-query-cache";
-import { boardKeys, taskKeys } from "@/features/tasks/model/query-keys";
+import { taskKeys } from "@/features/tasks/model/query-keys";
 import { activityKey } from "@/features/tasks/model/use-task-activity";
 import { supabase } from "@/shared/api/supabase";
 
-/** Ref-count Realtime channels so multiple `useBoard` mounts share one subscription. */
-const boardChannels = new Map<
+/** Ref-count Realtime channels so multiple `useBoard` mounts share one `tasks` subscription. */
+const taskChannels = new Map<
     string,
     { channel: RealtimeChannel; subscribers: number }
 >();
@@ -83,12 +78,7 @@ type TaskMoveUpdate = {
 export function useBoard(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
     const labelsApi = useProjectLabels(projectId);
-
-    const columnsQuery = useQuery({
-        enabled: Boolean(projectId && boardId),
-        queryFn: () => fetchBoardColumns(projectId, boardId),
-        queryKey: boardKeys.columns(projectId, boardId),
-    });
+    const columnsApi = useBoardColumns(projectId, boardId);
 
     const tasksQuery = useQuery({
         enabled: Boolean(projectId && boardId),
@@ -99,64 +89,10 @@ export function useBoard(projectId: string, boardId: string) {
     useEffect(() => {
         if (!projectId) return;
 
-        return subscribeBoardChannel(projectId, {
-            onColumnsChange: () => {
-                invalidateBoardWorkspaceSlice(
-                    queryClient,
-                    projectId,
-                    "columns"
-                );
-            },
-            onTasksChange: () => {
-                invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
-            },
+        return subscribeTasksChannel(projectId, () => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         });
     }, [projectId, queryClient]);
-
-    const addColumnMutation = useMutation({
-        mutationFn: (name: string) =>
-            createBoardColumn(projectId, boardId, name),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const renameColumnMutation = useMutation({
-        mutationFn: ({
-            columnId,
-            name,
-        }: {
-            columnId: TaskStatus;
-            name: string;
-        }) => renameBoardColumn(boardId, columnId, name),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const deleteColumnMutation = useMutation({
-        mutationFn: ({
-            columnId,
-            moveTasksTo,
-        }: {
-            columnId: TaskStatus;
-            moveTasksTo?: TaskStatus;
-        }) => deleteBoardColumn(boardId, columnId, moveTasksTo),
-        onSuccess: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
-
-    const reorderColumnsMutation = useMutation({
-        mutationFn: (columnIds: TaskStatus[]) =>
-            reorderBoardColumns(boardId, columnIds),
-        onError: () => {
-            toast.error("Failed to reorder columns");
-        },
-        onSettled: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
-        },
-    });
 
     const moveTaskMutation = useMutation({
         mutationFn: async ({
@@ -180,7 +116,7 @@ export function useBoard(projectId: string, boardId: string) {
             }
         },
         onSettled: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         },
     });
 
@@ -243,7 +179,7 @@ export function useBoard(projectId: string, boardId: string) {
             });
         },
         onSettled: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         },
     });
 
@@ -266,7 +202,7 @@ export function useBoard(projectId: string, boardId: string) {
             });
         },
         onSettled: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         },
     });
 
@@ -317,20 +253,20 @@ export function useBoard(projectId: string, boardId: string) {
                 ]),
                 tasks: [...current.tasks, task],
             }));
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         },
     });
 
     const deleteTaskMutation = useMutation({
         mutationFn: (taskId: string) => deleteTaskRecord(taskId),
         onError: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
         onSettled: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
@@ -349,13 +285,13 @@ export function useBoard(projectId: string, boardId: string) {
             if (error) throw error;
         },
         onError: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
         onSettled: (_data, _error, taskId) => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
@@ -377,13 +313,13 @@ export function useBoard(projectId: string, boardId: string) {
             if (error) throw error;
         },
         onError: () => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
         onSettled: (_data, _error, taskId) => {
-            invalidateBoardWorkspace(queryClient, projectId);
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
@@ -394,16 +330,16 @@ export function useBoard(projectId: string, boardId: string) {
     });
 
     const board =
-        columnsQuery.data && tasksQuery.data && !labelsApi.isLoading
+        columnsApi.columnsReady && tasksQuery.data && !labelsApi.isLoading
             ? composeProjectBoard(
-                  columnsQuery.data,
+                  columnsApi.columns,
                   labelsApi.labels,
                   tasksQuery.data
               )
             : undefined;
 
     return {
-        addColumn: (name: string) => addColumnMutation.mutateAsync(name),
+        addColumn: columnsApi.addColumn,
         addLabel: labelsApi.addLabel,
         archiveTask: async (taskId: string) => {
             setBoardSnapshot(queryClient, projectId, boardId, (current) => {
@@ -418,7 +354,7 @@ export function useBoard(projectId: string, boardId: string) {
             await archiveTaskMutation.mutateAsync(taskId);
         },
         boardId,
-        columns: board?.columns ?? [],
+        columns: board?.columns ?? columnsApi.columns,
         copyLabelToProject: labelsApi.copyLabelToProject,
         createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
             createTaskMutation.mutateAsync({ status, taskType, title }),
@@ -426,9 +362,17 @@ export function useBoard(projectId: string, boardId: string) {
             columnId: TaskStatus,
             moveTasksTo?: TaskStatus
         ) => {
-            if ((board?.columns.length ?? 0) <= 1) return false;
-            await deleteColumnMutation.mutateAsync({ columnId, moveTasksTo });
-            return true;
+            const deleted = await columnsApi.deleteColumn(
+                columnId,
+                moveTasksTo
+            );
+            if (deleted && moveTasksTo) {
+                invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+                void queryClient.invalidateQueries({
+                    queryKey: taskKeys.archived(projectId, boardId),
+                });
+            }
+            return deleted;
         },
         deleteLabel: labelsApi.deleteLabel,
         deleteTask: async (taskId: string) => {
@@ -448,12 +392,9 @@ export function useBoard(projectId: string, boardId: string) {
             );
             await deleteTaskMutation.mutateAsync(taskId);
         },
-        error:
-            columnsQuery.error ?? labelsApi.error ?? tasksQuery.error ?? null,
+        error: columnsApi.error ?? labelsApi.error ?? tasksQuery.error ?? null,
         isLoading:
-            columnsQuery.isLoading ||
-            labelsApi.isLoading ||
-            tasksQuery.isLoading,
+            columnsApi.isLoading || labelsApi.isLoading || tasksQuery.isLoading,
         labels: labelsApi.labels,
         moveLabelToProject: labelsApi.moveLabelToProject,
         moveTaskToColumn: (activeId: string, overId: string) => {
@@ -549,42 +490,9 @@ export function useBoard(projectId: string, boardId: string) {
             });
         },
         projectId,
-        renameColumn: async (columnId: TaskStatus, name: string) => {
-            const trimmed = name.trim();
-            if (!trimmed) return false;
-            const duplicate = (board?.columns ?? []).some(
-                (column) =>
-                    column.id !== columnId &&
-                    column.name.trim().toLowerCase() === trimmed.toLowerCase()
-            );
-            if (duplicate) return false;
-            await renameColumnMutation.mutateAsync({ columnId, name: trimmed });
-            return true;
-        },
+        renameColumn: columnsApi.renameColumn,
         renameLabel: labelsApi.renameLabel,
-        reorderColumns: (activeId: TaskStatus, overId: TaskStatus) => {
-            const current = board?.columns ?? [];
-            const oldIndex = current.findIndex(
-                (column) => column.id === activeId
-            );
-            const newIndex = current.findIndex(
-                (column) => column.id === overId
-            );
-            if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex)
-                return;
-
-            const next = [...current];
-            const [moved] = next.splice(oldIndex, 1);
-            if (!moved) return;
-            next.splice(newIndex, 0, moved);
-
-            const ordered = next.map((column) => column.id);
-            setBoardSnapshot(queryClient, projectId, boardId, (snapshot) => ({
-                ...snapshot,
-                columns: orderColumnsByIds(snapshot.columns, ordered),
-            }));
-            reorderColumnsMutation.mutate(ordered);
-        },
+        reorderColumns: columnsApi.reorderColumns,
         reorderTaskWithin: (activeId: string, overId: string) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!snapshot) return;
@@ -812,14 +720,14 @@ async function recordTaskActivity(input: {
     }
 }
 
-function releaseBoardChannel(projectId: string) {
-    const entry = boardChannels.get(projectId);
+function releaseTasksChannel(projectId: string) {
+    const entry = taskChannels.get(projectId);
     if (!entry) return;
 
     entry.subscribers -= 1;
     if (entry.subscribers > 0) return;
 
-    boardChannels.delete(projectId);
+    taskChannels.delete(projectId);
     void supabase.removeChannel(entry.channel);
 }
 
@@ -861,23 +769,20 @@ function resolveStatusName(columns: BoardColumn[], status: TaskStatus) {
     return columns.find((column) => column.id === status)?.name ?? status;
 }
 
-function subscribeBoardChannel(
+function subscribeTasksChannel(
     projectId: string,
-    handlers: {
-        onColumnsChange: () => void;
-        onTasksChange: () => void;
-    }
+    onTasksChange: () => void
 ): () => void {
-    const existing = boardChannels.get(projectId);
+    const existing = taskChannels.get(projectId);
     if (existing) {
         existing.subscribers += 1;
-        return () => releaseBoardChannel(projectId);
+        return () => releaseTasksChannel(projectId);
     }
 
     const channel = supabase
         // Unique topic: `supabase.channel(name)` reuses an existing channel, and
         // `.on()` after `subscribe()` throws. Ref-counting + a fresh name avoids both.
-        .channel(`board:${projectId}:${crypto.randomUUID()}`)
+        .channel(`tasks:${projectId}:${crypto.randomUUID()}`)
         .on(
             "postgres_changes",
             {
@@ -886,20 +791,10 @@ function subscribeBoardChannel(
                 schema: "public",
                 table: "tasks",
             },
-            handlers.onTasksChange
-        )
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                filter: `project_id=eq.${projectId}`,
-                schema: "public",
-                table: "board_columns",
-            },
-            handlers.onColumnsChange
+            onTasksChange
         )
         .subscribe();
 
-    boardChannels.set(projectId, { channel, subscribers: 1 });
-    return () => releaseBoardChannel(projectId);
+    taskChannels.set(projectId, { channel, subscribers: 1 });
+    return () => releaseTasksChannel(projectId);
 }

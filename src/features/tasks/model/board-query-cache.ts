@@ -1,15 +1,17 @@
 import type { QueryClient } from "@tanstack/react-query";
 
+import type { BoardColumn } from "@/features/boards/model/types";
 import type { ProjectLabel } from "@/features/labels/model/types";
 import type {
     BoardTasksCache,
     ProjectBoard,
 } from "@/features/tasks/api/tasks-api";
-import type { BoardColumn } from "@/features/tasks/model/types";
 
+import { invalidateBoardColumns } from "@/features/boards/model/invalidate-boards";
+import { boardKeys } from "@/features/boards/model/query-keys";
 import { labelKeys } from "@/features/labels/model/query-keys";
 
-import { boardKeys, taskKeys } from "./query-keys";
+import { taskKeys } from "./query-keys";
 
 export type { BoardTasksCache } from "@/features/tasks/api/tasks-api";
 
@@ -64,9 +66,7 @@ export function invalidateBoardWorkspaceSlice(
 ) {
     switch (slice) {
         case "columns": {
-            void queryClient.invalidateQueries({
-                queryKey: [...boardKeys.all, "columns", projectId],
-            });
+            invalidateBoardColumns(queryClient, projectId);
             return;
         }
         case "labels": {

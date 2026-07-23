@@ -1,8 +1,5 @@
-/** Column id and task status are the same value — every status has a board column. */
-export type BoardColumn = {
-    id: TaskStatus;
-    name: string;
-};
+/** @deprecated Import from `@/features/boards` — temporary shim. */
+export type { BoardColumn } from "@/features/boards/model/types";
 
 /** @deprecated Import from `@/features/labels` — temporary shim. */
 export type { LabelColor, ProjectLabel } from "@/features/labels/model/types";

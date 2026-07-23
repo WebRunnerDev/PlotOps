@@ -26,7 +26,7 @@
 | Team & permissions (`project_members`, roles, invites) | 🟡 In progress (schema+RLS+settings/invite UI; polish gating next)                                                                                                                     |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
-| Feature modules (ADR 0009)                             | 🟡 In progress (`features/labels` extracted — #4; `features/sprints` — #5; boards + slim tasks / kill BoardProvider pending — #6/#7)                                                   |
+| Feature modules (ADR 0009)                             | 🟡 In progress (`features/labels` — #4; `features/sprints` — #5; `features/boards` — #6; slim tasks / kill BoardProvider pending — #7)                                                 |
 
 ## Sprints (MVP)
 
