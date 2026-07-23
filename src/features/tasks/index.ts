@@ -30,7 +30,7 @@ export {
     PRIORITY_CLASS,
     TASK_PRIORITIES,
 } from "./model/constants";
-export { boardKeys, labelKeys, sprintKeys, taskKeys } from "./model/query-keys";
+export { boardKeys, labelKeys, taskKeys } from "./model/query-keys";
 export type {
     BoardSprintScope,
     Sprint,
@@ -50,10 +50,13 @@ export {
     useBoardMutations,
     useProjectBoards,
 } from "./model/use-project-boards";
+/** @deprecated Import from `@/features/sprints` — temporary shim. */
 export { useBoardSprints, useSprintMutations } from "./model/use-sprints";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
+/** @deprecated Import from `@/features/sprints` — temporary shim. */
 export { BacklogPage } from "./ui/backlog-page";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
+/** @deprecated Import from `@/features/sprints` — temporary shim. */
 export { BoardSprintControls } from "./ui/board-sprint-controls";
 export { BoardSwitcher } from "./ui/board-switcher";
 export { GithubTaskMeta } from "./ui/github-task-meta";
@@ -64,3 +67,7 @@ export { TaskDrawer } from "./ui/task-drawer";
 export { TaskGithubPanel } from "./ui/task-github-panel";
 export { TaskLabelChips } from "./ui/task-label-chips";
 export { TaskLabelsField } from "./ui/task-labels-field";
+/** @deprecated Import from `@/features/sprints` — temporary shim. */
+export { sprintKeys } from "@/features/sprints";
+/** @deprecated Import from `@/features/sprints` — temporary shim. */
+export { useSprintsUiStore } from "@/features/sprints";

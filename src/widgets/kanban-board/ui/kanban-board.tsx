@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useBoardSprints, useSprintsUiStore } from "@/features/sprints";
 import {
     type BoardColumn,
     type BoardTaskFilters,
@@ -31,8 +32,6 @@ import {
     TaskDrawer,
 } from "@/features/tasks";
 import { useBoardContext } from "@/features/tasks/model/board-context";
-import { useBoardSprints } from "@/features/tasks/model/use-sprints";
-import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 
@@ -102,7 +101,9 @@ export function KanbanBoard({
     } = useBoardContext();
     const { canManageBoard } = useProjectAccess(projectId);
     const { data: sprints = [] } = useBoardSprints(boardId);
-    const boardSprintScope = useTasksUiStore((state) => state.boardSprintScope);
+    const boardSprintScope = useSprintsUiStore(
+        (state) => state.boardSprintScope
+    );
     const activeSprint = sprints.find((sprint) => sprint.state === "active");
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();

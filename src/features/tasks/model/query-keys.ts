@@ -5,18 +5,8 @@ export const boardKeys = {
     list: (projectId: string) => [...boardKeys.all, "list", projectId] as const,
 };
 
-export const labelKeys = {
-    all: ["labels"] as const,
-    project: (projectId: string) =>
-        [...labelKeys.all, "project", projectId] as const,
-};
-
-export const sprintKeys = {
-    all: ["sprints"] as const,
-    board: (boardId: string) => [...sprintKeys.all, "board", boardId] as const,
-    events: (sprintId: string) =>
-        [...sprintKeys.all, "events", sprintId] as const,
-};
+/** @deprecated Import from `@/features/labels` — temporary shim. */
+export { labelKeys } from "@/features/labels/model/query-keys";
 
 export const taskKeys = {
     all: ["tasks"] as const,

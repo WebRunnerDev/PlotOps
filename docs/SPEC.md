@@ -25,7 +25,7 @@
 | GitHub webhooks + Edge Function                        | ⬜ Not started                                                                                                                                                                         |
 | Team & permissions (`project_members`, roles, invites) | 🟡 In progress (schema+RLS+settings/invite UI; polish gating next)                                                                                                                     |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
-| Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI with TanStack Table multi-select + DnD membership; Start/Close/Cancel; board scope toggle; report)                                          |
+| Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 
 ## Sprints (MVP)
 
