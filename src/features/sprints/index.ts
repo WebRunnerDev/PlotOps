@@ -6,6 +6,7 @@ export {
     createDraftSprint,
     defaultSprintEndDate,
     deleteEmptyDraftSprint,
+    deletePastSprint,
     fetchBoardSprints,
     fetchSprintEvents,
     reorderSprintMembership,

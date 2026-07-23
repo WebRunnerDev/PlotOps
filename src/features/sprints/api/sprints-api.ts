@@ -160,6 +160,17 @@ export async function deleteEmptyDraftSprint(sprintId: string): Promise<void> {
     if (error) throw error;
 }
 
+/** Permanently removes a closed or canceled sprint (+ cascaded events). */
+export async function deletePastSprint(sprintId: string): Promise<void> {
+    const { error } = await supabase
+        .from("sprints")
+        .delete()
+        .eq("id", sprintId)
+        .in("state", ["closed", "canceled"]);
+
+    if (error) throw error;
+}
+
 export async function fetchBoardSprints(boardId: string): Promise<Sprint[]> {
     const { data, error } = await supabase
         .from("sprints")

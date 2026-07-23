@@ -33,6 +33,8 @@ type BoardSwitcherProperties = {
     boardId: string;
     canManage: boolean;
     defaultBaseBranch: string;
+    /** Where selecting/creating a board navigates. Default: kanban board. */
+    destination?: "backlog" | "board";
     projectId: string;
 };
 
@@ -40,6 +42,7 @@ export function BoardSwitcher({
     boardId,
     canManage,
     defaultBaseBranch,
+    destination = "board",
     projectId,
 }: BoardSwitcherProperties) {
     const { t } = useTranslation("board");
@@ -55,7 +58,10 @@ export function BoardSwitcher({
     const goToBoard = (next: ProjectBoardRecord) => {
         void navigate({
             params: { boardId: next.id, projectId },
-            to: "/projects/$projectId/boards/$boardId",
+            to:
+                destination === "backlog"
+                    ? "/projects/$projectId/boards/$boardId/backlog"
+                    : "/projects/$projectId/boards/$boardId",
         });
     };
 

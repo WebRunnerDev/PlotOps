@@ -7,6 +7,7 @@ import {
     closeSprint,
     createDraftSprint,
     deleteEmptyDraftSprint,
+    deletePastSprint,
     fetchBoardSprints,
     fetchSprintEvents,
     startSprint,
@@ -58,6 +59,16 @@ export function useSprintMutations(projectId: string, boardId: string) {
         mutationFn: (sprintId: string) => deleteEmptyDraftSprint(sprintId),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
+    });
+
+    const removePast = useMutation({
+        mutationFn: (sprintId: string) => deletePastSprint(sprintId),
+        onSuccess: (_data, sprintId) => {
+            invalidateSprintBoardCaches(queryClient, projectId, boardId);
+            queryClient.removeQueries({
+                queryKey: sprintKeys.events(sprintId),
+            });
+        },
     });
 
     const moveTask = useMutation({
@@ -135,6 +146,7 @@ export function useSprintMutations(projectId: string, boardId: string) {
         moveTask,
         moveTasks,
         removeDraft,
+        removePast,
         renameDraft,
         start,
     };
