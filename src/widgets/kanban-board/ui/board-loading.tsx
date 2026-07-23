@@ -33,20 +33,14 @@ export function BoardLoading({
         <div
             aria-busy="true"
             aria-live="polite"
-            className={cn(
-                "flex h-full min-h-0 flex-col gap-4 pt-3 pb-24",
-                className
-            )}
+            className={cn("flex h-full min-h-0 flex-col gap-3 pt-2", className)}
             role="status"
         >
-            <header className="shrink-0 border-b border-border px-12 py-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-col gap-2">
-                        <Skeleton className="h-7 w-28" />
-                        <div className="flex flex-col gap-1.5">
-                            <Skeleton className="h-8 w-48" />
-                            <Skeleton className="h-4 w-40" />
-                        </div>
+            <header className="shrink-0 border-b border-border px-12 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-5 w-36" />
+                        <Skeleton className="h-4 w-28" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Skeleton className="h-8 w-32" />

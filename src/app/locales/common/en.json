@@ -1,27 +1,29 @@
 {
-  "accountMenu": "Account menu",
-  "actions": {
-    "cancel": "Cancel"
-  },
-  "en": "English",
-  "nav": {
-    "home": "Home",
-    "notifications": "Notifications",
-    "notificationsEmpty": "No new notifications",
-    "settings": "Settings"
-  },
-  "logout": {
-    "action": "Sign out",
-    "signOut": "Sign out of account",
-    "description": "You will be redirected to the sign-in page.",
-    "error": "Could not sign out",
-    "signedInAs": "Signed in as {{email}}",
-    "title": "Sign out?"
-  },
-  "platformSettings": "Platform settings",
-  "ru": "Russian",
-  "settingsPlaceholder": "Theme, language, and other preferences will live here.",
-  "switcher": "Language",
-  "themeDark": "Switch to dark theme",
-  "themeLight": "Switch to light theme"
+    "accountMenu": "Account menu",
+    "actions": {
+        "cancel": "Cancel"
+    },
+    "en": "English",
+    "nav": {
+        "breadcrumb": "Breadcrumb",
+        "home": "Home",
+        "notifications": "Notifications",
+        "notificationsEmpty": "No new notifications",
+        "projects": "Projects",
+        "settings": "Settings"
+    },
+    "logout": {
+        "action": "Sign out",
+        "signOut": "Sign out of account",
+        "description": "You will be redirected to the sign-in page.",
+        "error": "Could not sign out",
+        "signedInAs": "Signed in as {{email}}",
+        "title": "Sign out?"
+    },
+    "platformSettings": "Platform settings",
+    "ru": "Russian",
+    "settingsPlaceholder": "Theme, language, and other preferences will live here.",
+    "switcher": "Language",
+    "themeDark": "Switch to dark theme",
+    "themeLight": "Switch to light theme"
 }

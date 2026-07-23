@@ -1,10 +1,8 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { useProjectBoards } from "@/features/boards";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
-import { Button } from "@/shared/shadcn/ui/button";
 import { BoardLoading } from "@/widgets/kanban-board/ui/board-loading";
 
 export const Route = createFileRoute("/(main)/projects/$projectId/")({
@@ -36,15 +34,6 @@ function ProjectIndexRoute() {
 
     return (
         <div className="flex flex-col gap-4 p-4">
-            <Button
-                nativeButton={false}
-                render={<Link to="/home" />}
-                size="sm"
-                variant="ghost"
-            >
-                <ArrowLeft data-icon="inline-start" />
-                {t("backToProjects")}
-            </Button>
             <Alert variant="destructive">
                 <AlertDescription>
                     {error ? t("projectError") : t("loadingBoardEmpty")}

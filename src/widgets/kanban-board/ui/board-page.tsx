@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink, GitBranch, Settings } from "lucide-react";
+import { ExternalLink, GitBranch, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -34,15 +34,6 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     if (error || !project) {
         return (
             <div className="flex flex-col gap-4 p-4">
-                <Button
-                    nativeButton={false}
-                    render={<Link to="/home" />}
-                    size="sm"
-                    variant="ghost"
-                >
-                    <ArrowLeft data-icon="inline-start" />
-                    {t("backToProjects")}
-                </Button>
                 <Alert variant="destructive">
                     <AlertDescription>{t("projectError")}</AlertDescription>
                 </Alert>
@@ -52,26 +43,18 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
 
     return (
         <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
-            <div className="flex h-full w-max min-w-full flex-col gap-4 pt-3 pb-24">
-                <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-12 py-3 backdrop-blur-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-col gap-2">
-                            <Button
-                                className="w-fit text-muted-foreground"
-                                nativeButton={false}
-                                render={<Link to="/home" />}
-                                size="sm"
-                                variant="ghost"
-                            >
-                                <ArrowLeft data-icon="inline-start" />
-                                {t("backToProjects")}
-                            </Button>
-                            <div className="flex flex-col gap-0.5">
-                                <h1 className="text-h2">{project.name}</h1>
-                                <p className="text-code text-muted-foreground">
+            <div className="flex h-full w-max min-w-full flex-col gap-3 pt-2">
+                <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-12 py-2 backdrop-blur-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-baseline gap-2">
+                            <h1 className="truncate text-sm font-semibold">
+                                {project.name}
+                            </h1>
+                            {project.github_full_name ? (
+                                <p className="truncate text-code text-muted-foreground">
                                     {project.github_full_name}
                                 </p>
-                            </div>
+                            ) : null}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">

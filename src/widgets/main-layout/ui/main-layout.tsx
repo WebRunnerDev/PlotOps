@@ -1,7 +1,7 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
 import { cn } from "@/shared/lib/utils";
-import { AppDock } from "@/widgets/dock";
+import { AppChrome } from "@/widgets/app-chrome";
 
 export function MainLayoutWidget() {
     return <MainLayoutContent />;
@@ -19,26 +19,22 @@ function MainLayoutContent() {
     });
 
     return (
-        <>
-            <div
-                className={cn(
-                    "w-full",
-                    isBoard
-                        ? "flex h-dvh flex-col overflow-hidden"
-                        : "min-h-dvh"
-                )}
-            >
-                {isBoard ? (
-                    <div className="min-h-0 flex-1 overflow-hidden">
-                        <Outlet />
-                    </div>
-                ) : (
-                    <div className="mx-auto w-full max-w-5xl p-4 pb-24">
-                        <Outlet />
-                    </div>
-                )}
-            </div>
-            <AppDock />
-        </>
+        <div
+            className={cn(
+                "w-full",
+                isBoard ? "flex h-dvh flex-col overflow-hidden" : "min-h-dvh"
+            )}
+        >
+            <AppChrome />
+            {isBoard ? (
+                <div className="min-h-0 flex-1 overflow-hidden">
+                    <Outlet />
+                </div>
+            ) : (
+                <div className="mx-auto w-full max-w-5xl p-4">
+                    <Outlet />
+                </div>
+            )}
+        </div>
     );
 }
