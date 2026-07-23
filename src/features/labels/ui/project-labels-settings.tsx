@@ -2,21 +2,23 @@ import {
     ArrowRightLeft,
     ChevronLeft,
     ChevronRight,
-    PanelRight,
-    Plus,
-    Trash2,
+    PanelBottom,
+    Search,
+    X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
+    LabelColor,
     LabelTaggedTask,
     ProjectLabel,
 } from "@/features/labels/model/types";
 import type { Project } from "@/features/projects/model/types";
 
 import {
+    getLabelChipProperties,
     getLabelDotProperties,
     isValidHexColor,
     LABEL_COLORS,
@@ -73,6 +75,20 @@ const TASKS_PAGE_SIZE = 5;
 
 type LabelActions = ReturnType<typeof useProjectLabels>;
 
+type LabelColorPickerProperties = {
+    allowCustom?: boolean;
+    customDraft?: string;
+    label?: string;
+    onCustomApply?: () => void;
+    onCustomDraftChange?: (value: string) => void;
+    onOpenChange: (open: boolean) => void;
+    onSelectPreset: (color: LabelColor) => void;
+    open: boolean;
+    selectedColor?: LabelColor;
+    selectedCustom?: string;
+    swatchClassName?: string;
+};
+
 type LabelRowProperties = {
     label: ProjectLabel;
     labelsApi: LabelActions;
@@ -97,6 +113,9 @@ export function ProjectLabelsSettings({
     const { data: projects } = useProjects();
 
     const [newName, setNewName] = useState("");
+    const [newColor, setNewColor] = useState<LabelColor>("blue");
+    const [colorOpen, setColorOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const projectLabels = useMemo(
         () =>
@@ -105,6 +124,14 @@ export function ProjectLabelsSettings({
                 .toSorted((a, b) => a.name.localeCompare(b.name)),
         [labelsApi.labels, projectId]
     );
+
+    const filteredLabels = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return projectLabels;
+        return projectLabels.filter((label) =>
+            label.name.toLowerCase().includes(query)
+        );
+    }, [projectLabels, searchQuery]);
 
     const tasksByLabel = useMemo(() => {
         const map = new Map<string, LabelTaggedTask[]>();
@@ -133,7 +160,7 @@ export function ProjectLabelsSettings({
         const trimmed = newName.trim();
         if (!trimmed) return;
 
-        const id = await labelsApi.addLabel(trimmed);
+        const id = await labelsApi.addLabel(trimmed, newColor);
         if (!id) {
             toast.error(t("labels.createFailed"));
             return;
@@ -141,12 +168,16 @@ export function ProjectLabelsSettings({
 
         toast.success(t("labels.created", { name: trimmed }));
         setNewName("");
+        setNewColor(
+            LABEL_COLORS[(projectLabels.length + 1) % LABEL_COLORS.length] ??
+                "blue"
+        );
     };
 
     return (
-        <section className="flex flex-col gap-4">
+        <section className="flex flex-col gap-6">
             <div className="flex flex-col gap-1">
-                <h2 className="text-h4 font-medium">
+                <h2 className="text-h3 font-medium">
                     {t("labelSettings.title")}
                 </h2>
                 <p className="text-ui text-muted-foreground">
@@ -154,28 +185,47 @@ export function ProjectLabelsSettings({
                 </p>
             </div>
 
-            <div className="flex items-center gap-2">
-                <Input
-                    aria-label={t("labelSettings.newPlaceholder")}
-                    className="max-w-xs"
-                    onChange={(event) => setNewName(event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            event.preventDefault();
-                            handleCreate();
-                        }
-                    }}
-                    placeholder={t("labelSettings.newPlaceholder")}
-                    value={newName}
-                />
-                <Button
-                    disabled={newName.trim().length === 0}
-                    onClick={handleCreate}
-                    type="button"
-                >
-                    <Plus data-icon="inline-start" />
-                    {t("labelSettings.create")}
-                </Button>
+            <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
+                <h3 className="text-meta tracking-wide text-muted-foreground uppercase">
+                    {t("labelSettings.addSection")}
+                </h3>
+                <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+                        <Label htmlFor="new-label-name">
+                            {t("labelSettings.name")}
+                        </Label>
+                        <Input
+                            id="new-label-name"
+                            onChange={(event) => setNewName(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    void handleCreate();
+                                }
+                            }}
+                            placeholder={t("labelSettings.newPlaceholder")}
+                            value={newName}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Label>{t("labelSettings.color")}</Label>
+                        <LabelColorPicker
+                            label={t("labelSettings.color")}
+                            onOpenChange={setColorOpen}
+                            onSelectPreset={setNewColor}
+                            open={colorOpen}
+                            selectedColor={newColor}
+                            swatchClassName="size-8"
+                        />
+                    </div>
+                    <Button
+                        disabled={newName.trim().length === 0}
+                        onClick={() => void handleCreate()}
+                        type="button"
+                    >
+                        {t("labelSettings.create")}
+                    </Button>
+                </div>
             </div>
 
             {projectLabels.length === 0 ? (
@@ -188,22 +238,152 @@ export function ProjectLabelsSettings({
                     </EmptyHeader>
                 </Empty>
             ) : (
-                <ul className="flex flex-col gap-1.5">
-                    {projectLabels.map((label) => (
-                        <LabelRow
-                            key={label.id}
-                            label={label}
-                            labelsApi={labelsApi}
-                            onOpenTask={onOpenTask}
-                            otherProjects={otherProjects}
-                            taggedTasks={
-                                tasksByLabel.get(label.id) ?? EMPTY_TASKS
-                            }
+                <div className="flex flex-col gap-3">
+                    <div className="relative max-w-sm">
+                        <Search
+                            aria-hidden
+                            className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
                         />
-                    ))}
-                </ul>
+                        <Input
+                            className="pl-8"
+                            onChange={(event) =>
+                                setSearchQuery(event.target.value)
+                            }
+                            placeholder={t("labelSettings.searchPlaceholder")}
+                            value={searchQuery}
+                        />
+                    </div>
+
+                    {filteredLabels.length === 0 ? (
+                        <p className="text-ui text-muted-foreground">
+                            {t("labelSettings.noSearchMatches")}
+                        </p>
+                    ) : (
+                        <ul className="divide-y divide-border border border-border bg-card">
+                            {filteredLabels.map((label) => (
+                                <LabelRow
+                                    key={label.id}
+                                    label={label}
+                                    labelsApi={labelsApi}
+                                    onOpenTask={onOpenTask}
+                                    otherProjects={otherProjects}
+                                    taggedTasks={
+                                        tasksByLabel.get(label.id) ??
+                                        EMPTY_TASKS
+                                    }
+                                />
+                            ))}
+                        </ul>
+                    )}
+                </div>
             )}
         </section>
+    );
+}
+
+function LabelColorPicker({
+    allowCustom = false,
+    customDraft = "#6366f1",
+    label,
+    onCustomApply,
+    onCustomDraftChange,
+    onOpenChange,
+    onSelectPreset,
+    open,
+    selectedColor,
+    selectedCustom,
+    swatchClassName = "size-8 rounded-sm",
+}: LabelColorPickerProperties) {
+    const { t } = useTranslation("board");
+    const swatch = selectedCustom
+        ? { style: { backgroundColor: selectedCustom } }
+        : selectedColor
+          ? { className: LABEL_DOT_CLASS[selectedColor] }
+          : { className: LABEL_DOT_CLASS.blue };
+
+    return (
+        <DropdownMenu onOpenChange={onOpenChange} open={open}>
+            <DropdownMenuTrigger
+                aria-label={label ?? t("labelSettings.changeColor")}
+                className={cn(
+                    "shrink-0 cursor-pointer border border-border outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    swatchClassName
+                )}
+            >
+                <span
+                    aria-hidden
+                    className={cn("block size-full", swatch.className)}
+                    style={swatch.style}
+                />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-auto min-w-0">
+                <div className="flex flex-col gap-2 p-1">
+                    <div className="grid grid-cols-5 gap-1">
+                        {LABEL_COLORS.map((color) => (
+                            <button
+                                aria-label={color}
+                                className={cn(
+                                    "flex size-8 items-center justify-center rounded-md outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring",
+                                    !selectedCustom &&
+                                        color === selectedColor &&
+                                        "bg-foreground/10"
+                                )}
+                                key={color}
+                                onClick={() => {
+                                    onSelectPreset(color);
+                                    onOpenChange(false);
+                                }}
+                                type="button"
+                            >
+                                <span
+                                    className={cn(
+                                        "size-3.5 rounded-full",
+                                        LABEL_DOT_CLASS[color]
+                                    )}
+                                />
+                            </button>
+                        ))}
+                    </div>
+
+                    {allowCustom ? (
+                        <>
+                            <div className="h-px bg-foreground/10" />
+                            <p className="px-0.5 text-meta text-muted-foreground">
+                                {t("labelSettings.customColor")}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <Input
+                                    aria-label={t(
+                                        "labelSettings.customColorHex"
+                                    )}
+                                    className="h-8 w-28 font-mono text-sm"
+                                    onChange={(event) =>
+                                        onCustomDraftChange?.(
+                                            event.target.value
+                                        )
+                                    }
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            event.preventDefault();
+                                            onCustomApply?.();
+                                        }
+                                    }}
+                                    placeholder="#6366f1"
+                                    value={customDraft}
+                                />
+                                <Button
+                                    disabled={!normalizeHex(customDraft)}
+                                    onClick={onCustomApply}
+                                    type="button"
+                                >
+                                    {t("labelSettings.customColorApply")}
+                                </Button>
+                            </div>
+                        </>
+                    ) : undefined}
+                </div>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }
 
@@ -348,101 +528,25 @@ function LabelRow({
     };
 
     const triggerDot = getLabelDotProperties(label);
+    const chip = getLabelChipProperties(label);
 
     return (
-        <li className="flex items-center gap-2 rounded-lg bg-muted/30 px-2 py-1.5 ring-1 ring-foreground/10">
-            <DropdownMenu onOpenChange={setColorOpen} open={colorOpen}>
-                <DropdownMenuTrigger
-                    aria-label={t("labelSettings.changeColor")}
-                    render={<Button size="icon-sm" variant="ghost" />}
-                >
-                    <span
-                        className={cn(
-                            "size-3.5 rounded-full",
-                            triggerDot.className
-                        )}
-                        style={triggerDot.style}
-                    />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-auto min-w-0">
-                    <div className="flex flex-col gap-2 p-1">
-                        <div className="grid grid-cols-5 gap-1">
-                            {LABEL_COLORS.map((color) => (
-                                <button
-                                    aria-label={color}
-                                    className={cn(
-                                        "flex size-7 items-center justify-center rounded-md outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring",
-                                        !label.customColor &&
-                                            color === label.color &&
-                                            "bg-foreground/10"
-                                    )}
-                                    key={color}
-                                    onClick={() => {
-                                        void updateLabelColor(label.id, color);
-                                        setColorOpen(false);
-                                    }}
-                                    type="button"
-                                >
-                                    <span
-                                        className={cn(
-                                            "size-3.5 rounded-full",
-                                            LABEL_DOT_CLASS[color]
-                                        )}
-                                    />
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="h-px bg-foreground/10" />
-
-                        <p className="px-0.5 text-meta text-muted-foreground">
-                            {t("labelSettings.customColor")}
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                            <input
-                                aria-label={t("labelSettings.customColor")}
-                                className="size-8 shrink-0 cursor-pointer rounded-md border border-foreground/15 bg-transparent p-0.5"
-                                onChange={(event) =>
-                                    setCustomDraft(event.target.value)
-                                }
-                                type="color"
-                                value={
-                                    isValidHexColor(customDraft)
-                                        ? customDraft
-                                        : "#6366f1"
-                                }
-                            />
-                            <Input
-                                aria-label={t("labelSettings.customColorHex")}
-                                className="h-8 w-24 font-mono text-sm"
-                                onChange={(event) =>
-                                    setCustomDraft(event.target.value)
-                                }
-                                onKeyDown={(event) => {
-                                    if (event.key === "Enter") {
-                                        event.preventDefault();
-                                        applyCustomColor();
-                                    }
-                                }}
-                                placeholder="#6366f1"
-                                value={customDraft}
-                            />
-                            <Button
-                                disabled={!normalizeHex(customDraft)}
-                                onClick={applyCustomColor}
-                                size="sm"
-                                type="button"
-                            >
-                                {t("labelSettings.customColorApply")}
-                            </Button>
-                        </div>
-                    </div>
-                </DropdownMenuContent>
-            </DropdownMenu>
+        <li className="flex items-center gap-3 px-3.5 py-2">
+            <span
+                aria-hidden
+                className={cn(
+                    "size-2.5 shrink-0 rounded-full",
+                    triggerDot.className
+                )}
+                style={triggerDot.style}
+            />
 
             <Input
                 aria-label={t("labelSettings.renameAria")}
-                className="h-8 flex-1 border-transparent bg-transparent px-1.5 font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
+                className={cn(
+                    "h-8 flex-1 border-transparent bg-transparent! px-1.5 font-mono text-sm font-medium shadow-none ring-0! focus-visible:border-ring focus-visible:bg-background",
+                    chip.className
+                )}
                 onBlur={commitRename}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
@@ -454,15 +558,31 @@ function LabelRow({
                         event.currentTarget.blur();
                     }
                 }}
+                style={
+                    label.customColor
+                        ? {
+                              backgroundColor: "transparent",
+                              color: label.customColor,
+                          }
+                        : undefined
+                }
                 value={draft}
             />
 
-            <Badge
-                className="shrink-0 font-mono text-[0.625rem]"
-                variant="secondary"
-            >
-                {t("labelSettings.usage", { count: usageCount })}
-            </Badge>
+            <LabelColorPicker
+                allowCustom
+                customDraft={customDraft}
+                onCustomApply={applyCustomColor}
+                onCustomDraftChange={setCustomDraft}
+                onOpenChange={setColorOpen}
+                onSelectPreset={(color) => {
+                    void updateLabelColor(label.id, color);
+                }}
+                open={colorOpen}
+                selectedColor={label.color}
+                selectedCustom={label.customColor}
+                swatchClassName="size-5 rounded-sm"
+            />
 
             <Button
                 aria-label={t("labelSettings.transfer")}
@@ -483,7 +603,7 @@ function LabelRow({
                 type="button"
                 variant="ghost"
             >
-                <Trash2 className="size-3.5" />
+                <X className="size-3.5" />
             </Button>
 
             <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
@@ -552,7 +672,7 @@ function LabelRow({
                                             type="button"
                                             variant="ghost"
                                         >
-                                            <PanelRight className="size-3.5" />
+                                            <PanelBottom className="size-3.5" />
                                         </Button>
                                     </li>
                                 ))}
