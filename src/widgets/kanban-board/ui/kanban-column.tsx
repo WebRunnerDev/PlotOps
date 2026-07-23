@@ -209,7 +209,7 @@ export function KanbanColumn({
                     <span
                         aria-hidden
                         className={cn(
-                            "size-2 shrink-0 rounded-[2px]",
+                            "size-2 shrink-0 rounded-xs",
                             accentClass
                         )}
                     />

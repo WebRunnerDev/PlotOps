@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
+    TASK_TITLE_MAX_LENGTH,
     type TaskStatus,
     useBoardTasks,
     useTasksUiStore,
@@ -85,6 +86,7 @@ export function KanbanAddTask({
             aria-label={t("tasks.addPlaceholder")}
             className="h-8 bg-background text-ui shadow-none"
             disabled={isSubmitting}
+            maxLength={TASK_TITLE_MAX_LENGTH}
             onBlur={() => {
                 void submit();
             }}

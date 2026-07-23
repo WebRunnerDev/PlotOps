@@ -9,6 +9,18 @@ export function formatDeadline(isoDate: string, locale?: string): string {
     }).format(date);
 }
 
+/** Formats ISO `YYYY-MM-DD` with year for form fields. */
+export function formatDeadlineLong(isoDate: string, locale?: string): string {
+    const date = parseIsoDate(isoDate);
+    if (!date) return isoDate;
+
+    return new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    }).format(date);
+}
+
 export function isDeadlineOverdue(isoDate: string, now = new Date()): boolean {
     const date = parseIsoDate(isoDate);
     if (!date) return false;
@@ -17,7 +29,7 @@ export function isDeadlineOverdue(isoDate: string, now = new Date()): boolean {
     return date < today;
 }
 
-function parseIsoDate(isoDate: string): Date | undefined {
+export function parseIsoDate(isoDate: string): Date | undefined {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
     if (!match) return undefined;
 
@@ -33,4 +45,12 @@ function parseIsoDate(isoDate: string): Date | undefined {
         return undefined;
     }
     return date;
+}
+
+/** Local calendar date → ISO `YYYY-MM-DD` (no timezone shift). */
+export function toIsoDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }

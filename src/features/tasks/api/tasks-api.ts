@@ -8,6 +8,7 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { fetchBoardColumnIds } from "@/features/boards";
+import { TASK_TITLE_MAX_LENGTH } from "@/features/tasks/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 import {
@@ -27,6 +28,19 @@ export type ProjectBoard = {
     taskPositions: Map<string, number>;
     tasks: Task[];
 };
+
+function normalizeTaskTitle(title: string): string {
+    const trimmed = title.trim();
+    if (!trimmed) {
+        throw new Error("Task title is required");
+    }
+    if (trimmed.length > TASK_TITLE_MAX_LENGTH) {
+        throw new Error(
+            `Task title must be at most ${TASK_TITLE_MAX_LENGTH} characters`
+        );
+    }
+    return trimmed;
+}
 
 const TASK_SELECT = `
   id,
@@ -115,7 +129,7 @@ export async function createTaskRecord(
             project_id: projectId,
             status,
             task_type: taskType,
-            title: title.trim(),
+            title: normalizeTaskTitle(title),
         })
         .select(TASK_SELECT)
         .single();
@@ -302,9 +316,14 @@ export async function updateTaskRecord(
         title?: string;
     }
 ) {
+    const nextPatch =
+        patch.title === undefined
+            ? patch
+            : { ...patch, title: normalizeTaskTitle(patch.title) };
+
     const { error } = await supabase
         .from("tasks")
-        .update(patch)
+        .update(nextPatch)
         .eq("id", taskId);
     if (error) throw error;
 }

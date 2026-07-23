@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Archive, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, CalendarIcon, RotateCcw, Trash2, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { enUS, ru } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -22,8 +23,14 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
 import {
+    formatDeadlineLong,
+    parseIsoDate,
+    toIsoDate,
+} from "@/features/tasks/lib/format-deadline";
+import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
+    TASK_TITLE_MAX_LENGTH,
     TASK_TYPES,
 } from "@/features/tasks/model/constants";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
@@ -35,6 +42,7 @@ import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
 import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
 import { Separator } from "@/shared";
+import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -46,6 +54,7 @@ import {
     AlertDialogTitle,
 } from "@/shared/shadcn/ui/alert-dialog";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Calendar } from "@/shared/shadcn/ui/calendar";
 import {
     Combobox,
     ComboboxContent,
@@ -63,6 +72,11 @@ import {
 } from "@/shared/shadcn/ui/drawer";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/shared/shadcn/ui/popover";
 import {
     Select,
     SelectContent,
@@ -353,9 +367,10 @@ export function TaskDrawer({
                                             {t("fields.title")}
                                         </Label>
                                         <Input
-                                            className="h-auto border-border/80 bg-transparent px-0 text-h3 font-semibold shadow-none focus-visible:ring-0"
+                                            className="h-auto text-h3 font-semibold"
                                             disabled={!canEdit}
                                             id="task-title"
+                                            maxLength={TASK_TITLE_MAX_LENGTH}
                                             onBlur={commitTitle}
                                             onChange={(event) =>
                                                 setTitle(event.target.value)
@@ -650,23 +665,15 @@ export function TaskDrawer({
                                             >
                                                 {t("fields.deadline")}
                                             </Label>
-                                            <Input
-                                                className={FIELD_CONTROL_CLASS}
+                                            <TaskDeadlineField
                                                 disabled={!canEdit}
                                                 id="task-deadline"
-                                                onChange={(event) => {
-                                                    if (!canEdit) return;
-                                                    const next =
-                                                        event.target.value;
+                                                onChange={(deadline) => {
                                                     updateTaskDetails(task.id, {
-                                                        deadline:
-                                                            next.length > 0
-                                                                ? next
-                                                                : undefined,
+                                                        deadline,
                                                     });
                                                 }}
-                                                type="date"
-                                                value={task.deadline ?? ""}
+                                                value={task.deadline}
                                             />
                                         </div>
                                     </div>
@@ -941,5 +948,90 @@ export function TaskDrawer({
                 </AlertDialogContent>
             </AlertDialog>
         </>
+    );
+}
+
+const DEADLINE_START_MONTH = new Date(2000, 0);
+const DEADLINE_END_MONTH = new Date(new Date().getFullYear() + 10, 11);
+
+type TaskDeadlineFieldProperties = {
+    disabled?: boolean;
+    id: string;
+    onChange: (deadline: null | string) => void;
+    value?: string;
+};
+
+function TaskDeadlineField({
+    disabled = false,
+    id,
+    onChange,
+    value,
+}: TaskDeadlineFieldProperties) {
+    const { i18n, t } = useTranslation("board");
+    const [open, setOpen] = useState(false);
+    const selected = value ? parseIsoDate(value) : undefined;
+    const locale = i18n.language.startsWith("ru") ? ru : enUS;
+
+    return (
+        <div className="flex gap-1.5">
+            <Popover
+                onOpenChange={(next) => {
+                    if (disabled) return;
+                    setOpen(next);
+                }}
+                open={open}
+            >
+                <PopoverTrigger
+                    render={
+                        <Button
+                            className={cn(
+                                FIELD_CONTROL_CLASS,
+                                "flex-1 justify-start font-normal",
+                                !selected && "text-muted-foreground"
+                            )}
+                            disabled={disabled}
+                            id={id}
+                            variant="outline"
+                        />
+                    }
+                >
+                    <CalendarIcon data-icon="inline-start" />
+                    <span className="truncate">
+                        {selected && value
+                            ? formatDeadlineLong(value, i18n.language)
+                            : t("fields.deadlinePlaceholder")}
+                    </span>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                    <Calendar
+                        captionLayout="dropdown"
+                        disabled={disabled}
+                        endMonth={DEADLINE_END_MONTH}
+                        locale={locale}
+                        mode="single"
+                        onSelect={(date) => {
+                            if (!date) return;
+                            onChange(toIsoDate(date));
+                            setOpen(false);
+                        }}
+                        selected={selected}
+                        startMonth={DEADLINE_START_MONTH}
+                    />
+                </PopoverContent>
+            </Popover>
+            {selected && !disabled ? (
+                <Button
+                    aria-label={t("fields.deadlineClear")}
+                    onClick={() => {
+                        onChange(null);
+                    }}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                >
+                    <XIcon />
+                </Button>
+            ) : undefined}
+        </div>
     );
 }

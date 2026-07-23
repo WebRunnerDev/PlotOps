@@ -24,6 +24,19 @@ export const PRIORITY_DOT_CLASS: Record<TaskPriority, string> = {
     urgent: "bg-red-500",
 };
 
+/** Left rail (via `before:`) accent per task type. */
+export const TASK_TYPE_CARD_CLASS: Record<TaskType, string> = {
+    bug: "before:bg-destructive",
+    feature: "before:bg-success",
+    task: "before:bg-primary",
+};
+
+export const TASK_TYPE_ICON_CLASS: Record<TaskType, string> = {
+    bug: "text-destructive",
+    feature: "text-success",
+    task: "text-primary",
+};
+
 /** Column header accent squares (Make kanban). */
 export const COLUMN_ACCENT_CLASS = [
     "bg-muted-foreground/55",
@@ -41,6 +54,9 @@ export function columnAccentClass(seed: string): string {
     }
     return COLUMN_ACCENT_CLASS[hash % COLUMN_ACCENT_CLASS.length]!;
 }
+
+/** Max task title length (Jira / GitHub issue title cap). */
+export const TASK_TITLE_MAX_LENGTH = 255;
 
 /** Max stored HTML length for task descriptions (~128 KiB). */
 export const TASK_DESCRIPTION_MAX_LENGTH = 131_072;

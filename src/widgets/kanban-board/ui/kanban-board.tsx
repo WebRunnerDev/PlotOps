@@ -24,6 +24,7 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useBoardSprints, useSprintsUiStore } from "@/features/sprints";
 import {
     type BoardTaskFilters,
+    BoardTaskFiltersBar,
     EMPTY_BOARD_FILTERS,
     filterTasks,
     type Task,
@@ -36,7 +37,6 @@ import { Button } from "@/shared/shadcn/ui/button";
 
 import { BoardLoading } from "./board-loading";
 import { KanbanColumn } from "./kanban-column";
-import { KanbanFilters } from "./kanban-filters";
 
 type DragType = "column" | "task";
 
@@ -255,7 +255,7 @@ export function KanbanBoard({
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">
             <div className="sticky left-0 z-5 w-[calc(100cqw-6rem)] shrink-0">
-                <KanbanFilters
+                <BoardTaskFiltersBar
                     filters={filters}
                     labels={projectLabels}
                     onChange={setFilters}

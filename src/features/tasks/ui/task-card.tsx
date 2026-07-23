@@ -1,8 +1,17 @@
-import { Calendar, GitBranch, User } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+import {
+    Bug,
+    Calendar,
+    CheckSquare,
+    GitBranch,
+    Sparkles,
+    User,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
-import type { Task } from "@/features/tasks/model/types";
+import type { Task, TaskType } from "@/features/tasks/model/types";
 
 import { TaskLabelChips } from "@/features/labels";
 import {
@@ -13,7 +22,11 @@ import {
     formatDeadline,
     isDeadlineOverdue,
 } from "@/features/tasks/lib/format-deadline";
-import { PRIORITY_DOT_CLASS } from "@/features/tasks/model/constants";
+import {
+    PRIORITY_DOT_CLASS,
+    TASK_TYPE_CARD_CLASS,
+    TASK_TYPE_ICON_CLASS,
+} from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import {
@@ -29,6 +42,12 @@ import {
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
 
+const TASK_TYPE_ICON: Record<TaskType, LucideIcon> = {
+    bug: Bug,
+    feature: Sparkles,
+    task: CheckSquare,
+};
+
 type TaskCardProperties = {
     labels: ProjectLabel[];
     task: Task;
@@ -40,15 +59,27 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
     const overdue =
         task.deadline !== undefined && isDeadlineOverdue(task.deadline);
     const shared = task.branchName ? isSharedBranch(task.branchName) : false;
+    const TypeIcon = TASK_TYPE_ICON[task.type];
+    const typeLabel = t(`taskType.${task.type}`);
 
     return (
         <Card
-            className="cursor-grab rounded-lg ring-border/80 transition-colors hover:ring-primary/35 active:cursor-grabbing"
+            className={cn(
+                "relative cursor-grab ring-0 transition-colors before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:content-[''] active:cursor-grabbing",
+                TASK_TYPE_CARD_CLASS[task.type]
+            )}
             size="sm"
         >
             <CardHeader className="gap-2">
                 <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <TypeIcon
+                            aria-label={typeLabel}
+                            className={cn(
+                                "size-3 shrink-0",
+                                TASK_TYPE_ICON_CLASS[task.type]
+                            )}
+                        />
                         {task.priority ? (
                             <span
                                 aria-hidden

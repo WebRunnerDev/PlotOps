@@ -54,13 +54,24 @@ const taskChannels = new Map<
 >();
 
 type TaskDetailsUpdate = Partial<
-    Omit<Task, "assignee" | "author" | "branchName" | "id" | "pr" | "status">
+    Omit<
+        Task,
+        | "assignee"
+        | "author"
+        | "branchName"
+        | "deadline"
+        | "id"
+        | "pr"
+        | "status"
+    >
 > & {
     /** Pass `null` to clear assignee or author. */
     assignee?: null | Task["assignee"];
     author?: null | Task["author"];
     /** Pass `null` to clear a linked branch. */
     branchName?: null | string;
+    /** Pass `null` to clear the deadline. */
+    deadline?: null | string;
     /** Pass `null` to clear a linked pull request. */
     pr?: null | TaskPullRequest;
 };
@@ -516,6 +527,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         assignee: nextAssignee,
                         author: nextAuthor,
                         branchName: nextBranch,
+                        deadline: nextDeadline,
                         pr: nextPr,
                         ...rest
                     } = details;
@@ -531,6 +543,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         ...(nextBranch === undefined
                             ? {}
                             : { branchName: nextBranch ?? undefined }),
+                        ...(nextDeadline === undefined
+                            ? {}
+                            : { deadline: nextDeadline ?? undefined }),
                         ...(nextPr === undefined
                             ? {}
                             : { pr: nextPr ?? undefined }),

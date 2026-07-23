@@ -1,4 +1,4 @@
-import { Archive, PanelRight, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, PanelBottom, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -43,6 +43,7 @@ export function BoardArchiveDialog({
     const { canDeleteTasks } = useProjectAccess(projectId);
     const { deleteTask, restoreTask } = useBoardTasks(projectId, boardId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const {
         data: archived = [],
         isError,
@@ -87,7 +88,14 @@ export function BoardArchiveDialog({
 
     return (
         <>
-            <Dialog onOpenChange={setOpen} open={open}>
+            <Dialog
+                onOpenChange={(next) => {
+                    // Stay open under the task drawer so multiple archived tasks can be reviewed.
+                    if (!next && selectedTaskId) return;
+                    setOpen(next);
+                }}
+                open={open}
+            >
                 <DialogTrigger
                     render={
                         <Button size="xs" type="button" variant="outline" />
@@ -170,13 +178,12 @@ export function BoardArchiveDialog({
                                                 <Button
                                                     onClick={() => {
                                                         selectTask(task.id);
-                                                        setOpen(false);
                                                     }}
                                                     size="xs"
                                                     type="button"
                                                     variant="outline"
                                                 >
-                                                    <PanelRight data-icon="inline-start" />
+                                                    <PanelBottom data-icon="inline-start" />
                                                     {t("archive.view")}
                                                 </Button>
                                                 {canDeleteTasks ? (
