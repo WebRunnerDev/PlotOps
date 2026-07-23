@@ -1,25 +1,26 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "react-loading-skeleton/dist/skeleton.css";
 
-import './styles/index.css'
-import './i18n'
-import { initTheme } from '@/app/model/theme'
-import { AuthProvider } from '@/features/auth'
+import "./styles/index.css";
+import "./i18n";
+import { initTheme } from "@/app/model/theme";
+import { AuthProvider } from "@/features/auth";
 
-import { AppRouter } from './app-router'
+import { AppRouter } from "./app-router";
 
-initTheme()
+initTheme();
 
-const rootElement = document.querySelector('#root')
+const rootElement = document.querySelector("#root");
 
 if (!rootElement) {
-  throw new Error('Root element not found')
+    throw new Error("Root element not found");
 }
 
 createRoot(rootElement).render(
-  <StrictMode>
-    <AuthProvider>
-      <AppRouter />
-    </AuthProvider>
-  </StrictMode>,
-)
+    <StrictMode>
+        <AuthProvider>
+            <AppRouter />
+        </AuthProvider>
+    </StrictMode>
+);
