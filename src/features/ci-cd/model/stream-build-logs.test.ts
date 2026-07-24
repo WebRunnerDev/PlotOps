@@ -78,19 +78,26 @@ describe("CI/CD builds-for-Project seam — streamBuildLogs", () => {
         expect(lines.length).toBe(countAfterFirst);
     });
 
-    it("is a no-op stream for an unknown build id", () => {
+    it("completes with an empty stream for an unknown build id", () => {
         const lines: string[] = [];
+        let done = false;
 
         const stop = mockBuildsForProject.streamBuildLogs(
             "project-demo",
             "build-missing",
             (line) => {
-                lines.push(line.text);
+                if (line.text.length > 0) {
+                    lines.push(line.text);
+                }
+                if (line.done) {
+                    done = true;
+                }
             }
         );
 
-        vi.advanceTimersByTime(500);
+        vi.advanceTimersByTime(0);
         expect(lines).toEqual([]);
+        expect(done).toBe(true);
         stop();
     });
 });

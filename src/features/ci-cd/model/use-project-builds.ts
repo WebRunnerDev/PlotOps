@@ -1,12 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
-import type { BuildsForProject } from "@/features/ci-cd/model/types";
-
-import { mockBuildsForProject } from "@/features/ci-cd/api/mock-builds";
+import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
 import { ciKeys } from "@/features/ci-cd/model/query-keys";
-
-/** Default provider — swap for GitHub Actions later at this seam. */
-const buildsProvider: BuildsForProject = mockBuildsForProject;
 
 export function useProjectBuilds(projectId: string) {
     return useQuery({

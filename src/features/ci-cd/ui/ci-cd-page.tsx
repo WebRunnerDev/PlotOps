@@ -181,6 +181,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                                 setSelectedBuild(build);
                                             }
                                         }}
+                                        role="button"
                                         tabIndex={0}
                                     >
                                         <TableCell>

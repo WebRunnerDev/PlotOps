@@ -121,7 +121,13 @@ export const mockBuildsForProject: BuildsForProject = {
         void projectId;
         const script = MOCK_LOG_SCRIPTS[buildId];
         if (!script || script.length === 0) {
-            return () => {};
+            // Complete immediately with no lines so UI does not stay “Streaming…”.
+            const timer = setTimeout(() => {
+                onLine({ done: true, index: 0, text: "" });
+            }, 0);
+            return () => {
+                clearTimeout(timer);
+            };
         }
         return streamMockLogLines(script, onLine);
     },

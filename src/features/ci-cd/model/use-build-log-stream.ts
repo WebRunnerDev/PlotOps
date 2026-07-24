@@ -1,14 +1,8 @@
 import { useEffect, useState } from "react";
 
-import type {
-    BuildLogLine,
-    BuildsForProject,
-} from "@/features/ci-cd/model/types";
+import type { BuildLogLine } from "@/features/ci-cd/model/types";
 
-import { mockBuildsForProject } from "@/features/ci-cd/api/mock-builds";
-
-/** Same provider as listBuilds — swap for GitHub Actions later at this seam. */
-const buildsProvider: BuildsForProject = mockBuildsForProject;
+import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
 
 /**
  * Progressive mock log lines for a selected build.
@@ -35,7 +29,9 @@ export function useBuildLogStream(
             projectId,
             buildId,
             (line) => {
-                setLines((previous) => [...previous, line]);
+                if (line.text.length > 0) {
+                    setLines((previous) => [...previous, line]);
+                }
                 if (line.done) {
                     setIsStreaming(false);
                 }

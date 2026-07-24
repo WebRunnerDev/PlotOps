@@ -39,7 +39,15 @@ export function BuildLogDialog({
             }}
             open={open}
         >
-            <DialogContent className="flex max-h-[min(90vh,40rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-none sm:max-w-3xl">
+            <DialogContent
+                className={cn(
+                    "flex max-h-[min(90vh,40rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-none border-l-2 sm:max-w-3xl",
+                    build?.status === "success" && "border-l-emerald-500",
+                    build?.status === "failure" && "border-l-red-500",
+                    build?.status === "running" && "border-l-amber-400",
+                    build?.status === "queued" && "border-l-border"
+                )}
+            >
                 <DialogHeader>
                     <DialogTitle className="font-mono text-h3">
                         {build
