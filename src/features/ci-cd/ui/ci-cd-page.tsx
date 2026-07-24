@@ -86,7 +86,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                             <ArrowLeft data-icon="inline-start" />
                             {t("cicd.backToBoard")}
                         </Button>
-                        <h1 className="truncate text-h3">{t("cicd.title")}</h1>
+                        <h1 className="truncate text-h1">{t("cicd.title")}</h1>
                         <span className="truncate font-mono text-meta text-muted-foreground">
                             {project.name}
                         </span>
@@ -95,7 +95,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                         {t("cicd.mockHint")}
                     </p>
                 </div>
-                <p className="max-w-2xl text-ui text-muted-foreground">
+                <p className="max-w-2xl text-body text-muted-foreground">
                     {t("cicd.description")}
                 </p>
             </header>
@@ -189,7 +189,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                             </div>
                                         </TableCell>
                                         <TableCell className="hidden font-mono text-meta text-muted-foreground md:table-cell">
-                                            {formatRelative(
+                                            {formatBuildTimestamp(
                                                 build.finishedAt ??
                                                     build.startedAt,
                                                 i18n.language
@@ -227,7 +227,7 @@ function BuildStatusBadge({
     );
 }
 
-function formatRelative(iso: string | undefined, locale: string): string {
+function formatBuildTimestamp(iso: string | undefined, locale: string): string {
     if (!iso) return "—";
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "—";

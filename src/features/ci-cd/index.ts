@@ -1,9 +1,5 @@
 export { mockBuildsForProject } from "./api/mock-builds";
-export {
-    buildStatusAccentClass,
-    buildStatusTone,
-    type BuildStatusTone,
-} from "./model/build-status";
+export { buildStatusAccentClass } from "./model/build-status";
 export { ciKeys } from "./model/query-keys";
 export type {
     BuildsForProject,
