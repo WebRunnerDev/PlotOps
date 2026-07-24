@@ -136,9 +136,15 @@ describe("Command Palette rules seam — Task search", () => {
         expect(hits.map((task) => task.id)).toEqual(["t1", "t2"]);
     });
 
-    it("ranks exact key matches before title matches", () => {
+    it("ranks exact key matches, then title matches, then partial key matches", () => {
         const ranked = matchCommandPaletteTasks(
             [
+                {
+                    boardId: "b1",
+                    id: "key-partial",
+                    key: "BUG-90",
+                    title: "Unrelated",
+                },
                 {
                     boardId: "b1",
                     id: "title-hit",
@@ -150,12 +156,6 @@ describe("Command Palette rules seam — Task search", () => {
                     id: "key-exact",
                     key: "BUG-9",
                     title: "Something else",
-                },
-                {
-                    boardId: "b1",
-                    id: "key-partial",
-                    key: "BUG-90",
-                    title: "Unrelated",
                 },
             ],
             "BUG-9"

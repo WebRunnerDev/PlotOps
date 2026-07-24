@@ -52,26 +52,34 @@ export function matchCommandPaletteTasks(
         return [];
     }
 
-    const active = tasks.filter((task) => !task.archivedAt);
     const exactKey: CommandPaletteTask[] = [];
-    const other: CommandPaletteTask[] = [];
+    const titleHits: CommandPaletteTask[] = [];
+    const partialKey: CommandPaletteTask[] = [];
 
-    for (const task of active) {
+    for (const task of tasks) {
+        if (task.archivedAt) {
+            continue;
+        }
+
         const key = task.key.toLowerCase();
         const title = task.title.toLowerCase();
         const keyMatch = key.includes(normalized);
         const titleMatch = title.includes(normalized);
+
         if (!keyMatch && !titleMatch) {
             continue;
         }
+
         if (key === normalized) {
             exactKey.push(task);
+        } else if (titleMatch) {
+            titleHits.push(task);
         } else {
-            other.push(task);
+            partialKey.push(task);
         }
     }
 
-    return [...exactKey, ...other].slice(0, MAX_TASK_HITS);
+    return [...exactKey, ...titleHits, ...partialKey].slice(0, MAX_TASK_HITS);
 }
 
 export function resolveCommandPaletteVisibility(
