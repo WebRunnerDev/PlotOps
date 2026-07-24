@@ -52,7 +52,7 @@ function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
 function ComboboxInput({
   className,
   children,
-  disabled = false,
+  disabled,
   showTrigger = true,
   showClear = false,
   ...props
@@ -61,9 +61,20 @@ function ComboboxInput({
   showClear?: boolean
 }) {
   return (
-    <InputGroup className={cn("w-auto", className)}>
+    <InputGroup
+      className={cn(
+        "w-auto",
+        // Explicit disabled chrome when `disabled` is passed (matches Input).
+        // Root-only disabled still relies on InputGroup `has-disabled:`.
+        disabled &&
+          "pointer-events-none cursor-not-allowed bg-input/50 opacity-50 dark:bg-input/80",
+        className
+      )}
+      data-disabled={disabled ? "" : undefined}
+    >
       <ComboboxPrimitive.Input
-        render={<InputGroupInput disabled={disabled} />}
+        disabled={disabled}
+        render={<InputGroupInput className="disabled:opacity-100" />}
         {...props}
       />
       <InputGroupAddon align="inline-end">
@@ -221,7 +232,7 @@ function ComboboxChips({
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-background bg-clip-padding px-2.5 py-1 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 has-data-[slot=combobox-chip]:px-1 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40",
+        "flex min-h-8 flex-wrap items-center gap-1 rounded-lg border border-input bg-background bg-clip-padding px-2.5 py-1 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:pointer-events-none has-disabled:cursor-not-allowed has-disabled:bg-input/50 has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 has-data-[slot=combobox-chip]:px-1 dark:has-disabled:bg-input/80 dark:has-aria-invalid:border-destructive/50 dark:has-aria-invalid:ring-destructive/40",
         className
       )}
       {...props}
