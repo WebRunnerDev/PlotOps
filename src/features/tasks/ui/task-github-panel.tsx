@@ -48,6 +48,8 @@ const PR_STATE_CLASS: Record<NonNullable<Task["pr"]>["state"], string> = {
 type TaskGithubPanelProperties = {
     allowedHeadPatterns: string[];
     baseBranch: string;
+    /** Drawer edit gate (`canEditTasks && !archived`) — same Role seam as Board. */
+    canEdit: boolean;
     githubToken: null | string;
     onBranchChange: (branchName: null | string) => void;
     onPrChange: (pr: null | TaskPullRequest) => void;
@@ -58,6 +60,7 @@ type TaskGithubPanelProperties = {
 export function TaskGithubPanel({
     allowedHeadPatterns,
     baseBranch,
+    canEdit,
     githubToken,
     onBranchChange,
     onPrChange,
@@ -105,12 +108,14 @@ export function TaskGithubPanel({
     };
 
     const handleGenerate = () => {
+        if (!canEdit) return;
         const generated = generateBranchName(task.key, task.title, task.type);
         setLinkingBranch(false);
         applyBranch(generated);
     };
 
     const applyBranch = (next: string) => {
+        if (!canEdit) return;
         if (!matchesAllowedHeadPatterns(next, allowedHeadPatterns)) {
             setPendingBranch(next);
             return;
@@ -122,6 +127,7 @@ export function TaskGithubPanel({
     };
 
     const handleLinkBranchConfirm = () => {
+        if (!canEdit) return;
         const next = normalizeBranchName(branchDraft);
         if (!next) {
             toast.error(t("github.branchRequired"));
@@ -133,11 +139,13 @@ export function TaskGithubPanel({
     };
 
     const handleUnlinkBranch = () => {
+        if (!canEdit) return;
         setLinkingBranch(false);
         onBranchChange(null);
     };
 
     const handleLinkPrConfirm = async () => {
+        if (!canEdit) return;
         const number = parsePrNumber(prDraft);
         if (number == undefined) {
             toast.error(t("github.prRequired"));
@@ -172,6 +180,7 @@ export function TaskGithubPanel({
     };
 
     const handleUnlinkPr = () => {
+        if (!canEdit) return;
         onPrChange(null);
         setLinkingPr(false);
         setPrDraft("");
@@ -199,15 +208,17 @@ export function TaskGithubPanel({
                     </span>
                     <ExternalLink aria-hidden className="size-3 shrink-0" />
                 </a>
-                <Button
-                    aria-label={t("github.unlinkPr")}
-                    onClick={handleUnlinkPr}
-                    size="icon-xs"
-                    type="button"
-                    variant="ghost"
-                >
-                    <Unlink className="size-3.5" />
-                </Button>
+                {canEdit ? (
+                    <Button
+                        aria-label={t("github.unlinkPr")}
+                        onClick={handleUnlinkPr}
+                        size="icon-xs"
+                        type="button"
+                        variant="ghost"
+                    >
+                        <Unlink className="size-3.5" />
+                    </Button>
+                ) : undefined}
             </div>
             {canFetchGithub ? (
                 <Button
@@ -221,7 +232,7 @@ export function TaskGithubPanel({
                 </Button>
             ) : undefined}
         </div>
-    ) : linkingPr ? (
+    ) : linkingPr && canEdit ? (
         <div className="flex flex-col gap-2">
             <p className="text-ui text-muted-foreground">
                 {t("github.linkPrHint")}
@@ -278,18 +289,22 @@ export function TaskGithubPanel({
             <p className="text-ui text-muted-foreground">
                 {branchName ? t("github.noPr") : t("github.noPrSkipped")}
             </p>
-            <Button
-                className="self-start"
-                disabled={!canFetchGithub}
-                onClick={() => setLinkingPr(true)}
-                size="xs"
-                title={canFetchGithub ? undefined : t("github.prNeedsGithub")}
-                type="button"
-                variant="outline"
-            >
-                <GitPullRequest aria-hidden className="size-4" />
-                {t("github.linkPr")}
-            </Button>
+            {canEdit ? (
+                <Button
+                    className="self-start"
+                    disabled={!canFetchGithub}
+                    onClick={() => setLinkingPr(true)}
+                    size="xs"
+                    title={
+                        canFetchGithub ? undefined : t("github.prNeedsGithub")
+                    }
+                    type="button"
+                    variant="outline"
+                >
+                    <GitPullRequest aria-hidden className="size-4" />
+                    {t("github.linkPr")}
+                </Button>
+            ) : undefined}
         </div>
     );
 
@@ -316,15 +331,17 @@ export function TaskGithubPanel({
                                     />
                                     {t("github.checkout")}
                                 </span>
-                                <Button
-                                    aria-label={t("github.unlinkBranch")}
-                                    onClick={handleUnlinkBranch}
-                                    size="icon-xs"
-                                    type="button"
-                                    variant="ghost"
-                                >
-                                    <Unlink className="size-3.5" />
-                                </Button>
+                                {canEdit ? (
+                                    <Button
+                                        aria-label={t("github.unlinkBranch")}
+                                        onClick={handleUnlinkBranch}
+                                        size="icon-xs"
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Unlink className="size-3.5" />
+                                    </Button>
+                                ) : undefined}
                             </div>
                             <div className="flex items-center gap-2">
                                 <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
@@ -354,7 +371,7 @@ export function TaskGithubPanel({
                     <>
                         {prSection}
 
-                        {linkingBranch ? (
+                        {linkingBranch && canEdit ? (
                             <div className="flex flex-col gap-2">
                                 <p className="text-ui text-muted-foreground">
                                     {t("github.linkBranchHint")}
@@ -416,32 +433,36 @@ export function TaskGithubPanel({
                                     />
                                     {t("github.skipBranch")}
                                 </span>
-                                <div className="flex shrink-0 gap-1">
-                                    <Button
-                                        onClick={handleGenerate}
-                                        size="icon-xs"
-                                        title={t("github.generateBranch")}
-                                        type="button"
-                                        variant="ghost"
-                                    >
-                                        <Sparkles
-                                            aria-hidden
-                                            className="size-3.5"
-                                        />
-                                    </Button>
-                                    <Button
-                                        onClick={() => setLinkingBranch(true)}
-                                        size="icon-xs"
-                                        title={t("github.linkBranch")}
-                                        type="button"
-                                        variant="ghost"
-                                    >
-                                        <Link2
-                                            aria-hidden
-                                            className="size-3.5"
-                                        />
-                                    </Button>
-                                </div>
+                                {canEdit ? (
+                                    <div className="flex shrink-0 gap-1">
+                                        <Button
+                                            onClick={handleGenerate}
+                                            size="icon-xs"
+                                            title={t("github.generateBranch")}
+                                            type="button"
+                                            variant="ghost"
+                                        >
+                                            <Sparkles
+                                                aria-hidden
+                                                className="size-3.5"
+                                            />
+                                        </Button>
+                                        <Button
+                                            onClick={() =>
+                                                setLinkingBranch(true)
+                                            }
+                                            size="icon-xs"
+                                            title={t("github.linkBranch")}
+                                            type="button"
+                                            variant="ghost"
+                                        >
+                                            <Link2
+                                                aria-hidden
+                                                className="size-3.5"
+                                            />
+                                        </Button>
+                                    </div>
+                                ) : undefined}
                             </div>
                         )}
                     </>
@@ -486,7 +507,7 @@ export function TaskGithubPanel({
                         </AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => {
-                                if (!pendingBranch) return;
+                                if (!canEdit || !pendingBranch) return;
                                 const next = pendingBranch;
                                 setPendingBranch(null);
                                 onBranchChange(next);

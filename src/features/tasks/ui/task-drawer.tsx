@@ -754,6 +754,7 @@ export function TaskDrawer({
                                                 currentBoard?.baseBranch ??
                                                 "main"
                                             }
+                                            canEdit={canEdit}
                                             githubToken={githubToken}
                                             onBranchChange={(branchName) => {
                                                 updateTaskDetails(task.id, {
