@@ -69,7 +69,7 @@ export function KanbanColumn({
         projectId,
         boardId
     );
-    const { canManageBoard } = useProjectAccess(projectId);
+    const { canEditTasks, canManageBoard } = useProjectAccess(projectId);
     const accentClass = columnAccentClass(status);
 
     const {
@@ -269,6 +269,7 @@ export function KanbanColumn({
                     >
                         {tasks.map((task) => (
                             <DraggableTaskCard
+                                canDrag={canEditTasks}
                                 key={task.id}
                                 labels={labelsByTaskId.get(task.id) ?? []}
                                 task={task}

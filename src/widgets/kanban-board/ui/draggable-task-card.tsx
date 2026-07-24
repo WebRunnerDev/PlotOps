@@ -7,11 +7,13 @@ import { type Task, TaskCard, useTasksUiStore } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 
 type DraggableTaskCardProperties = {
+    canDrag: boolean;
     labels: ProjectLabel[];
     task: Task;
 };
 
 export function DraggableTaskCard({
+    canDrag,
     labels,
     task,
 }: DraggableTaskCardProperties) {
@@ -25,13 +27,15 @@ export function DraggableTaskCard({
         transition,
     } = useSortable({
         data: { status: task.status, type: "task" },
+        disabled: !canDrag,
         id: task.id,
     });
 
     return (
         <div
             className={cn(
-                "touch-none outline-none transition-opacity duration-150",
+                "outline-none transition-opacity duration-150",
+                canDrag && "touch-none",
                 isDragging &&
                     "rounded-lg opacity-40 ring-2 ring-primary/50 ring-offset-2 ring-offset-background"
             )}
@@ -40,8 +44,8 @@ export function DraggableTaskCard({
                 transform: CSS.Translate.toString(transform),
                 transition,
             }}
-            {...listeners}
-            {...attributes}
+            {...(canDrag ? listeners : undefined)}
+            {...(canDrag ? attributes : undefined)}
             onClick={() => {
                 if (!isDragging) {
                     selectTask(task.id);
