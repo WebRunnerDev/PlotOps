@@ -82,6 +82,18 @@ export function matchCommandPaletteTasks(
     return [...exactKey, ...titleHits, ...partialKey].slice(0, MAX_TASK_HITS);
 }
 
+/** Task hits for the palette — empty without Project context; otherwise rules matching. */
+export function resolveCommandPaletteTaskHits(
+    context: CommandPaletteRouteContext,
+    tasks: readonly CommandPaletteTask[],
+    query: string
+): CommandPaletteTask[] {
+    if (!context.projectId) {
+        return [];
+    }
+    return matchCommandPaletteTasks(tasks, query);
+}
+
 export function resolveCommandPaletteVisibility(
     context: CommandPaletteRouteContext,
     projects: readonly CommandPaletteProject[]
@@ -96,7 +108,7 @@ export function resolveCommandPaletteVisibility(
 
 export function selectTaskIntent(
     task: Pick<CommandPaletteTask, "boardId" | "id">
-): CommandPaletteIntent {
+): Extract<CommandPaletteIntent, { type: "select-task" }> {
     return {
         boardId: task.boardId,
         taskId: task.id,

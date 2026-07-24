@@ -6,6 +6,7 @@ import {
     type CommandPaletteTask,
     createTaskIntent,
     matchCommandPaletteTasks,
+    resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     selectTaskIntent,
     switchProjectIntent,
@@ -180,6 +181,26 @@ describe("Command Palette rules seam — Task search", () => {
         );
 
         expect(matchCommandPaletteTasks(many, "alpha")).toHaveLength(20);
+    });
+
+    it("returns no Task hits without Project context even when query matches", () => {
+        expect(
+            resolveCommandPaletteTaskHits(
+                baseContext({ projectId: null }),
+                tasks,
+                "login"
+            )
+        ).toEqual([]);
+    });
+
+    it("returns ranked Task hits when Project context is present", () => {
+        expect(
+            resolveCommandPaletteTaskHits(
+                baseContext({ projectId: "project-1" }),
+                tasks,
+                "login"
+            ).map((task) => task.id)
+        ).toEqual(["t1", "t2"]);
     });
 });
 

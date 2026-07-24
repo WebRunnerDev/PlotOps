@@ -1,6 +1,7 @@
 export {
     createTaskIntent,
     matchCommandPaletteTasks,
+    resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     selectTaskIntent,
     switchProjectIntent,

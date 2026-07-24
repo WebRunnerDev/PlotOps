@@ -5,4 +5,7 @@ export const taskKeys = {
     /** Active (non-archived) Tasks on a Board — not columns or Labels. */
     board: (projectId: string, boardId: string) =>
         [...taskKeys.all, "board", projectId, boardId] as const,
+    /** Active (non-archived) Tasks across all Boards in a Project. */
+    project: (projectId: string) =>
+        [...taskKeys.all, "project", projectId] as const,
 };

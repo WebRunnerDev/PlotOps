@@ -64,13 +64,19 @@ describe("board workspace query cache seam", () => {
             projectId,
             boardId,
         ]);
+        expect(taskKeys.project(projectId)).toEqual([
+            "tasks",
+            "project",
+            projectId,
+        ]);
 
         const keys = [
             boardKeys.columns(projectId, boardId).join("/"),
             labelKeys.project(projectId).join("/"),
             taskKeys.board(projectId, boardId).join("/"),
+            taskKeys.project(projectId).join("/"),
         ];
-        expect(new Set(keys).size).toBe(3);
+        expect(new Set(keys).size).toBe(4);
     });
 
     it("composes a ProjectBoard façade from the three slices", () => {

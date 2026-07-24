@@ -184,6 +184,19 @@ export async function fetchBoardTasks(
     };
 }
 
+/** Non-archived Tasks for a Project (all Boards) — palette search and similar. */
+export async function fetchProjectTasks(projectId: string): Promise<Task[]> {
+    const { data, error } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("project_id", projectId)
+        .is("archived_at", null)
+        .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return ((data ?? []) as DatabaseTask[]).map((row) => mapDatabaseTask(row));
+}
+
 export async function moveTaskToBoard(
     taskId: string,
     targetBoardId: string,

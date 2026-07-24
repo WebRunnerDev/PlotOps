@@ -7,5 +7,6 @@
     "projects": "Projects",
     "shortcut": "Ctrl K",
     "shortcutMac": "⌘K",
+    "tasks": "Tasks",
     "title": "Command palette"
 }
