@@ -123,7 +123,8 @@
             "pr": "Pull request",
             "board": "Доска",
             "archived": "Архив"
-        }
+        },
+        "githubActor": "GitHub"
     },
     "taskType": {
         "task": "Задача",

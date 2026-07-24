@@ -54,6 +54,8 @@ export type TaskActivityField =
 
 export type TaskActivityMetadata = {
     changes: TaskActivityChange[];
+    /** Set by Edge Function `github-webhook` for system-authored events. */
+    source?: "github_webhook";
 };
 
 export type TaskAssignee = {
