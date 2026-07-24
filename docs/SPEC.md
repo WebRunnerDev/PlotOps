@@ -21,7 +21,7 @@
 | Task activity feed (`activity_log`)                    | ✅ Done (collapsible drawer section; app-level batched writes; Query on expand)                                                                                                        |
 | Git integration (PR, diff, branches)                   | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer)                                                                                                  |
 | CI/CD dashboard                                        | ✅ Done (route + mock builds per branch; simulated streaming logs via `features/ci-cd`)                                                                                                |
-| Command palette                                        | ⬜ Not started                                                                                                                                                                         |
+| Command palette                                        | ✅ Done (Ctrl/Cmd+K + AppChrome; rules seam; search Tasks; Create Task; Switch Project; Toggle theme — #21–#26)                                                                        |
 | GitHub webhooks + Edge Function                        | ⬜ Not started                                                                                                                                                                         |
 | Team & permissions (`project_members`, roles, invites) | ✅ Done (schema+RLS+settings/invite UI; Board/Git UI gating by Role)                                                                                                                   |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
@@ -84,13 +84,27 @@
 | Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                                                                |
 | In-app PR merge / approve / open PR      | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
 
+### Ideas to revisit (Command Palette)
+
+> Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set.
+
+| Idea                                                 | Notes                                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                     |
+| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer          |
+| Search Members                                       | Cross-cutting; not in MVP                                                       |
+| Search Task description / Labels                     | MVP is key + title only                                                         |
+| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                             |
+| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                               |
+| Guest-specific palette behaviour                     | Guest mode not started; palette rides authenticated MainLayout when Guest ships |
+
 ## Deferred from Figma Make
 
 > Visual redesign source: Dark-themed CRM Interface Design. Policy: ADR 0007 — skin only; keep existing feature structure. Rows below are Make UI/ideas with **no** matching PlotOps feature yet — do not implement in the redesign pass.
 
 | Item                                                                                 | Notes                                                                                                                                          |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Command palette in board header (`⌘K` search chip)                                   | Make chrome; product Cmd+K is still Not started (Progress).                                                                                    |
+| Command palette entry in chrome (`⌘K` button)                                        | Product Cmd+K + AppChrome button are MVP (see §4); Make placement was board-header-only — we use global AppChrome.                             |
 | **Group by** board control                                                           | Not in PlotOps; Make-only.                                                                                                                     |
 | **Display** board control                                                            | Not in PlotOps; Make-only.                                                                                                                     |
 | Make dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Bottom dock removed — global chrome is top `AppChrome` (account/theme/lang). Board/CI/CD/Branches IA still deferred until those features ship. |
@@ -155,8 +169,20 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 
 ### 4. Command Palette
 
-- `Ctrl+K` / `Cmd+K` — search tasks, create bugs, switch projects, toggle theme.
-- Library: `cmdk`.
+> Grilled MVP (2026-07-24). Shipped via #22–#26.
+
+**Surface:** Global on authenticated MainLayout. Open via `Ctrl+K` / `Cmd+K` and an AppChrome button (same palette). Open/close UI state in Zustand. Shell: `@reui/c-command-7` over `cmdk`. Theme toggle uses existing `useTheme` (do not migrate theme to Zustand in this feature).
+
+**MVP commands:**
+
+| Command        | Behaviour                                                                                                                                                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search Tasks   | Current Project, all Boards; match `key` + `title`; exclude archived; results only after ≥1 character; max 20 (exact key first, then title). Select → navigate to that Task's Board and open Task drawer (`selectedTaskId`). Without Project in URL — Tasks section hidden. |
+| Create Task    | Only when `boardId` is in the URL and `canCreateTasks`; otherwise hidden. Type title in cmdk → create on current Board first column with default type `task` → open drawer.                                                                                                 |
+| Switch Project | List accessible Projects → navigate to `/projects/$projectId` (redirects to first Board).                                                                                                                                                                                   |
+| Toggle theme   | Same as avatar menu theme toggle.                                                                                                                                                                                                                                           |
+
+**Out of MVP / ideas to revisit:** see Deferred → Ideas to revisit (Command Palette). No separate Guest handling until Guest mode ships.
 
 ---
 

@@ -8,6 +8,7 @@ import {
     matchCommandPaletteTasks,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
+    resolveCreateTaskIntent,
     selectTaskIntent,
     switchProjectIntent,
     toggleThemeIntent,
@@ -220,6 +221,51 @@ describe("Command Palette rules seam — intents", () => {
             type: "create-task",
         });
     });
+
+    it.each([
+        {
+            boardId: null,
+            canCreateTasks: true,
+            expected: null,
+            label: "hidden without boardId",
+            query: "New login",
+        },
+        {
+            boardId: "board-1",
+            canCreateTasks: false,
+            expected: null,
+            label: "hidden without canCreateTasks",
+            query: "New login",
+        },
+        {
+            boardId: "board-1",
+            canCreateTasks: true,
+            expected: null,
+            label: "hidden when title is empty",
+            query: "   ",
+        },
+        {
+            boardId: "board-1",
+            canCreateTasks: true,
+            expected: {
+                boardId: "board-1",
+                title: "New login",
+                type: "create-task" as const,
+            },
+            label: "offered with boardId, canCreateTasks, and trimmed title",
+            query: "  New login  ",
+        },
+    ])(
+        "resolveCreateTaskIntent: $label",
+        ({ boardId, canCreateTasks, expected, query }) => {
+            expect(
+                resolveCreateTaskIntent(
+                    baseContext({ boardId, canCreateTasks }),
+                    query
+                )
+            ).toEqual(expected);
+        }
+    );
 
     it("Switch Project declares switch intent with projectId", () => {
         expect(switchProjectIntent("project-7")).toEqual({

@@ -3,6 +3,7 @@ export {
     matchCommandPaletteTasks,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
+    resolveCreateTaskIntent,
     selectTaskIntent,
     switchProjectIntent,
     toggleThemeIntent,

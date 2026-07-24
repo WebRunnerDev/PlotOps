@@ -1,5 +1,7 @@
 {
     "actions": "Actions",
+    "createTaskFailed": "Could not create task",
+    "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
     "empty": "No results found.",
     "open": "Open command palette",

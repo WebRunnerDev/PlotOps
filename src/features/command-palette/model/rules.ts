@@ -35,7 +35,7 @@ const MAX_TASK_HITS = 20;
 export function createTaskIntent(
     boardId: string,
     title: string
-): CommandPaletteIntent {
+): Extract<CommandPaletteIntent, { type: "create-task" }> {
     return {
         boardId,
         title,
@@ -104,6 +104,24 @@ export function resolveCommandPaletteVisibility(
         tasks: Boolean(context.projectId),
         toggleTheme: true,
     };
+}
+
+/**
+ * Create Task offer for the palette — null when hidden (no Board / no create
+ * capability) or when the cmdk query has no title yet.
+ */
+export function resolveCreateTaskIntent(
+    context: CommandPaletteRouteContext,
+    query: string
+): Extract<CommandPaletteIntent, { type: "create-task" }> | null {
+    if (!context.boardId || !context.canCreateTasks) {
+        return null;
+    }
+    const title = query.trim();
+    if (!title) {
+        return null;
+    }
+    return createTaskIntent(context.boardId, title);
 }
 
 export function selectTaskIntent(

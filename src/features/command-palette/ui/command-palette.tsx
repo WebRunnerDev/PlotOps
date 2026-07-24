@@ -2,22 +2,30 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import {
     FolderIcon,
     MoonIcon,
+    PlusIcon,
     SquareCheckBigIcon,
     SunIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
+import { useBoardColumns } from "@/features/boards";
 import {
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
+    resolveCreateTaskIntent,
     selectTaskIntent,
     switchProjectIntent,
 } from "@/features/command-palette/model/rules";
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
-import { useProjects } from "@/features/projects";
-import { useProjectTasks, useTasksUiStore } from "@/features/tasks";
+import { useProjectAccess, useProjects } from "@/features/projects";
+import {
+    useBoardTasks,
+    useProjectTasks,
+    useTasksUiStore,
+} from "@/features/tasks";
 import {
     Command,
     CommandDialog,
@@ -38,6 +46,9 @@ export function CommandPalette() {
         typeof parameters.boardId === "string" ? parameters.boardId : null;
     const { theme, toggleTheme } = useTheme();
     const { data: projects = [] } = useProjects();
+    const { canCreateTasks } = useProjectAccess(projectId ?? "");
+    const { columns } = useBoardColumns(projectId ?? "", boardId ?? "");
+    const { createTask } = useBoardTasks(projectId ?? "", boardId ?? "");
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
         Boolean(projectId)
@@ -48,13 +59,14 @@ export function CommandPalette() {
     const open = useCommandPaletteStore((state) => state.open);
     const toggle = useCommandPaletteStore((state) => state.toggle);
     const [query, setQuery] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
     const isDark = theme === "dark";
     const themeLabel = isDark ? t("common:themeLight") : t("common:themeDark");
     const normalizedQuery = query.trim().toLowerCase();
 
     const routeContext = {
         boardId,
-        canCreateTasks: false,
+        canCreateTasks,
         projectId,
     };
     const paletteProjects = projects.map((project) => ({
@@ -65,6 +77,7 @@ export function CommandPalette() {
         routeContext,
         paletteProjects
     );
+    const createIntent = resolveCreateTaskIntent(routeContext, query);
     const paletteTasks = projectTasks.map((task) => ({
         archivedAt: task.archivedAt,
         boardId: task.boardId,
@@ -89,6 +102,7 @@ export function CommandPalette() {
             : paletteProjects.filter((project) =>
                   project.name.toLowerCase().includes(normalizedQuery)
               );
+    const showActions = showTheme || createIntent !== null;
 
     useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
@@ -116,6 +130,7 @@ export function CommandPalette() {
                 } else {
                     close();
                     setQuery("");
+                    setIsCreating(false);
                 }
             }}
             open={isOpen}
@@ -132,18 +147,64 @@ export function CommandPalette() {
                 />
                 <CommandList>
                     <CommandEmpty>{t("command:empty")}</CommandEmpty>
-                    {showTheme ? (
+                    {showActions ? (
                         <CommandGroup heading={t("command:actions")}>
-                            <CommandItem
-                                onSelect={() => {
-                                    toggleTheme();
-                                    close();
-                                }}
-                                value={themeLabel}
-                            >
-                                {isDark ? <SunIcon /> : <MoonIcon />}
-                                <span>{themeLabel}</span>
-                            </CommandItem>
+                            {showTheme ? (
+                                <CommandItem
+                                    onSelect={() => {
+                                        toggleTheme();
+                                        close();
+                                    }}
+                                    value={themeLabel}
+                                >
+                                    {isDark ? <SunIcon /> : <MoonIcon />}
+                                    <span>{themeLabel}</span>
+                                </CommandItem>
+                            ) : null}
+                            {createIntent ? (
+                                <CommandItem
+                                    disabled={isCreating}
+                                    onSelect={() => {
+                                        if (isCreating || !projectId) return;
+                                        const firstColumn = columns[0];
+                                        if (!firstColumn) {
+                                            toast.error(
+                                                t("command:createTaskFailed")
+                                            );
+                                            return;
+                                        }
+
+                                        setIsCreating(true);
+                                        void createTask(
+                                            firstColumn.id,
+                                            createIntent.title
+                                        )
+                                            .then((task) => {
+                                                selectTask(task.id);
+                                                close();
+                                                setQuery("");
+                                            })
+                                            .catch(() => {
+                                                toast.error(
+                                                    t(
+                                                        "command:createTaskFailed"
+                                                    )
+                                                );
+                                            })
+                                            .finally(() => {
+                                                setIsCreating(false);
+                                            });
+                                    }}
+                                    value={`create-task-${createIntent.title}`}
+                                >
+                                    <PlusIcon />
+                                    <span>
+                                        {t("command:createTaskWithTitle", {
+                                            title: createIntent.title,
+                                        })}
+                                    </span>
+                                </CommandItem>
+                            ) : null}
                         </CommandGroup>
                     ) : null}
                     {visibility.tasks && taskHits.length > 0 ? (

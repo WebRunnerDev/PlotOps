@@ -1,5 +1,7 @@
 {
     "actions": "Действия",
+    "createTaskFailed": "Не удалось создать задачу",
+    "createTaskWithTitle": "Создать задачу «{{title}}»",
     "description": "Найдите команду…",
     "empty": "Ничего не найдено.",
     "open": "Открыть палитру команд",
