@@ -2,6 +2,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { CommandPaletteTrigger } from "@/features/command-palette";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
 
@@ -73,7 +74,10 @@ export function AppChrome() {
                 ) : null}
             </div>
 
-            <UserMenu />
+            <div className="flex shrink-0 items-center gap-2">
+                <CommandPaletteTrigger />
+                <UserMenu />
+            </div>
         </header>
     );
 }

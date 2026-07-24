@@ -10,6 +10,7 @@ export * from "./ui/card";
 export * from "./ui/checkbox";
 export * from "./ui/collapsible";
 export * from "./ui/combobox";
+export * from "./ui/command";
 export * from "./ui/dialog";
 export * from "./ui/drawer";
 export * from "./ui/dropdown-menu";

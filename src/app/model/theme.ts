@@ -4,14 +4,9 @@ const STORAGE_KEY = "plotops-theme";
 
 export type Theme = "dark" | "light";
 
-function getPreferredTheme(): Theme {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark") {
-        return stored;
-    }
+type ThemeListener = (theme: Theme) => void;
 
-    return "dark";
-}
+const listeners = new Set<ThemeListener>();
 
 export function applyTheme(theme: Theme) {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -26,12 +21,34 @@ export function useTheme() {
     const [theme, setTheme] = useState<Theme>(() => getPreferredTheme());
 
     useEffect(() => {
-        applyTheme(theme);
-    }, [theme]);
+        const listener: ThemeListener = (next) => {
+            setTheme(next);
+        };
+        listeners.add(listener);
+        return () => {
+            listeners.delete(listener);
+        };
+    }, []);
 
     const toggleTheme = useCallback(() => {
-        setTheme((current) => (current === "dark" ? "light" : "dark"));
+        publishTheme(getPreferredTheme() === "dark" ? "light" : "dark");
     }, []);
 
     return { theme, toggleTheme };
+}
+
+function getPreferredTheme(): Theme {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") {
+        return stored;
+    }
+
+    return "dark";
+}
+
+function publishTheme(theme: Theme) {
+    applyTheme(theme);
+    for (const listener of listeners) {
+        listener(theme);
+    }
 }

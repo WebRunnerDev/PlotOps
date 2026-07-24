@@ -1,0 +1,10 @@
+{
+    "actions": "Actions",
+    "description": "Search for a command to run…",
+    "empty": "No results found.",
+    "open": "Open command palette",
+    "placeholder": "Type a command or search…",
+    "shortcut": "Ctrl K",
+    "shortcutMac": "⌘K",
+    "title": "Command palette"
+}
