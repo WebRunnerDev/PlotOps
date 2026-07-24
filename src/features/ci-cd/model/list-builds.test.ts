@@ -24,10 +24,12 @@ describe("CI/CD builds-for-Project seam", () => {
                 expect.objectContaining({
                     branch: expect.any(String),
                     commitSha: expect.any(String),
+                    htmlUrl: expect.any(String),
                     id: expect.any(String),
                     status: expect.stringMatching(
                         /^(failure|queued|running|success)$/
                     ),
+                    workflowName: expect.any(String),
                 })
             );
         }

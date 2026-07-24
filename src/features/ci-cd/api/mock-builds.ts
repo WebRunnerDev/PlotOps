@@ -5,9 +5,9 @@ import type {
 } from "@/features/ci-cd/model/types";
 
 /**
- * Deterministic mock builds for the CI/CD MVP.
+ * Deterministic mock builds for unit tests.
  * Spec example: main passed, feature/analytics failed on tests.
- * Not Project-specific yet — same catalog for every projectId.
+ * Not used as the product default provider.
  */
 const MOCK_BUILDS: ProjectBuild[] = [
     {
@@ -15,35 +15,53 @@ const MOCK_BUILDS: ProjectBuild[] = [
         commitMessage: "chore: bump board filters",
         commitSha: "a1b2c3d",
         finishedAt: "2026-07-24T09:12:04.000Z",
+        htmlUrl: "https://github.com/example/plotops/actions/runs/1",
         id: "build-main-1",
+        jobs: [
+            { id: "job-1", name: "test", status: "success" },
+            { id: "job-2", name: "lint", status: "success" },
+        ],
         startedAt: "2026-07-24T09:10:01.000Z",
         status: "success",
+        workflowName: "CI",
     },
     {
         branch: "feature/analytics",
         commitMessage: "feat: analytics dashboard widgets",
         commitSha: "e4f5a6b",
         finishedAt: "2026-07-24T08:44:22.000Z",
+        htmlUrl: "https://github.com/example/plotops/actions/runs/2",
         id: "build-analytics-1",
+        jobs: [
+            { id: "job-3", name: "test", status: "failure" },
+            { id: "job-4", name: "lint", status: "success" },
+        ],
         startedAt: "2026-07-24T08:41:00.000Z",
         status: "failure",
         summary: "tests",
+        workflowName: "CI",
     },
     {
         branch: "feature/TASK-42-login-page",
         commitMessage: "feat: login form validation",
         commitSha: "c7d8e9f",
+        htmlUrl: "https://github.com/example/plotops/actions/runs/3",
         id: "build-login-1",
+        jobs: [{ id: "job-5", name: "test", status: "running" }],
         startedAt: "2026-07-24T10:02:11.000Z",
         status: "running",
+        workflowName: "CI",
     },
     {
         branch: "fix/CORE-7-invite-ttl",
         commitMessage: "fix: invite expiry edge cases",
         commitSha: "1a2b3c4",
+        htmlUrl: "https://github.com/example/plotops/actions/runs/4",
         id: "build-invite-1",
+        jobs: [{ id: "job-6", name: "test", status: "queued" }],
         startedAt: "2026-07-24T10:05:00.000Z",
         status: "queued",
+        workflowName: "CI",
     },
 ];
 
@@ -112,6 +130,12 @@ function streamMockLogLines(
 }
 
 export const mockBuildsForProject: BuildsForProject = {
+    async listBuildJobs(projectId, buildId) {
+        void projectId;
+        const build = MOCK_BUILDS.find((item) => item.id === buildId);
+        return build?.jobs?.map((job) => ({ ...job })) ?? [];
+    },
+
     async listBuilds(projectId: string): Promise<ProjectBuild[]> {
         void projectId;
         return MOCK_BUILDS.map((build) => ({ ...build }));

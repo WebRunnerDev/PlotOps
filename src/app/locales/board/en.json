@@ -105,6 +105,7 @@
         "title": "Activity",
         "empty": "No activity yet.",
         "updated": "updated this task",
+        "githubActor": "GitHub",
         "none": "None",
         "change": {
             "fromTo": "{{field}}: {{from}} → {{to}}",
@@ -123,8 +124,7 @@
             "pr": "Pull request",
             "board": "Board",
             "archived": "Archive"
-        },
-        "githubActor": "GitHub"
+        }
     },
     "taskType": {
         "task": "Task",
@@ -162,17 +162,26 @@
         "link": "CI/CD",
         "title": "CI/CD",
         "backToBoard": "Back to board",
-        "description": "Build status per branch for this project. Select a build to watch mock logs stream in.",
-        "mockHint": "Mock data",
-        "empty": "No builds yet.",
-        "loadFailed": "Could not load builds",
+        "description": "GitHub Actions runs for this project’s linked repository. Select a run to inspect jobs and logs.",
+        "refreshing": "Refreshing…",
+        "needsToken": "Sign in with GitHub (repo scope) to load Actions runs for this project.",
+        "empty": "No workflow runs yet. Push a commit or add a workflow under .github/workflows.",
+        "emptyFilter": "No runs match this filter.",
+        "loadFailed": "Could not load workflow runs from GitHub.",
         "failedOn": "Failed on {{reason}}",
-        "openLogs": "Open build logs for {{branch}}",
-        "columns": {
-            "branch": "Branch",
-            "status": "Status",
-            "commit": "Commit",
-            "finished": "Finished"
+        "openLogs": "Open run details for {{branch}}",
+        "summary": {
+            "label": "Run summary",
+            "defaultBranch": "{{branch}}",
+            "noDefaultRun": "No recent run",
+            "failed": "Failed",
+            "running": "In progress"
+        },
+        "filters": {
+            "label": "Filter runs",
+            "all": "All",
+            "failed": "Failed",
+            "running": "In progress"
         },
         "status": {
             "success": "Passed",
@@ -184,11 +193,14 @@
             "tests": "tests"
         },
         "logs": {
-            "title": "Logs · {{branch}}",
-            "titleFallback": "Build logs",
-            "mockHint": "Simulated stream — not GitHub Actions",
-            "streaming": "Streaming…",
-            "empty": "No log lines for this build."
+            "title": "{{workflow}} · {{branch}}",
+            "titleFallback": "Run details",
+            "hint": "Logs from GitHub Actions",
+            "streaming": "Loading logs…",
+            "empty": "No log lines for this run.",
+            "openOnGitHub": "Open on GitHub",
+            "jobsLabel": "Jobs",
+            "noJobs": "No jobs for this run."
         }
     },
     "settings": {

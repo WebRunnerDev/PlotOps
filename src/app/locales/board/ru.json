@@ -105,6 +105,7 @@
         "title": "Активность",
         "empty": "Пока нет активности.",
         "updated": "обновил(а) задачу",
+        "githubActor": "GitHub",
         "none": "Нет",
         "change": {
             "fromTo": "{{field}}: {{from}} → {{to}}",
@@ -123,8 +124,7 @@
             "pr": "Pull request",
             "board": "Доска",
             "archived": "Архив"
-        },
-        "githubActor": "GitHub"
+        }
     },
     "taskType": {
         "task": "Задача",
@@ -162,17 +162,26 @@
         "link": "CI/CD",
         "title": "CI/CD",
         "backToBoard": "К доске",
-        "description": "Статус сборок по веткам этого проекта. Выберите сборку, чтобы смотреть мок-стриминг логов.",
-        "mockHint": "Мок-данные",
-        "empty": "Сборок пока нет.",
-        "loadFailed": "Не удалось загрузить сборки",
+        "description": "Прогоны GitHub Actions для связанного репозитория проекта. Выберите прогон, чтобы посмотреть jobs и логи.",
+        "refreshing": "Обновление…",
+        "needsToken": "Войдите через GitHub (scope repo), чтобы загрузить прогоны Actions.",
+        "empty": "Прогонов пока нет. Сделайте push или добавьте workflow в .github/workflows.",
+        "emptyFilter": "Нет прогонов по этому фильтру.",
+        "loadFailed": "Не удалось загрузить прогоны из GitHub.",
         "failedOn": "Ошибка: {{reason}}",
-        "openLogs": "Открыть логи сборки {{branch}}",
-        "columns": {
-            "branch": "Ветка",
-            "status": "Статус",
-            "commit": "Коммит",
-            "finished": "Завершена"
+        "openLogs": "Открыть детали прогона {{branch}}",
+        "summary": {
+            "label": "Сводка",
+            "defaultBranch": "{{branch}}",
+            "noDefaultRun": "Нет недавнего прогона",
+            "failed": "Провалы",
+            "running": "В работе"
+        },
+        "filters": {
+            "label": "Фильтр прогонов",
+            "all": "Все",
+            "failed": "Провалы",
+            "running": "В работе"
         },
         "status": {
             "success": "Успех",
@@ -184,11 +193,14 @@
             "tests": "тесты"
         },
         "logs": {
-            "title": "Логи · {{branch}}",
-            "titleFallback": "Логи сборки",
-            "mockHint": "Симуляция стрима — не GitHub Actions",
-            "streaming": "Стриминг…",
-            "empty": "Нет строк лога для этой сборки."
+            "title": "{{workflow}} · {{branch}}",
+            "titleFallback": "Детали прогона",
+            "hint": "Логи GitHub Actions",
+            "streaming": "Загрузка логов…",
+            "empty": "Нет строк лога для этого прогона.",
+            "openOnGitHub": "Открыть на GitHub",
+            "jobsLabel": "Jobs",
+            "noJobs": "Нет jobs у этого прогона."
         }
     },
     "settings": {

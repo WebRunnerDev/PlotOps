@@ -5,12 +5,12 @@ import type { BuildLogLine } from "@/features/ci-cd/model/types";
 import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
 
 /**
- * Progressive mock log lines for a selected build.
+ * Progressive log lines for a selected build (Actions or mock provider).
  * Unsubscribes on close / build change (no full page reload).
  */
 export function useBuildLogStream(
     projectId: string,
-    buildId: null | string
+    buildId: string | undefined
 ): { isStreaming: boolean; lines: BuildLogLine[] } {
     const [lines, setLines] = useState<BuildLogLine[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
