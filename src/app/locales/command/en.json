@@ -4,6 +4,7 @@
     "empty": "No results found.",
     "open": "Open command palette",
     "placeholder": "Type a command or search…",
+    "projects": "Projects",
     "shortcut": "Ctrl K",
     "shortcutMac": "⌘K",
     "title": "Command palette"

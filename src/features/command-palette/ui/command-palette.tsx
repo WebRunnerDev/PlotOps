@@ -1,9 +1,15 @@
-import { MoonIcon, SunIcon } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { FolderIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useTheme } from "@/app/model/theme";
+import {
+    resolveCommandPaletteVisibility,
+    switchProjectIntent,
+} from "@/features/command-palette/model/rules";
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
+import { useProjects } from "@/features/projects";
 import {
     Command,
     CommandDialog,
@@ -16,12 +22,27 @@ import {
 
 export function CommandPalette() {
     const { t } = useTranslation(["command", "common"]);
+    const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
+    const { data: projects = [] } = useProjects();
     const isOpen = useCommandPaletteStore((state) => state.isOpen);
     const close = useCommandPaletteStore((state) => state.close);
     const open = useCommandPaletteStore((state) => state.open);
     const toggle = useCommandPaletteStore((state) => state.toggle);
     const isDark = theme === "dark";
+
+    const paletteProjects = projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+    }));
+    const visibility = resolveCommandPaletteVisibility(
+        {
+            boardId: null,
+            canCreateTasks: false,
+            projectId: null,
+        },
+        paletteProjects
+    );
 
     useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
@@ -72,6 +93,32 @@ export function CommandPalette() {
                             <span>{themeLabel}</span>
                         </CommandItem>
                     </CommandGroup>
+                    {visibility.switchProject ? (
+                        <CommandGroup heading={t("command:projects")}>
+                            {paletteProjects.map((project) => (
+                                <CommandItem
+                                    key={project.id}
+                                    keywords={[project.name]}
+                                    onSelect={() => {
+                                        const intent = switchProjectIntent(
+                                            project.id
+                                        );
+                                        void navigate({
+                                            params: {
+                                                projectId: intent.projectId,
+                                            },
+                                            to: "/projects/$projectId",
+                                        });
+                                        close();
+                                    }}
+                                    value={`project ${project.name} ${project.id}`}
+                                >
+                                    <FolderIcon />
+                                    <span>{project.name}</span>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    ) : null}
                 </CommandList>
             </Command>
         </CommandDialog>
