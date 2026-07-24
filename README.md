@@ -14,12 +14,12 @@ Collaboration and access are scoped to a **Project** — there is no separate Te
 | Multi-board + branch mapping (base branch, allowed head patterns)                   | Done        |
 | Task rich text + media (TipTap, Storage)                                            | Done        |
 | Task activity feed                                                                  | Done        |
-| Team & permissions (`project_members`, roles, invites)                              | In progress |
+| Team & permissions (`project_members`, roles, invites)                              | Done        |
 | Git integration (PR, diff, branches)                                                | In progress |
 | Guest mode                                                                          | Not started |
-| CI/CD dashboard                                                                     | Not started |
+| CI/CD dashboard                                                                     | Done        |
 | Command palette (`Ctrl/Cmd+K`)                                                      | Not started |
-| GitHub webhooks + Edge Function                                                     | Not started |
+| GitHub webhooks + Edge Function                                                     | Done        |
 
 **Roadmap highlights**
 

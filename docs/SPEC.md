@@ -20,9 +20,10 @@
 | Task rich text + media (Storage)                       | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket)                                                                                           |
 | Task activity feed (`activity_log`)                    | ✅ Done (collapsible drawer section; app-level batched writes; Query on expand)                                                                                                        |
 | Git integration (PR, diff, branches)                   | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer)                                                                                                  |
-| CI/CD dashboard                                        | ✅ Done (route + mock builds per branch; simulated streaming logs via `features/ci-cd`)                                                                                                |
+| CI/CD dashboard (mock UI)                              | ✅ Done (route + mock builds per branch; simulated streaming logs via `features/ci-cd` seam)                                                                                           |
+| CI/CD — real GitHub Actions                            | ✅ Done (Actions REST behind `buildsProvider`; Linear-style summary/filters/runs list; jobs + logs dialog; polling while in-flight)                                                    |
 | Command palette                                        | ✅ Done (Ctrl/Cmd+K + AppChrome; rules seam; search Tasks; Create Task; Switch Project; Toggle theme — #21–#26)                                                                        |
-| GitHub webhooks + Edge Function                        | ⬜ Not started                                                                                                                                                                         |
+| GitHub webhooks + Edge Function                        | ✅ Done (`github-webhook`: PR merge → Task last column on Board Base branch; GitHub App + HMAC; does **not** feed CI/CD — see `docs/github-webhook-setup.md`)                          |
 | Team & permissions (`project_members`, roles, invites) | ✅ Done (schema+RLS+settings/invite UI; Board/Git UI gating by Role)                                                                                                                   |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
@@ -160,12 +161,23 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 - In-task tab: commits, PR status (Open / Merged / Draft), and **code diff** — without leaving the app.
 - Diff rendering via `react-diff-viewer` or similar.
 - Branch generator: `git checkout -b feature/issue-42-login-form` from task ID + title.
-- **Merge stays on GitHub.** PlotOps is view/link/sync only (diff, status, branch/PR link). No in-app Merge / Approve / create-PR write actions. After a merge on GitHub, `github-webhook` updates the linked task (e.g. → `DONE`).
+- **Merge stays on GitHub.** PlotOps is view/link/sync only (diff, status, branch/PR link). No in-app Merge / Approve / create-PR write actions. After a merge on GitHub, `github-webhook` moves the linked Task to the Board’s **last column** when the PR merges into that Board’s **Base branch**.
 
 ### 3. CI/CD Dashboard
 
-- Screen showing build status per branch (`main` — passed, `feature/analytics` — failed on tests).
-- Streaming build logs (mock with `setInterval` initially; real GitHub Actions later).
+- Screen showing GitHub Actions workflow runs for the linked repo (status, branch, commit).
+- Detail dialog: jobs checklist + API-backed logs (chunked progressive display) + link out to GitHub.
+- Linear-style summary (default branch + failed / in-progress counts) and client filters.
+
+**Mock vs real (locked product intent):**
+
+| Slice                    | What it does                                                                                          | Status                                             |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Mock CI UI               | Dashboard + simulated logs; same module seam (tests)                                                  | ✅ Done                                            |
+| Stage 5 `github-webhook` | `pull_request` merge into Board Base branch → Task last column; `push` accepted no-op                 | Separate — **does not** populate CI builds or logs |
+| Real GitHub Actions      | Live workflow runs via Actions REST behind `features/ci-cd` `buildsProvider`; polling while in-flight | ✅ Done                                            |
+
+Agents: never assume webhook work replaces Actions integration.
 
 ### 4. Command Palette
 
@@ -239,7 +251,7 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 
 ### Edge Functions
 
-- `github-webhook`: on PR merged to `main`, parse branch name, find task, set status `DONE`.
+- `github-webhook` (GitHub App → HMAC): on `pull_request` closed+merged into the Task’s Board **Base branch**, match Task (`pr_number` → `branch_name` → `task_key` in head), set `status` to that Board’s last column (max `position`), set `pr_state=merged`, write `activity_log` with `user_id=null`. Idempotent. Skip (no project / no task / wrong base) → 200 + structured log. `push` → 200 no-op. Does **not** feed CI/CD. Setup: [`docs/github-webhook-setup.md`](github-webhook-setup.md).
 
 ---
 
@@ -335,8 +347,16 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 
 ### Stage 5: Webhooks (Week 4)
 
-- Register GitHub App; webhooks for `pull_request`, `push`.
-- Edge Function `github-webhook` syncs merge on GitHub → task `DONE` (not an in-app merge).
+- Register a free GitHub App; webhook events `pull_request`, `push` → Edge Function `github-webhook`.
+- On PR merged into the Task’s Board **Base branch**, move Task to the Board’s **last column** (not a hardcoded `DONE` / `main`). Match: `pr_number` → `branch_name` → `task_key` in head. `push` accepted no-op.
+- Ops: `verify_jwt = false` + HMAC secret; skip paths return 200 (avoid GitHub retry storms); admin runbook in `docs/github-webhook-setup.md`.
+- **Out of scope for this stage:** CI build status and logs; in-app App install UI. Webhooks here are Task sync only.
+
+### Stage 5b: Real CI/CD — GitHub Actions ✅
+
+- `features/ci-cd` default provider is GitHub Actions REST (`list runs` / `jobs` / job logs zip) behind `buildsProvider`; mock retained for unit tests.
+- Live run status per branch; API-backed logs in the detail dialog; TanStack Query polling while runs are queued/running.
+- Progress **CI/CD — real GitHub Actions** marked Done when the dashboard reflects the linked repo’s actual runs.
 
 ### Stage 6: Polish & Deploy (Final)
 
