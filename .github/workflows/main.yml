@@ -1,0 +1,13 @@
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "PlotOps CI smoke" && npm ci && npm test
