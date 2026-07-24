@@ -6,12 +6,14 @@ import {
     LoaderCircle,
     Timer,
 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { BuildStatus, ProjectBuild } from "@/features/ci-cd/model/types";
 
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
+import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
@@ -45,6 +47,9 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         error: buildsError,
         isLoading: buildsLoading,
     } = useProjectBuilds(projectId);
+    const [selectedBuild, setSelectedBuild] = useState<null | ProjectBuild>(
+        null
+    );
 
     const isLoading = projectLoading || accessLoading || buildsLoading;
 
@@ -149,8 +154,11 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
 
                                 return (
                                     <TableRow
+                                        aria-label={t("cicd.openLogs", {
+                                            branch: build.branch,
+                                        })}
                                         className={cn(
-                                            "border-l-2",
+                                            "cursor-pointer border-l-2",
                                             build.status === "success" &&
                                                 "border-l-emerald-500",
                                             build.status === "failure" &&
@@ -161,6 +169,19 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                                 "border-l-border"
                                         )}
                                         key={build.id}
+                                        onClick={() => {
+                                            setSelectedBuild(build);
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.key === "Enter" ||
+                                                event.key === " "
+                                            ) {
+                                                event.preventDefault();
+                                                setSelectedBuild(build);
+                                            }
+                                        }}
+                                        tabIndex={0}
                                     >
                                         <TableCell>
                                             <span className="font-mono text-code">
@@ -202,6 +223,15 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                     </Table>
                 </div>
             )}
+
+            <BuildLogDialog
+                build={selectedBuild}
+                onClose={() => {
+                    setSelectedBuild(null);
+                }}
+                open={selectedBuild !== null}
+                projectId={projectId}
+            />
         </div>
     );
 }

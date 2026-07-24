@@ -161,11 +161,12 @@
         "link": "CI/CD",
         "title": "CI/CD",
         "backToBoard": "Back to board",
-        "description": "Build status per branch for this project. Logs stream in a later update.",
+        "description": "Build status per branch for this project. Select a build to watch mock logs stream in.",
         "mockHint": "Mock data",
         "empty": "No builds yet.",
         "loadFailed": "Could not load builds",
         "failedOn": "Failed on {{reason}}",
+        "openLogs": "Open build logs for {{branch}}",
         "columns": {
             "branch": "Branch",
             "status": "Status",
@@ -180,6 +181,13 @@
         },
         "failureReason": {
             "tests": "tests"
+        },
+        "logs": {
+            "title": "Logs · {{branch}}",
+            "titleFallback": "Build logs",
+            "mockHint": "Simulated stream — not GitHub Actions",
+            "streaming": "Streaming…",
+            "empty": "No log lines for this build."
         }
     },
     "settings": {

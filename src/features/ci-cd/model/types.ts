@@ -1,9 +1,26 @@
+/** One streamed log line from a build. */
+export type BuildLogLine = {
+    /** True on the final line of this stream. */
+    done: boolean;
+    index: number;
+    text: string;
+};
+
 /**
  * Narrow “builds for this Project” seam.
  * MVP: mock provider. Later: GitHub Actions at the same shape.
  */
 export type BuildsForProject = {
     listBuilds(projectId: string): Promise<ProjectBuild[]>;
+    /**
+     * Progressive log lines for a build. Calls `onLine` as lines “stream” in.
+     * Returns unsubscribe to stop the stream (e.g. on unmount / close).
+     */
+    streamBuildLogs(
+        projectId: string,
+        buildId: string,
+        onLine: (line: BuildLogLine) => void
+    ): () => void;
 };
 
 /** Outcome of a CI run for a branch — MVP statuses only. */

@@ -1,4 +1,5 @@
 import type {
+    BuildLogLine,
     BuildsForProject,
     ProjectBuild,
 } from "@/features/ci-cd/model/types";
@@ -46,9 +47,82 @@ const MOCK_BUILDS: ProjectBuild[] = [
     },
 ];
 
+/** Full log scripts keyed by build id — streamed via setInterval. */
+const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
+    "build-analytics-1": [
+        "$ git checkout feature/analytics",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run test",
+        " FAIL  src/widgets/analytics/chart.test.ts",
+        "Expected series length 7, received 0",
+        "error Command failed with exit code 1.",
+    ],
+    "build-invite-1": [
+        "Queued — waiting for a runner…",
+        "No runner available yet.",
+    ],
+    "build-login-1": [
+        "$ git checkout feature/TASK-42-login-page",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run lint",
+        "… still running",
+    ],
+    "build-main-1": [
+        "$ git checkout main",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run test",
+        " PASS  src/features/tasks",
+        " PASS  src/widgets/kanban-board",
+        "All tests passed.",
+        "✓ Build succeeded",
+    ],
+};
+
+const STREAM_INTERVAL_MS = 50;
+
+function streamMockLogLines(
+    script: string[],
+    onLine: (line: BuildLogLine) => void
+): () => void {
+    let index = 0;
+    const timer = setInterval(() => {
+        if (index >= script.length) {
+            clearInterval(timer);
+            return;
+        }
+        const text = script[index];
+        if (text === undefined) {
+            clearInterval(timer);
+            return;
+        }
+        const done = index === script.length - 1;
+        onLine({ done, index, text });
+        index += 1;
+        if (done) {
+            clearInterval(timer);
+        }
+    }, STREAM_INTERVAL_MS);
+
+    return () => {
+        clearInterval(timer);
+    };
+}
+
 export const mockBuildsForProject: BuildsForProject = {
     async listBuilds(projectId: string): Promise<ProjectBuild[]> {
         void projectId;
         return MOCK_BUILDS.map((build) => ({ ...build }));
+    },
+
+    streamBuildLogs(projectId, buildId, onLine) {
+        void projectId;
+        const script = MOCK_LOG_SCRIPTS[buildId];
+        if (!script || script.length === 0) {
+            return () => {};
+        }
+        return streamMockLogLines(script, onLine);
     },
 };
