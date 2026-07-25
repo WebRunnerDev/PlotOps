@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ExternalLink, GitBranch, Settings } from "lucide-react";
+import { Activity, ExternalLink, GitBranch, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -79,6 +79,20 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                                 boardId={boardId}
                                 projectId={projectId}
                             />
+                            <Button
+                                nativeButton={false}
+                                render={
+                                    <Link
+                                        params={{ projectId }}
+                                        to="/projects/$projectId/ci-cd"
+                                    />
+                                }
+                                size="xs"
+                                variant="outline"
+                            >
+                                <Activity data-icon="inline-start" />
+                                {t("cicd.link")}
+                            </Button>
                             <Button
                                 nativeButton={false}
                                 render={

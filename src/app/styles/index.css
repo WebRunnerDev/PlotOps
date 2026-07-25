@@ -433,3 +433,9 @@ html:active-view-transition-type(fade) {
         animation: none !important;
     }
 }
+
+.react-loading-skeleton {
+    --base-color: var(--muted);
+    --highlight-color: color-mix(in oklab, var(--muted) 72%, var(--foreground));
+    border-radius: var(--radius);
+}

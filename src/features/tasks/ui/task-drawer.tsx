@@ -754,6 +754,7 @@ export function TaskDrawer({
                                                 currentBoard?.baseBranch ??
                                                 "main"
                                             }
+                                            canEdit={canEdit}
                                             githubToken={githubToken}
                                             onBranchChange={(branchName) => {
                                                 updateTaskDetails(task.id, {
@@ -986,7 +987,7 @@ function TaskDeadlineField({
                         <Button
                             className={cn(
                                 FIELD_CONTROL_CLASS,
-                                "flex-1 justify-start font-normal",
+                                "flex-1 justify-start border-input bg-background font-normal dark:bg-background aria-expanded:bg-background dark:aria-expanded:bg-background dark:hover:bg-background",
                                 !selected && "text-muted-foreground"
                             )}
                             disabled={disabled}

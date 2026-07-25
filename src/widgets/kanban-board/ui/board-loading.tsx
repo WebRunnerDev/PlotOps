@@ -1,8 +1,12 @@
-import { useTranslation } from "react-i18next";
+import Skeleton from "react-loading-skeleton";
 
 import { cn } from "@/shared/lib/utils";
-import { Skeleton } from "@/shared/shadcn/ui/skeleton";
-import { Spinner } from "@/shared/shadcn/ui/spinner";
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+} from "@/shared/shadcn/ui/card";
 
 const COLUMN_CARD_COUNTS = [3, 2, 3, 1] as const;
 
@@ -38,14 +42,18 @@ export function BoardLoading({
         >
             <header className="shrink-0 border-b border-border px-12 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                        <Skeleton className="h-5 w-36" />
-                        <Skeleton className="h-4 w-28" />
+                    <div className="flex min-w-0 items-baseline gap-2">
+                        <h1 className="truncate text-sm font-semibold">
+                            <Skeleton />
+                        </h1>
+                        <p className="truncate text-code text-muted-foreground">
+                            <Skeleton />
+                        </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Skeleton className="h-8 w-32" />
-                        <Skeleton className="h-8 w-24" />
-                        <Skeleton className="h-8 w-28" />
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
                     </div>
                 </div>
             </header>
@@ -59,39 +67,38 @@ export function BoardLoading({
 
 function BoardColumnsSkeleton() {
     return (
-        <div className="relative flex min-h-0 flex-1 gap-0">
+        <div className="flex min-h-0 flex-1 gap-0">
             {COLUMN_CARD_COUNTS.map((cardCount, columnIndex) => (
                 <div
                     className="flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 border-r border-border px-3 py-1 last:border-r-0"
                     key={columnIndex}
                 >
                     <div className="flex items-center justify-between gap-2 px-1">
-                        <Skeleton className="h-4 w-24" />
-                        <Skeleton className="size-5 rounded-full" />
+                        <p className="text-meta font-medium">
+                            <Skeleton />
+                        </p>
+                        <span className="text-meta text-muted-foreground">
+                            <Skeleton circle />
+                        </span>
                     </div>
                     <div className="flex flex-1 flex-col gap-2">
                         {Array.from({ length: cardCount }, (_, cardIndex) => (
-                            <Skeleton
-                                className="h-20 w-full rounded-lg"
-                                key={cardIndex}
-                                style={{
-                                    animationDelay: `${(columnIndex * 3 + cardIndex) * 80}ms`,
-                                }}
-                            />
+                            <Card aria-hidden key={cardIndex} size="sm">
+                                <CardHeader className="gap-2">
+                                    <CardTitle>
+                                        <Skeleton />
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-ui text-muted-foreground">
+                                        <Skeleton count={2} />
+                                    </p>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
                 </div>
             ))}
-
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/55 backdrop-blur-[1px]">
-                <Spinner className="size-8 text-primary" />
-                <BoardLoadingLabel />
-            </div>
         </div>
     );
-}
-
-function BoardLoadingLabel() {
-    const { t } = useTranslation("board");
-    return <p className="text-ui text-muted-foreground">{t("loadingBoard")}</p>;
 }

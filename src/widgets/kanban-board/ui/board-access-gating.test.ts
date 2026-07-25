@@ -1,0 +1,37 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function readUi(name: string) {
+    return readFileSync(path.join(dirname, name), "utf8");
+}
+
+describe("Board UI Role gating seam", () => {
+    it("gates Task status DnD on canEditTasks from useProjectAccess", () => {
+        const board = readUi("kanban-board.tsx");
+        const column = readUi("kanban-column.tsx");
+        const card = readUi("draggable-task-card.tsx");
+
+        expect(board).toMatch(/canEditTasks/);
+        expect(board).toMatch(/moveTaskToColumn/);
+        expect(column).toMatch(/canEditTasks/);
+        expect(card).toMatch(/disabled:\s*!canDrag|disabled:\s*!canEditTasks/);
+    });
+
+    it("keeps create-task and manage-column affordances on Role capabilities", () => {
+        const addTask = readUi("kanban-add-task.tsx");
+        const board = readUi("kanban-board.tsx");
+        const column = readUi("kanban-column.tsx");
+
+        expect(addTask).toMatch(/canCreateTasks/);
+        expect(addTask).toMatch(/if\s*\(\s*!canCreateTasks\s*\)/);
+        expect(board).toMatch(/canManageBoard\s*\?/);
+        expect(column).toMatch(/canManageBoard\s*\?/);
+        // Column droppables stay enabled so Contributors can drop Tasks onto
+        // empty columns; only the drag handle is Role-gated.
+        expect(column).not.toMatch(/disabled:\s*!canManageBoard/);
+    });
+});

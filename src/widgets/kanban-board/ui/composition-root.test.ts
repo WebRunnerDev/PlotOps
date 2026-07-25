@@ -47,6 +47,7 @@ describe("kanban composition root seam", () => {
     it("project board routes do not mount BoardProvider or deep-import tasks internals", () => {
         const routeFiles = [
             path.join(routesDirectory, "settings.tsx"),
+            path.join(routesDirectory, "ci-cd.tsx"),
             path.join(routesDirectory, "index.tsx"),
             path.join(routesDirectory, "boards/$boardId/index.tsx"),
             path.join(routesDirectory, "boards/$boardId/backlog.tsx"),

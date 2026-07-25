@@ -1,15 +1,18 @@
 import { FolderGit2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import Skeleton from "react-loading-skeleton";
+
+import type { Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
-import type { Project } from "@/features/projects/model/types";
 import {
     useDeleteProject,
     useProjects,
 } from "@/features/projects/model/use-projects";
 import { AddProjectDialog } from "@/features/projects/ui/add-project-dialog";
 import { ProjectCard } from "@/features/projects/ui/project-card";
+import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,8 +23,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/shared/shadcn/ui/alert-dialog";
-import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/shared/shadcn/ui/card";
 import {
     Empty,
     EmptyContent,
@@ -32,12 +42,14 @@ import {
 } from "@/shared/shadcn/ui/empty";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
+const PROJECT_SKELETON_COUNT = 4;
+
 export function ProjectsPage() {
     const { t } = useTranslation("home");
     const { githubAccessToken, user } = useAuth();
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [projectToRemove, setProjectToRemove] = useState<Project | null>(
-        null,
+    const [projectToRemove, setProjectToRemove] = useState<null | Project>(
+        null
     );
     const { data: projects = [], error, isLoading } = useProjects();
     const deleteProject = useDeleteProject();
@@ -86,8 +98,38 @@ export function ProjectsPage() {
             </div>
 
             {isLoading && (
-                <div className="flex justify-center py-16">
-                    <Spinner className="size-8 text-primary" />
+                <div
+                    aria-busy="true"
+                    aria-live="polite"
+                    className="grid gap-4 sm:grid-cols-2"
+                    role="status"
+                >
+                    {Array.from(
+                        { length: PROJECT_SKELETON_COUNT },
+                        (_, index) => (
+                            <Card aria-hidden key={index}>
+                                <CardHeader>
+                                    <CardTitle>
+                                        <Skeleton />
+                                    </CardTitle>
+                                    <CardDescription className="text-code">
+                                        <Skeleton />
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="-mt-2">
+                                    <p className="line-clamp-2 text-ui text-muted-foreground">
+                                        <Skeleton count={2} />
+                                    </p>
+                                </CardContent>
+                                <CardFooter className="justify-between border-0 bg-transparent">
+                                    <span className="text-code text-muted-foreground">
+                                        <Skeleton />
+                                    </span>
+                                    <Skeleton />
+                                </CardFooter>
+                            </Card>
+                        )
+                    )}
                 </div>
             )}
 

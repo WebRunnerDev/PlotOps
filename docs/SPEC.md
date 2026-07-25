@@ -20,10 +20,11 @@
 | Task rich text + media (Storage)                       | ✅ Done (TipTap description editor; image upload via drag/paste/slash → `task-media` bucket)                                                                                           |
 | Task activity feed (`activity_log`)                    | ✅ Done (collapsible drawer section; app-level batched writes; Query on expand)                                                                                                        |
 | Git integration (PR, diff, branches)                   | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer)                                                                                                  |
-| CI/CD dashboard                                        | ⬜ Not started                                                                                                                                                                         |
-| Command palette                                        | ⬜ Not started                                                                                                                                                                         |
-| GitHub webhooks + Edge Function                        | ⬜ Not started                                                                                                                                                                         |
-| Team & permissions (`project_members`, roles, invites) | 🟡 In progress (schema+RLS+settings/invite UI; polish gating next)                                                                                                                     |
+| CI/CD dashboard (mock UI)                              | ✅ Done (route + mock builds per branch; simulated streaming logs via `features/ci-cd` seam)                                                                                           |
+| CI/CD — real GitHub Actions                            | ✅ Done (Actions REST behind `buildsProvider`; Linear-style summary/filters/runs list; jobs + logs dialog; polling while in-flight)                                                    |
+| Command palette                                        | ✅ Done (Ctrl/Cmd+K + AppChrome; rules seam; search Tasks; Create Task; Switch Project; Toggle theme — #21–#26)                                                                        |
+| GitHub webhooks + Edge Function                        | ✅ Done (`github-webhook`: PR merge → Task last column on Board Base branch; GitHub App + HMAC; does **not** feed CI/CD — see `docs/github-webhook-setup.md`)                          |
+| Team & permissions (`project_members`, roles, invites) | ✅ Done (schema+RLS+settings/invite UI; Board/Git UI gating by Role)                                                                                                                   |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
@@ -62,26 +63,41 @@
 
 > Captured during domain grilling (Team & Permissions). Not in current MVP scope — do not implement until explicitly pulled in.
 
-| Item                                     | Notes                                                                                           |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Separate **Team** entity above Project   | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed.      |
-| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Project”.                              |
-| Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough. |
-| Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                       |
-| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Project Role.                                |
-| Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                          |
-| Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                       |
-| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.               |
-| Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                        |
-| Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                         |
-| Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                 |
-| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).     |
-| Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                          |
-| Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                             |
-| Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                     |
-| Per-task carryover targets on Close      | MVP: one target for all incomplete (Backlog or chosen Draft).                                   |
-| Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                    |
-| Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                         |
+| Item                                     | Notes                                                                                                                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Separate **Team** entity above Project   | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed.                                             |
+| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Project”.                                                                     |
+| Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough.                                        |
+| Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                                                              |
+| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Project Role.                                                                       |
+| Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                 |
+| Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                                                              |
+| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.                                                      |
+| Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                                                               |
+| Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                                                                |
+| Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                                                        |
+| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).                                            |
+| Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                                                                 |
+| Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                                                                    |
+| Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                                                            |
+| Per-task carryover targets on Close      | MVP: one target for all incomplete (Backlog or chosen Draft).                                                                          |
+| Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                                                           |
+| Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                                                                |
+| In-app PR merge / approve / open PR      | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
+
+### Ideas to revisit (Command Palette)
+
+> Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set.
+
+| Idea                                                 | Notes                                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                     |
+| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer          |
+| Search Members                                       | Cross-cutting; not in MVP                                                       |
+| Search Task description / Labels                     | MVP is key + title only                                                         |
+| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                             |
+| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                               |
+| Guest-specific palette behaviour                     | Guest mode not started; palette rides authenticated MainLayout when Guest ships |
 
 ## Deferred from Figma Make
 
@@ -89,7 +105,7 @@
 
 | Item                                                                                 | Notes                                                                                                                                          |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Command palette in board header (`⌘K` search chip)                                   | Make chrome; product Cmd+K is still Not started (Progress).                                                                                    |
+| Command palette entry in chrome (`⌘K` button)                                        | Product Cmd+K + AppChrome button are MVP (see §4); Make placement was board-header-only — we use global AppChrome.                             |
 | **Group by** board control                                                           | Not in PlotOps; Make-only.                                                                                                                     |
 | **Display** board control                                                            | Not in PlotOps; Make-only.                                                                                                                     |
 | Make dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Bottom dock removed — global chrome is top `AppChrome` (account/theme/lang). Board/CI/CD/Branches IA still deferred until those features ship. |
@@ -144,17 +160,41 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 
 - In-task tab: commits, PR status (Open / Merged / Draft), and **code diff** — without leaving the app.
 - Diff rendering via `react-diff-viewer` or similar.
-- Branch generator: `git checkout -b feature/issue-42-login-fix` from task ID + title.
+- Branch generator: `git checkout -b feature/issue-42-login-form` from task ID + title.
+- **Merge stays on GitHub.** PlotOps is view/link/sync only (diff, status, branch/PR link). No in-app Merge / Approve / create-PR write actions. After a merge on GitHub, `github-webhook` moves the linked Task to the Board’s **last column** when the PR merges into that Board’s **Base branch**.
 
 ### 3. CI/CD Dashboard
 
-- Screen showing build status per branch (`main` — passed, `feature/analytics` — failed on tests).
-- Streaming build logs (mock with `setInterval` initially; real GitHub Actions later).
+- Screen showing GitHub Actions workflow runs for the linked repo (status, branch, commit).
+- Detail dialog: jobs checklist + API-backed logs (chunked progressive display) + link out to GitHub.
+- Linear-style summary (default branch + failed / in-progress counts) and client filters.
+
+**Mock vs real (locked product intent):**
+
+| Slice                    | What it does                                                                                          | Status                                             |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Mock CI UI               | Dashboard + simulated logs; same module seam (tests)                                                  | ✅ Done                                            |
+| Stage 5 `github-webhook` | `pull_request` merge into Board Base branch → Task last column; `push` accepted no-op                 | Separate — **does not** populate CI builds or logs |
+| Real GitHub Actions      | Live workflow runs via Actions REST behind `features/ci-cd` `buildsProvider`; polling while in-flight | ✅ Done                                            |
+
+Agents: never assume webhook work replaces Actions integration.
 
 ### 4. Command Palette
 
-- `Ctrl+K` / `Cmd+K` — search tasks, create bugs, switch projects, toggle theme.
-- Library: `cmdk`.
+> Grilled MVP (2026-07-24). Shipped via #22–#26.
+
+**Surface:** Global on authenticated MainLayout. Open via `Ctrl+K` / `Cmd+K` and an AppChrome button (same palette). Open/close UI state in Zustand. Shell: `@reui/c-command-7` over `cmdk`. Theme toggle uses existing `useTheme` (do not migrate theme to Zustand in this feature).
+
+**MVP commands:**
+
+| Command        | Behaviour                                                                                                                                                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search Tasks   | Current Project, all Boards; match `key` + `title`; exclude archived; results only after ≥1 character; max 20 (exact key first, then title). Select → navigate to that Task's Board and open Task drawer (`selectedTaskId`). Without Project in URL — Tasks section hidden. |
+| Create Task    | Only when `boardId` is in the URL and `canCreateTasks`; otherwise hidden. Type title in cmdk → create on current Board first column with default type `task` → open drawer.                                                                                                 |
+| Switch Project | List accessible Projects → navigate to `/projects/$projectId` (redirects to first Board).                                                                                                                                                                                   |
+| Toggle theme   | Same as avatar menu theme toggle.                                                                                                                                                                                                                                           |
+
+**Out of MVP / ideas to revisit:** see Deferred → Ideas to revisit (Command Palette). No separate Guest handling until Guest mode ships.
 
 ---
 
@@ -211,7 +251,7 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 
 ### Edge Functions
 
-- `github-webhook`: on PR merged to `main`, parse branch name, find task, set status `DONE`.
+- `github-webhook` (GitHub App → HMAC): on `pull_request` closed+merged into the Task’s Board **Base branch**, match Task (`pr_number` → `branch_name` → `task_key` in head), set `status` to that Board’s last column (max `position`), set `pr_state=merged`, write `activity_log` with `user_id=null`. Idempotent. Skip (no project / no task / wrong base) → 200 + structured log. `push` → 200 no-op. Does **not** feed CI/CD. Setup: [`docs/github-webhook-setup.md`](github-webhook-setup.md).
 
 ---
 
@@ -303,11 +343,20 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 - Code diff viewer for PRs (`@git-diff-view`: split/unified, syntax highlight, file list).
 - Branch name generator, link existing branch, or skip dedicated branch.
 - Link PR by number/URL → persist `pr_*` on task; view diff without a feature branch.
+- No Merge button in-app — merge happens on GitHub (see Core Features §2 / Deferred).
 
 ### Stage 5: Webhooks (Week 4)
 
-- Register GitHub App; webhooks for `pull_request`, `push`.
-- Edge Function `github-webhook` syncs merge → task `DONE`.
+- Register a free GitHub App; webhook events `pull_request`, `push` → Edge Function `github-webhook`.
+- On PR merged into the Task’s Board **Base branch**, move Task to the Board’s **last column** (not a hardcoded `DONE` / `main`). Match: `pr_number` → `branch_name` → `task_key` in head. `push` accepted no-op.
+- Ops: `verify_jwt = false` + HMAC secret; skip paths return 200 (avoid GitHub retry storms); admin runbook in `docs/github-webhook-setup.md`.
+- **Out of scope for this stage:** CI build status and logs; in-app App install UI. Webhooks here are Task sync only.
+
+### Stage 5b: Real CI/CD — GitHub Actions ✅
+
+- `features/ci-cd` default provider is GitHub Actions REST (`list runs` / `jobs` / job logs zip) behind `buildsProvider`; mock retained for unit tests.
+- Live run status per branch; API-backed logs in the detail dialog; TanStack Query polling while runs are queued/running.
+- Progress **CI/CD — real GitHub Actions** marked Done when the dashboard reflects the linked repo’s actual runs.
 
 ### Stage 6: Polish & Deploy (Final)
 

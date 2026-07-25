@@ -19,6 +19,7 @@ export {
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export {
     columnAccentClass,
+    DEFAULT_TASK_PRIORITY,
     PRIORITY_CLASS,
     PRIORITY_DOT_CLASS,
     TASK_PRIORITIES,
@@ -29,6 +30,7 @@ export {
 export { taskKeys } from "./model/query-keys";
 export type { Task, TaskPriority, TaskStatus, TaskType } from "./model/types";
 export { useBoardTasks } from "./model/use-board-tasks";
+export { useProjectTasks } from "./model/use-project-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";

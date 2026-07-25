@@ -21,6 +21,7 @@ import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
 import { Route as mainProjectsProjectIdRouteRouteImport } from './../routes/(main)/projects/$projectId/route'
 import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(main)/projects/$projectId/index'
 import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
+import { Route as mainProjectsProjectIdCiCdRouteImport } from './../routes/(main)/projects/$projectId/ci-cd'
 import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
 import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
 import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
@@ -87,6 +88,12 @@ const mainProjectsProjectIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainProjectsProjectIdCiCdRoute =
+  mainProjectsProjectIdCiCdRouteImport.update({
+    id: '/ci-cd',
+    path: '/ci-cd',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
 const mainProjectsProjectIdBoardsBoardIdRoute =
   mainProjectsProjectIdBoardsBoardIdRouteImport.update({
     id: '/boards/$boardId',
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
+  '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
   '/home': typeof mainHomeRoute
   '/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
@@ -148,6 +157,7 @@ export interface FileRoutesById {
   '/(main)/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
+  '/(main)/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/(main)/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/invite/$token'
     | '/projects/$projectId'
+    | '/projects/$projectId/ci-cd'
     | '/projects/$projectId/settings'
     | '/projects/$projectId/'
     | '/projects/$projectId/boards/$boardId'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/settings'
     | '/invite/$token'
+    | '/projects/$projectId/ci-cd'
     | '/projects/$projectId/settings'
     | '/projects/$projectId'
     | '/projects/$projectId/boards/$boardId/backlog'
@@ -197,6 +209,7 @@ export interface FileRouteTypes {
     | '/(main)/settings'
     | '/invite/$token'
     | '/(main)/projects/$projectId'
+    | '/(main)/projects/$projectId/ci-cd'
     | '/(main)/projects/$projectId/settings'
     | '/(main)/projects/$projectId/'
     | '/(main)/projects/$projectId/boards/$boardId'
@@ -298,6 +311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdSettingsRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
+    '/(main)/projects/$projectId/ci-cd': {
+      id: '/(main)/projects/$projectId/ci-cd'
+      path: '/ci-cd'
+      fullPath: '/projects/$projectId/ci-cd'
+      preLoaderRoute: typeof mainProjectsProjectIdCiCdRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
     '/(main)/projects/$projectId/boards/$boardId': {
       id: '/(main)/projects/$projectId/boards/$boardId'
       path: '/boards/$boardId'
@@ -341,6 +361,7 @@ const mainProjectsProjectIdBoardsBoardIdRouteWithChildren =
   )
 
 interface mainProjectsProjectIdRouteRouteChildren {
+  mainProjectsProjectIdCiCdRoute: typeof mainProjectsProjectIdCiCdRoute
   mainProjectsProjectIdSettingsRoute: typeof mainProjectsProjectIdSettingsRoute
   mainProjectsProjectIdIndexRoute: typeof mainProjectsProjectIdIndexRoute
   mainProjectsProjectIdBoardsBoardIdRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
@@ -348,6 +369,7 @@ interface mainProjectsProjectIdRouteRouteChildren {
 
 const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteChildren =
   {
+    mainProjectsProjectIdCiCdRoute: mainProjectsProjectIdCiCdRoute,
     mainProjectsProjectIdSettingsRoute: mainProjectsProjectIdSettingsRoute,
     mainProjectsProjectIdIndexRoute: mainProjectsProjectIdIndexRoute,
     mainProjectsProjectIdBoardsBoardIdRoute:

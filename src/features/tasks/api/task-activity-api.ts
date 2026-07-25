@@ -41,7 +41,7 @@ const ACTIVITY_SELECT = `
 
 export async function fetchTaskActivity(
     taskId: string,
-    limit = TASK_ACTIVITY_FEED_LIMIT,
+    limit = TASK_ACTIVITY_FEED_LIMIT
 ) {
     const result = await supabase
         .from("activity_log")
@@ -52,7 +52,9 @@ export async function fetchTaskActivity(
 
     return {
         ...result,
-        data: result.data?.map((row) => mapActivity(row as DatabaseActivityLog)),
+        data: result.data?.map((row) =>
+            mapActivity(row as DatabaseActivityLog)
+        ),
     };
 }
 
@@ -88,12 +90,14 @@ export async function insertTaskActivityEvent(input: {
 
     return {
         ...result,
-        data: result.data ? mapActivity(result.data as DatabaseActivityLog) : null,
+        data: result.data
+            ? mapActivity(result.data as DatabaseActivityLog)
+            : null,
     };
 }
 
 function asProfile(
-    value: DatabaseProfile | DatabaseProfile[] | null | undefined,
+    value: DatabaseProfile | DatabaseProfile[] | null | undefined
 ): DatabaseProfile | null {
     if (!value) return null;
     return Array.isArray(value) ? (value[0] ?? null) : value;
@@ -139,7 +143,8 @@ function parseMetadata(raw: unknown): TaskActivityMetadata {
         return { changes: [] };
     }
 
-    const changesRaw = (raw as { changes?: unknown }).changes;
+    const record = raw as { changes?: unknown; source?: unknown };
+    const changesRaw = record.changes;
     if (!Array.isArray(changesRaw)) {
         return { changes: [] };
     }
@@ -156,5 +161,9 @@ function parseMetadata(raw: unknown): TaskActivityMetadata {
         });
     }
 
-    return { changes };
+    return {
+        changes,
+        source:
+            record.source === "github_webhook" ? "github_webhook" : undefined,
+    };
 }

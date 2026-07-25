@@ -1,5 +1,6 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
+import { CommandPalette } from "@/features/command-palette";
 import { cn } from "@/shared/lib/utils";
 import { AppChrome } from "@/widgets/app-chrome";
 
@@ -26,6 +27,7 @@ function MainLayoutContent() {
             )}
         >
             <AppChrome />
+            <CommandPalette />
             {isBoard ? (
                 <div className="min-h-0 flex-1 overflow-hidden">
                     <Outlet />

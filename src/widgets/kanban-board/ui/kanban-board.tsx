@@ -87,7 +87,7 @@ export function KanbanBoard({
     const columnsApi = useBoardColumns(projectId, boardId);
     const labelsApi = useProjectLabels(projectId);
     const tasksApi = useBoardTasks(projectId, boardId);
-    const { canManageBoard } = useProjectAccess(projectId);
+    const { canEditTasks, canManageBoard } = useProjectAccess(projectId);
     const { data: sprints = [] } = useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
@@ -170,6 +170,7 @@ export function KanbanBoard({
         const type = event.active.data.current?.type as DragType | undefined;
 
         if (type === "column") {
+            if (!canManageBoard) return;
             setActiveColumn(
                 columns.find((column) => column.id === event.active.id)
             );
@@ -177,6 +178,7 @@ export function KanbanBoard({
         }
 
         if (type === "task") {
+            if (!canEditTasks) return;
             setActiveTask(
                 filteredTasks.find((item) => item.id === event.active.id)
             );
@@ -190,6 +192,7 @@ export function KanbanBoard({
         const activeType = active.data.current?.type as DragType | undefined;
 
         if (activeType === "column") {
+            if (!canManageBoard) return;
             // Live reorder so the column physically slots into place, showing
             // exactly where it lands (like a task). Collision is pointer-based
             // and restricted to columns, so `over` is always a column and this
@@ -199,6 +202,7 @@ export function KanbanBoard({
         }
 
         if (activeType !== "task") return;
+        if (!canEditTasks) return;
 
         // Only move across columns here; same-column ordering is handled
         // visually by the sort strategy and committed on drop.
@@ -216,6 +220,7 @@ export function KanbanBoard({
         if (activeType === "column") return;
 
         if (activeType === "task") {
+            if (!canEditTasks) return;
             const overType = over.data.current?.type as DragType | undefined;
             // Cross-column placement already happened in onDragOver; here we
             // only commit the final in-column position when dropped over a task.

@@ -105,6 +105,7 @@
         "title": "Активность",
         "empty": "Пока нет активности.",
         "updated": "обновил(а) задачу",
+        "githubActor": "GitHub",
         "none": "Нет",
         "change": {
             "fromTo": "{{field}}: {{from}} → {{to}}",
@@ -156,6 +157,51 @@
         "createOption": "Создать «{{name}}»",
         "createFailed": "Имя метки должно быть уникальным и непустым",
         "created": "Метка «{{name}}» создана"
+    },
+    "cicd": {
+        "link": "CI/CD",
+        "title": "CI/CD",
+        "backToBoard": "К доске",
+        "description": "Прогоны GitHub Actions для связанного репозитория проекта. Выберите прогон, чтобы посмотреть jobs и логи.",
+        "refreshing": "Обновление…",
+        "needsToken": "Войдите через GitHub (scope repo), чтобы загрузить прогоны Actions.",
+        "empty": "Прогонов пока нет. Сделайте push или добавьте workflow в .github/workflows.",
+        "emptyFilter": "Нет прогонов по этому фильтру.",
+        "loadFailed": "Не удалось загрузить прогоны из GitHub.",
+        "failedOn": "Ошибка: {{reason}}",
+        "openLogs": "Открыть детали прогона {{branch}}",
+        "summary": {
+            "label": "Сводка",
+            "defaultBranch": "{{branch}}",
+            "noDefaultRun": "Нет недавнего прогона",
+            "failed": "Провалы",
+            "running": "В работе"
+        },
+        "filters": {
+            "label": "Фильтр прогонов",
+            "all": "Все",
+            "failed": "Провалы",
+            "running": "В работе"
+        },
+        "status": {
+            "success": "Успех",
+            "failure": "Провал",
+            "running": "Идёт",
+            "queued": "В очереди"
+        },
+        "failureReason": {
+            "tests": "тесты"
+        },
+        "logs": {
+            "title": "{{workflow}} · {{branch}}",
+            "titleFallback": "Детали прогона",
+            "hint": "Логи GitHub Actions",
+            "streaming": "Загрузка логов…",
+            "empty": "Нет строк лога для этого прогона.",
+            "openOnGitHub": "Открыть на GitHub",
+            "jobsLabel": "Jobs",
+            "noJobs": "Нет jobs у этого прогона."
+        }
     },
     "settings": {
         "link": "Настройки",

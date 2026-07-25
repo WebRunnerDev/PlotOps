@@ -3,16 +3,14 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { TaskAssignee } from "@/features/tasks/model/types";
-import { useProject } from "@/features/projects/model/use-projects";
+
 import {
     useProjectMembers,
     useProjectOwnerProfile,
 } from "@/features/projects/model/use-project-members";
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/shared/shadcn/ui/avatar";
+import { useProject } from "@/features/projects/model/use-projects";
+import { cn } from "@/shared/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import {
     Combobox,
     ComboboxContent,
@@ -22,7 +20,6 @@ import {
     ComboboxList,
 } from "@/shared/shadcn/ui/combobox";
 import { InputGroupAddon } from "@/shared/shadcn/ui/input-group";
-import { cn } from "@/shared/lib/utils";
 
 export type TaskMemberOption = TaskAssignee;
 
@@ -31,37 +28,10 @@ const NONE_ID = "__none__";
 type TaskMemberFieldProperties = {
     disabled?: boolean;
     id: string;
-    onChange: (value: TaskMemberOption | null) => void;
+    onChange: (value: null | TaskMemberOption) => void;
     projectId: string;
     value: TaskMemberOption | undefined;
 };
-
-function initials(name: string) {
-    const parts = name.trim().split(/[\s_-]+/).filter(Boolean);
-    if (parts.length >= 2) {
-        return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-}
-
-function MemberAvatar({
-    className,
-    member,
-}: {
-    className?: string;
-    member: TaskMemberOption | undefined;
-}) {
-    return (
-        <Avatar className={cn("size-5 rounded-none", className)} size="sm">
-            {member?.avatarUrl ? (
-                <AvatarImage alt="" src={member.avatarUrl} />
-            ) : undefined}
-            <AvatarFallback className="rounded-none text-meta">
-                {member?.name ? initials(member.name) : <User className="size-3" />}
-            </AvatarFallback>
-        </Avatar>
-    );
-}
 
 export function TaskMemberField({
     disabled = false,
@@ -95,8 +65,8 @@ export function TaskMemberField({
             });
         }
 
-        return [...byId.values()].sort((left, right) =>
-            left.name.localeCompare(right.name),
+        return [...byId.values()].toSorted((left, right) =>
+            left.name.localeCompare(right.name)
         );
     }, [members, ownerProfile, t]);
 
@@ -105,7 +75,7 @@ export function TaskMemberField({
             id: NONE_ID,
             name: t("fields.memberNone"),
         }),
-        [t],
+        [t]
     );
 
     const items = useMemo(() => [noneOption, ...people], [noneOption, people]);
@@ -130,7 +100,7 @@ export function TaskMemberField({
             }}
             value={selected}
         >
-            <ComboboxInput className="w-full" id={id}>
+            <ComboboxInput className="w-full" disabled={disabled} id={id}>
                 {selected.id === NONE_ID ? undefined : (
                     <InputGroupAddon align="inline-start">
                         <MemberAvatar member={selected} />
@@ -157,5 +127,39 @@ export function TaskMemberField({
                 </ComboboxList>
             </ComboboxContent>
         </Combobox>
+    );
+}
+
+function initials(name: string) {
+    const parts = name
+        .trim()
+        .split(/[\s_-]+/)
+        .filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+}
+
+function MemberAvatar({
+    className,
+    member,
+}: {
+    className?: string;
+    member: TaskMemberOption | undefined;
+}) {
+    return (
+        <Avatar className={cn("size-5 rounded-none", className)} size="sm">
+            {member?.avatarUrl ? (
+                <AvatarImage alt="" src={member.avatarUrl} />
+            ) : undefined}
+            <AvatarFallback className="rounded-none text-meta">
+                {member?.name ? (
+                    initials(member.name)
+                ) : (
+                    <User className="size-3" />
+                )}
+            </AvatarFallback>
+        </Avatar>
     );
 }

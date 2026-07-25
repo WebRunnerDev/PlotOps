@@ -7,14 +7,8 @@ import type {
     TaskActivityField,
 } from "@/features/tasks/model/types";
 
-import {
-    useTaskActivity,
-} from "@/features/tasks/model/use-task-activity";
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/shared/shadcn/ui/avatar";
+import { useTaskActivity } from "@/features/tasks/model/use-task-activity";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import {
     Collapsible,
     CollapsibleContent,
@@ -36,19 +30,23 @@ export function TaskActivitySection({
     taskId,
 }: TaskActivitySectionProperties) {
     const { i18n, t } = useTranslation("board");
-    const { data: events = [], isFetching, isLoading } = useTaskActivity(
-        taskId,
-        open,
-    );
+    const {
+        data: events = [],
+        isFetching,
+        isLoading,
+    } = useTaskActivity(taskId, open);
 
-    const showSpinner = open && (isLoading || (isFetching && events.length === 0));
+    const showSpinner =
+        open && (isLoading || (isFetching && events.length === 0));
 
     return (
         <Collapsible onOpenChange={onOpenChange} open={open}>
             <section className="flex flex-col gap-3">
                 <CollapsibleTrigger className="group flex w-full items-center gap-2 text-left">
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
-                    <h3 className="text-ui font-medium">{t("activity.title")}</h3>
+                    <h3 className="text-ui font-medium">
+                        {t("activity.title")}
+                    </h3>
                     {open && events.length > 0 ? (
                         <span className="text-meta text-muted-foreground">
                             ({events.length})
@@ -59,7 +57,7 @@ export function TaskActivitySection({
                 <CollapsibleContent>
                     {showSpinner ? (
                         <Spinner className="size-5 text-primary" />
-                    ) : (events.length === 0 ? (
+                    ) : events.length === 0 ? (
                         <p className="text-ui text-muted-foreground">
                             {t("activity.empty")}
                         </p>
@@ -75,7 +73,7 @@ export function TaskActivitySection({
                                 </li>
                             ))}
                         </ul>
-                    ))}
+                    )}
                 </CollapsibleContent>
             </section>
         </Collapsible>
@@ -91,7 +89,11 @@ function ActivityEventItem({
     locale: string;
     t: Translate;
 }) {
-    const userName = event.user?.name ?? t("members.unknownUser");
+    const isGitHub =
+        event.user == undefined && event.metadata.source === "github_webhook";
+    const userName = isGitHub
+        ? t("activity.githubActor")
+        : (event.user?.name ?? t("members.unknownUser"));
     const changes = event.metadata.changes;
 
     return (
@@ -101,7 +103,7 @@ function ActivityEventItem({
                     <AvatarImage alt="" src={event.user.avatarUrl} />
                 ) : undefined}
                 <AvatarFallback className="rounded-none text-meta">
-                    {initials(userName)}
+                    {isGitHub ? "GH" : initials(userName)}
                 </AvatarFallback>
             </Avatar>
 
@@ -169,10 +171,7 @@ function asStringList(value: unknown): null | string[] {
     return value;
 }
 
-function displayScalar(
-    value: unknown,
-    emptyLabel: string,
-): string {
+function displayScalar(value: unknown, emptyLabel: string): string {
     if (value === null || value === undefined || value === "") {
         return emptyLabel;
     }
@@ -182,11 +181,10 @@ function displayScalar(
     return emptyLabel;
 }
 
-function formatChangeSummary(
-    change: TaskActivityChange,
-    t: Translate,
-): string {
-    const fieldLabel = t(`activity.fields.${change.field as TaskActivityField}`);
+function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
+    const fieldLabel = t(
+        `activity.fields.${change.field as TaskActivityField}`
+    );
     const none = t("activity.none");
 
     switch (change.field) {
@@ -223,11 +221,8 @@ function formatChangeSummary(
             const fromList = asStringList(change.from);
             const toList = asStringList(change.to);
             const from =
-                fromList && fromList.length > 0
-                    ? fromList.join(", ")
-                    : none;
-            const to =
-                toList && toList.length > 0 ? toList.join(", ") : none;
+                fromList && fromList.length > 0 ? fromList.join(", ") : none;
+            const to = toList && toList.length > 0 ? toList.join(", ") : none;
             return t("activity.change.fromTo", { field: fieldLabel, from, to });
         }
         case "pr": {
@@ -299,7 +294,10 @@ function formatTimestamp(value: string, locale: string) {
 }
 
 function initials(name: string) {
-    const parts = name.trim().split(/[\s_-]+/).filter(Boolean);
+    const parts = name
+        .trim()
+        .split(/[\s_-]+/)
+        .filter(Boolean);
     if (parts.length >= 2) {
         return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
     }
