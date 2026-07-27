@@ -19,6 +19,7 @@ import {
 } from "@/features/boards";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
 import { TaskLabelsField, useProjectLabels } from "@/features/labels";
+import { TaskWatchersList } from "@/features/notifications/ui/task-watchers-list";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
@@ -719,6 +720,11 @@ export function TaskDrawer({
                                             />
                                         </div>
                                     </div>
+
+                                    <TaskWatchersList
+                                        projectId={projectId}
+                                        taskId={task.id}
+                                    />
 
                                     <div className="flex flex-col gap-1.5">
                                         <Label className={FIELD_LABEL_CLASS}>

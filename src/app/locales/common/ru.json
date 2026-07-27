@@ -12,6 +12,23 @@
         "projects": "Проекты",
         "settings": "Настройки"
     },
+    "notifications": {
+        "allProjects": "Все проекты",
+        "kinds": {
+            "assignment": "Вас назначили исполнителем",
+            "assignmentDetail": "Назначен {{name}}",
+            "statusChange": "Статус изменён",
+            "statusChangeDetail": "{{from}} → {{to}}"
+        },
+        "markAllRead": "Отметить все прочитанными",
+        "next": "Далее",
+        "pageDescription": "Поиск по уведомлениям. Откройте строку, чтобы перейти к задаче.",
+        "prev": "Назад",
+        "previewDescription": "Недавние уведомления по вашим задачам",
+        "search": "Найти",
+        "searchPlaceholder": "Поиск по ключу или названию…",
+        "viewAll": "Показать все"
+    },
     "logout": {
         "action": "Выйти",
         "signOut": "Выйти из аккаунта",

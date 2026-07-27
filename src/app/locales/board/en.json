@@ -82,6 +82,13 @@
         "memberNoResults": "No members found",
         "labels": "Labels"
     },
+    "watchers": {
+        "title": "Watchers",
+        "empty": "No watchers yet",
+        "watch": "Watch",
+        "unwatch": "Unwatch",
+        "updateFailed": "Could not update watch"
+    },
     "comments": {
         "title": "Comments ({{count}})",
         "placeholder": "Write a comment…",

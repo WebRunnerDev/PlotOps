@@ -82,6 +82,13 @@
         "memberNoResults": "Участники не найдены",
         "labels": "Метки"
     },
+    "watchers": {
+        "title": "Наблюдатели",
+        "empty": "Пока никого нет",
+        "watch": "Следить",
+        "unwatch": "Не следить",
+        "updateFailed": "Не удалось обновить подписку"
+    },
     "comments": {
         "title": "Комментарии ({{count}})",
         "placeholder": "Напишите комментарий…",

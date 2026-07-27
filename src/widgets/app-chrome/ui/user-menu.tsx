@@ -1,6 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
 import {
-    BellIcon,
     LogOutIcon,
     MoonIcon,
     SettingsIcon,
@@ -136,16 +135,6 @@ export function UserMenu() {
                         {isDark ? <SunIcon /> : <MoonIcon />}
                         {isDark ? t("themeLight") : t("themeDark")}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        <DropdownMenuLabel className="flex items-center gap-2">
-                            <BellIcon className="size-3.5" />
-                            {t("nav.notifications")}
-                        </DropdownMenuLabel>
-                        <p className="px-2 py-2 text-sm text-muted-foreground">
-                            {t("nav.notificationsEmpty")}
-                        </p>
-                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                         className="cursor-pointer"

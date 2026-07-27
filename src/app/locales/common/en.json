@@ -12,6 +12,23 @@
         "projects": "Projects",
         "settings": "Settings"
     },
+    "notifications": {
+        "allProjects": "All projects",
+        "kinds": {
+            "assignment": "You were assigned",
+            "assignmentDetail": "Assigned to {{name}}",
+            "statusChange": "Status changed",
+            "statusChangeDetail": "{{from}} → {{to}}"
+        },
+        "markAllRead": "Mark all read",
+        "next": "Next",
+        "pageDescription": "Search across your in-app notifications. Open a row to jump to the Task.",
+        "prev": "Previous",
+        "previewDescription": "Recent notifications for your Tasks",
+        "search": "Search",
+        "searchPlaceholder": "Search by task key or title…",
+        "viewAll": "View all"
+    },
     "logout": {
         "action": "Sign out",
         "signOut": "Sign out of account",
