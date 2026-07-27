@@ -19,6 +19,10 @@ import type {
 
 import { boardKeys } from "@/features/boards";
 import { resolveLabelNames } from "@/features/labels";
+import {
+    createNotificationsForAssignmentChange,
+    createNotificationsForStatusChange,
+} from "@/features/notifications/api/notifications-api";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
@@ -52,6 +56,8 @@ const taskChannels = new Map<
     string,
     { channel: RealtimeChannel; subscribers: number }
 >();
+
+type IdNameSnapshot = { id: string; name: string };
 
 type TaskDetailsUpdate = Partial<
     Omit<
@@ -116,6 +122,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
         }) => {
             await persistTaskMoves(boardId, updates);
             if (activity) {
+                await notifyStatusChangeBestEffort({
+                    activityChanges: activity.changes,
+                    projectId,
+                    taskId: activity.taskId,
+                });
                 await recordTaskActivity({
                     changes: activity.changes,
                     projectId,
@@ -180,6 +191,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 await replaceTaskLabels(id, details.labelIds ?? []);
             }
 
+            await notifyAssignmentChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -203,6 +220,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             status: TaskStatus;
         }) => {
             await updateTaskRecord(id, { status });
+
+            await notifyStatusChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -228,6 +252,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             taskId: string;
         }) => {
             await moveTaskToBoard(taskId, targetBoardId, targetStatus);
+
+            await notifyStatusChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -606,6 +637,37 @@ function applyTaskUpdates(
     };
 }
 
+function extractAssigneeTransition(
+    activityChanges: TaskActivityChange[]
+): null | {
+    from: IdNameSnapshot | null;
+    to: IdNameSnapshot | null;
+} {
+    const change = activityChanges.find((entry) => entry.field === "assignee");
+    if (!change) return null;
+
+    const from = isIdNameSnapshot(change.from) ? change.from : null;
+    const to = isIdNameSnapshot(change.to) ? change.to : null;
+    return { from, to };
+}
+
+function extractStatusTransition(
+    activityChanges: TaskActivityChange[]
+): null | { from: IdNameSnapshot; to: IdNameSnapshot } {
+    const change = activityChanges.find((entry) => entry.field === "status");
+    if (!change) return null;
+    if (!isIdNameSnapshot(change.from) || !isIdNameSnapshot(change.to)) {
+        return null;
+    }
+    return { from: change.from, to: change.to };
+}
+
+function isIdNameSnapshot(value: unknown): value is IdNameSnapshot {
+    if (!value || typeof value !== "object") return false;
+    const snapshot = value as { id?: unknown; name?: unknown };
+    return typeof snapshot.id === "string" && typeof snapshot.name === "string";
+}
+
 function moveTaskToColumnInMemory(
     tasks: Task[],
     columns: BoardColumn[],
@@ -659,6 +721,53 @@ function moveTaskToColumnInMemory(
     }
 
     return { tasks: next, updates };
+}
+
+async function notifyAssignmentChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const transition = extractAssigneeTransition(input.activityChanges);
+    if (!transition?.to) return;
+
+    try {
+        await createNotificationsForAssignmentChange({
+            metadata: {
+                assignee: transition.to,
+                previousAssignee: transition.from,
+                source: "app",
+            },
+            projectId: input.projectId,
+            recipientId: transition.to.id,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyStatusChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const transition = extractStatusTransition(input.activityChanges);
+    if (!transition) return;
+
+    try {
+        await createNotificationsForStatusChange({
+            metadata: {
+                from: transition.from,
+                source: "app",
+                to: transition.to,
+            },
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
 }
 
 async function recordTaskActivity(input: {
