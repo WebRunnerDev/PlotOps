@@ -29,6 +29,62 @@
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
 | App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
+| Notifications (Watch + assignment)                     | 🟡 In progress (schema+RPC+fan-out paths+UI bell/page/watchers; retention cleanup on open)                                                                                             |
+
+## Notifications (MVP)
+
+> Domain glossary: `CONTEXT.md`. Decision: `docs/adr/0010-notifications-fan-out.md`.
+
+### Model
+
+- **Watch** is a per-Task personal subscription controlling **status change** notifications.
+    - `Author` (creator) is auto-enrolled as Watcher on Task create.
+    - `Assignee` is auto-enrolled as Watcher when set; reassignment only adds the new Assignee as Watcher (previous Watchers keep watching until they Unwatch).
+- **Notification** is an in-app inbox row addressed to one user about a Task event.
+    - **status change**: delivered to Watchers only.
+    - **assignment**: delivered to the new Assignee (always-on, independent of Watch).
+- **Self-notify is excluded**: we never create Notifications for the actor of the change.
+    - For GitHub webhook (automated, `user_id=null`), this means we notify all Watchers.
+
+### Storage + fan-out
+
+- Notifications are **fan-out rows** inserted at write time (instead of deriving the inbox from `activity_log`).
+- Retention:
+    - **Unread** notifications are kept up to **90 days**, then deleted.
+    - **Read** notifications may be purged after **30 days**.
+- Cleanup: the `/notifications` page (and the bell preview) performs best-effort cleanup for the current user via `cleanup_notifications_for_user()` before reading the list.
+
+### UI
+
+- **Bell** in `AppChrome` opens a **Drawer preview** (“шторка”) with the latest unread-first notifications (soft cap ~20).
+    - Clicking a notification marks it read and opens the corresponding Task drawer.
+    - “Mark all read” marks all notifications in the current scope as read.
+- **Full page**: `/notifications`
+    - Global inbox with optional Project filter.
+    - Search `q` by Task key/title (and show kind-specific context).
+    - Pagination via query params (`limit` + `offset`).
+
+### Realtime
+
+- Subscribe (Realtime) to `notifications` changes for the current user (`recipient_id = auth.uid()`), primarily to refresh unread badge + drawer contents.
+
+### Implementation plan
+
+1. **Schema + RLS + RPC** — create `task_watchers`, `notifications`, RLS policies, and server-safe RPCs:
+    - `create_notifications_for_status_change(...)`
+    - `create_notifications_for_assignment_change(...)`
+    - `mark_notifications_read(...)` (or mark-all variants)
+    - `cleanup_notifications_for_user()`
+2. **App fan-out** — call RPCs from the same write paths that already create `activity_log` for curated mutations (status + assignee):
+    - status mutations (drawer, DnD, board move)
+    - assignee mutations (Task drawer)
+3. **Webhook fan-out** — update `github-webhook` Edge Function so GitHub PR merged → last column status sync also triggers status-change notifications.
+4. **Frontend** — add `src/features/notifications` with:
+    - list query (global + project filter + search + pagination)
+    - unread count + realtime badge
+    - mark-read actions
+    - UI: bell drawer preview + `/notifications` page
+    - Task drawer Watchers list (avatar list + self watch/unwatch controls).
 
 ## Sprints (MVP)
 

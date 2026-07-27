@@ -89,3 +89,25 @@ _Avoid_: Stakeholder, Guest (Guest is the demo auth mode, not a Project Role)
 **Invite**:
 A pending offer to join a Project at a chosen Role, addressed to an email. Delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Redeem requires the auth email to match, or the invitee may claim the invite (`claimed_by`) so an Owner/Admin can confirm. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
 _Avoid_: Invitation email (delivery is out-of-band), magic link (Auth magic links are a different mechanism)
+
+### Awareness
+
+**Author**:
+The user who created the Task (`author_id`). Auto-enrolled as a Watcher on create; may Unwatch.
+_Avoid_: reporter, creator (UI copy may say “created by”; the domain term is Author)
+
+**Assignee**:
+The user currently responsible for executing the Task (`assignee_id`), if any. Distinct from the Contributor Role — Contributors may edit any Task; Assignee is an optional person field. Auto-enrolled as a Watcher when set; may Unwatch. Reassignment does not remove the previous Assignee's Watch. Clearing the Assignee (no replacement) creates no Notification and does not remove that user's Watch.
+_Avoid_: executor, owner (Owner is the Project Owner), responsible (too vague)
+
+**Watch**:
+A personal subscription by a user to a Task so they receive Notifications when that Task's status changes. Author and Assignee are auto-enrolled; any Project Owner or Member who can view the Task (including Viewer) may Watch or Unwatch. Only that user may add or remove their own Watch — others cannot Unwatch them. Watch is independent of the always-on assignment Notification. Watchers on a Task may be shown as a list (e.g. avatars) for awareness. When the user leaves or is removed from the Project, their Watches on that Project's Tasks are deleted.
+_Avoid_: follow, subscribe, favorite, activity (Activity is the Task drawer feed from `activity_log`)
+
+**Watcher**:
+A user who has a Watch on a Task.
+_Avoid_: subscriber, follower
+
+**Notification**:
+An in-app inbox item addressed to one user about a Task event. MVP kinds: status change (delivered to Watchers) and assignment (delivered to the new Assignee). Never created for the actor of the change. Clearing Assignee creates none. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Project does not delete existing Notification rows for that Project; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
+_Avoid_: alert, toast (transient UI only), activity event
