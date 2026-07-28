@@ -24,6 +24,7 @@ import {
     createNotificationsForWatchers,
     createTaskNotifications,
 } from "@/features/notifications/api/notifications-api";
+import { notifyNewMentionsBestEffort } from "@/features/notifications/lib/notify-new-mentions";
 import { planAssigneeChangeNotifications } from "@/features/notifications/lib/plan-assignee-change-notifications";
 import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan-author-change-notifications";
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
@@ -158,12 +159,14 @@ export function useBoardTasks(projectId: string, boardId: string) {
             authorChange,
             details,
             id,
+            previousDescription,
         }: {
             activityChanges: TaskActivityChange[];
             /** Author is not an Activity field (SPEC); still drives fan-out. */
             authorChange?: AuthorNotificationChange | null;
             details: TaskDetailsUpdate;
             id: string;
+            previousDescription?: string;
         }) => {
             const patch: Parameters<typeof updateTaskRecord>[1] = {};
             if (details.title !== undefined) patch.title = details.title;
@@ -204,6 +207,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
             if (details.labelIds !== undefined) {
                 await replaceTaskLabels(id, details.labelIds ?? []);
+            }
+
+            if (details.description !== undefined) {
+                await notifyNewMentionsBestEffort({
+                    nextBody: details.description ?? "",
+                    previousBody: previousDescription ?? "",
+                    source: "description",
+                    taskId: id,
+                });
             }
 
             await notifyPriorityChangeBestEffort({
@@ -616,6 +628,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 authorChange,
                 details,
                 id,
+                previousDescription:
+                    details.description === undefined
+                        ? undefined
+                        : (previous?.description ?? ""),
             });
         },
         updateTaskStatus: (id: string, status: TaskStatus) => {

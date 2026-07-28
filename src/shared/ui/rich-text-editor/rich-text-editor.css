@@ -20,7 +20,12 @@
     user-select: none;
 }
 
-.rich-text-editor .ProseMirror ul[data-type="taskList"] > li > label input[type="checkbox"] {
+.rich-text-editor
+    .ProseMirror
+    ul[data-type="taskList"]
+    > li
+    > label
+    input[type="checkbox"] {
     cursor: pointer;
 }
 
@@ -39,6 +44,16 @@
     height: auto;
     margin-block: 0.75rem;
     border-radius: var(--radius);
+}
+
+.rich-text-editor .ProseMirror .mention {
+    display: inline;
+    padding-inline: 0.2em;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: color-mix(in oklab, var(--primary) 18%, transparent);
+    color: var(--primary);
+    font-weight: 500;
+    white-space: nowrap;
 }
 
 /* Keep the browser's native text-selection highlight off the image node so

@@ -454,8 +454,11 @@
     "copiedCheckout": "Checkout command copied",
     "copyFailed": "Could not copy to clipboard",
     "richText": {
-        "hint": "Select text to format, right-click for context menu, or type “/” for blocks",
+        "hint": "Select text to format, right-click for context menu, type “/” for blocks, or “@” to mention",
         "length": "{{current}} / {{max}}",
+        "mention": {
+            "empty": "No matching people"
+        },
         "linkPrompt": "Enter URL",
         "link": {
             "title": "Add link",

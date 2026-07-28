@@ -10,6 +10,7 @@ import type {
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
+import type { MentionCandidate } from "@/shared/ui/rich-text-editor";
 
 import {
     type BoardColumn,
@@ -21,6 +22,7 @@ import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
 import { TaskLabelsField, useProjectLabels } from "@/features/labels";
 import { TaskWatchersList } from "@/features/notifications/ui/task-watchers-list";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
 import {
@@ -129,6 +131,11 @@ export function TaskDrawer({
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
     const { canDeleteTasks, canEditTasks } = useProjectAccess(projectId);
+    const people = useProjectPeople(projectId);
+    const mentionCandidates = useMemo<MentionCandidate[]>(
+        () => people.map((person) => ({ id: person.id, label: person.name })),
+        [people]
+    );
     const clearSelectedTask = useTasksUiStore(
         (state) => state.clearSelectedTask
     );
@@ -398,6 +405,11 @@ export function TaskDrawer({
                                             id="task-description"
                                             maxLength={
                                                 TASK_DESCRIPTION_MAX_LENGTH
+                                            }
+                                            mentionCandidates={
+                                                canEdit
+                                                    ? mentionCandidates
+                                                    : undefined
                                             }
                                             onBlur={commitDescription}
                                             onChange={setDescription}

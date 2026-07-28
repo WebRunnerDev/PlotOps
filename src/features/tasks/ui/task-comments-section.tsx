@@ -1,5 +1,5 @@
 import { Pencil, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -7,6 +7,7 @@ import type { TaskComment } from "@/features/tasks/model/types";
 
 import { useAuth } from "@/features/auth";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { TASK_COMMENT_MAX_LENGTH } from "@/features/tasks/model/constants";
 import {
@@ -20,7 +21,10 @@ import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
-import { RichTextEditor } from "@/shared/ui/rich-text-editor";
+import {
+    type MentionCandidate,
+    RichTextEditor,
+} from "@/shared/ui/rich-text-editor";
 import {
     isRichTextWithinLimit,
     normalizeEditorContent,
@@ -34,6 +38,7 @@ type TaskCommentItemProperties = {
     comment: TaskComment;
     highlighted: boolean;
     locale: string;
+    mentionCandidates: readonly MentionCandidate[];
     onDelete: () => void;
     onSave: (body: string) => Promise<void>;
     t: (key: string, options?: Record<string, unknown>) => string;
@@ -54,6 +59,11 @@ export function TaskCommentsSection({
     const { i18n, t } = useTranslation("board");
     const { user } = useAuth();
     const access = useProjectAccess(projectId);
+    const people = useProjectPeople(projectId);
+    const mentionCandidates = useMemo<MentionCandidate[]>(
+        () => people.map((person) => ({ id: person.id, label: person.name })),
+        [people]
+    );
     const { data: comments = [], isLoading } = useTaskComments(taskId);
     const createComment = useCreateTaskComment(taskId, projectId);
     const updateComment = useUpdateTaskComment(taskId);
@@ -169,6 +179,7 @@ export function TaskCommentsSection({
                                         highlightedCommentId === comment.id
                                     }
                                     locale={i18n.language}
+                                    mentionCandidates={mentionCandidates}
                                     onDelete={() => {
                                         void handleDelete(comment.id);
                                     }}
@@ -176,6 +187,7 @@ export function TaskCommentsSection({
                                         await updateComment.mutateAsync({
                                             body,
                                             commentId: comment.id,
+                                            previousBody: comment.body,
                                         });
                                     }}
                                     t={t}
@@ -193,6 +205,7 @@ export function TaskCommentsSection({
                         compact
                         id={`comment-compose-${taskId}`}
                         maxLength={TASK_COMMENT_MAX_LENGTH}
+                        mentionCandidates={mentionCandidates}
                         onChange={setDraft}
                         onUploadImage={(file) => uploadTaskMedia(file, taskId)}
                         placeholder={t("comments.placeholder")}
@@ -246,6 +259,7 @@ function TaskCommentItem({
     comment,
     highlighted,
     locale,
+    mentionCandidates,
     onDelete,
     onSave,
     t,
@@ -364,6 +378,7 @@ function TaskCommentItem({
                         compact
                         id={`comment-edit-${comment.id}`}
                         maxLength={TASK_COMMENT_MAX_LENGTH}
+                        mentionCandidates={mentionCandidates}
                         onChange={setDraft}
                         onUploadImage={(file) => uploadTaskMedia(file, taskId)}
                         placeholder={t("comments.placeholder")}

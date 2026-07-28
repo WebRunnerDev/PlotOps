@@ -3,6 +3,11 @@ export {
     buildMentionFanOutRequest,
     type MentionFanOutRequest,
 } from "./lib/build-mention-fan-out-request";
+export {
+    extractMentioneeIds,
+    newMentioneeIds,
+} from "./lib/extract-mentionee-ids";
+export { notifyNewMentionsBestEffort } from "./lib/notify-new-mentions";
 export { planAssigneeChangeNotifications } from "./lib/plan-assignee-change-notifications";
 export { planAuthorChangeNotifications } from "./lib/plan-author-change-notifications";
 export { planBoardMoveWatcherNotification } from "./lib/plan-board-move-watcher-notification";
