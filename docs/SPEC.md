@@ -29,7 +29,7 @@
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
 | App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
-| Notifications (Watch + assignment)                     | 🟡 In progress (MVP shipped; #35 schema+RPC primitives for expanded kinds + auto-Unwatch; UI/call sites #36–#39)                                                                       |
+| Notifications (Watch + assignment)                     | 🟡 In progress (MVP shipped; #35 schema+RPC; #36 Priority → Watchers; Board/Assignee/Author #37–#39)                                                                                   |
 
 ## Notifications (MVP → structural expansion)
 
@@ -78,7 +78,7 @@
 ### Implementation plan (structural expansion)
 
 1. **Schema + RPC primitives** — widen `notifications.kind`; Watcher fan-out by kind; Author always-on helper; auto-Unwatch when neither Author nor Assignee; prefer one round-trip that can insert multiple kinds for one Task save. ✅ (#35)
-2. **Priority** — fan-out on Priority change to Watchers; inbox formatting + i18n.
+2. **Priority** — fan-out on Priority change to Watchers; inbox formatting + i18n. ✅ (#36)
 3. **Board move** — fan-out `board_move` (coalesce status); stop double `status_change` on cross-Board moves; inbox formatting + i18n.
 4. **Assignee** — Watchers get set/reassign; keep always-on to new Assignee with dedupe; auto-Unwatch previous when no remaining stake.
 5. **Author** — always-on to new Author + Watchers; auto-enroll Watch on new Author; auto-Unwatch previous when no remaining stake; inbox formatting + i18n.

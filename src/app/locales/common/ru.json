@@ -17,8 +17,17 @@
         "kinds": {
             "assignment": "Вас назначили исполнителем",
             "assignmentDetail": "Назначен {{name}}",
+            "priorityChange": "Приоритет изменён",
+            "priorityChangeDetail": "{{from}} → {{to}}",
             "statusChange": "Статус изменён",
             "statusChangeDetail": "{{from}} → {{to}}"
+        },
+        "priority": {
+            "none": "Без приоритета",
+            "urgent": "Срочный",
+            "high": "Высокий",
+            "medium": "Средний",
+            "low": "Низкий"
         },
         "markAllRead": "Отметить все прочитанными",
         "next": "Далее",

@@ -22,7 +22,9 @@ import { resolveLabelNames } from "@/features/labels";
 import {
     createNotificationsForAssignmentChange,
     createNotificationsForStatusChange,
+    createNotificationsForWatchers,
 } from "@/features/notifications/api/notifications-api";
+import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
@@ -190,6 +192,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
             if (details.labelIds !== undefined) {
                 await replaceTaskLabels(id, details.labelIds ?? []);
             }
+
+            await notifyPriorityChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
 
             await notifyAssignmentChangeBestEffort({
                 activityChanges,
@@ -740,6 +748,26 @@ async function notifyAssignmentChangeBestEffort(input: {
             },
             projectId: input.projectId,
             recipientId: transition.to.id,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyPriorityChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const event = planPriorityWatcherNotification(input.activityChanges);
+    if (!event) return;
+
+    try {
+        await createNotificationsForWatchers({
+            kind: "priority_change",
+            metadata: event.metadata,
+            projectId: input.projectId,
             taskId: input.taskId,
         });
     } catch {

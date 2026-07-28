@@ -1,6 +1,10 @@
 import type { TFunction } from "i18next";
 
-import type { Notification } from "@/features/notifications/model/types";
+import type {
+    Notification,
+    PriorityChangeMetadata,
+    StatusChangeMetadata,
+} from "@/features/notifications/model/types";
 
 export function formatNotificationContext(
     notification: Notification,
@@ -17,14 +21,32 @@ export function formatNotificationContext(
         return t("notifications.kinds.assignment");
     }
 
-    const metadata = notification.metadata as {
-        from?: { name?: string };
-        to?: { name?: string };
-    };
+    if (notification.kind === "priority_change") {
+        const metadata = notification.metadata as PriorityChangeMetadata;
+        const from = priorityLabel(metadata.from, t);
+        const to = priorityLabel(metadata.to, t);
+        if (from && to) {
+            return t("notifications.kinds.priorityChangeDetail", { from, to });
+        }
+        return t("notifications.kinds.priorityChange");
+    }
+
+    const metadata = notification.metadata as StatusChangeMetadata;
     const from = metadata.from?.name;
     const to = metadata.to?.name;
     if (from && to) {
         return t("notifications.kinds.statusChangeDetail", { from, to });
     }
     return t("notifications.kinds.statusChange");
+}
+
+function priorityLabel(
+    value: string | undefined,
+    t: TFunction<"common">
+): string | undefined {
+    if (!value) return undefined;
+    const key =
+        `notifications.priority.${value}` as `notifications.priority.${string}`;
+    const label = t(key);
+    return label === key ? value : label;
 }

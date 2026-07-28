@@ -1,3 +1,5 @@
+export { planPriorityWatcherNotification } from "./lib/plan-priority-watcher-notification";
+
 export {
     planTaskNotificationEvents,
     type PlanTaskNotificationInput,

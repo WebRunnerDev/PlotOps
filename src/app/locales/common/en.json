@@ -17,8 +17,17 @@
         "kinds": {
             "assignment": "You were assigned",
             "assignmentDetail": "Assigned to {{name}}",
+            "priorityChange": "Priority changed",
+            "priorityChangeDetail": "{{from}} → {{to}}",
             "statusChange": "Status changed",
             "statusChangeDetail": "{{from}} → {{to}}"
+        },
+        "priority": {
+            "none": "No priority",
+            "urgent": "Urgent",
+            "high": "High",
+            "medium": "Medium",
+            "low": "Low"
         },
         "markAllRead": "Mark all read",
         "next": "Next",
