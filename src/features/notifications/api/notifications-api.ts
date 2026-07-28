@@ -5,6 +5,7 @@ import type {
     AssignmentMetadata,
     AuthorChangeMetadata,
     BoardMoveMetadata,
+    DeadlineChangeMetadata,
     MentionMetadata,
     Notification,
     NotificationKind,
@@ -14,25 +15,8 @@ import type {
     TaskWatcher,
 } from "@/features/notifications/model/types";
 
+import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
 import { supabase } from "@/shared/api/supabase";
-
-/** Watcher kinds only — always-on `assignment` / `mention` use dedicated RPCs. */
-type WatcherNotificationKind = Exclude<
-    NotificationKind,
-    "assignment" | "mention"
->;
-
-const NOTIFICATIONS_SELECT = `
-  id,
-  kind,
-  project_id,
-  task_id,
-  task_key,
-  task_title,
-  created_at,
-  read_at,
-  metadata
-`;
 
 type DatabaseNotificationRow = {
     created_at: string;
@@ -51,6 +35,12 @@ type ProfileRow = {
     id: string;
     username: null | string;
 };
+
+/** Watcher kinds only — always-on `assignment` / `mention` use dedicated RPCs. */
+type WatcherNotificationKind = Exclude<
+    NotificationKind,
+    "assignment" | "mention"
+>;
 
 export async function addTaskWatch(input: {
     projectId: string;
@@ -185,40 +175,37 @@ export async function fetchNotificationsList(input: {
 }): Promise<{
     items: Notification[];
 }> {
-    const userId = await requireUserId();
+    await requireUserId();
     const limit = Math.max(1, input.limit);
-    const from = Math.max(0, input.offset);
-    const to = from + limit - 1;
+    const offset = Math.max(0, input.offset);
+    const q = input.q?.trim() || null;
+    const expansion = q
+        ? expandNotificationSearchQuery(q)
+        : { extraPatterns: [], matchedKinds: [] };
 
-    let query = supabase
-        .from("notifications")
-        .select(NOTIFICATIONS_SELECT)
-        .eq("recipient_id", userId);
-
-    if (input.projectId) {
-        query = query.eq("project_id", input.projectId);
-    }
-
-    const q = input.q?.trim();
-    if (q) {
-        const escaped = escapeIlikePattern(q);
-        query = query.or(
-            `task_key.ilike.%${escaped}%,task_title.ilike.%${escaped}%`
-        );
-    }
-
-    // Unread-first: NULL read_at must sort before timestamps.
-    query = query
-        .order("read_at", { ascending: true, nullsFirst: true })
-        .order("created_at", { ascending: false });
-
-    const { data, error } = await query.range(from, to);
+    const { data, error } = await supabase.rpc(
+        "list_notifications_for_recipient",
+        {
+            p_extra_patterns:
+                expansion.extraPatterns.length > 0
+                    ? expansion.extraPatterns
+                    : null,
+            p_limit: limit,
+            p_matched_kinds:
+                expansion.matchedKinds.length > 0
+                    ? expansion.matchedKinds
+                    : null,
+            p_offset: offset,
+            p_project_id: input.projectId ?? null,
+            p_q: q,
+        }
+    );
     if (error) throw error;
 
+    const rows = (data ?? []) as DatabaseNotificationRow[];
+
     return {
-        items: (data ?? []).map((row) =>
-            mapNotificationRow(row as DatabaseNotificationRow)
-        ),
+        items: rows.map((row) => mapNotificationRow(row)),
     };
 }
 
@@ -324,15 +311,6 @@ export async function removeTaskWatch(input: { taskId: string }) {
     if (error) throw error;
 }
 
-/** Escape `%`, `_`, `\` for ILIKE and strip `,` which breaks PostgREST `.or()`. */
-function escapeIlikePattern(value: string) {
-    return value
-        .replaceAll("\\", "\\\\")
-        .replaceAll("%", String.raw`\%`)
-        .replaceAll("_", String.raw`\_`)
-        .replaceAll(",", " ");
-}
-
 function mapNotificationMetadata(
     kind: NotificationKind,
     metadata: unknown
@@ -353,6 +331,9 @@ function mapNotificationMetadata(
         }
         case "board_move": {
             return metadata as BoardMoveMetadata;
+        }
+        case "deadline_change": {
+            return metadata as DeadlineChangeMetadata;
         }
         case "mention": {
             return metadata as MentionMetadata;
