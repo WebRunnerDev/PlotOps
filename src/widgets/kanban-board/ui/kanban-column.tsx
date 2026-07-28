@@ -182,7 +182,7 @@ export function KanbanColumn({
         <>
             <section
                 className={cn(
-                    "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 border-r border-border px-3 py-1 transition-colors last:border-r-0",
+                    "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 px-3 py-1 transition-colors last:border-r-0",
                     isOver && !isDragging && "bg-primary/5",
                     isDragging && "opacity-40"
                 )}
@@ -234,7 +234,7 @@ export function KanbanColumn({
                         />
                     ) : canManageBoard ? (
                         <button
-                            className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-meta font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-ui font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => setIsEditing(true)}
                             type="button"
                         >
