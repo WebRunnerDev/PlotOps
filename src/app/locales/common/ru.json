@@ -17,6 +17,9 @@
         "kinds": {
             "assignment": "Вас назначили исполнителем",
             "assignmentDetail": "Назначен {{name}}",
+            "boardMove": "Перенесена на другую доску",
+            "boardMoveDetail": "{{fromBoard}} → {{toBoard}}",
+            "boardMoveStatusDetail": "{{fromBoard}} → {{toBoard}} ({{fromStatus}} → {{toStatus}})",
             "priorityChange": "Приоритет изменён",
             "priorityChangeDetail": "{{from}} → {{to}}",
             "statusChange": "Статус изменён",

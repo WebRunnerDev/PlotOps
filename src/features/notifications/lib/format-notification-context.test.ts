@@ -8,6 +8,9 @@ const t = ((key: string, options?: Record<string, string>) => {
     const catalog: Record<string, string> = {
         "notifications.kinds.assignment": "You were assigned",
         "notifications.kinds.assignmentDetail": `Assigned to ${options?.name ?? ""}`,
+        "notifications.kinds.boardMove": "Moved to another Board",
+        "notifications.kinds.boardMoveDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""}`,
+        "notifications.kinds.boardMoveStatusDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""} (${options?.fromStatus ?? ""} → ${options?.toStatus ?? ""})`,
         "notifications.kinds.priorityChange": "Priority changed",
         "notifications.kinds.priorityChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.statusChange": "Status changed",
@@ -73,5 +76,49 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Todo → Doing");
+    });
+
+    it("shows Board from → to with status remap for board_move", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "board_move",
+                    metadata: {
+                        fromBoard: { id: "b1", name: "Core" },
+                        fromStatus: { id: "todo", name: "Todo" },
+                        toBoard: { id: "b2", name: "Frontend" },
+                        toStatus: { id: "backlog", name: "Backlog" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Core → Frontend (Todo → Backlog)");
+    });
+
+    it("falls back to Board names when status remap is absent", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "board_move",
+                    metadata: {
+                        fromBoard: { id: "b1", name: "Core" },
+                        toBoard: { id: "b2", name: "Frontend" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Core → Frontend");
+    });
+
+    it("falls back when board_move metadata is incomplete", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "board_move",
+                    metadata: {},
+                }),
+                t
+            )
+        ).toBe("Moved to another Board");
     });
 });

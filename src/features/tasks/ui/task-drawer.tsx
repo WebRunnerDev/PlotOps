@@ -304,7 +304,8 @@ export function TaskDrawer({
             await moveTaskToOtherBoard(
                 task.id,
                 moveTarget.boardId,
-                moveTarget.columnId
+                moveTarget.columnId,
+                moveToColumnName
             );
             setMoveTarget(null);
             clearSelectedTask();

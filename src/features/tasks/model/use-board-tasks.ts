@@ -24,6 +24,7 @@ import {
     createNotificationsForStatusChange,
     createNotificationsForWatchers,
 } from "@/features/notifications/api/notifications-api";
+import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -261,7 +262,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
         }) => {
             await moveTaskToBoard(taskId, targetBoardId, targetStatus);
 
-            await notifyStatusChangeBestEffort({
+            await notifyBoardMoveBestEffort({
                 activityChanges,
                 projectId,
                 taskId,
@@ -461,7 +462,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
         moveTaskToOtherBoard: async (
             taskId: string,
             targetBoardId: string,
-            targetStatus: TaskStatus
+            targetStatus: TaskStatus,
+            targetStatusName?: string
         ) => {
             const task = tasks.find((item) => item.id === taskId);
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
@@ -492,7 +494,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 },
                 status: {
                     id: targetStatus,
-                    name: targetStatus,
+                    name: targetStatusName ?? targetStatus,
                 },
             };
 
@@ -748,6 +750,26 @@ async function notifyAssignmentChangeBestEffort(input: {
             },
             projectId: input.projectId,
             recipientId: transition.to.id,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyBoardMoveBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const event = planBoardMoveWatcherNotification(input.activityChanges);
+    if (!event) return;
+
+    try {
+        await createNotificationsForWatchers({
+            kind: "board_move",
+            metadata: event.metadata,
+            projectId: input.projectId,
             taskId: input.taskId,
         });
     } catch {

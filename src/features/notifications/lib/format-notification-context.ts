@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 
 import type {
+    BoardMoveMetadata,
     Notification,
     PriorityChangeMetadata,
     StatusChangeMetadata,
@@ -19,6 +20,29 @@ export function formatNotificationContext(
             return t("notifications.kinds.assignmentDetail", { name });
         }
         return t("notifications.kinds.assignment");
+    }
+
+    if (notification.kind === "board_move") {
+        const metadata = notification.metadata as BoardMoveMetadata;
+        const fromBoard = metadata.fromBoard?.name;
+        const toBoard = metadata.toBoard?.name;
+        const fromStatus = metadata.fromStatus?.name;
+        const toStatus = metadata.toStatus?.name;
+        if (fromBoard && toBoard && fromStatus && toStatus) {
+            return t("notifications.kinds.boardMoveStatusDetail", {
+                fromBoard,
+                fromStatus,
+                toBoard,
+                toStatus,
+            });
+        }
+        if (fromBoard && toBoard) {
+            return t("notifications.kinds.boardMoveDetail", {
+                fromBoard,
+                toBoard,
+            });
+        }
+        return t("notifications.kinds.boardMove");
     }
 
     if (notification.kind === "priority_change") {
