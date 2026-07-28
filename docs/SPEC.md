@@ -30,27 +30,59 @@
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
 | App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
 | Notifications (Watch + assignment)                     | ✅ Done (MVP + structural expansion #35–#39)                                                                                                                                           |
+| Mentions (Description + Comment → always-on)           | 🟡 Schema + RPC done (#41); editor/inbox pending (#42–#43)                                                                                                                             |
 
 ## Notifications (MVP → structural expansion)
 
-> Domain glossary: `CONTEXT.md` (Awareness + Priority). Decisions: `docs/adr/0010-notifications-fan-out.md`, `0011-expanded-structural-notifications.md`, `0012-auto-unwatch-without-stake.md`, `0013-board-move-notification-coalesce.md`.
+> Domain glossary: `CONTEXT.md` (Awareness + Priority). Decisions: `docs/adr/0010-notifications-fan-out.md`, `0011-expanded-structural-notifications.md`, `0012-auto-unwatch-without-stake.md`, `0013-board-move-notification-coalesce.md`. Mentions: ADR 0014 (section below).
 
 ### Model
 
 - **Watch** is a per-Task personal subscription for a **curated set of structural** Task events (not every Activity).
     - Watcher kinds: **status change**, **Board move**, **Priority change**, **Assignee set/reassign**, **Author change**.
-    - Not Watcher kinds: clear Assignee, title/description, Labels, Sprint membership, git fields, archive/restore, comments. **Mentions** deferred.
+    - Not Watcher kinds: clear Assignee, title/description, Labels, Sprint membership, git fields, archive/restore, comments. Mentions are **not** Watcher kinds (always-on — see Mentions).
     - `Author` is auto-enrolled as Watcher on create and when set via transfer; may Unwatch.
     - `Assignee` is auto-enrolled as Watcher when set; may Unwatch.
+    - Mentionees are **not** auto-enrolled as Watchers.
     - **Auto-Unwatch (ADR 0012):** after Author transfer or Assignee clear/reassign, remove that user's Watch only if they are **neither** Author **nor** Assignee. Manual Watchers without those roles keep Watch.
 - **Notification** is an in-app inbox row addressed to one user about a Task event.
-    - **Always-on:** assignment → new Assignee; Author transfer → new Author (independent of Watch).
+    - **Always-on:** assignment → new Assignee; Author transfer → new Author; **Mention → Mentionee** (independent of Watch).
     - **Watchers** also get person-field kinds; **one row per recipient per change** if always-on and Watcher would both apply (dedupe).
     - **Board move (ADR 0013):** one `board_move` Notification including remapped status — no separate `status_change` for that remap. Same-Board column move → `status_change` only.
     - **Multi-field save:** one Notification **per changed kind** (not one summary row).
 - **Self-notify is excluded**: never create Notifications for the actor of the change.
     - For GitHub webhook (automated, `user_id=null`), notify all Watchers of status change as today.
 - **Free-tier posture (ADR 0011):** keep fan-out + Realtime; control volume via curated kinds, coalesce, dedupe, retention — no mute-per-kind or digest in this expansion.
+
+## Mentions (Description + Comment)
+
+> Domain glossary: `CONTEXT.md` (Mention, Mentionee, Notification, Watch). Decision: `docs/adr/0014-mentions-always-on-structured.md`.
+
+### Model
+
+- **Mention** is a structured rich-text reference to a single Project Owner or Member (including Viewer), keyed by user id — inside Task **Description** or **Comment**.
+- Free-text `@Name` without a structured node is **not** a Mention. Group Mentions (`@everyone`, whole Roles) are out of scope.
+- **Always-on Notification** kind `mention` to each newly added Mentionee on create/edit (diff vs previous body). Unchanged Mentionees are not re-notified. Same Mentionee twice in one save → one row. Actor (including self-Mention) is never notified.
+- Does **not** auto-enroll Watch. Does **not** make plain Comments a Notification kind.
+- Mentionee who left the Project: body may keep a stale Mention for display; further edits must **not** notify until they are Owner/Member again; existing inbox rows are not purged.
+- Opening a `mention` Notification opens the Task; Comment Mentions also target that Comment (`commentId` in metadata). Metadata includes `source: "description" | "comment"`, actor, and optional `commentId`.
+
+### Fan-out
+
+- App extracts Mentionee ids from the saved body, computes new-only vs previous body, calls an RPC.
+- RPC validates each Mentionee is a current Project Owner or Member, excludes the actor, inserts fan-out rows. No Postgres HTML-parse trigger.
+
+### UI
+
+- `@` suggestion picker in Description and Comment editors: current Project Owner + Members only.
+- Stale Mentions render without resolving to a current Member (label snapshot / unknown).
+- Inbox + bell: kind-specific copy for `mention`; search expansion includes mention terms (en/ru) like other kinds.
+
+### Implementation plan
+
+1. **Schema + RPC** — widen `notifications.kind` with `mention`; RPC for always-on mention fan-out (validate membership, exclude actor, accept mentionee id set + source metadata). (#41)
+2. **Editor + extract** — TipTap Mention node + `@` picker; pure helpers to extract Mentionee ids and compute new-only delta; wire Description + Comment save → RPC. (#42)
+3. **Inbox + deep link** — format/i18n/search for `mention`; open Task from Notification; Comment Mentions scroll/highlight that Comment. (#43)
 
 ### Storage + fan-out
 
@@ -139,7 +171,9 @@ MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app +
 | Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                                                           |
 | Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                                                                |
 | In-app PR merge / approve / open PR      | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
-| Notification @mentions / comment events  | Structural Notification expansion closed without comments; mentions later as their own model.                                          |
+| Group Mentions (`@everyone` / Roles)     | Mentions MVP is single-user only (ADR 0014).                                                                                           |
+| Auto-Watch on Mention                    | Rejected in grilling — Mentionee is not auto-enrolled (ADR 0014).                                                                      |
+| Comment events without Mention           | Plain Comments stay out of Notifications; only Mentions fan out.                                                                       |
 
 ### Ideas to revisit (Command Palette)
 

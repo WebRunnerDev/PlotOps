@@ -21,6 +21,21 @@ export type BoardMoveMetadata = {
     toStatus?: null | { id: string; name: string };
 };
 
+export type DeadlineChangeMetadata = {
+    from: null | string;
+    source?: "app" | "github_webhook";
+    to: null | string;
+};
+
+/** Always-on Mention — source is Description vs Comment (not app/webhook). */
+export type MentionMetadata = {
+    actor: { id: string; name: string };
+    commentId?: string;
+    source: MentionSource;
+};
+
+export type MentionSource = "comment" | "description";
+
 export type Notification = {
     createdAt: string;
     id: string;
@@ -33,12 +48,14 @@ export type Notification = {
     taskTitle: string;
 };
 
-/** Closed structural set — do not invent kinds beyond this list. Mentions out of scope. */
+/** Closed structural set — do not invent kinds beyond this list. */
 export type NotificationKind =
     | "assignee_change"
     | "assignment"
     | "author_change"
     | "board_move"
+    | "deadline_change"
+    | "mention"
     | "priority_change"
     | "status_change";
 
@@ -47,6 +64,8 @@ export type NotificationMetadata =
     | AssignmentMetadata
     | AuthorChangeMetadata
     | BoardMoveMetadata
+    | DeadlineChangeMetadata
+    | MentionMetadata
     | PriorityChangeMetadata
     | Record<string, unknown>
     | StatusChangeMetadata;

@@ -1,9 +1,11 @@
+import type { MentionFanOutRequest } from "@/features/notifications/lib/build-mention-fan-out-request";
 import type { TaskNotificationEvent } from "@/features/notifications/lib/plan-task-notification-events";
 import type {
     AssigneeChangeMetadata,
     AssignmentMetadata,
     AuthorChangeMetadata,
     BoardMoveMetadata,
+    MentionMetadata,
     Notification,
     NotificationKind,
     NotificationMetadata,
@@ -13,6 +15,12 @@ import type {
 } from "@/features/notifications/model/types";
 
 import { supabase } from "@/shared/api/supabase";
+
+/** Watcher kinds only — always-on `assignment` / `mention` use dedicated RPCs. */
+type WatcherNotificationKind = Exclude<
+    NotificationKind,
+    "assignment" | "mention"
+>;
 
 const NOTIFICATIONS_SELECT = `
   id,
@@ -103,6 +111,19 @@ export async function createNotificationsForAuthorChange(input: {
     if (error) throw error;
 }
 
+export async function createNotificationsForMentions(
+    input: MentionFanOutRequest
+) {
+    const { error } = await supabase.rpc("create_notifications_for_mentions", {
+        p_actor_name: input.actorName,
+        p_comment_id: input.commentId,
+        p_mentionee_ids: input.mentioneeIds,
+        p_source: input.source,
+        p_task_id: input.taskId,
+    });
+    if (error) throw error;
+}
+
 export async function createNotificationsForStatusChange(input: {
     metadata: NotificationMetadata;
     projectId: string;
@@ -121,7 +142,7 @@ export async function createNotificationsForStatusChange(input: {
 
 export async function createNotificationsForWatchers(input: {
     excludeRecipientIds?: string[];
-    kind: Exclude<NotificationKind, "assignment">;
+    kind: WatcherNotificationKind;
     metadata: NotificationMetadata;
     projectId: string;
     taskId: string;
@@ -332,6 +353,9 @@ function mapNotificationMetadata(
         }
         case "board_move": {
             return metadata as BoardMoveMetadata;
+        }
+        case "mention": {
+            return metadata as MentionMetadata;
         }
         case "priority_change": {
             return metadata as PriorityChangeMetadata;
