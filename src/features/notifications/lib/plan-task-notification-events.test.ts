@@ -133,6 +133,10 @@ describe("planTaskNotificationEvents", () => {
                 from: { id: "u2", name: "Alex" },
                 to: { id: "u4", name: "Jordan" },
             },
+            author: {
+                from: { id: "u1", name: "Sam" },
+                to: { id: "u3", name: "Riley" },
+            },
             priority: { from: "low", to: "high" },
             status: {
                 from: { id: "todo", name: "Todo" },
@@ -145,6 +149,8 @@ describe("planTaskNotificationEvents", () => {
             "priority_change",
             "assignment",
             "assignee_change",
+            "author_change",
+            "author_change",
         ]);
     });
 });

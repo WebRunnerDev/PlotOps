@@ -11,6 +11,9 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.assigneeChangeFromDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.assignment": "You were assigned",
         "notifications.kinds.assignmentDetail": `Assigned to ${options?.name ?? ""}`,
+        "notifications.kinds.authorChange": "Author changed",
+        "notifications.kinds.authorChangeDetail": `Author → ${options?.name ?? ""}`,
+        "notifications.kinds.authorChangeFromDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.boardMove": "Moved to another Board",
         "notifications.kinds.boardMoveDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""}`,
         "notifications.kinds.boardMoveStatusDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""} (${options?.fromStatus ?? ""} → ${options?.toStatus ?? ""})`,
@@ -95,6 +98,47 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Assignee changed");
+    });
+
+    it("shows author_change from → to for Author transfer", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "author_change",
+                    metadata: {
+                        author: { id: "u3", name: "Riley" },
+                        previousAuthor: { id: "u1", name: "Sam" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Sam → Riley");
+    });
+
+    it("shows author_change set with new Author name only", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "author_change",
+                    metadata: {
+                        author: { id: "u3", name: "Riley" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Author → Riley");
+    });
+
+    it("falls back when author_change metadata is incomplete", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "author_change",
+                    metadata: {},
+                }),
+                t
+            )
+        ).toBe("Author changed");
     });
 
     it("shows Priority from → to labels for priority_change", () => {

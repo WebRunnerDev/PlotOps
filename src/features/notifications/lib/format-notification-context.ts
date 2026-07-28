@@ -3,6 +3,7 @@ import type { TFunction } from "i18next";
 import type {
     AssigneeChangeMetadata,
     AssignmentMetadata,
+    AuthorChangeMetadata,
     BoardMoveMetadata,
     Notification,
     PriorityChangeMetadata,
@@ -36,6 +37,22 @@ export function formatNotificationContext(
             return t("notifications.kinds.assigneeChangeDetail", { name: to });
         }
         return t("notifications.kinds.assigneeChange");
+    }
+
+    if (notification.kind === "author_change") {
+        const metadata = notification.metadata as AuthorChangeMetadata;
+        const to = metadata.author?.name;
+        const from = metadata.previousAuthor?.name;
+        if (from && to) {
+            return t("notifications.kinds.authorChangeFromDetail", {
+                from,
+                to,
+            });
+        }
+        if (to) {
+            return t("notifications.kinds.authorChangeDetail", { name: to });
+        }
+        return t("notifications.kinds.authorChange");
     }
 
     if (notification.kind === "board_move") {
