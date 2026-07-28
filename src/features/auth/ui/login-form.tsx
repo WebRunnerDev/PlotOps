@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -7,6 +7,7 @@ import {
     signInWithGitHub,
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
+import { useAuth } from "@/features/auth/model/use-auth";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -22,12 +23,34 @@ import { Separator } from "@/shared/shadcn/ui/separator";
 
 export function LoginForm() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { t } = useTranslation("auth");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<null | string>(null);
     const [isGitHubLoading, setIsGitHubLoading] = useState(false);
     const [isEmailLoading, setIsEmailLoading] = useState(false);
+    // Wait for AuthProvider + router context before navigating — otherwise
+    // /home beforeLoad still sees user=null and bounces back to /sign-in.
+    const [awaitingRedirect, setAwaitingRedirect] = useState(false);
+
+    useEffect(() => {
+        if (!awaitingRedirect || !user) return;
+
+        const pendingInvite = globalThis.sessionStorage.getItem(
+            "plotops_pending_invite"
+        );
+        if (pendingInvite) {
+            globalThis.sessionStorage.removeItem("plotops_pending_invite");
+            void navigate({
+                params: { token: pendingInvite },
+                to: "/invite/$token",
+            });
+            return;
+        }
+
+        void navigate({ to: "/home" });
+    }, [awaitingRedirect, navigate, user]);
 
     const handleGitHubLogin = async () => {
         setError(null);
@@ -49,25 +72,13 @@ export function LoginForm() {
             password,
         });
 
-        setIsEmailLoading(false);
-
         if (authError) {
+            setIsEmailLoading(false);
             setError(t(getAuthErrorKey(authError)));
             return;
         }
 
-        const pendingInvite =
-            globalThis.sessionStorage.getItem("plotops_pending_invite");
-        if (pendingInvite) {
-            globalThis.sessionStorage.removeItem("plotops_pending_invite");
-            navigate({
-                params: { token: pendingInvite },
-                to: "/invite/$token",
-            });
-            return;
-        }
-
-        navigate({ to: "/home" });
+        setAwaitingRedirect(true);
     };
 
     return (
@@ -91,7 +102,9 @@ export function LoginForm() {
                     type="button"
                     variant="outline"
                 >
-                    {isGitHubLoading ? t("githubRedirecting") : t("githubSignIn")}
+                    {isGitHubLoading
+                        ? t("githubRedirecting")
+                        : t("githubSignIn")}
                 </Button>
 
                 <div className="flex items-center gap-3">
@@ -102,7 +115,10 @@ export function LoginForm() {
                     <Separator className="flex-1" />
                 </div>
 
-                <form className="flex flex-col gap-4" onSubmit={handleEmailLogin}>
+                <form
+                    className="flex flex-col gap-4"
+                    onSubmit={handleEmailLogin}
+                >
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="email">{t("email")}</Label>
                         <Input
@@ -142,7 +158,10 @@ export function LoginForm() {
 
                 <p className="text-center text-meta text-muted-foreground">
                     {t("links.noAccount")}{" "}
-                    <Link className="underline underline-offset-2" to="/sign-up">
+                    <Link
+                        className="underline underline-offset-2"
+                        to="/sign-up"
+                    >
                         {t("links.signUp")}
                     </Link>
                 </p>
