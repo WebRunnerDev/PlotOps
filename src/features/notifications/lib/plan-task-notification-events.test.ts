@@ -62,6 +62,19 @@ describe("planTaskNotificationEvents", () => {
         ]);
     });
 
+    it("fans out deadline_change to Watchers", () => {
+        expect(
+            planTaskNotificationEvents({
+                deadline: { from: "2026-07-28", to: "2026-07-30" },
+            })
+        ).toEqual([
+            {
+                kind: "deadline_change",
+                metadata: { from: "2026-07-28", to: "2026-07-30" },
+            },
+        ]);
+    });
+
     it("emits always-on assignment plus Watcher assignee_change when Assignee is set", () => {
         expect(
             planTaskNotificationEvents({
@@ -137,6 +150,7 @@ describe("planTaskNotificationEvents", () => {
                 from: { id: "u1", name: "Sam" },
                 to: { id: "u3", name: "Riley" },
             },
+            deadline: { from: "2026-07-28", to: "2026-07-30" },
             priority: { from: "low", to: "high" },
             status: {
                 from: { id: "todo", name: "Todo" },
@@ -147,6 +161,7 @@ describe("planTaskNotificationEvents", () => {
         expect(events.map((event) => event.kind)).toEqual([
             "status_change",
             "priority_change",
+            "deadline_change",
             "assignment",
             "assignee_change",
             "author_change",

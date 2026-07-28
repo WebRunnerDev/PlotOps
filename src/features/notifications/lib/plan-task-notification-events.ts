@@ -20,6 +20,10 @@ export type PlanTaskNotificationInput = {
         toBoard: NamedReference;
         toStatus?: NamedReference;
     };
+    deadline?: {
+        from: null | string;
+        to: null | string;
+    };
     priority?: {
         from: string;
         to: string;
@@ -74,6 +78,16 @@ export function planTaskNotificationEvents(
             metadata: {
                 from: input.priority.from,
                 to: input.priority.to,
+            },
+        });
+    }
+
+    if (input.deadline && input.deadline.from !== input.deadline.to) {
+        events.push({
+            kind: "deadline_change",
+            metadata: {
+                from: input.deadline.from,
+                to: input.deadline.to,
             },
         });
     }
