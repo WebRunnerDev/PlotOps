@@ -20,10 +20,11 @@ import type {
 import { boardKeys } from "@/features/boards";
 import { resolveLabelNames } from "@/features/labels";
 import {
-    createNotificationsForAssignmentChange,
     createNotificationsForStatusChange,
     createNotificationsForWatchers,
+    createTaskNotifications,
 } from "@/features/notifications/api/notifications-api";
+import { planAssigneeChangeNotifications } from "@/features/notifications/lib/plan-assignee-change-notifications";
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
@@ -647,20 +648,6 @@ function applyTaskUpdates(
     };
 }
 
-function extractAssigneeTransition(
-    activityChanges: TaskActivityChange[]
-): null | {
-    from: IdNameSnapshot | null;
-    to: IdNameSnapshot | null;
-} {
-    const change = activityChanges.find((entry) => entry.field === "assignee");
-    if (!change) return null;
-
-    const from = isIdNameSnapshot(change.from) ? change.from : null;
-    const to = isIdNameSnapshot(change.to) ? change.to : null;
-    return { from, to };
-}
-
 function extractStatusTransition(
     activityChanges: TaskActivityChange[]
 ): null | { from: IdNameSnapshot; to: IdNameSnapshot } {
@@ -738,18 +725,13 @@ async function notifyAssignmentChangeBestEffort(input: {
     projectId: string;
     taskId: string;
 }) {
-    const transition = extractAssigneeTransition(input.activityChanges);
-    if (!transition?.to) return;
+    const events = planAssigneeChangeNotifications(input.activityChanges);
+    if (events.length === 0) return;
 
     try {
-        await createNotificationsForAssignmentChange({
-            metadata: {
-                assignee: transition.to,
-                previousAssignee: transition.from,
-                source: "app",
-            },
+        await createTaskNotifications({
+            events,
             projectId: input.projectId,
-            recipientId: transition.to.id,
             taskId: input.taskId,
         });
     } catch {

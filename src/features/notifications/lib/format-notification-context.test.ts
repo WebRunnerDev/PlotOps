@@ -6,6 +6,9 @@ import { formatNotificationContext } from "./format-notification-context";
 
 const t = ((key: string, options?: Record<string, string>) => {
     const catalog: Record<string, string> = {
+        "notifications.kinds.assigneeChange": "Assignee changed",
+        "notifications.kinds.assigneeChangeDetail": `Assignee → ${options?.name ?? ""}`,
+        "notifications.kinds.assigneeChangeFromDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.assignment": "You were assigned",
         "notifications.kinds.assignmentDetail": `Assigned to ${options?.name ?? ""}`,
         "notifications.kinds.boardMove": "Moved to another Board",
@@ -39,6 +42,61 @@ function notification(
 }
 
 describe("formatNotificationContext", () => {
+    it("shows always-on assignment as You were assigned with name", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignment",
+                    metadata: {
+                        assignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Assigned to Alex");
+    });
+
+    it("shows Watcher assignee_change from → to without assignment copy", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: { id: "u4", name: "Jordan" },
+                        previousAssignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Alex → Jordan");
+    });
+
+    it("shows Watcher assignee_change set with new Assignee name only", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Assignee → Alex");
+    });
+
+    it("falls back when assignee_change metadata is incomplete", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {},
+                }),
+                t
+            )
+        ).toBe("Assignee changed");
+    });
+
     it("shows Priority from → to labels for priority_change", () => {
         expect(
             formatNotificationContext(

@@ -29,7 +29,7 @@
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
 | App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
-| Notifications (Watch + assignment)                     | 🟡 In progress (MVP shipped; #35–#37 done; Assignee/Author #38–#39)                                                                                                                    |
+| Notifications (Watch + assignment)                     | 🟡 In progress (MVP shipped; #35–#38 done; Author #39)                                                                                                                                 |
 
 ## Notifications (MVP → structural expansion)
 
@@ -80,7 +80,7 @@
 1. **Schema + RPC primitives** — widen `notifications.kind`; Watcher fan-out by kind; Author always-on helper; auto-Unwatch when neither Author nor Assignee; prefer one round-trip that can insert multiple kinds for one Task save. ✅ (#35)
 2. **Priority** — fan-out on Priority change to Watchers; inbox formatting + i18n. ✅ (#36)
 3. **Board move** — fan-out `board_move` (coalesce status); stop double `status_change` on cross-Board moves; inbox formatting + i18n. ✅ (#37)
-4. **Assignee** — Watchers get set/reassign; keep always-on to new Assignee with dedupe; auto-Unwatch previous when no remaining stake.
+4. **Assignee** — Watchers get set/reassign; keep always-on to new Assignee with dedupe; auto-Unwatch previous when no remaining stake. ✅ (#38)
 5. **Author** — always-on to new Author + Watchers; auto-enroll Watch on new Author; auto-Unwatch previous when no remaining stake; inbox formatting + i18n.
 
 MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app + webhook fan-out paths, bell + `/notifications`, Watchers list.

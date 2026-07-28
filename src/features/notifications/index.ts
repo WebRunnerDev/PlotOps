@@ -1,3 +1,4 @@
+export { planAssigneeChangeNotifications } from "./lib/plan-assignee-change-notifications";
 export { planBoardMoveWatcherNotification } from "./lib/plan-board-move-watcher-notification";
 export { planPriorityWatcherNotification } from "./lib/plan-priority-watcher-notification";
 

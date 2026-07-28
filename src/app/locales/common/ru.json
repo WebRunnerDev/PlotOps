@@ -15,6 +15,9 @@
     "notifications": {
         "allProjects": "Все проекты",
         "kinds": {
+            "assigneeChange": "Исполнитель изменён",
+            "assigneeChangeDetail": "Исполнитель → {{name}}",
+            "assigneeChangeFromDetail": "{{from}} → {{to}}",
             "assignment": "Вас назначили исполнителем",
             "assignmentDetail": "Назначен {{name}}",
             "boardMove": "Перенесена на другую доску",

@@ -1,6 +1,8 @@
 import type { TFunction } from "i18next";
 
 import type {
+    AssigneeChangeMetadata,
+    AssignmentMetadata,
     BoardMoveMetadata,
     Notification,
     PriorityChangeMetadata,
@@ -12,14 +14,28 @@ export function formatNotificationContext(
     t: TFunction<"common">
 ): string {
     if (notification.kind === "assignment") {
-        const metadata = notification.metadata as {
-            assignee?: { name?: string };
-        };
+        const metadata = notification.metadata as AssignmentMetadata;
         const name = metadata.assignee?.name;
         if (name) {
             return t("notifications.kinds.assignmentDetail", { name });
         }
         return t("notifications.kinds.assignment");
+    }
+
+    if (notification.kind === "assignee_change") {
+        const metadata = notification.metadata as AssigneeChangeMetadata;
+        const to = metadata.assignee?.name;
+        const from = metadata.previousAssignee?.name;
+        if (from && to) {
+            return t("notifications.kinds.assigneeChangeFromDetail", {
+                from,
+                to,
+            });
+        }
+        if (to) {
+            return t("notifications.kinds.assigneeChangeDetail", { name: to });
+        }
+        return t("notifications.kinds.assigneeChange");
     }
 
     if (notification.kind === "board_move") {

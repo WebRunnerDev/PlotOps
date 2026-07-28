@@ -15,6 +15,9 @@
     "notifications": {
         "allProjects": "All projects",
         "kinds": {
+            "assigneeChange": "Assignee changed",
+            "assigneeChangeDetail": "Assignee → {{name}}",
+            "assigneeChangeFromDetail": "{{from}} → {{to}}",
             "assignment": "You were assigned",
             "assignmentDetail": "Assigned to {{name}}",
             "boardMove": "Moved to another Board",
