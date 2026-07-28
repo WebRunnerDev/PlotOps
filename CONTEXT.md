@@ -26,6 +26,10 @@ _Avoid_: branch filter, branch whitelist (implies hard deny)
 A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
 
+**Priority**:
+How urgently a Task should be handled relative to others: urgent, high, medium, or low. Default on create is medium. Distinct from Board column status.
+_Avoid_: severity (not used), importance (vague)
+
 **Label**:
 A Project-scoped tag attachable to any Task in the Project, regardless of Board. Not owned by a Board.
 _Avoid_: Board label, tag (prefer Label)
@@ -93,15 +97,15 @@ _Avoid_: Invitation email (delivery is out-of-band), magic link (Auth magic link
 ### Awareness
 
 **Author**:
-The user who created the Task (`author_id`). Auto-enrolled as a Watcher on create; may Unwatch.
+The user who created the Task (`author_id`), or who currently holds that field after a transfer. Auto-enrolled as a Watcher when set; may Unwatch. When Author is transferred away, if that user is not also the Assignee, their Watch is removed automatically.
 _Avoid_: reporter, creator (UI copy may say “created by”; the domain term is Author)
 
 **Assignee**:
-The user currently responsible for executing the Task (`assignee_id`), if any. Distinct from the Contributor Role — Contributors may edit any Task; Assignee is an optional person field. Auto-enrolled as a Watcher when set; may Unwatch. Reassignment does not remove the previous Assignee's Watch. Clearing the Assignee (no replacement) creates no Notification and does not remove that user's Watch.
+The user currently responsible for executing the Task (`assignee_id`), if any. Distinct from the Contributor Role — Contributors may edit any Task; Assignee is an optional person field. Auto-enrolled as a Watcher when set; may Unwatch. Reassignment or clearing the Assignee removes that user's Watch only if they are not also the Author. Clearing the Assignee (no replacement) creates no Notification.
 _Avoid_: executor, owner (Owner is the Project Owner), responsible (too vague)
 
 **Watch**:
-A personal subscription by a user to a Task so they receive Notifications when that Task's status changes. Author and Assignee are auto-enrolled; any Project Owner or Member who can view the Task (including Viewer) may Watch or Unwatch. Only that user may add or remove their own Watch — others cannot Unwatch them. Watch is independent of the always-on assignment Notification. Watchers on a Task may be shown as a list (e.g. avatars) for awareness. When the user leaves or is removed from the Project, their Watches on that Project's Tasks are deleted.
+A personal subscription by a user to a Task so they receive Notifications for a curated set of structural Task events (not every Activity — e.g. not description, Labels, Sprint membership, or git field edits). Author and Assignee are auto-enrolled; any Project Owner or Member who can view the Task (including Viewer) may Watch or Unwatch. Only that user may add or remove their own Watch — others cannot Unwatch them. Losing both Author and Assignee roles on a Task auto-removes that user's Watch; a Watcher who was never Author or Assignee keeps their Watch until they Unwatch or leave the Project. Watch is independent of always-on person-field Notifications (e.g. assignment). Watchers on a Task may be shown as a list (e.g. avatars) for awareness. When the user leaves or is removed from the Project, their Watches on that Project's Tasks are deleted.
 _Avoid_: follow, subscribe, favorite, activity (Activity is the Task drawer feed from `activity_log`)
 
 **Watcher**:
@@ -109,5 +113,5 @@ A user who has a Watch on a Task.
 _Avoid_: subscriber, follower
 
 **Notification**:
-An in-app inbox item addressed to one user about a Task event. MVP kinds: status change (delivered to Watchers) and assignment (delivered to the new Assignee). Never created for the actor of the change. Clearing Assignee creates none. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Project does not delete existing Notification rows for that Project; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
+An in-app inbox item addressed to one user about a Task event. Watcher kinds: status change, Board move, priority change, Assignee set/reassign, Author change. Always-on kinds (independent of Watch): assignment to the new Assignee and Author transfer to the new Author. On person-field changes, Watchers also receive the corresponding Watcher kind; a recipient who would get both always-on and Watcher delivery for the same change gets a single Notification row. A Board move that also remaps status produces one `board_move` Notification (status included in context), not a separate `status_change`. A single Task save that changes several structural fields produces one Notification per changed kind (not one summary row). Never created for the actor of the change. Clearing Assignee creates none. Watcher kinds are not created for description, title, Labels, Sprint membership, git fields, or archive/restore. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Project does not delete existing Notification rows for that Project; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
 _Avoid_: alert, toast (transient UI only), activity event

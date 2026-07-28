@@ -29,22 +29,28 @@
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
 | App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
-| Notifications (Watch + assignment)                     | 🟡 In progress (schema+RPC+fan-out paths+UI bell/page/watchers; retention cleanup on open)                                                                                             |
+| Notifications (Watch + assignment)                     | 🟡 In progress (MVP shipped; #35 schema+RPC primitives for expanded kinds + auto-Unwatch; UI/call sites #36–#39)                                                                       |
 
-## Notifications (MVP)
+## Notifications (MVP → structural expansion)
 
-> Domain glossary: `CONTEXT.md`. Decision: `docs/adr/0010-notifications-fan-out.md`.
+> Domain glossary: `CONTEXT.md` (Awareness + Priority). Decisions: `docs/adr/0010-notifications-fan-out.md`, `0011-expanded-structural-notifications.md`, `0012-auto-unwatch-without-stake.md`, `0013-board-move-notification-coalesce.md`.
 
 ### Model
 
-- **Watch** is a per-Task personal subscription controlling **status change** notifications.
-    - `Author` (creator) is auto-enrolled as Watcher on Task create.
-    - `Assignee` is auto-enrolled as Watcher when set; reassignment only adds the new Assignee as Watcher (previous Watchers keep watching until they Unwatch).
+- **Watch** is a per-Task personal subscription for a **curated set of structural** Task events (not every Activity).
+    - Watcher kinds: **status change**, **Board move**, **Priority change**, **Assignee set/reassign**, **Author change**.
+    - Not Watcher kinds: clear Assignee, title/description, Labels, Sprint membership, git fields, archive/restore, comments. **Mentions** deferred.
+    - `Author` is auto-enrolled as Watcher on create and when set via transfer; may Unwatch.
+    - `Assignee` is auto-enrolled as Watcher when set; may Unwatch.
+    - **Auto-Unwatch (ADR 0012):** after Author transfer or Assignee clear/reassign, remove that user's Watch only if they are **neither** Author **nor** Assignee. Manual Watchers without those roles keep Watch.
 - **Notification** is an in-app inbox row addressed to one user about a Task event.
-    - **status change**: delivered to Watchers only.
-    - **assignment**: delivered to the new Assignee (always-on, independent of Watch).
-- **Self-notify is excluded**: we never create Notifications for the actor of the change.
-    - For GitHub webhook (automated, `user_id=null`), this means we notify all Watchers.
+    - **Always-on:** assignment → new Assignee; Author transfer → new Author (independent of Watch).
+    - **Watchers** also get person-field kinds; **one row per recipient per change** if always-on and Watcher would both apply (dedupe).
+    - **Board move (ADR 0013):** one `board_move` Notification including remapped status — no separate `status_change` for that remap. Same-Board column move → `status_change` only.
+    - **Multi-field save:** one Notification **per changed kind** (not one summary row).
+- **Self-notify is excluded**: never create Notifications for the actor of the change.
+    - For GitHub webhook (automated, `user_id=null`), notify all Watchers of status change as today.
+- **Free-tier posture (ADR 0011):** keep fan-out + Realtime; control volume via curated kinds, coalesce, dedupe, retention — no mute-per-kind or digest in this expansion.
 
 ### Storage + fan-out
 
@@ -63,28 +69,21 @@
     - Global inbox with optional Project filter.
     - Search `q` by Task key/title (and show kind-specific context).
     - Pagination via query params (`limit` + `offset`).
+- Kind-specific context copy must cover all Watcher + always-on kinds above.
 
 ### Realtime
 
 - Subscribe (Realtime) to `notifications` changes for the current user (`recipient_id = auth.uid()`), primarily to refresh unread badge + drawer contents.
 
-### Implementation plan
+### Implementation plan (structural expansion)
 
-1. **Schema + RLS + RPC** — create `task_watchers`, `notifications`, RLS policies, and server-safe RPCs:
-    - `create_notifications_for_status_change(...)`
-    - `create_notifications_for_assignment_change(...)`
-    - `mark_notifications_read(...)` (or mark-all variants)
-    - `cleanup_notifications_for_user()`
-2. **App fan-out** — call RPCs from the same write paths that already create `activity_log` for curated mutations (status + assignee):
-    - status mutations (drawer, DnD, board move)
-    - assignee mutations (Task drawer)
-3. **Webhook fan-out** — update `github-webhook` Edge Function so GitHub PR merged → last column status sync also triggers status-change notifications.
-4. **Frontend** — add `src/features/notifications` with:
-    - list query (global + project filter + search + pagination)
-    - unread count + realtime badge
-    - mark-read actions
-    - UI: bell drawer preview + `/notifications` page
-    - Task drawer Watchers list (avatar list + self watch/unwatch controls).
+1. **Schema + RPC primitives** — widen `notifications.kind`; Watcher fan-out by kind; Author always-on helper; auto-Unwatch when neither Author nor Assignee; prefer one round-trip that can insert multiple kinds for one Task save. ✅ (#35)
+2. **Priority** — fan-out on Priority change to Watchers; inbox formatting + i18n.
+3. **Board move** — fan-out `board_move` (coalesce status); stop double `status_change` on cross-Board moves; inbox formatting + i18n.
+4. **Assignee** — Watchers get set/reassign; keep always-on to new Assignee with dedupe; auto-Unwatch previous when no remaining stake.
+5. **Author** — always-on to new Author + Watchers; auto-enroll Watch on new Author; auto-Unwatch previous when no remaining stake; inbox formatting + i18n.
+
+MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app + webhook fan-out paths, bell + `/notifications`, Watchers list.
 
 ## Sprints (MVP)
 
@@ -140,6 +139,7 @@
 | Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                                                           |
 | Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                                                                |
 | In-app PR merge / approve / open PR      | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
+| Notification @mentions / comment events  | Structural Notification expansion closed without comments; mentions later as their own model.                                          |
 
 ### Ideas to revisit (Command Palette)
 

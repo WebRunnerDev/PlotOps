@@ -1,8 +1,13 @@
+import type { TaskNotificationEvent } from "@/features/notifications/lib/plan-task-notification-events";
 import type {
+    AssigneeChangeMetadata,
     AssignmentMetadata,
+    AuthorChangeMetadata,
+    BoardMoveMetadata,
     Notification,
     NotificationKind,
     NotificationMetadata,
+    PriorityChangeMetadata,
     StatusChangeMetadata,
     TaskWatcher,
 } from "@/features/notifications/model/types";
@@ -80,6 +85,24 @@ export async function createNotificationsForAssignmentChange(input: {
     if (error) throw error;
 }
 
+export async function createNotificationsForAuthorChange(input: {
+    metadata: NotificationMetadata;
+    projectId: string;
+    recipientId: string;
+    taskId: string;
+}) {
+    const { error } = await supabase.rpc(
+        "create_notifications_for_author_change",
+        {
+            p_metadata: input.metadata,
+            p_project_id: input.projectId,
+            p_recipient_id: input.recipientId,
+            p_task_id: input.taskId,
+        }
+    );
+    if (error) throw error;
+}
+
 export async function createNotificationsForStatusChange(input: {
     metadata: NotificationMetadata;
     projectId: string;
@@ -93,6 +116,43 @@ export async function createNotificationsForStatusChange(input: {
             p_task_id: input.taskId,
         }
     );
+    if (error) throw error;
+}
+
+export async function createNotificationsForWatchers(input: {
+    excludeRecipientIds?: string[];
+    kind: Exclude<NotificationKind, "assignment">;
+    metadata: NotificationMetadata;
+    projectId: string;
+    taskId: string;
+}) {
+    const { error } = await supabase.rpc("create_notifications_for_watchers", {
+        p_exclude_recipient_ids: input.excludeRecipientIds ?? [],
+        p_kind: input.kind,
+        p_metadata: input.metadata,
+        p_project_id: input.projectId,
+        p_task_id: input.taskId,
+    });
+    if (error) throw error;
+}
+
+/** One round-trip multi-kind fan-out (always-on + Watcher dedupe in SQL). */
+export async function createTaskNotifications(input: {
+    events: TaskNotificationEvent[];
+    projectId: string;
+    taskId: string;
+}) {
+    if (input.events.length === 0) return;
+
+    const { error } = await supabase.rpc("create_task_notifications", {
+        p_events: input.events.map((event) => ({
+            kind: event.kind,
+            metadata: event.metadata,
+            ...(event.recipientId ? { recipient_id: event.recipientId } : {}),
+        })),
+        p_project_id: input.projectId,
+        p_task_id: input.taskId,
+    });
     if (error) throw error;
 }
 
@@ -260,13 +320,29 @@ function mapNotificationMetadata(
         return {};
     }
 
-    if (kind === "status_change") {
-        return metadata as StatusChangeMetadata;
+    switch (kind) {
+        case "assignee_change": {
+            return metadata as AssigneeChangeMetadata;
+        }
+        case "assignment": {
+            return metadata as AssignmentMetadata;
+        }
+        case "author_change": {
+            return metadata as AuthorChangeMetadata;
+        }
+        case "board_move": {
+            return metadata as BoardMoveMetadata;
+        }
+        case "priority_change": {
+            return metadata as PriorityChangeMetadata;
+        }
+        case "status_change": {
+            return metadata as StatusChangeMetadata;
+        }
+        default: {
+            return metadata as Record<string, unknown>;
+        }
     }
-    if (kind === "assignment") {
-        return metadata as AssignmentMetadata;
-    }
-    return metadata as Record<string, unknown>;
 }
 
 function mapNotificationRow(row: DatabaseNotificationRow): Notification {

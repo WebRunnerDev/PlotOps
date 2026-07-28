@@ -1,8 +1,18 @@
+export {
+    planTaskNotificationEvents,
+    type PlanTaskNotificationInput,
+    type TaskNotificationEvent,
+} from "./lib/plan-task-notification-events";
+
 export type {
+    AssigneeChangeMetadata,
     AssignmentMetadata,
+    AuthorChangeMetadata,
+    BoardMoveMetadata,
     Notification,
     NotificationKind,
     NotificationMetadata,
+    PriorityChangeMetadata,
     StatusChangeMetadata,
     TaskWatcher,
 } from "./model/types";
