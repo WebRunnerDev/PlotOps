@@ -5,6 +5,7 @@ import type {
     AssignmentMetadata,
     AuthorChangeMetadata,
     BoardMoveMetadata,
+    MentionMetadata,
     Notification,
     PriorityChangeMetadata,
     StatusChangeMetadata,
@@ -76,6 +77,24 @@ export function formatNotificationContext(
             });
         }
         return t("notifications.kinds.boardMove");
+    }
+
+    if (notification.kind === "mention") {
+        const metadata = notification.metadata as MentionMetadata;
+        const name = metadata.actor?.name;
+        if (name && metadata.source === "comment") {
+            return t("notifications.kinds.mentionCommentDetail", { name });
+        }
+        if (name && metadata.source === "description") {
+            return t("notifications.kinds.mentionDescriptionDetail", { name });
+        }
+        if (metadata.source === "comment") {
+            return t("notifications.kinds.mentionComment");
+        }
+        if (metadata.source === "description") {
+            return t("notifications.kinds.mentionDescription");
+        }
+        return t("notifications.kinds.mention");
     }
 
     if (notification.kind === "priority_change") {

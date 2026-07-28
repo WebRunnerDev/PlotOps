@@ -30,7 +30,7 @@
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
 | App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
 | Notifications (Watch + assignment)                     | ✅ Done (MVP + structural expansion #35–#39)                                                                                                                                           |
-| Mentions (Description + Comment → always-on)           | 🟡 Schema + RPC done (#41); editor/inbox pending (#42–#43)                                                                                                                             |
+| Mentions (Description + Comment → always-on)           | 🟡 Schema + RPC (#41) + editor/extract (#42) + inbox/deep-link (#43) done; polish/verify as needed                                                                                     |
 
 ## Notifications (MVP → structural expansion)
 
@@ -80,9 +80,9 @@
 
 ### Implementation plan
 
-1. **Schema + RPC** — widen `notifications.kind` with `mention`; RPC for always-on mention fan-out (validate membership, exclude actor, accept mentionee id set + source metadata). (#41)
-2. **Editor + extract** — TipTap Mention node + `@` picker; pure helpers to extract Mentionee ids and compute new-only delta; wire Description + Comment save → RPC. (#42)
-3. **Inbox + deep link** — format/i18n/search for `mention`; open Task from Notification; Comment Mentions scroll/highlight that Comment. (#43)
+1. **Schema + RPC** — widen `notifications.kind` with `mention`; RPC for always-on mention fan-out (validate membership, exclude actor, accept mentionee id set + source metadata). (#41) ✅
+2. **Editor + extract** — TipTap Mention node + `@` picker; pure helpers to extract Mentionee ids and compute new-only delta; wire Description + Comment save → RPC. (#42) ✅
+3. **Inbox + deep link** — format/i18n/search for `mention`; open Task from Notification; Comment Mentions scroll/highlight that Comment. (#43) ✅
 
 ### Storage + fan-out
 

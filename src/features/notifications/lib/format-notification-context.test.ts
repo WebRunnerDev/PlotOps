@@ -17,6 +17,12 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.boardMove": "Moved to another Board",
         "notifications.kinds.boardMoveDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""}`,
         "notifications.kinds.boardMoveStatusDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""} (${options?.fromStatus ?? ""} → ${options?.toStatus ?? ""})`,
+        "notifications.kinds.mention": "You were mentioned",
+        "notifications.kinds.mentionComment": "You were mentioned in a Comment",
+        "notifications.kinds.mentionCommentDetail": `${options?.name ?? ""} mentioned you in a Comment`,
+        "notifications.kinds.mentionDescription":
+            "You were mentioned in the Description",
+        "notifications.kinds.mentionDescriptionDetail": `${options?.name ?? ""} mentioned you in the Description`,
         "notifications.kinds.priorityChange": "Priority changed",
         "notifications.kinds.priorityChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.statusChange": "Status changed",
@@ -222,5 +228,69 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Moved to another Board");
+    });
+
+    it("shows Mention in Description with actor name", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "mention",
+                    metadata: {
+                        actor: { id: "u1", name: "Sam" },
+                        source: "description",
+                    },
+                }),
+                t
+            )
+        ).toBe("Sam mentioned you in the Description");
+    });
+
+    it("shows Mention in Comment with actor name", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "mention",
+                    metadata: {
+                        actor: { id: "u1", name: "Sam" },
+                        commentId: "c1",
+                        source: "comment",
+                    },
+                }),
+                t
+            )
+        ).toBe("Sam mentioned you in a Comment");
+    });
+
+    it("keeps Description vs Comment context without actor name", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "mention",
+                    metadata: { source: "comment" },
+                }),
+                t
+            )
+        ).toBe("You were mentioned in a Comment");
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "mention",
+                    metadata: { source: "description" },
+                }),
+                t
+            )
+        ).toBe("You were mentioned in the Description");
+    });
+
+    it("falls back when mention metadata is incomplete", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "mention",
+                    metadata: {},
+                }),
+                t
+            )
+        ).toBe("You were mentioned");
     });
 });

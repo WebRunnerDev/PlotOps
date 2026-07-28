@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { Notification } from "@/features/notifications/model/types";
 
 import { fetchTaskNavigation } from "@/features/notifications/api/notifications-api";
+import { focusCommentIdFromNotification } from "@/features/notifications/lib/focus-comment-from-notification";
 import { useMarkNotificationRead } from "@/features/notifications/model/use-notifications";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 
@@ -28,7 +29,9 @@ export function useOpenNotification() {
             const nav = await fetchTaskNavigation({
                 taskId: notification.taskId,
             });
-            selectTask(notification.taskId);
+            selectTask(notification.taskId, {
+                focusCommentId: focusCommentIdFromNotification(notification),
+            });
             options?.onNavigate?.();
             await navigate({
                 params: {
