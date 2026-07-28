@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Skeleton from "react-loading-skeleton";
 
 import { formatNotificationContext } from "@/features/notifications/lib/format-notification-context";
 import {
@@ -19,16 +21,18 @@ import {
     SelectItem,
     SelectTrigger,
 } from "@/shared/shadcn/ui/select";
-import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type NotificationsSearch = {
     limit?: number;
     offset?: number;
     projectId?: string;
     q?: string;
+    returnBoardId?: string;
+    returnProjectId?: string;
 };
 
 const DEFAULT_PAGE_SIZE = 30;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export const Route = createFileRoute("/(main)/notifications")({
     component: NotificationsPage,
@@ -38,6 +42,14 @@ export const Route = createFileRoute("/(main)/notifications")({
         projectId:
             typeof search.projectId === "string" ? search.projectId : undefined,
         q: typeof search.q === "string" ? search.q : undefined,
+        returnBoardId:
+            typeof search.returnBoardId === "string"
+                ? search.returnBoardId
+                : undefined,
+        returnProjectId:
+            typeof search.returnProjectId === "string"
+                ? search.returnProjectId
+                : undefined,
     }),
 });
 
@@ -55,9 +67,33 @@ function NotificationsPage() {
     const pageSize = search.limit ?? DEFAULT_PAGE_SIZE;
     const [qDraft, setQDraft] = useState(search.q ?? "");
 
+    const returnProjectId = search.returnProjectId;
+    const returnBoardId = search.returnBoardId;
+    const canReturnToBoard =
+        returnProjectId !== undefined && returnBoardId !== undefined;
+
     useEffect(() => {
         setQDraft(search.q ?? "");
     }, [search.q]);
+
+    useEffect(() => {
+        const nextQ = qDraft.trim() || undefined;
+        if (nextQ === search.q) {
+            return;
+        }
+        const timeoutId = globalThis.setTimeout(() => {
+            void navigate({
+                search: {
+                    ...search,
+                    offset: 0,
+                    q: nextQ,
+                },
+            });
+        }, SEARCH_DEBOUNCE_MS);
+        return () => {
+            globalThis.clearTimeout(timeoutId);
+        };
+    }, [navigate, qDraft, search]);
 
     const listQuery = useNotificationsList({
         cleanupFirst: true,
@@ -88,7 +124,42 @@ function NotificationsPage() {
         <div className="flex flex-col gap-4">
             <header className="flex flex-col gap-2 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h1 className="text-h1">{t("nav.notifications")}</h1>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {canReturnToBoard ? (
+                            <Button
+                                className="shrink-0 text-muted-foreground"
+                                nativeButton={false}
+                                render={
+                                    <Link
+                                        params={{
+                                            boardId: returnBoardId,
+                                            projectId: returnProjectId,
+                                        }}
+                                        to="/projects/$projectId/boards/$boardId"
+                                    />
+                                }
+                                size="sm"
+                                variant="ghost"
+                            >
+                                <ArrowLeft data-icon="inline-start" />
+                                {t("notifications.backToBoard")}
+                            </Button>
+                        ) : (
+                            <Button
+                                className="shrink-0 text-muted-foreground"
+                                nativeButton={false}
+                                render={<Link to="/home" />}
+                                size="sm"
+                                variant="ghost"
+                            >
+                                <ArrowLeft data-icon="inline-start" />
+                                {t("notifications.backToProjects")}
+                            </Button>
+                        )}
+                        <h1 className="truncate text-h1">
+                            {t("nav.notifications")}
+                        </h1>
+                    </div>
                     <Button
                         disabled={markAll.isPending}
                         onClick={() => {
@@ -120,6 +191,7 @@ function NotificationsPage() {
                         }
                     }}
                     placeholder={t("notifications.searchPlaceholder")}
+                    type="search"
                     value={qDraft}
                 />
                 <Select
@@ -151,23 +223,46 @@ function NotificationsPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                <Button
-                    onClick={() => {
-                        updateSearch({
-                            offset: 0,
-                            q: qDraft.trim() || undefined,
-                        });
-                    }}
-                    size="sm"
-                >
-                    {t("notifications.search")}
-                </Button>
             </div>
 
             {listQuery.isLoading ? (
-                <div className="flex justify-center py-16">
-                    <Spinner className="size-8 text-primary" />
-                </div>
+                <ul
+                    aria-busy="true"
+                    aria-live="polite"
+                    className="divide-y divide-border border border-border"
+                    role="status"
+                >
+                    {Array.from({ length: 8 }, (_, index) => (
+                        <li
+                            aria-hidden
+                            className="flex flex-col gap-1 px-3 py-3 leading-none"
+                            key={index}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Skeleton
+                                    containerClassName="block leading-none"
+                                    height={12}
+                                    width={72}
+                                />
+                                <Skeleton
+                                    containerClassName="block leading-none"
+                                    height={12}
+                                    width={96}
+                                />
+                            </div>
+                            <Skeleton
+                                containerClassName="block leading-none"
+                                height={14}
+                                width="70%"
+                            />
+                            <Skeleton
+                                containerClassName="block leading-none"
+                                height={12}
+                                width="40%"
+                            />
+                        </li>
+                    ))}
+                </ul>
             ) : (listQuery.data?.length ?? 0) === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
                     {t("nav.notificationsEmpty")}
@@ -195,11 +290,11 @@ function NotificationsPage() {
                                             item.projectId}
                                     </span>
                                 </div>
-                                <span className="truncate text-sm font-medium">
-                                    {item.taskTitle}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-sm font-medium">
                                     {formatNotificationContext(item, t)}
+                                </span>
+                                <span className="truncate text-xs text-muted-foreground">
+                                    {item.taskTitle}
                                 </span>
                             </button>
                         </li>
@@ -236,12 +331,6 @@ function NotificationsPage() {
                     {t("notifications.next")}
                 </Button>
             </div>
-
-            <p className="text-xs text-muted-foreground">
-                <Link className="underline underline-offset-2" to="/home">
-                    {t("nav.home")}
-                </Link>
-            </p>
         </div>
     );
 }

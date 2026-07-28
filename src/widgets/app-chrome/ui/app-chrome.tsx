@@ -3,7 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { CommandPaletteTrigger } from "@/features/command-palette";
-import { NotificationsBell } from "@/features/notifications/ui/notifications-bell";
+import { NotificationDrawer } from "@/features/notifications/ui/notification-drawer";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
 
@@ -77,7 +77,7 @@ export function AppChrome() {
 
             <div className="flex shrink-0 items-center gap-2">
                 <CommandPaletteTrigger />
-                <NotificationsBell />
+                <NotificationDrawer />
                 <UserMenu />
             </div>
         </header>

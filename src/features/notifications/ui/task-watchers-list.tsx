@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -7,9 +9,18 @@ import {
     useTaskWatchers,
     useToggleTaskWatch,
 } from "@/features/notifications/model/use-task-watchers";
+import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Label } from "@/shared/shadcn/ui/label";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/shared/shadcn/ui/tooltip";
+
+const MAX_VISIBLE_WATCHERS = 8;
 
 export function TaskWatchersList(properties: {
     projectId: string;
@@ -64,29 +75,66 @@ export function TaskWatchersList(properties: {
 }
 
 function WatchersAvatars({ watchers }: { watchers: TaskWatcher[] }) {
+    const visibleWatchers = watchers.slice(0, MAX_VISIBLE_WATCHERS);
+    const overflowCount = watchers.length - visibleWatchers.length;
+
     return (
-        <div className="flex items-center">
-            <div className="flex -space-x-2">
-                {watchers.slice(0, 8).map((watcher) => (
-                    <Avatar
-                        className="border border-background"
+        <TooltipProvider delay={200}>
+            <div className="group/avatars flex items-center">
+                {visibleWatchers.map((watcher, index) => (
+                    <div
+                        className="group/avatar-item translate-x-[calc(var(--index)*-8px)] transition-all duration-300 ease-in-out will-change-transform group-hover/avatars:translate-x-[calc(var(--index)*6px)]"
                         key={watcher.userId}
-                        size="sm"
+                        style={
+                            {
+                                "--index": index,
+                                zIndex: visibleWatchers.length - index,
+                            } as CSSProperties
+                        }
                     >
-                        {watcher.avatarUrl ? (
-                            <AvatarImage alt="" src={watcher.avatarUrl} />
-                        ) : undefined}
-                        <AvatarFallback>
-                            {watcher.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                    </Avatar>
+                        <Tooltip>
+                            <TooltipTrigger
+                                render={
+                                    <Avatar
+                                        className={cn(
+                                            "origin-center ring-2 ring-background transition-transform duration-300 ease-in-out",
+                                            "group-hover/avatar-item:scale-110"
+                                        )}
+                                        size="sm"
+                                    >
+                                        {watcher.avatarUrl ? (
+                                            <AvatarImage
+                                                alt={watcher.name}
+                                                src={watcher.avatarUrl}
+                                            />
+                                        ) : undefined}
+                                        <AvatarFallback>
+                                            {watcher.name
+                                                .slice(0, 2)
+                                                .toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                }
+                            />
+                            <TooltipContent sideOffset={10}>
+                                {watcher.name}
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
                 ))}
+                {overflowCount > 0 ? (
+                    <span
+                        className="translate-x-[calc(var(--index)*-8px)] text-sm text-muted-foreground transition-all duration-300 ease-in-out group-hover/avatars:translate-x-[calc(var(--index)*6px)]"
+                        style={
+                            {
+                                "--index": visibleWatchers.length,
+                            } as CSSProperties
+                        }
+                    >
+                        +{overflowCount}
+                    </span>
+                ) : null}
             </div>
-            {watchers.length > 8 ? (
-                <span className="ml-2 text-sm text-muted-foreground">
-                    +{watchers.length - 8}
-                </span>
-            ) : null}
-        </div>
+        </TooltipProvider>
     );
 }
