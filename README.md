@@ -1,6 +1,6 @@
 # PlotOps
 
-Git-oriented CRM (Jira/Linear clone) with GitHub integration. Portfolio project targeting middle-level frontend skills.
+Git-oriented CRM (Jira/Linear clone) with GitHub integration.
 
 Collaboration and access are scoped to a **Project** — there is no separate Team entity in the MVP. Full product/tech spec: [`docs/SPEC.md`](docs/SPEC.md). Domain glossary: [`CONTEXT.md`](CONTEXT.md).
 
