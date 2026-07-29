@@ -348,7 +348,13 @@ export function TaskDrawer({
                 <DrawerContent>
                     {task ? (
                         <>
-                            <DrawerHeader className="border-b border-border p-4 text-left">
+                            <DrawerHeader
+                                className={cn(
+                                    `border-b border-border p-4 text-left`,
+                                    isArchived &&
+                                        "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
+                                )}
+                            >
                                 <p className="text-meta text-muted-foreground">
                                     {task.key}
                                     {isArchived
@@ -501,49 +507,72 @@ export function TaskDrawer({
                                             >
                                                 {t("fields.status")}
                                             </Label>
-                                            <Combobox
-                                                disabled={!canEdit}
-                                                isItemEqualToValue={(a, b) =>
-                                                    a.id === b.id
-                                                }
-                                                items={columns}
-                                                itemToStringLabel={(item) =>
-                                                    item.name
-                                                }
-                                                onValueChange={(value) => {
-                                                    if (value && canEdit) {
-                                                        updateTaskStatus(
-                                                            task.id,
-                                                            value.id
-                                                        );
-                                                    }
-                                                }}
-                                                value={selectedColumn ?? null}
-                                            >
-                                                <ComboboxInput
+                                            {isArchived ? (
+                                                <Input
                                                     className={
                                                         FIELD_CONTROL_CLASS
                                                     }
+                                                    disabled
                                                     id="task-status"
+                                                    readOnly
+                                                    value={t("archive.badge")}
                                                 />
-                                                <ComboboxContent>
-                                                    <ComboboxEmpty>
-                                                        {t("columns.noResults")}
-                                                    </ComboboxEmpty>
-                                                    <ComboboxList>
-                                                        {(
-                                                            column: BoardColumn
-                                                        ) => (
-                                                            <ComboboxItem
-                                                                key={column.id}
-                                                                value={column}
-                                                            >
-                                                                {column.name}
-                                                            </ComboboxItem>
-                                                        )}
-                                                    </ComboboxList>
-                                                </ComboboxContent>
-                                            </Combobox>
+                                            ) : (
+                                                <Combobox
+                                                    disabled={!canEdit}
+                                                    isItemEqualToValue={(
+                                                        a,
+                                                        b
+                                                    ) => a.id === b.id}
+                                                    items={columns}
+                                                    itemToStringLabel={(item) =>
+                                                        item.name
+                                                    }
+                                                    onValueChange={(value) => {
+                                                        if (value && canEdit) {
+                                                            updateTaskStatus(
+                                                                task.id,
+                                                                value.id
+                                                            );
+                                                        }
+                                                    }}
+                                                    value={
+                                                        selectedColumn ?? null
+                                                    }
+                                                >
+                                                    <ComboboxInput
+                                                        className={
+                                                            FIELD_CONTROL_CLASS
+                                                        }
+                                                        id="task-status"
+                                                    />
+                                                    <ComboboxContent>
+                                                        <ComboboxEmpty>
+                                                            {t(
+                                                                "columns.noResults"
+                                                            )}
+                                                        </ComboboxEmpty>
+                                                        <ComboboxList>
+                                                            {(
+                                                                column: BoardColumn
+                                                            ) => (
+                                                                <ComboboxItem
+                                                                    key={
+                                                                        column.id
+                                                                    }
+                                                                    value={
+                                                                        column
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        column.name
+                                                                    }
+                                                                </ComboboxItem>
+                                                            )}
+                                                        </ComboboxList>
+                                                    </ComboboxContent>
+                                                </Combobox>
+                                            )}
                                         </div>
 
                                         {boards.length > 1 ? (
