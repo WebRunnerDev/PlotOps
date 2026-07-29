@@ -36,8 +36,9 @@ export async function createBoardColumn(
 }
 
 /**
- * Deletes a Board column. When `moveTasksTo` is set, Tasks (including archived)
- * on that column are re-pointed first so status ids are not left dangling.
+ * Deletes a Board column. When `moveTasksTo` is set, active (non-archived)
+ * Tasks on that column are re-pointed first. Archived Tasks keep their status
+ * until restore, which remaps if the column is gone.
  */
 export async function deleteBoardColumn(
     boardId: string,
@@ -53,15 +54,6 @@ export async function deleteBoardColumn(
             .is("archived_at", null);
 
         if (moveError) throw moveError;
-
-        const { error: archivedMoveError } = await supabase
-            .from("tasks")
-            .update({ status: moveTasksTo })
-            .eq("board_id", boardId)
-            .eq("status", columnId)
-            .not("archived_at", "is", null);
-
-        if (archivedMoveError) throw archivedMoveError;
     }
 
     const { error } = await supabase

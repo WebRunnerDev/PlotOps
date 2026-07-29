@@ -13,13 +13,9 @@ import { toast } from "sonner";
 import type { ProjectLabel } from "@/features/labels";
 
 import { useBoardColumns } from "@/features/boards";
+import { resolveColumnDeleteMoveTarget } from "@/features/boards/model/resolve-column-delete-move-target";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import {
-    columnAccentClass,
-    type Task,
-    taskKeys,
-    type TaskStatus,
-} from "@/features/tasks";
+import { type Task, taskKeys, type TaskStatus } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -70,7 +66,6 @@ export function KanbanColumn({
         boardId
     );
     const { canEditTasks, canManageBoard } = useProjectAccess(projectId);
-    const accentClass = columnAccentClass(status);
 
     const {
         attributes,
@@ -145,17 +140,20 @@ export function KanbanColumn({
     };
 
     const handleConfirmDelete = async () => {
-        const movedTasks = tasks.length > 0;
-        const ok = movedTasks
-            ? await deleteColumn(status, moveTo)
-            : await deleteColumn(status);
+        const moveTasksTo = resolveColumnDeleteMoveTarget({
+            otherColumnId: moveTo,
+            visibleTaskCount: tasks.length,
+        });
+        const movedVisibleTasks = tasks.length > 0;
+        const ok = await deleteColumn(status, moveTasksTo);
 
         if (!ok) {
             toast.error(t("columns.deleteFailed"));
             return;
         }
 
-        if (movedTasks) {
+        // Remap covers active tasks moved off the deleted column.
+        if (moveTasksTo) {
             void queryClient.invalidateQueries({
                 queryKey: [...taskKeys.all, "board", projectId],
             });
@@ -165,13 +163,14 @@ export function KanbanColumn({
         }
 
         toast.success(
-            movedTasks
+            movedVisibleTasks
                 ? t("columns.deletedWithMove", {
                       count: tasks.length,
                       name,
                       target:
-                          otherColumns.find((column) => column.id === moveTo)
-                              ?.name ?? "",
+                          otherColumns.find(
+                              (column) => column.id === moveTasksTo
+                          )?.name ?? "",
                   })
                 : t("columns.deleted", { name })
         );
@@ -182,7 +181,7 @@ export function KanbanColumn({
         <>
             <section
                 className={cn(
-                    "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 px-3 py-1 transition-colors last:border-r-0",
+                    "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 px-3 py-1 transition-colors last:border-r-0 border-r border-border",
                     isOver && !isDragging && "bg-primary/5",
                     isDragging && "opacity-40"
                 )}
@@ -206,18 +205,10 @@ export function KanbanColumn({
                         </button>
                     ) : undefined}
 
-                    <span
-                        aria-hidden
-                        className={cn(
-                            "size-2 shrink-0 rounded-xs",
-                            accentClass
-                        )}
-                    />
-
                     {isEditing && canManageBoard ? (
                         <Input
                             aria-label={t("columns.renameAria")}
-                            className="h-7 flex-1 border-transparent bg-transparent px-1 text-meta font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
+                            className="h-7 flex-1 border-transparent bg-transparent px-1 text-ui font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
                             onBlur={commitRename}
                             onChange={(event) => setDraft(event.target.value)}
                             onKeyDown={(event) => {
