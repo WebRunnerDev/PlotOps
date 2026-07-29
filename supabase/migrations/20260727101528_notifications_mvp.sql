@@ -11,10 +11,13 @@ create table if not exists public.task_watchers (
   created_at timestamptz not null default now(),
   primary key (task_id, user_id)
 );
+
 create index if not exists task_watchers_user_id_idx
   on public.task_watchers (user_id, created_at desc);
+
 create index if not exists task_watchers_project_id_idx
   on public.task_watchers (project_id);
+
 create table if not exists public.notifications (
   id uuid primary key default gen_random_uuid(),
   recipient_id uuid not null references public.profiles (id) on delete cascade,
@@ -27,23 +30,29 @@ create table if not exists public.notifications (
   read_at timestamptz,
   created_at timestamptz not null default now()
 );
+
 create index if not exists notifications_recipient_created_at_idx
   on public.notifications (recipient_id, created_at desc);
+
 create index if not exists notifications_project_recipient_created_at_idx
   on public.notifications (project_id, recipient_id, created_at desc);
+
 create index if not exists notifications_task_id_idx
   on public.notifications (task_id);
+
 -- ---------------------------------------------------------------------------
 -- RLS
 -- ---------------------------------------------------------------------------
 
 alter table public.task_watchers enable row level security;
 alter table public.notifications enable row level security;
+
 create policy "task_watchers_select_can_view_project"
   on public.task_watchers
   for select
   to authenticated
   using (public.can_view_project(project_id));
+
 create policy "task_watchers_insert_self_only"
   on public.task_watchers
   for insert
@@ -52,6 +61,7 @@ create policy "task_watchers_insert_self_only"
     user_id = auth.uid()
     and public.can_view_project(project_id)
   );
+
 create policy "task_watchers_delete_self_only"
   on public.task_watchers
   for delete
@@ -60,17 +70,20 @@ create policy "task_watchers_delete_self_only"
     user_id = auth.uid()
     and public.can_view_project(project_id)
   );
+
 create policy "notifications_select_recipient_only"
   on public.notifications
   for select
   to authenticated
   using (recipient_id = auth.uid());
+
 create policy "notifications_update_recipient_only"
   on public.notifications
   for update
   to authenticated
   using (recipient_id = auth.uid())
   with check (recipient_id = auth.uid());
+
 -- ---------------------------------------------------------------------------
 -- RPC: fan-out writes (status change / assignment)
 -- ---------------------------------------------------------------------------
@@ -127,6 +140,7 @@ begin
     and (actor is null or w.user_id <> actor);
 end;
 $$;
+
 create or replace function public.create_notifications_for_assignment_change(
   p_task_id uuid,
   p_project_id uuid,
@@ -187,6 +201,7 @@ begin
   );
 end;
 $$;
+
 -- ---------------------------------------------------------------------------
 -- RPC: read state + cleanup (retention)
 -- ---------------------------------------------------------------------------
@@ -217,6 +232,7 @@ begin
     and read_at is null;
 end;
 $$;
+
 create or replace function public.mark_notifications_read_in_scope(
   p_project_id uuid default null
 )
@@ -239,6 +255,7 @@ begin
     and (p_project_id is null or project_id = p_project_id);
 end;
 $$;
+
 create or replace function public.cleanup_notifications_for_user()
 returns void
 language plpgsql
@@ -263,6 +280,7 @@ begin
     );
 end;
 $$;
+
 -- ---------------------------------------------------------------------------
 -- Auto-enrollment: Watcher rows on Task create + assignee changes
 -- ---------------------------------------------------------------------------
@@ -289,11 +307,13 @@ begin
   return new;
 end;
 $$;
+
 drop trigger if exists task_watchers_on_task_insert on public.tasks;
 create trigger task_watchers_on_task_insert
   after insert on public.tasks
   for each row
   execute function public.task_watchers_on_task_insert();
+
 create or replace function public.task_watchers_on_task_assignee_update()
 returns trigger
 language plpgsql
@@ -311,11 +331,13 @@ begin
   return new;
 end;
 $$;
+
 drop trigger if exists task_watchers_on_task_assignee_update on public.tasks;
 create trigger task_watchers_on_task_assignee_update
   after update of assignee_id on public.tasks
   for each row
   execute function public.task_watchers_on_task_assignee_update();
+
 -- ---------------------------------------------------------------------------
 -- Cleanup: delete Watcher rows when a user leaves/removal happens
 -- ---------------------------------------------------------------------------
@@ -333,11 +355,13 @@ begin
   return old;
 end;
 $$;
+
 drop trigger if exists task_watchers_cleanup_on_project_members_delete on public.project_members;
 create trigger task_watchers_cleanup_on_project_members_delete
   after delete on public.project_members
   for each row
   execute function public.task_watchers_cleanup_on_project_members_delete();
+
 -- ---------------------------------------------------------------------------
 -- Grants
 -- ---------------------------------------------------------------------------
@@ -347,13 +371,16 @@ revoke all on function public.create_notifications_for_assignment_change(uuid, u
 revoke all on function public.mark_notifications_read(uuid[]) from public;
 revoke all on function public.mark_notifications_read_in_scope(uuid) from public;
 revoke all on function public.cleanup_notifications_for_user() from public;
+
 grant execute on function public.create_notifications_for_status_change(uuid, uuid, jsonb) to authenticated;
 grant execute on function public.create_notifications_for_assignment_change(uuid, uuid, uuid, jsonb) to authenticated;
 grant execute on function public.mark_notifications_read(uuid[]) to authenticated;
 grant execute on function public.mark_notifications_read_in_scope(uuid) to authenticated;
 grant execute on function public.cleanup_notifications_for_user() to authenticated;
+
 grant select, insert, delete on public.task_watchers to authenticated;
 grant select, update, delete on public.notifications to authenticated;
+
 -- Realtime badge/sheet freshness for the recipient inbox.
 do $$
 begin
@@ -372,4 +399,6 @@ exception
     null;
 end;
 $$;
+
 notify pgrst, 'reload schema';
+

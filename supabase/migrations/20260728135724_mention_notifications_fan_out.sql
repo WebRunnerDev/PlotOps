@@ -7,6 +7,7 @@
 
 alter table public.notifications
   drop constraint if exists notifications_kind_check;
+
 alter table public.notifications
   add constraint notifications_kind_check
   check (
@@ -21,6 +22,7 @@ alter table public.notifications
       'mention'
     )
   );
+
 -- ---------------------------------------------------------------------------
 -- Always-on kinds (mention uses dedicated RPC; listed for completeness)
 -- ---------------------------------------------------------------------------
@@ -37,8 +39,10 @@ as $$
     'mention'
   ]::text[];
 $$;
+
 revoke all on function public.notification_always_on_kinds() from public;
 grant execute on function public.notification_always_on_kinds() to authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Search phrases for mention kind (inbox FTS)
 -- ---------------------------------------------------------------------------
@@ -70,6 +74,7 @@ as $$
     else coalesce(p_kind, '')
   end;
 $$;
+
 -- ---------------------------------------------------------------------------
 -- Always-on Mention fan-out
 --
@@ -197,6 +202,7 @@ begin
     );
 end;
 $$;
+
 -- create_task_notifications must not accept mention via recipient_id path
 -- without membership checks — keep mention out of that loop by filtering.
 create or replace function public.create_task_notifications(
@@ -342,6 +348,7 @@ begin
   end loop;
 end;
 $$;
+
 revoke all on function public.create_notifications_for_mentions(
   uuid,
   uuid[],
@@ -349,6 +356,7 @@ revoke all on function public.create_notifications_for_mentions(
   uuid,
   text
 ) from public;
+
 grant execute on function public.create_notifications_for_mentions(
   uuid,
   uuid[],
@@ -356,4 +364,5 @@ grant execute on function public.create_notifications_for_mentions(
   uuid,
   text
 ) to authenticated;
+
 notify pgrst, 'reload schema';

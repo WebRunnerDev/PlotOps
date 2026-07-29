@@ -1,6 +1,7 @@
 -- Locale-aware inbox search: match UI phrases via kinds + remapped priority tokens.
 
 drop function if exists public.list_notifications_for_recipient(text, uuid, int, int);
+
 create or replace function public.list_notifications_for_recipient(
   p_q text default null,
   p_project_id uuid default null,
@@ -81,6 +82,7 @@ begin
   offset v_offset;
 end;
 $$;
+
 revoke all on function public.list_notifications_for_recipient(
   text,
   uuid,

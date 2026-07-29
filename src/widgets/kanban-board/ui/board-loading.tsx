@@ -41,20 +41,11 @@ export function BoardLoading({
             role="status"
         >
             <header className="shrink-0 border-b border-border px-12 py-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-baseline gap-2">
-                        <h1 className="truncate text-sm font-semibold">
-                            <Skeleton />
-                        </h1>
-                        <p className="truncate text-code text-muted-foreground">
-                            <Skeleton />
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                    </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Skeleton width={96} />
+                    <Skeleton width={112} />
+                    <Skeleton width={128} />
+                    <Skeleton width={80} />
                 </div>
             </header>
 

@@ -3,9 +3,11 @@ import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { CommandPaletteTrigger } from "@/features/command-palette";
+import { NotificationDrawer } from "@/features/notifications/ui/notification-drawer";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
 
+import { ProjectSectionNav } from "./project-section-nav";
 import { UserMenu } from "./user-menu";
 
 export function AppChrome() {
@@ -22,11 +24,11 @@ export function AppChrome() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-40 flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-sm",
+                "sticky top-0 z-40 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-sm",
                 "[view-transition-name:app-chrome]"
             )}
         >
-            <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
                 <Link
                     className="shrink-0 font-mono text-sm font-semibold tracking-tight text-foreground hover:text-foreground/80"
                     to="/home"
@@ -74,8 +76,18 @@ export function AppChrome() {
                 ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="justify-self-center">
+                {projectId ? (
+                    <ProjectSectionNav
+                        boardId={boardId}
+                        projectId={projectId}
+                    />
+                ) : null}
+            </div>
+
+            <div className="flex shrink-0 items-center justify-end gap-2">
                 <CommandPaletteTrigger />
+                <NotificationDrawer />
                 <UserMenu />
             </div>
         </header>

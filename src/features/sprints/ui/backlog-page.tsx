@@ -12,15 +12,7 @@ import {
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
-import { Link } from "@tanstack/react-router";
-import {
-    ArrowLeft,
-    ChevronDown,
-    MoreHorizontal,
-    Play,
-    Plus,
-    Search,
-} from "lucide-react";
+import { ChevronDown, MoreHorizontal, Play, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -320,21 +312,6 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     if (error) {
         return (
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
-                <Button
-                    className="w-fit text-muted-foreground"
-                    nativeButton={false}
-                    render={
-                        <Link
-                            params={{ boardId, projectId }}
-                            to="/projects/$projectId/boards/$boardId"
-                        />
-                    }
-                    size="sm"
-                    variant="ghost"
-                >
-                    <ArrowLeft data-icon="inline-start" />
-                    {t("sprints.backToBoard")}
-                </Button>
                 <Alert variant="destructive">
                     <AlertDescription>{t("projectError")}</AlertDescription>
                 </Alert>
@@ -348,26 +325,9 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
             <header className="flex flex-col gap-3 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <Button
-                            className="shrink-0 text-muted-foreground"
-                            nativeButton={false}
-                            render={
-                                <Link
-                                    params={{ boardId, projectId }}
-                                    to="/projects/$projectId/boards/$boardId"
-                                />
-                            }
-                            size="sm"
-                            variant="ghost"
-                        >
-                            <ArrowLeft data-icon="inline-start" />
-                            {t("sprints.backToBoard")}
-                        </Button>
-                        <h1 className="truncate text-sm font-semibold">
-                            {t("sprints.backlogTitle")}
-                        </h1>
-                    </div>
+                    <h1 className="truncate text-sm font-semibold">
+                        {t("sprints.backlogTitle")}
+                    </h1>
 
                     <div className="flex flex-wrap items-center gap-2">
                         <BoardSwitcher

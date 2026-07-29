@@ -15,7 +15,7 @@
         "renameFailed": "Status name must be unique and not empty",
         "deleteAria": "Delete status",
         "deleteTitle": "Delete “{{name}}”?",
-        "deleteEmptyDescription": "This status has no tasks and will be removed from the board.",
+        "deleteEmptyDescription": "This status has no active tasks and will be removed from the board.",
         "deleteWithTasksDescription": "{{count}} task(s) will be moved to another status, then this column will be removed.",
         "moveTasksTo": "Move tasks to",
         "deleteCancel": "Cancel",
@@ -81,6 +81,13 @@
         "memberNone": "Unassigned",
         "memberNoResults": "No members found",
         "labels": "Labels"
+    },
+    "watchers": {
+        "title": "Watchers",
+        "empty": "No watchers yet",
+        "watch": "Watch",
+        "unwatch": "Unwatch",
+        "updateFailed": "Could not update watch"
     },
     "comments": {
         "title": "Comments ({{count}})",
@@ -447,8 +454,11 @@
     "copiedCheckout": "Checkout command copied",
     "copyFailed": "Could not copy to clipboard",
     "richText": {
-        "hint": "Select text to format, right-click for context menu, or type “/” for blocks",
+        "hint": "Select text to format, right-click for context menu, type “/” for blocks, or “@” to mention",
         "length": "{{current}} / {{max}}",
+        "mention": {
+            "empty": "No matching people"
+        },
         "linkPrompt": "Enter URL",
         "link": {
             "title": "Add link",

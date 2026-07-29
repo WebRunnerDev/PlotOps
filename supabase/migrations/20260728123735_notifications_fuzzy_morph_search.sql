@@ -1,6 +1,7 @@
 -- Fuzzy + morphological notification search (pg_trgm typos, russian/english FTS stems).
 
 create extension if not exists pg_trgm with schema extensions;
+
 -- UI kind phrases (en+ru) so FTS stemming can match падежи against inbox copy.
 create or replace function public.notification_kind_search_text(p_kind text)
 returns text
@@ -27,6 +28,7 @@ as $$
     else coalesce(p_kind, '')
   end;
 $$;
+
 create or replace function public.notification_search_document(
   p_task_key text,
   p_task_title text,
@@ -50,6 +52,7 @@ as $$
     public.notification_kind_search_text(p_kind)
   );
 $$;
+
 drop function if exists public.list_notifications_for_recipient(
   text,
   uuid,
@@ -58,6 +61,7 @@ drop function if exists public.list_notifications_for_recipient(
   text[],
   text[]
 );
+
 create or replace function public.list_notifications_for_recipient(
   p_q text default null,
   p_project_id uuid default null,
@@ -185,8 +189,10 @@ begin
   offset v_offset;
 end;
 $$;
+
 revoke all on function public.notification_kind_search_text(text) from public;
 grant execute on function public.notification_kind_search_text(text) to authenticated;
+
 revoke all on function public.notification_search_document(
   text,
   text,
@@ -201,6 +207,7 @@ grant execute on function public.notification_search_document(
   jsonb,
   text
 ) to authenticated;
+
 revoke all on function public.list_notifications_for_recipient(
   text,
   uuid,

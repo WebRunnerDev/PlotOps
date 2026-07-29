@@ -7,6 +7,7 @@
 
 alter table public.notifications
   drop constraint if exists notifications_kind_check;
+
 alter table public.notifications
   add constraint notifications_kind_check
   check (
@@ -19,6 +20,7 @@ alter table public.notifications
       'author_change'
     )
   );
+
 -- ---------------------------------------------------------------------------
 -- Shared helpers
 -- ---------------------------------------------------------------------------
@@ -37,6 +39,7 @@ as $$
     'author_change'
   ]::text[];
 $$;
+
 create or replace function public.notification_always_on_kinds()
 returns text[]
 language sql
@@ -48,6 +51,7 @@ as $$
     'author_change'
   ]::text[];
 $$;
+
 -- ---------------------------------------------------------------------------
 -- Watcher fan-out by kind (excludes actor + optional extra recipients for dedupe)
 -- ---------------------------------------------------------------------------
@@ -114,6 +118,7 @@ begin
     );
 end;
 $$;
+
 -- ---------------------------------------------------------------------------
 -- Always-on Author transfer (mirrors assignment always-on)
 -- ---------------------------------------------------------------------------
@@ -177,6 +182,7 @@ begin
   );
 end;
 $$;
+
 -- ---------------------------------------------------------------------------
 -- One round-trip: multiple kinds for one Task save (+ always-on/Watcher dedupe)
 --
@@ -329,6 +335,7 @@ begin
   end loop;
 end;
 $$;
+
 -- ---------------------------------------------------------------------------
 -- Auto-enroll Watch on Author set/transfer (mirror Assignee enrollment)
 -- Auto-Unwatch when user is neither Author nor Assignee after a change
@@ -378,13 +385,16 @@ begin
   return new;
 end;
 $$;
+
 drop trigger if exists task_watchers_on_task_assignee_update on public.tasks;
 drop function if exists public.task_watchers_on_task_assignee_update();
 drop trigger if exists task_watchers_on_task_stake_update on public.tasks;
+
 create trigger task_watchers_on_task_stake_update
   after update of author_id, assignee_id on public.tasks
   for each row
   execute function public.task_watchers_on_task_stake_update();
+
 -- ---------------------------------------------------------------------------
 -- Grants
 -- ---------------------------------------------------------------------------
@@ -394,7 +404,9 @@ revoke all on function public.notification_always_on_kinds() from public;
 revoke all on function public.create_notifications_for_watchers(uuid, uuid, text, jsonb, uuid[]) from public;
 revoke all on function public.create_notifications_for_author_change(uuid, uuid, uuid, jsonb) from public;
 revoke all on function public.create_task_notifications(uuid, uuid, jsonb) from public;
+
 grant execute on function public.create_notifications_for_watchers(uuid, uuid, text, jsonb, uuid[]) to authenticated;
 grant execute on function public.create_notifications_for_author_change(uuid, uuid, uuid, jsonb) to authenticated;
 grant execute on function public.create_task_notifications(uuid, uuid, jsonb) to authenticated;
+
 notify pgrst, 'reload schema';

@@ -247,6 +247,38 @@ async function syncInProject(
         throw activityError;
     }
 
+    const statusChangeMetadata = {
+        from: {
+            id: previousStatus,
+            name: statusColumn?.name ?? previousStatus,
+        },
+        source: "github_webhook",
+        to: {
+            id: lastColumnId,
+            name: lastColumn?.name ?? lastColumnId,
+        },
+    };
+
+    // Best-effort: after status is written, GitHub retries hit isAlreadySynced
+    // and would never re-run fan-out — so do not fail the webhook here.
+    const { error: notificationError } = await supabase.rpc(
+        "create_notifications_for_status_change",
+        {
+            p_metadata: statusChangeMetadata,
+            p_project_id: input.projectId,
+            p_task_id: matched.id,
+        }
+    );
+
+    if (notificationError) {
+        input.log({
+            error: notificationError.message,
+            projectId: input.projectId,
+            reason: "notification_fan_out_failed",
+            taskId: matched.id,
+        });
+    }
+
     input.log({
         projectId: input.projectId,
         reason: "synced",

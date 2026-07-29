@@ -124,7 +124,7 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
                     ) : undefined}
                 </div>
 
-                <CardTitle className="line-clamp-2 text-ui font-semibold leading-snug text-foreground">
+                <CardTitle className="line-clamp-3 text-ui font-semibold leading-snug text-foreground">
                     {task.title}
                 </CardTitle>
 

@@ -56,5 +56,6 @@ begin
   offset v_offset;
 end;
 $$;
+
 revoke all on function public.list_notifications_for_recipient(text, uuid, int, int) from public;
 grant execute on function public.list_notifications_for_recipient(text, uuid, int, int) to authenticated;
