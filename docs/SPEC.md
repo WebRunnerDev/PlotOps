@@ -28,7 +28,7 @@
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
-| App chrome (top bar)                                   | ✅ Done (replaced bottom dock; logo→/home, breadcrumbs, avatar menu: theme/lang/settings/logout; compact board toolbar)                                                                |
+| App chrome (top bar)                                   | ✅ Done (logo→/home, breadcrumbs, project section tabs Board/Backlog/CI/CD/Settings, avatar menu; compact board-local toolbar)                                                         |
 | Notifications (Watch + assignment)                     | ✅ Done (MVP + structural expansion #35–#39)                                                                                                                                           |
 | Mentions (Description + Comment → always-on)           | 🟡 Schema + RPC (#41) + editor/extract (#42) + inbox/deep-link (#43) done; polish/verify as needed                                                                                     |
 
@@ -193,15 +193,15 @@ MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app +
 
 > Visual redesign source: Dark-themed CRM Interface Design. Policy: ADR 0007 — skin only; keep existing feature structure. Rows below are Make UI/ideas with **no** matching PlotOps feature yet — do not implement in the redesign pass.
 
-| Item                                                                                 | Notes                                                                                                                                          |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Command palette entry in chrome (`⌘K` button)                                        | Product Cmd+K + AppChrome button are MVP (see §4); Make placement was board-header-only — we use global AppChrome.                             |
-| **Group by** board control                                                           | Not in PlotOps; Make-only.                                                                                                                     |
-| **Display** board control                                                            | Not in PlotOps; Make-only.                                                                                                                     |
-| Make dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Bottom dock removed — global chrome is top `AppChrome` (account/theme/lang). Board/CI/CD/Branches IA still deferred until those features ship. |
-| Header **+ New Task** as primary CTA                                                 | We add tasks per column; optional later if we want a board-level create entry.                                                                 |
-| Make Task drawer **two-column** layout (content + meta sidebar)                      | Visual reference only — keep current drawer sections/fields (ADR 0007).                                                                        |
-| Drawer **DIFF PREVIEW** / **RECENT COMMITS** as first-class Make sections            | Git/diff already live under existing Git tab / panels; do not restructure drawer around Make sections.                                         |
+| Item                                                                                 | Notes                                                                                                                                             |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Command palette entry in chrome (`⌘K` button)                                        | Product Cmd+K + AppChrome button are MVP (see §4); Make placement was board-header-only — we use global AppChrome.                                |
+| **Group by** board control                                                           | Not in PlotOps; Make-only.                                                                                                                        |
+| **Display** board control                                                            | Not in PlotOps; Make-only.                                                                                                                        |
+| Make dock primary nav: **Board / CI/CD / Branches / Settings** + member avatar stack | Bottom dock removed — project sections live as center tabs in `AppChrome` (Board / Backlog / CI/CD / Settings). Branches not a top-level section. |
+| Header **+ New Task** as primary CTA                                                 | We add tasks per column; optional later if we want a board-level create entry.                                                                    |
+| Make Task drawer **two-column** layout (content + meta sidebar)                      | Visual reference only — keep current drawer sections/fields (ADR 0007).                                                                           |
+| Drawer **DIFF PREVIEW** / **RECENT COMMITS** as first-class Make sections            | Git/diff already live under existing Git tab / panels; do not restructure drawer around Make sections.                                            |
 
 ## Tech Stack
 

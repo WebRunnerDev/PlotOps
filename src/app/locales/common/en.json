@@ -5,15 +5,21 @@
     },
     "en": "English",
     "nav": {
+        "backlog": "Backlog",
+        "board": "Board",
         "breadcrumb": "Breadcrumb",
+        "cicd": "CI/CD",
         "home": "Home",
         "notifications": "Notifications",
         "notificationsEmpty": "No new notifications",
+        "projectSections": "Project sections",
         "projects": "Projects",
         "settings": "Settings"
     },
     "notifications": {
         "allProjects": "All projects",
+        "backToProjects": "Back to projects",
+        "backToBoard": "Back to board",
         "kinds": {
             "assigneeChange": "Assignee changed",
             "assigneeChangeDetail": "Assignee → {{name}}",

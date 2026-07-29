@@ -1,5 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
-import { ListTodo, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -20,7 +19,6 @@ export function BoardSprintControls({
     projectId,
 }: BoardSprintControlsProperties) {
     const { t } = useTranslation("board");
-    const navigate = useNavigate();
     const { canManageBoard } = useProjectAccess(projectId);
     const { tasks } = useBoardTasks(projectId, boardId);
     const { data: sprints = [] } = useBoardSprints(boardId);
@@ -47,25 +45,8 @@ export function BoardSprintControls({
 
     const showStart = canManageBoard && !active && Boolean(startCandidate);
 
-    const goToBacklog = () => {
-        void navigate({
-            params: { boardId, projectId },
-            to: "/projects/$projectId/boards/$boardId/backlog",
-        });
-    };
-
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <Button
-                onClick={goToBacklog}
-                size="xs"
-                type="button"
-                variant="outline"
-            >
-                <ListTodo data-icon="inline-start" />
-                {t("sprints.backlogLink")}
-            </Button>
-
             {showStart && startCandidate ? (
                 <Button
                     onClick={() => setStartOpen(true)}

@@ -5,15 +5,21 @@
     },
     "en": "Английский",
     "nav": {
+        "backlog": "Бэклог",
+        "board": "Доска",
         "breadcrumb": "Навигация",
+        "cicd": "CI/CD",
         "home": "Главная",
         "notifications": "Уведомления",
         "notificationsEmpty": "Нет новых уведомлений",
+        "projectSections": "Разделы проекта",
         "projects": "Проекты",
         "settings": "Настройки"
     },
     "notifications": {
         "allProjects": "Все проекты",
+        "backToProjects": "Вернуться к проектам",
+        "backToBoard": "Вернуться к доске",
         "kinds": {
             "assigneeChange": "Исполнитель изменён",
             "assigneeChangeDetail": "Исполнитель → {{name}}",

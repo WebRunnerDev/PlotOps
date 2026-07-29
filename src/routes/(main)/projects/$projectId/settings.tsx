@@ -1,5 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -121,21 +120,6 @@ function ProjectSettingsRoute() {
             <header className="flex flex-col gap-3 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <Button
-                            className="shrink-0 text-muted-foreground"
-                            nativeButton={false}
-                            render={
-                                <Link
-                                    params={{ projectId }}
-                                    to="/projects/$projectId"
-                                />
-                            }
-                            size="sm"
-                            variant="ghost"
-                        >
-                            <ArrowLeft data-icon="inline-start" />
-                            {t("settings.backToBoard")}
-                        </Button>
                         <h1 className="truncate text-sm font-semibold">
                             {t("settings.title")}
                         </h1>
