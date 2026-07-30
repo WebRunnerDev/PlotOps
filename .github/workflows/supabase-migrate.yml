@@ -1,0 +1,61 @@
+# Production: apply pending migrations to remote PlotOps, then trigger Cloudflare.
+# Check / job name Cloudflare / branch protection may reference: migrate
+#
+# Cloudflare Pages does not wait for GitHub checks. Order is enforced by:
+#   1) disable automatic production deployments in CF
+#   2) POST Deploy Hook only after migrate succeeds
+name: supabase-migrate
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+concurrency:
+    group: supabase-migrate-main
+    cancel-in-progress: false
+
+jobs:
+    migrate:
+        name: migrate
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+
+        env:
+            SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+            SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+            SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+            - name: Setup Supabase CLI
+              uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+              with:
+                  version: 2.109.1
+
+            - name: Link PlotOps project
+              run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+            - name: Push pending migrations
+              run: supabase db push
+
+    trigger-cloudflare:
+        name: trigger-cloudflare
+        needs: migrate
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+
+        steps:
+            - name: Trigger Cloudflare production deploy
+              env:
+                  DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_PAGES_DEPLOY_HOOK_URL }}
+              run: |
+                  if [ -z "$DEPLOY_HOOK_URL" ]; then
+                    echo "CLOUDFLARE_PAGES_DEPLOY_HOOK_URL is not set; skipping CF trigger."
+                    echo "Add the secret and disable CF automatic production deploys so migrate runs before the frontend."
+                    exit 0
+                  fi
+                  curl --fail --silent --show-error -X POST "$DEPLOY_HOOK_URL"

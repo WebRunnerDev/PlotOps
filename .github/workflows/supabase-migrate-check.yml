@@ -1,0 +1,46 @@
+# PR gate: apply all migrations on a fresh local DB (no remote).
+# Required status check name: supabase-migrate-check
+name: supabase-migrate-check
+
+on:
+    pull_request:
+
+concurrency:
+    group: supabase-migrate-check-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    supabase-migrate-check:
+        name: supabase-migrate-check
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+            - name: Detect supabase path changes
+              uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+              id: filter
+              with:
+                  filters: |
+                      supabase:
+                        - 'supabase/migrations/**'
+                        - 'supabase/config.toml'
+                        - 'supabase/seed.sql'
+
+            - name: Setup Supabase CLI
+              if: steps.filter.outputs.supabase == 'true'
+              uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+              with:
+                  version: 2.109.1
+
+            - name: Start local stack and reset from migrations
+              if: steps.filter.outputs.supabase == 'true'
+              run: |
+                  supabase start
+                  supabase db reset --yes
+
+            - name: Skip (no supabase schema paths changed)
+              if: steps.filter.outputs.supabase != 'true'
+              run: echo "No supabase migration paths changed; check passes."

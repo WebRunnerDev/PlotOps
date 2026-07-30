@@ -4,12 +4,14 @@ Remote project ref: **ijcelrdcygzyzhcijkhe**.
 
 Migrations live in `supabase/migrations/`. They are **not** applied by `npm run dev`.
 
-| Target             | How                                                                                           |
-| ------------------ | --------------------------------------------------------------------------------------------- |
-| **Local Docker**   | `npm run db:start` / `npm run db:reset` → Postgres on `127.0.0.1`                             |
-| **Remote PlotOps** | **CI/CD** applies pending migrations on deploy/merge — not day-to-day `db:push` from a laptop |
+| Target             | How                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| **Local Docker**   | `npm run db:start` / `npm run db:reset` → Postgres on `127.0.0.1`                                  |
+| **Remote PlotOps** | **CI/CD** — GitHub Actions on `main` runs `supabase db push`, then triggers Cloudflare (see below) |
 
 **Rule for agents and local work:** create and verify migrations against Docker only. Commit the SQL files. Do **not** run `npm run db:push`, `supabase db push`, or Supabase MCP `apply_migration` against remote unless the human explicitly asks for an emergency/manual apply.
+
+Decision record: [`docs/adr/0016-migrations-via-ci.md`](adr/0016-migrations-via-ci.md).
 
 ## Local stack (default for schema work)
 
@@ -70,7 +72,39 @@ Scopes used by the app: `repo read:user` (see `signInWithGitHub`). Without this 
 
 ## Remote (PlotOps cloud)
 
-Schema changes reach remote via **CI/CD** after the migration file is merged. Day-to-day development should not push schema from a workstation.
+Schema changes reach remote via **GitHub Actions** after the migration file is merged to `main`. Day-to-day development should not push schema from a workstation. Edge Functions are **not** deployed by this pipeline (manual / later).
+
+### CI/CD workflows
+
+| Workflow                                                                                          | Trigger                       | What it does                                                                                                                       |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| [`.github/workflows/supabase-migrate-check.yml`](../.github/workflows/supabase-migrate-check.yml) | `pull_request`                | Local Docker: `supabase start` + `db reset` when `supabase/migrations/**` (etc.) change. Check name: **`supabase-migrate-check`**. |
+| [`.github/workflows/supabase-migrate.yml`](../.github/workflows/supabase-migrate.yml)             | `push` to `main` (every push) | `supabase link` + `db push` to PlotOps, then POST Cloudflare Deploy Hook. Job/check name: **`migrate`**.                           |
+
+### One-time GitHub setup
+
+Repository → **Settings → Secrets and variables → Actions** — add secrets:
+
+| Secret                             | Where to get it                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN`            | [Supabase Account → Access Tokens](https://supabase.com/dashboard/account/tokens) |
+| `SUPABASE_DB_PASSWORD`             | Project Settings → Database → Database password                                   |
+| `SUPABASE_PROJECT_ID`              | `ijcelrdcygzyzhcijkhe` (PlotOps ref)                                              |
+| `CLOUDFLARE_PAGES_DEPLOY_HOOK_URL` | Cloudflare project → Settings → Builds → Deploy Hooks (production branch)         |
+
+Branch protection on `main`: require status check **`supabase-migrate-check`** before merge.
+
+### One-time Cloudflare setup (migrations before frontend)
+
+Cloudflare Pages/Workers **does not wait** for an arbitrary GitHub check. To keep schema ahead of the UI:
+
+1. Disable **automatic production branch deployments** (Branch control).
+2. Create a **Deploy Hook** for the production branch; paste the URL into `CLOUDFLARE_PAGES_DEPLOY_HOOK_URL`.
+3. Production builds then start only after the `migrate` job succeeds and POSTs the hook.
+
+Until the Deploy Hook secret exists, the migrate job still pushes schema; the CF trigger step no-ops with a log line.
+
+### Emergency laptop link / push
 
 Optional one-time link (status / emergency only):
 
