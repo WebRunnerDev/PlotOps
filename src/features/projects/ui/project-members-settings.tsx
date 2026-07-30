@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth";
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { inviteUrl } from "@/features/projects/api/members-api";
 import {
     INVITE_TTL_OPTIONS,
@@ -105,14 +106,30 @@ export function ProjectMembersSettings({
     const showOwner =
         Boolean(project && ownerProfile) &&
         (!query ||
-            (ownerProfile?.username ?? "").toLowerCase().includes(query));
+            [
+                ownerProfile?.username,
+                ownerProfile?.first_name,
+                ownerProfile?.last_name,
+                formatProfileDisplayName(ownerProfile ?? {}),
+            ]
+                .filter(Boolean)
+                .some((value) => String(value).toLowerCase().includes(query)));
 
     const filteredMembers = useMemo(() => {
         const list = members ?? [];
         if (!query) return list;
-        return list.filter((member) =>
-            (member.profile?.username ?? "").toLowerCase().includes(query)
-        );
+        return list.filter((member) => {
+            const profile = member.profile;
+            if (!profile) return false;
+            return [
+                profile.username,
+                profile.first_name,
+                profile.last_name,
+                formatProfileDisplayName(profile),
+            ]
+                .filter(Boolean)
+                .some((value) => String(value).toLowerCase().includes(query));
+        });
     }, [members, query]);
 
     const peopleCount =
@@ -203,19 +220,24 @@ export function ProjectMembersSettings({
                                         className={cn(
                                             "rounded-md text-meta",
                                             avatarTone(
-                                                ownerProfile.username ?? "OW"
+                                                formatProfileDisplayName(
+                                                    ownerProfile
+                                                ) || "OW"
                                             )
                                         )}
                                     >
                                         {initials(
-                                            ownerProfile.username ?? "OW"
+                                            formatProfileDisplayName(
+                                                ownerProfile
+                                            ) || "OW"
                                         )}
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-ui">
-                                        {ownerProfile.username ??
-                                            t("members.unknownUser")}
+                                        {formatProfileDisplayName(
+                                            ownerProfile
+                                        ) || t("members.unknownUser")}
                                         {user?.id === project.owner_id
                                             ? ` (${t("members.you")})`
                                             : ""}
@@ -226,8 +248,9 @@ export function ProjectMembersSettings({
                         ) : undefined}
                         {filteredMembers.map((member) => {
                             const name =
-                                member.profile?.username ??
-                                t("members.unknownUser");
+                                (member.profile
+                                    ? formatProfileDisplayName(member.profile)
+                                    : "") || t("members.unknownUser");
                             const canEditRole =
                                 access.canManageMembers &&
                                 (access.canGrantAdmin ||
@@ -424,9 +447,11 @@ export function ProjectMembersSettings({
                                                             "members.claimedBy",
                                                             {
                                                                 name:
-                                                                    invite
-                                                                        .claimed_profile
-                                                                        .username ??
+                                                                    (invite.claimed_profile
+                                                                        ? formatProfileDisplayName(
+                                                                              invite.claimed_profile
+                                                                          )
+                                                                        : "") ||
                                                                     t(
                                                                         "members.unknownUser"
                                                                     ),

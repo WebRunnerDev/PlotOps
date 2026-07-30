@@ -4,6 +4,7 @@ import type {
     TaskActivityMetadata,
 } from "@/features/tasks/model/types";
 
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { TASK_ACTIVITY_FEED_LIMIT } from "@/features/tasks/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
@@ -20,7 +21,9 @@ type DatabaseActivityLog = {
 
 type DatabaseProfile = {
     avatar_url: null | string;
+    first_name: null | string;
     id: string;
+    last_name: null | string;
     username: null | string;
 };
 
@@ -35,7 +38,9 @@ const ACTIVITY_SELECT = `
   user:profiles!activity_log_user_id_fkey (
     id,
     username,
-    avatar_url
+    avatar_url,
+    first_name,
+    last_name
   )
 `;
 
@@ -121,6 +126,7 @@ function isActivityField(value: unknown): value is TaskActivityChange["field"] {
 
 function mapActivity(row: DatabaseActivityLog): TaskActivityEvent {
     const user = asProfile(row.user);
+    const name = user ? formatProfileDisplayName(user) : "";
 
     return {
         action: row.action,
@@ -128,13 +134,14 @@ function mapActivity(row: DatabaseActivityLog): TaskActivityEvent {
         id: row.id,
         metadata: parseMetadata(row.metadata),
         taskId: row.task_id,
-        user: user?.username
-            ? {
-                  avatarUrl: user.avatar_url ?? undefined,
-                  id: user.id,
-                  name: user.username,
-              }
-            : undefined,
+        user:
+            user && name
+                ? {
+                      avatarUrl: user.avatar_url ?? undefined,
+                      id: user.id,
+                      name,
+                  }
+                : undefined,
     };
 }
 

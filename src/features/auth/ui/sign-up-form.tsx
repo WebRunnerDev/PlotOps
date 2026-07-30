@@ -28,6 +28,8 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { t } = useTranslation("auth");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [email, setEmail] = useState(initialEmail);
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,6 +63,11 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
         setError(null);
         setResendMessage(null);
 
+        if (!firstName.trim() || !lastName.trim()) {
+            setError(t("errors.namesRequired"));
+            return;
+        }
+
         if (password !== confirmPassword) {
             setError(t("errors.passwordMismatch"));
             return;
@@ -75,6 +82,8 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
         const { data, error: authError } = await signUpWithPassword({
             email,
+            firstName,
+            lastName,
             password,
         });
 
@@ -181,6 +190,41 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                 ) : undefined}
 
                 <form className="flex flex-col gap-4" onSubmit={handleSignUp}>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="flex min-w-0 flex-col gap-2">
+                            <Label htmlFor="sign-up-first-name">
+                                {t("firstName")}
+                            </Label>
+                            <Input
+                                autoComplete="given-name"
+                                id="sign-up-first-name"
+                                onChange={(event) =>
+                                    setFirstName(event.target.value)
+                                }
+                                placeholder={t("firstNamePlaceholder")}
+                                required
+                                type="text"
+                                value={firstName}
+                            />
+                        </div>
+                        <div className="flex min-w-0 flex-col gap-2">
+                            <Label htmlFor="sign-up-last-name">
+                                {t("lastName")}
+                            </Label>
+                            <Input
+                                autoComplete="family-name"
+                                id="sign-up-last-name"
+                                onChange={(event) =>
+                                    setLastName(event.target.value)
+                                }
+                                placeholder={t("lastNamePlaceholder")}
+                                required
+                                type="text"
+                                value={lastName}
+                            />
+                        </div>
+                    </div>
+
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="sign-up-email">{t("email")}</Label>
                         <Input

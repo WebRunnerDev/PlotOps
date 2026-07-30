@@ -2,14 +2,16 @@
 
 Remote project ref: **ijcelrdcygzyzhcijkhe**.
 
-Migrations live in `supabase/migrations/`. They are **not** applied by `npm run dev` — only by CLI commands below.
+Migrations live in `supabase/migrations/`. They are **not** applied by `npm run dev`.
 
-| Target             | How                                                               |
-| ------------------ | ----------------------------------------------------------------- |
-| **Local Docker**   | `npm run db:start` / `npm run db:reset` → Postgres on `127.0.0.1` |
-| **Remote PlotOps** | `npm run db:push` → cloud project                                 |
+| Target             | How                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| **Local Docker**   | `npm run db:start` / `npm run db:reset` → Postgres on `127.0.0.1`                             |
+| **Remote PlotOps** | **CI/CD** applies pending migrations on deploy/merge — not day-to-day `db:push` from a laptop |
 
-## Local stack (recommended for verifying migrations)
+**Rule for agents and local work:** create and verify migrations against Docker only. Commit the SQL files. Do **not** run `npm run db:push`, `supabase db push`, or Supabase MCP `apply_migration` against remote unless the human explicitly asks for an emergency/manual apply.
+
+## Local stack (default for schema work)
 
 Requires [Docker Desktop](https://docs.docker.com/desktop/) running.
 
@@ -21,20 +23,23 @@ npm run db:start          # first run pulls images; applies all migrations
 npm run dev               # Vite prefers .env.local over .env → hits local DB
 ```
 
-After editing a migration (or adding a new one):
+After adding a migration:
 
 ```bash
+npm run db:new -- <name>  # or: npx supabase migration new <name>
+# edit supabase/migrations/<timestamp>_<name>.sql
 npm run db:reset          # wipe local DB, re-run all migrations + seed.sql
 ```
 
 Keep remote credentials in `.env`. Use `.env.local` only while developing against Docker (both are gitignored). Delete or rename `.env.local` to point the app back at remote.
 
-| Command                   | Purpose                        |
-| ------------------------- | ------------------------------ |
-| `npm run db:start`        | Start local Supabase (Docker)  |
-| `npm run db:stop`         | Stop local stack               |
-| `npm run db:reset`        | Reset local DB from migrations |
-| `npm run db:local-status` | Print local URL/keys           |
+| Command                    | Purpose                        |
+| -------------------------- | ------------------------------ |
+| `npm run db:start`         | Start local Supabase (Docker)  |
+| `npm run db:stop`          | Stop local stack               |
+| `npm run db:reset`         | Reset local DB from migrations |
+| `npm run db:local-status`  | Print local URL/keys           |
+| `npm run db:new -- <name>` | Create a new migration file    |
 
 ### Local GitHub OAuth
 
@@ -65,29 +70,28 @@ Scopes used by the app: `repo read:user` (see `signInWithGitHub`). Without this 
 
 ## Remote (PlotOps cloud)
 
+Schema changes reach remote via **CI/CD** after the migration file is merged. Day-to-day development should not push schema from a workstation.
+
+Optional one-time link (status / emergency only):
+
 ```bash
-npm install
 npx supabase login
 npm run db:link
 # enter database password from Supabase Dashboard → Project Settings → Database
-npm run db:push
 ```
 
 `db:link` writes `supabase/.temp/project-ref` (gitignored). Re-run only if you clone the repo on a new machine.
 
-## Day-to-day (remote)
-
-| Command                       | Purpose                                    |
-| ----------------------------- | ------------------------------------------ |
-| `npm run db:new -- add_tasks` | Create a new migration file                |
-| `npm run db:push`             | Apply pending migrations to PlotOps remote |
-| `npm run db:status`           | Compare local vs remote migration history  |
+| Command             | Purpose                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `npm run db:status` | Compare local vs remote migration history (read-only)                                |
+| `npm run db:push`   | **Emergency only** — apply pending migrations to remote; requires explicit human ask |
 
 ## MCP + two projects
 
 Supabase MCP is account-scoped, not project-scoped. Agents must use **project_id = `ijcelrdcygzyzhcijkhe`** for this repo (see `.cursor/rules/plotops.mdc`). No need to unbind/rebind MCP when switching repos — only pass the correct ref.
 
-If MCP cannot access PlotOps, use CLI (`db:push`) or SQL Editor in the PlotOps dashboard.
+Do **not** use MCP `apply_migration` (or equivalent) to change PlotOps remote schema as part of normal feature work — same rule as `db:push`. Prefer local Docker + commit; let CI apply remote. If MCP cannot access PlotOps for read-only checks, use Dashboard SQL Editor or CLI `db:status` — not a silent push.
 
 ## Auth (email signup + confirm)
 

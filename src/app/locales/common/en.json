@@ -68,6 +68,7 @@
     },
     "platformSettings": "Platform settings",
     "ru": "Russian",
+    "settingsDescription": "Your profile and account preferences.",
     "settingsPlaceholder": "Theme, language, and other preferences will live here.",
     "switcher": "Language",
     "themeDark": "Switch to dark theme",

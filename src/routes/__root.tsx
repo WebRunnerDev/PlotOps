@@ -9,7 +9,7 @@ import { cn } from "@/shared";
 import { GridPattern } from "@/shared/shadcn";
 
 export type RouterContext = {
-    auth: Pick<AuthContextValue, "isLoading" | "user">;
+    auth: Pick<AuthContextValue, "isLoading" | "profileNamesComplete" | "user">;
     queryClient: QueryClient;
 };
 

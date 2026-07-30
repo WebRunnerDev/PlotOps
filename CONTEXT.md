@@ -4,6 +4,24 @@ Git-oriented CRM (Jira/Linear clone) with GitHub integration. Collaboration and 
 
 ## Language
 
+### Identity
+
+**Display name**:
+How a person is shown in the product UI: First name and Last name joined. Falls back to Username when names are missing.
+_Avoid_: full name (ambiguous with GitHub `name`), label (UI-only)
+
+**Username**:
+The user's short handle on PlotOps — typically the GitHub login. A compact identifier, not the person's real name.
+_Avoid_: display name, nickname (when meaning the real-name fields), login (Auth credential sense)
+
+**First name**:
+The user's given name, collected at registration (email or after GitHub sign-in). Part of how the person is shown to others; distinct from Username.
+_Avoid_: display name (prefer First name + Last name), given name (synonym; First name is canonical here)
+
+**Last name**:
+The user's family name, collected at registration alongside First name. Distinct from Username.
+_Avoid_: surname, family name (synonyms; Last name is canonical here)
+
 ### Ownership & access
 
 **Project**:
