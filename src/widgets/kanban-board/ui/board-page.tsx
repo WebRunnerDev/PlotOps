@@ -24,13 +24,14 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     const { data: boards = [] } = useProjectBoards(projectId);
     const { canManageBoard } = useProjectAccess(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
-    const baseBranch =
+    const baseBranch: string =
         currentBoard?.baseBranch ?? project?.github_default_branch ?? "main";
+    const encodedBaseBranch = baseBranch
+        .split("/")
+        .map((segment: string) => encodeURIComponent(segment))
+        .join("/");
     const branchUrl = project
-        ? `${project.github_html_url.replace(/\/$/, "")}/tree/${baseBranch
-              .split("/")
-              .map((segment) => encodeURIComponent(segment))
-              .join("/")}`
+        ? `${project.github_html_url.replace(/\/$/, "")}/tree/${encodedBaseBranch}`
         : undefined;
 
     if (isLoading) {

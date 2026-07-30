@@ -45,7 +45,7 @@ export function ProjectSectionNav({
         label: string;
         params: { boardId: string; projectId: string } | { projectId: string };
         to:
-            | "/projects/$projectId/boards/$boardId/"
+            | "/projects/$projectId/boards/$boardId"
             | "/projects/$projectId/boards/$boardId/backlog"
             | "/projects/$projectId/ci-cd"
             | "/projects/$projectId/settings";
@@ -54,7 +54,7 @@ export function ProjectSectionNav({
             id: "board",
             label: t("nav.board"),
             params: { boardId, projectId },
-            to: "/projects/$projectId/boards/$boardId/",
+            to: "/projects/$projectId/boards/$boardId",
         },
         {
             id: "backlog",
