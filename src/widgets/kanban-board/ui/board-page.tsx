@@ -1,5 +1,4 @@
-import { Link } from "@tanstack/react-router";
-import { Activity, ExternalLink, GitBranch, Settings } from "lucide-react";
+import { GitBranch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -9,7 +8,6 @@ import { useProject } from "@/features/projects/model/use-projects";
 import { BoardSprintControls } from "@/features/sprints";
 import { BoardArchiveDialog } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
-import { Button } from "@/shared/shadcn/ui/button";
 
 import { BoardLoading } from "./board-loading";
 import { KanbanBoard } from "./kanban-board";
@@ -26,6 +24,15 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     const { data: boards = [] } = useProjectBoards(projectId);
     const { canManageBoard } = useProjectAccess(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
+    const baseBranch: string =
+        currentBoard?.baseBranch ?? project?.github_default_branch ?? "main";
+    const encodedBaseBranch = baseBranch
+        .split("/")
+        .map((segment: string) => encodeURIComponent(segment))
+        .join("/");
+    const branchUrl = project
+        ? `${project.github_html_url.replace(/\/$/, "")}/tree/${encodedBaseBranch}`
+        : undefined;
 
     if (isLoading) {
         return <BoardLoading />;
@@ -45,84 +52,32 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
         <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
             <div className="flex h-full w-max min-w-full flex-col gap-3 pt-2">
                 <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-12 py-2 backdrop-blur-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                            <h1 className="truncate text-sm font-semibold">
-                                {project.name}
-                            </h1>
-                            {project.github_full_name ? (
-                                <p className="truncate text-code text-muted-foreground">
-                                    {project.github_full_name}
-                                </p>
-                            ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <BoardSwitcher
-                                boardId={boardId}
-                                canManage={canManageBoard}
-                                defaultBaseBranch={
-                                    project.github_default_branch ?? "main"
-                                }
-                                projectId={projectId}
-                            />
-                            <BoardSprintControls
-                                boardId={boardId}
-                                projectId={projectId}
-                            />
-                            <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
-                                <GitBranch aria-hidden className="size-3.5" />
-                                {currentBoard?.baseBranch ??
-                                    project.github_default_branch}
-                            </span>
-                            <BoardArchiveDialog
-                                boardId={boardId}
-                                projectId={projectId}
-                            />
-                            <Button
-                                nativeButton={false}
-                                render={
-                                    <Link
-                                        params={{ projectId }}
-                                        to="/projects/$projectId/ci-cd"
-                                    />
-                                }
-                                size="xs"
-                                variant="outline"
-                            >
-                                <Activity data-icon="inline-start" />
-                                {t("cicd.link")}
-                            </Button>
-                            <Button
-                                nativeButton={false}
-                                render={
-                                    <Link
-                                        params={{ projectId }}
-                                        to="/projects/$projectId/settings"
-                                    />
-                                }
-                                size="xs"
-                                variant="outline"
-                            >
-                                <Settings data-icon="inline-start" />
-                                {t("settings.link")}
-                            </Button>
-                            <Button
-                                nativeButton={false}
-                                render={
-                                    <a
-                                        href={project.github_html_url}
-                                        rel="noreferrer"
-                                        target="_blank"
-                                    />
-                                }
-                                size="xs"
-                                variant="outline"
-                            >
-                                GitHub
-                                <ExternalLink data-icon="inline-end" />
-                            </Button>
-                        </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a
+                            className="inline-flex items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline"
+                            href={branchUrl}
+                            rel="noreferrer noopener"
+                            target="_blank"
+                        >
+                            <GitBranch aria-hidden className="size-3.5" />
+                            {baseBranch}
+                        </a>
+                        <BoardSwitcher
+                            boardId={boardId}
+                            canManage={canManageBoard}
+                            defaultBaseBranch={
+                                project.github_default_branch ?? "main"
+                            }
+                            projectId={projectId}
+                        />
+                        <BoardSprintControls
+                            boardId={boardId}
+                            projectId={projectId}
+                        />
+                        <BoardArchiveDialog
+                            boardId={boardId}
+                            projectId={projectId}
+                        />
                     </div>
                 </header>
 

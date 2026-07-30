@@ -13,6 +13,7 @@ import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
 import { Route as InviteTokenRouteImport } from './../routes/invite.$token'
 import { Route as mainSettingsRouteImport } from './../routes/(main)/settings'
+import { Route as mainNotificationsRouteImport } from './../routes/(main)/notifications'
 import { Route as mainHomeRouteImport } from './../routes/(main)/home'
 import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
 import { Route as mainAboutRouteImport } from './../routes/(main)/about'
@@ -43,6 +44,11 @@ const InviteTokenRoute = InviteTokenRouteImport.update({
 const mainSettingsRoute = mainSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => mainRouteRoute,
+} as any)
+const mainNotificationsRoute = mainNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => mainRouteRoute,
 } as any)
 const mainHomeRoute = mainHomeRouteImport.update({
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof mainAboutRoute
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
+  '/notifications': typeof mainNotificationsRoute
   '/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/about': typeof mainAboutRoute
   '/dashboard': typeof mainDashboardRoute
   '/home': typeof mainHomeRoute
+  '/notifications': typeof mainNotificationsRoute
   '/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   '/(main)/about': typeof mainAboutRoute
   '/(main)/dashboard': typeof mainDashboardRoute
   '/(main)/home': typeof mainHomeRoute
+  '/(main)/notifications': typeof mainNotificationsRoute
   '/(main)/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
   '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/dashboard'
     | '/home'
+    | '/notifications'
     | '/settings'
     | '/invite/$token'
     | '/projects/$projectId'
@@ -190,6 +200,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/dashboard'
     | '/home'
+    | '/notifications'
     | '/settings'
     | '/invite/$token'
     | '/projects/$projectId/ci-cd'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/(main)/about'
     | '/(main)/dashboard'
     | '/(main)/home'
+    | '/(main)/notifications'
     | '/(main)/settings'
     | '/invite/$token'
     | '/(main)/projects/$projectId'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof mainSettingsRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/(main)/notifications': {
+      id: '/(main)/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof mainNotificationsRouteImport
       parentRoute: typeof mainRouteRoute
     }
     '/(main)/home': {
@@ -385,6 +404,7 @@ interface mainRouteRouteChildren {
   mainAboutRoute: typeof mainAboutRoute
   mainDashboardRoute: typeof mainDashboardRoute
   mainHomeRoute: typeof mainHomeRoute
+  mainNotificationsRoute: typeof mainNotificationsRoute
   mainSettingsRoute: typeof mainSettingsRoute
   mainProjectsProjectIdRouteRoute: typeof mainProjectsProjectIdRouteRouteWithChildren
 }
@@ -393,6 +413,7 @@ const mainRouteRouteChildren: mainRouteRouteChildren = {
   mainAboutRoute: mainAboutRoute,
   mainDashboardRoute: mainDashboardRoute,
   mainHomeRoute: mainHomeRoute,
+  mainNotificationsRoute: mainNotificationsRoute,
   mainSettingsRoute: mainSettingsRoute,
   mainProjectsProjectIdRouteRoute: mainProjectsProjectIdRouteRouteWithChildren,
 }

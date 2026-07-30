@@ -12,6 +12,7 @@ import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
 } from "@/features/tasks/model/constants";
+import { resolveRestoreTaskStatus } from "@/features/tasks/model/resolve-restore-task-status";
 import { supabase } from "@/shared/api/supabase";
 
 import {
@@ -287,7 +288,11 @@ export async function restoreTaskRecord(taskId: string, boardId: string) {
 
     if (taskError) throw taskError;
 
-    const status = task.status as TaskStatus;
+    const columnIds = await fetchBoardColumnIds(boardId);
+    const status = resolveRestoreTaskStatus(
+        task.status as TaskStatus,
+        columnIds
+    );
 
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
@@ -307,6 +312,7 @@ export async function restoreTaskRecord(taskId: string, boardId: string) {
         .update({
             archived_at: null,
             position,
+            status,
         })
         .eq("id", taskId)
         .not("archived_at", "is", null);

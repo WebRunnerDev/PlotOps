@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -7,6 +7,7 @@ import {
     resendSignupConfirmation,
     signUpWithPassword,
 } from "@/features/auth/api/auth-api";
+import { useAuth } from "@/features/auth/model/use-auth";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -25,6 +26,7 @@ type SignUpFormProperties = {
 
 export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { t } = useTranslation("auth");
     const [email, setEmail] = useState(initialEmail);
     const [password, setPassword] = useState("");
@@ -33,7 +35,26 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+    const [awaitingRedirect, setAwaitingRedirect] = useState(false);
     const [resendMessage, setResendMessage] = useState<null | string>(null);
+
+    useEffect(() => {
+        if (!awaitingRedirect || !user) return;
+
+        const pendingInvite = globalThis.sessionStorage.getItem(
+            "plotops_pending_invite"
+        );
+        if (pendingInvite) {
+            globalThis.sessionStorage.removeItem("plotops_pending_invite");
+            void navigate({
+                params: { token: pendingInvite },
+                to: "/invite/$token",
+            });
+            return;
+        }
+
+        void navigate({ to: "/home" });
+    }, [awaitingRedirect, navigate, user]);
 
     const handleSignUp = async (event: FormEvent) => {
         event.preventDefault();
@@ -57,37 +78,27 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
             password,
         });
 
-        setIsLoading(false);
-
         if (authError) {
+            setIsLoading(false);
             setError(t(getAuthErrorKey(authError)));
             return;
         }
 
         // With confirmations on, an existing email may return a user with no identities.
         if (data.user && (data.user.identities?.length ?? 0) === 0) {
+            setIsLoading(false);
             setError(t("errors.userAlreadyRegistered"));
             return;
         }
 
         // Confirm-email ON: no session until the link is clicked.
         if (!data.session) {
+            setIsLoading(false);
             setAwaitingConfirmation(true);
             return;
         }
 
-        const pendingInvite =
-            globalThis.sessionStorage.getItem("plotops_pending_invite");
-        if (pendingInvite) {
-            globalThis.sessionStorage.removeItem("plotops_pending_invite");
-            navigate({
-                params: { token: pendingInvite },
-                to: "/invite/$token",
-            });
-            return;
-        }
-
-        navigate({ to: "/home" });
+        setAwaitingRedirect(true);
     };
 
     const handleResend = async () => {
@@ -143,7 +154,10 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                     </Button>
 
                     <p className="text-center text-meta text-muted-foreground">
-                        <Link className="underline underline-offset-2" to="/sign-in">
+                        <Link
+                            className="underline underline-offset-2"
+                            to="/sign-in"
+                        >
                             {t("links.backToSignIn")}
                         </Link>
                     </p>
@@ -181,7 +195,9 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                        <Label htmlFor="sign-up-password">{t("password")}</Label>
+                        <Label htmlFor="sign-up-password">
+                            {t("password")}
+                        </Label>
                         <Input
                             autoComplete="new-password"
                             id="sign-up-password"
@@ -223,7 +239,10 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
                 <p className="text-center text-meta text-muted-foreground">
                     {t("links.hasAccount")}{" "}
-                    <Link className="underline underline-offset-2" to="/sign-in">
+                    <Link
+                        className="underline underline-offset-2"
+                        to="/sign-in"
+                    >
                         {t("links.signIn")}
                     </Link>
                 </p>

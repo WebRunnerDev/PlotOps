@@ -67,3 +67,21 @@ Dark, strict, Linear/Neobrutalism-inspired: sharp borders, monospace for git ele
 **Never add Cursor attribution to commits or PRs.** Do not append `Co-authored-by: Cursor`, `Made-with: Cursor`, `--trailer`, or any similar AI/tool footer to commit messages. Use only the subject and body you write (`git commit -m "…"` or `-F` file). If a hook or environment still injects attribution, amend the message to remove it before finishing — do not leave it in history.
 
 When the user asks for a commit, follow their commit message only; never add co-author or attribution lines on your own.
+
+## UI & Bug Prevention Rules
+
+### Tailwind & UI Checks
+
+- Check container boundaries for overflow risks (missing `truncate`, `break-words`, `min-w-0` in flex items).
+- Ensure interactive elements have focus rings (`focus-visible:ring-2`) and proper hover states.
+- Verify mobile-first responsive design: no fixed pixel widths (`w-[500px]`) without responsive overrides (`sm:w-auto`).
+
+### Frontend/Backend Sync
+
+- Strict alignment with Backend DTOs. If a field on the backend can be `null` or `optional`, ensure the frontend React component handles the empty/loading state defensively.
+- Always use Zod schemas or strict TypeScript interfaces for API responses.
+
+### React & State Management
+
+- Verify custom hooks handle unmounting and abort controllers for active requests.
+- Ensure state updates inside async functions check for mounted status or use safe patterns.

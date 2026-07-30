@@ -1,11 +1,4 @@
-import { Link } from "@tanstack/react-router";
-import {
-    ArrowLeft,
-    CircleCheck,
-    CircleX,
-    LoaderCircle,
-    Timer,
-} from "lucide-react";
+import { CircleCheck, CircleX, LoaderCircle, Timer } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -103,21 +96,6 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
             <header className="flex flex-col gap-3 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <Button
-                            className="shrink-0 text-muted-foreground"
-                            nativeButton={false}
-                            render={
-                                <Link
-                                    params={{ projectId }}
-                                    to="/projects/$projectId"
-                                />
-                            }
-                            size="sm"
-                            variant="ghost"
-                        >
-                            <ArrowLeft data-icon="inline-start" />
-                            {t("cicd.backToBoard")}
-                        </Button>
                         <h1 className="truncate text-h1">{t("cicd.title")}</h1>
                         <span className="truncate font-mono text-meta text-muted-foreground">
                             {project.github_full_name}

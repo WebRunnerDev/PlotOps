@@ -1,3 +1,5 @@
+import type { Editor } from "@tiptap/react";
+
 import {
     autoUpdate,
     computePosition,
@@ -9,6 +11,7 @@ import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import FileHandler from "@tiptap/extension-file-handler";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
+import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
@@ -16,7 +19,6 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import { NodeSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import type { Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { common, createLowlight } from "lowlight";
 import {
@@ -34,37 +36,22 @@ import {
     Underline as UnderlineIcon,
 } from "lucide-react";
 import {
+    type DragEvent,
+    type MouseEvent as ReactMouseEvent,
+    type ReactNode,
     useCallback,
     useEffect,
     useLayoutEffect,
     useMemo,
     useRef,
     useState,
-    type DragEvent,
-    type MouseEvent as ReactMouseEvent,
-    type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import {
-    normalizeEditorContent,
-    richTextLength,
-    toEditorContent,
-} from "@/shared/ui/rich-text-editor/content";
-import {
-    ImageUpload,
-    filterImageFiles,
-    insertImageFiles,
-    type ImageUploadFn,
-} from "@/shared/ui/rich-text-editor/image-upload";
-import { ResizableImage } from "@/shared/ui/rich-text-editor/resizable-image";
-import {
-    deleteSlashQuery,
-    filterSlashCommands,
-    type SlashCommand,
-} from "@/shared/ui/rich-text-editor/slash-commands";
+import type { MentionCandidate } from "@/shared/ui/rich-text-editor/mention-candidate";
+
 import { cn } from "@/shared/lib/utils";
 import { Button, buttonVariants } from "@/shared/shadcn/ui/button";
 import {
@@ -84,6 +71,24 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
+import {
+    normalizeEditorContent,
+    richTextLength,
+    toEditorContent,
+} from "@/shared/ui/rich-text-editor/content";
+import { createMentionSuggestion } from "@/shared/ui/rich-text-editor/create-mention-suggestion";
+import {
+    filterImageFiles,
+    ImageUpload,
+    type ImageUploadFn,
+    insertImageFiles,
+} from "@/shared/ui/rich-text-editor/image-upload";
+import { ResizableImage } from "@/shared/ui/rich-text-editor/resizable-image";
+import {
+    deleteSlashQuery,
+    filterSlashCommands,
+    type SlashCommand,
+} from "@/shared/ui/rich-text-editor/slash-commands";
 import "@/shared/ui/rich-text-editor/rich-text-editor.css";
 
 const lowlight = createLowlight(common);
@@ -112,17 +117,13 @@ const SLASH_SHORTCUTS: Record<string, string> = {
     "task-list": shortcut(MOD_KEY, SHIFT_KEY, "9"),
 };
 
-type RichTextEditorProperties = {
-    className?: string;
-    compact?: boolean;
-    id?: string;
-    maxLength?: number;
-    onBlur?: () => void;
-    onChange?: (value: string) => void;
-    onUploadImage?: ImageUploadFn;
-    placeholder?: string;
-    readOnly?: boolean;
-    value: string;
+type FloatingMenuState = {
+    activeIds: string[];
+    activeIndex: number;
+    commands: SlashCommand[];
+    query: string;
+    reference: null | ReferenceRect;
+    source: "context" | "selection" | "slash" | null;
 };
 
 type ReferenceRect = {
@@ -132,13 +133,19 @@ type ReferenceRect = {
     top: number;
 };
 
-type FloatingMenuState = {
-    activeIds: string[];
-    activeIndex: number;
-    commands: SlashCommand[];
-    query: string;
-    reference: ReferenceRect | null;
-    source: "context" | "selection" | "slash" | null;
+type RichTextEditorProperties = {
+    className?: string;
+    compact?: boolean;
+    id?: string;
+    maxLength?: number;
+    /** Project Owner + Members for the `@` Mention picker. */
+    mentionCandidates?: readonly MentionCandidate[];
+    onBlur?: () => void;
+    onChange?: (value: string) => void;
+    onUploadImage?: ImageUploadFn;
+    placeholder?: string;
+    readOnly?: boolean;
+    value: string;
 };
 
 const EMPTY_MENU: FloatingMenuState = {
@@ -150,226 +157,12 @@ const EMPTY_MENU: FloatingMenuState = {
     source: null,
 };
 
-function toReferenceRect(rect: {
-    bottom: number;
-    left: number;
-    right?: number;
-    top: number;
-}): ReferenceRect {
-    return {
-        bottom: rect.bottom,
-        left: rect.left,
-        right: rect.right ?? rect.left,
-        top: rect.top,
-    };
-}
-
-function createVirtualElement(rect: ReferenceRect) {
-    return {
-        getBoundingClientRect: () => ({
-            bottom: rect.bottom,
-            height: Math.max(rect.bottom - rect.top, 1),
-            left: rect.left,
-            right: rect.right,
-            top: rect.top,
-            width: Math.max(rect.right - rect.left, 1),
-            x: rect.left,
-            y: rect.top,
-        }),
-    };
-}
-
-function getSlashQuery(editor: Editor) {
-    const { $from } = editor.state.selection;
-    const textBefore = $from.parent.textBetween(
-        0,
-        $from.parentOffset,
-        undefined,
-        "\uFFFC",
-    );
-    const match = /(?:^|\s)\/([a-z0-9-]*)$/i.exec(textBefore);
-    if (!match) return undefined;
-
-    return {
-        query: match[1] ?? "",
-        rect: toReferenceRect(editor.view.coordsAtPos($from.pos)),
-    };
-}
-
-function getSelectionRect(editor: Editor) {
-    const { from, to, empty } = editor.state.selection;
-    if (empty || from === to) return undefined;
-
-    const start = editor.view.coordsAtPos(from);
-    const end = editor.view.coordsAtPos(to);
-
-    return toReferenceRect({
-        bottom: Math.max(start.bottom, end.bottom),
-        left: Math.min(start.left, end.left),
-        right: Math.max(start.right, end.right),
-        top: Math.min(start.top, end.top),
-    });
-}
-
-function isCommandActive(editor: Editor, commandId: SlashCommand["id"]) {
-    switch (commandId) {
-        case "paragraph": {
-            // Plain text block — not when a list / heading / code is the primary type.
-            return (
-                editor.isActive("paragraph") &&
-                !editor.isActive("heading") &&
-                !editor.isActive("bulletList") &&
-                !editor.isActive("orderedList") &&
-                !editor.isActive("taskList") &&
-                !editor.isActive("codeBlock")
-            );
-        }
-        case "heading-1": {
-            return editor.isActive("heading", { level: 1 });
-        }
-        case "heading-2": {
-            return editor.isActive("heading", { level: 2 });
-        }
-        case "heading-3": {
-            return editor.isActive("heading", { level: 3 });
-        }
-        case "bullet-list": {
-            return editor.isActive("bulletList");
-        }
-        case "ordered-list": {
-            return editor.isActive("orderedList");
-        }
-        case "task-list": {
-            return editor.isActive("taskList");
-        }
-        case "quote": {
-            return editor.isActive("blockquote");
-        }
-        case "code-block": {
-            return editor.isActive("codeBlock");
-        }
-        case "divider": {
-            return editor.isActive("horizontalRule");
-        }
-        default: {
-            return false;
-        }
-    }
-}
-
-function buildMenuState(
-    editor: Editor,
-    source: "context" | "slash",
-    reference: ReferenceRect,
-    query = "",
-): FloatingMenuState {
-    const commands = filterSlashCommands(query);
-    const activeIds = commands
-        .filter((command) => isCommandActive(editor, command.id))
-        .map((command) => command.id);
-    const activeIndex = Math.max(
-        commands.findIndex((command) => activeIds.includes(command.id)),
-        0,
-    );
-
-    return {
-        activeIds,
-        activeIndex,
-        commands,
-        query,
-        reference,
-        source,
-    };
-}
-
-function resolveSlashMenu(editor: Editor): FloatingMenuState | undefined {
-    const slash = getSlashQuery(editor);
-    if (!slash) return undefined;
-
-    return buildMenuState(editor, "slash", slash.rect, slash.query);
-}
-
-/** True when the selection spans some text (not empty, not a node like an image). */
-function hasTextSelection(editor: Editor): boolean {
-    const { selection } = editor.state;
-    return (
-        !selection.empty &&
-        selection.from !== selection.to &&
-        !(selection instanceof NodeSelection)
-    );
-}
-
-/** Inline-formatting bubble shown automatically on a text selection (no block list). */
-function buildSelectionMenu(reference: ReferenceRect): FloatingMenuState {
-    return {
-        activeIds: [],
-        activeIndex: 0,
-        commands: [],
-        query: "",
-        reference,
-        source: "selection",
-    };
-}
-
-function ToolbarButton({
-    active,
-    ariaLabel,
-    children,
-    keys,
-    onClick,
-}: {
-    active?: boolean;
-    ariaLabel: string;
-    children: ReactNode;
-    keys?: string;
-    onClick: () => void;
-}) {
-    if (!keys) {
-        return (
-            <Button
-                aria-label={ariaLabel}
-                className={cn(active && "bg-muted text-foreground")}
-                onClick={onClick}
-                size="icon-xs"
-                type="button"
-                variant="ghost"
-            >
-                {children}
-            </Button>
-        );
-    }
-
-    return (
-        <Tooltip>
-            <TooltipTrigger
-                aria-label={ariaLabel}
-                className={cn(
-                    buttonVariants({ size: "icon-xs", variant: "ghost" }),
-                    active && "bg-muted text-foreground",
-                )}
-                onClick={onClick}
-                type="button"
-            >
-                {children}
-            </TooltipTrigger>
-            <TooltipContent className="gap-2" positionerClassName="z-[80]">
-                <span>{ariaLabel}</span>
-                <kbd
-                    className="bg-background/15 px-1 py-0.5 font-mono text-[0.6875rem] leading-none"
-                    data-slot="kbd"
-                >
-                    {keys}
-                </kbd>
-            </TooltipContent>
-        </Tooltip>
-    );
-}
-
 export function RichTextEditor({
     className,
     compact = false,
     id,
     maxLength,
+    mentionCandidates,
     onBlur,
     onChange,
     onUploadImage,
@@ -384,11 +177,29 @@ export function RichTextEditor({
         open: boolean;
         value: string;
     }>({ open: false, value: "" });
-    const menuRef = useRef<HTMLDivElement | null>(null);
-    const editorRef = useRef<Editor | null>(null);
-    const dragDepthRef = useRef(0);
-    const menuStateRef = useRef(menu);
-    menuStateRef.current = menu;
+    const menuReference = useRef<HTMLDivElement | null>(null);
+    const editorReference = useRef<Editor | null>(null);
+    const dragDepthReference = useRef(0);
+    const menuStateReference = useRef(menu);
+    menuStateReference.current = menu;
+    const mentionCandidatesReference = useRef(mentionCandidates ?? []);
+    mentionCandidatesReference.current = mentionCandidates ?? [];
+    const readOnlyReference = useRef(readOnly);
+    readOnlyReference.current = readOnly;
+    const emptyMentionLabelReference = useRef(t("richText.mention.empty"));
+    emptyMentionLabelReference.current = t("richText.mention.empty");
+
+    const mentionSuggestion = useMemo(
+        () =>
+            createMentionSuggestion({
+                emptyLabel: () => emptyMentionLabelReference.current,
+                getCandidates: () => mentionCandidatesReference.current,
+                isEnabled: () =>
+                    !readOnlyReference.current &&
+                    mentionCandidatesReference.current.length > 0,
+            }),
+        []
+    );
 
     const reportUploadError = useCallback(
         (error: unknown) => {
@@ -405,7 +216,7 @@ export function RichTextEditor({
                 : "uploadFailed";
             toast.error(t(`richText.media.${key}`));
         },
-        [t],
+        [t]
     );
 
     const editorAttributes = useMemo(() => {
@@ -414,7 +225,7 @@ export function RichTextEditor({
                 compact ? "min-h-24" : "min-h-40",
                 "w-full max-w-full overflow-x-hidden break-words px-6 py-6 text-sm leading-7 border border-input rounded-lg [overflow-wrap:anywhere]",
                 "focus:outline-none focus:border-input focus:ring-0",
-                readOnly && "cursor-default bg-muted/20",
+                readOnly && "cursor-default bg-muted/20"
             ),
         };
 
@@ -427,8 +238,7 @@ export function RichTextEditor({
     }, [compact, id, readOnly]);
 
     const contentLength = richTextLength(value);
-    const isOverLimit =
-        maxLength !== undefined && contentLength > maxLength;
+    const isOverLimit = maxLength !== undefined && contentLength > maxLength;
 
     const closeMenu = useCallback(() => {
         setMenu(EMPTY_MENU);
@@ -441,7 +251,7 @@ export function RichTextEditor({
             attributes: editorAttributes,
             handleDOMEvents: {
                 contextmenu: (_view, event) => {
-                    const currentEditor = editorRef.current;
+                    const currentEditor = editorReference.current;
                     if (!currentEditor || currentEditor.state.selection.empty) {
                         return false;
                     }
@@ -459,18 +269,19 @@ export function RichTextEditor({
                         });
 
                     setMenu(
-                        buildMenuState(currentEditor, "context", reference),
+                        buildMenuState(currentEditor, "context", reference)
                     );
                     return true;
                 },
                 mousedown: (_view, event) => {
-                    if (!menuStateRef.current.commands.length) return false;
+                    if (menuStateReference.current.commands.length === 0)
+                        return false;
                     if (event.button === 2) return false;
 
                     const target = event.target;
                     if (
                         target instanceof Node &&
-                        menuRef.current?.contains(target)
+                        menuReference.current?.contains(target)
                     ) {
                         return false;
                     }
@@ -480,7 +291,7 @@ export function RichTextEditor({
                 },
             },
             handleKeyDown: (_view, event) => {
-                const current = menuStateRef.current;
+                const current = menuStateReference.current;
 
                 // The selection bubble has no command rows to navigate, but Esc
                 // should still dismiss it.
@@ -493,7 +304,7 @@ export function RichTextEditor({
                     return false;
                 }
 
-                if (!current.commands.length) return false;
+                if (current.commands.length === 0) return false;
 
                 if (event.key === "ArrowDown") {
                     event.preventDefault();
@@ -525,7 +336,7 @@ export function RichTextEditor({
                 if (event.key === "Enter") {
                     event.preventDefault();
                     const command = current.commands[current.activeIndex];
-                    const currentEditor = editorRef.current;
+                    const currentEditor = editorReference.current;
                     if (command && currentEditor) {
                         if (current.source === "slash") {
                             deleteSlashQuery(currentEditor, current.query);
@@ -553,8 +364,7 @@ export function RichTextEditor({
                 openOnClick: false,
             }),
             Placeholder.configure({
-                placeholder:
-                    placeholder ?? t("fields.descriptionPlaceholder"),
+                placeholder: placeholder ?? t("fields.descriptionPlaceholder"),
             }),
             TaskItem.configure({
                 HTMLAttributes: {
@@ -567,6 +377,12 @@ export function RichTextEditor({
                 types: ["heading", "paragraph"],
             }),
             Underline,
+            Mention.configure({
+                HTMLAttributes: {
+                    class: "mention",
+                },
+                suggestion: mentionSuggestion,
+            }),
             ResizableImage,
             ImageUpload,
             FileHandler.configure({
@@ -576,7 +392,7 @@ export function RichTextEditor({
                 onDrop: (currentEditor, files, position) => {
                     // FileHandler stops propagation on editor-surface drops, so
                     // the container onDrop never runs — reset the overlay here.
-                    dragDepthRef.current = 0;
+                    dragDepthReference.current = 0;
                     setIsDraggingFile(false);
                     insertImageFiles(currentEditor, files, position);
                 },
@@ -590,7 +406,7 @@ export function RichTextEditor({
             onBlur?.();
         },
         onSelectionUpdate: ({ editor: currentEditor }) => {
-            const current = menuStateRef.current;
+            const current = menuStateReference.current;
 
             if (current.source === "slash") {
                 setMenu(resolveSlashMenu(currentEditor) ?? EMPTY_MENU);
@@ -633,7 +449,7 @@ export function RichTextEditor({
                 return;
             }
 
-            const source = menuStateRef.current.source;
+            const source = menuStateReference.current.source;
             // A doc change (e.g. deleting the selection) collapses it — drop the
             // slash menu, and dismiss the formatting bubble once no text remains
             // selected. `onSelectionUpdate` alone can miss the delete case.
@@ -652,7 +468,7 @@ export function RichTextEditor({
     }, [editor, readOnly]);
 
     useEffect(() => {
-        editorRef.current = editor;
+        editorReference.current = editor;
     }, [editor]);
 
     useEffect(() => {
@@ -662,7 +478,7 @@ export function RichTextEditor({
     }, [editor, onUploadImage, reportUploadError]);
 
     useLayoutEffect(() => {
-        const menuElement = menuRef.current;
+        const menuElement = menuReference.current;
         const reference = menu.reference;
         const visible = menu.commands.length > 0 || menu.source === "selection";
         if (!menuElement || !reference || !visible) return;
@@ -753,8 +569,7 @@ export function RichTextEditor({
         if (!editor) return;
 
         const previousUrl = editor.getAttributes("link").href as
-            | string
-            | undefined;
+            string | undefined;
         setLinkDialog({ open: true, value: previousUrl ?? "" });
         closeMenu();
     };
@@ -767,9 +582,7 @@ export function RichTextEditor({
         if (!editor) return;
 
         const trimmed = linkDialog.value.trim();
-        if (!trimmed) {
-            editor.chain().focus().extendMarkRange("link").unsetLink().run();
-        } else {
+        if (trimmed) {
             // Allow bare hosts (e.g. "example.com") by defaulting to https,
             // while leaving explicit schemes (https:, mailto:, tel:, …) intact.
             const href = /^[a-z][a-z0-9+.-]*:/i.test(trimmed)
@@ -781,6 +594,8 @@ export function RichTextEditor({
                 .extendMarkRange("link")
                 .setLink({ href })
                 .run();
+        } else {
+            editor.chain().focus().extendMarkRange("link").unsetLink().run();
         }
 
         closeLinkDialog();
@@ -789,7 +604,7 @@ export function RichTextEditor({
     const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
         if (!event.dataTransfer.types.includes("Files")) return;
         event.preventDefault();
-        dragDepthRef.current += 1;
+        dragDepthReference.current += 1;
         setIsDraggingFile(true);
     };
 
@@ -801,8 +616,11 @@ export function RichTextEditor({
 
     const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
         if (!event.dataTransfer.types.includes("Files")) return;
-        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-        if (dragDepthRef.current === 0) {
+        dragDepthReference.current = Math.max(
+            0,
+            dragDepthReference.current - 1
+        );
+        if (dragDepthReference.current === 0) {
             setIsDraggingFile(false);
         }
     };
@@ -811,7 +629,7 @@ export function RichTextEditor({
         if (!event.dataTransfer.types.includes("Files")) return;
 
         const files = filterImageFiles(event.dataTransfer.files);
-        dragDepthRef.current = 0;
+        dragDepthReference.current = 0;
         setIsDraggingFile(false);
 
         if (!editor || files.length === 0) return;
@@ -831,235 +649,223 @@ export function RichTextEditor({
 
     const floatingMenu = menuVisible
         ? createPortal(
-                  <div
-                      className={cn(
-                          "fixed top-0 left-0 z-70 rounded-lg border border-border bg-popover p-1 shadow-md ring-1 ring-foreground/10",
-                          showBlocks
-                              ? "w-72"
-                              : "w-auto max-w-[calc(100vw-1rem)]",
-                      )}
-                      ref={menuRef}
-                  >
-                      <TooltipProvider delay={400}>
-                          <div
-                              className={cn(
-                                  "flex flex-wrap items-center gap-0.5 px-1",
-                                  showBlocks && "border-b border-border pb-1",
-                              )}
-                          >
-                              <ToolbarButton
-                                  active={toolbarState?.isBold}
-                                  ariaLabel={t("richText.toolbar.bold")}
-                                  keys={shortcut(MOD_KEY, "B")}
-                                  onClick={() =>
-                                      editor.chain().focus().toggleBold().run()
-                                  }
-                              >
-                                  <Bold />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isItalic}
-                                  ariaLabel={t("richText.toolbar.italic")}
-                                  keys={shortcut(MOD_KEY, "I")}
-                                  onClick={() =>
-                                      editor.chain().focus().toggleItalic().run()
-                                  }
-                              >
-                                  <Italic />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isUnderline}
-                                  ariaLabel={t("richText.toolbar.underline")}
-                                  keys={shortcut(MOD_KEY, "U")}
-                                  onClick={() =>
-                                      editor
-                                          .chain()
-                                          .focus()
-                                          .toggleUnderline()
-                                          .run()
-                                  }
-                              >
-                                  <UnderlineIcon />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isStrike}
-                                  ariaLabel={t("richText.toolbar.strike")}
-                                  keys={shortcut(MOD_KEY, SHIFT_KEY, "S")}
-                                  onClick={() =>
-                                      editor.chain().focus().toggleStrike().run()
-                                  }
-                              >
-                                  <Strikethrough />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isCode}
-                                  ariaLabel={t("richText.toolbar.code")}
-                                  keys={shortcut(MOD_KEY, "E")}
-                                  onClick={() =>
-                                      editor.chain().focus().toggleCode().run()
-                                  }
-                              >
-                                  <Code2 />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isHighlight}
-                                  ariaLabel={t("richText.toolbar.highlight")}
-                                  keys={shortcut(MOD_KEY, SHIFT_KEY, "H")}
-                                  onClick={() =>
-                                      editor
-                                          .chain()
-                                          .focus()
-                                          .toggleHighlight()
-                                          .run()
-                                  }
-                              >
-                                  <Highlighter />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isLink}
-                                  ariaLabel={t("richText.toolbar.link")}
-                                  onClick={handleSetLink}
-                              >
-                                  <Link2 />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isAlignLeft}
-                                  ariaLabel={t("richText.toolbar.alignLeft")}
-                                  keys={shortcut(MOD_KEY, SHIFT_KEY, "L")}
-                                  onClick={() =>
-                                      editor
-                                          .chain()
-                                          .focus()
-                                          .setTextAlign("left")
-                                          .run()
-                                  }
-                              >
-                                  <AlignLeft />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isAlignCenter}
-                                  ariaLabel={t("richText.toolbar.alignCenter")}
-                                  keys={shortcut(MOD_KEY, SHIFT_KEY, "E")}
-                                  onClick={() =>
-                                      editor
-                                          .chain()
-                                          .focus()
-                                          .setTextAlign("center")
-                                          .run()
-                                  }
-                              >
-                                  <AlignCenter />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isAlignRight}
-                                  ariaLabel={t("richText.toolbar.alignRight")}
-                                  keys={shortcut(MOD_KEY, SHIFT_KEY, "R")}
-                                  onClick={() =>
-                                      editor
-                                          .chain()
-                                          .focus()
-                                          .setTextAlign("right")
-                                          .run()
-                                  }
-                              >
-                                  <AlignRight />
-                              </ToolbarButton>
-                              <ToolbarButton
-                                  active={toolbarState?.isAlignJustify}
-                                  ariaLabel={t("richText.toolbar.alignJustify")}
-                                  keys={shortcut(MOD_KEY, SHIFT_KEY, "J")}
-                                  onClick={() =>
-                                      editor
-                                          .chain()
-                                          .focus()
-                                          .setTextAlign("justify")
-                                          .run()
-                                  }
-                              >
-                                  <AlignJustify />
-                              </ToolbarButton>
-                          </div>
-                          {showBlocks ? (
-                              <p className="px-2 py-1 text-xs text-muted-foreground">
-                                  {t("richText.slash.title")}
-                              </p>
-                          ) : null}
-                          {menu.commands.map((command, index) => {
-                              const Icon = command.icon;
-                              const isApplied = menu.activeIds.includes(
-                                  command.id,
-                              );
-                              const isFocused = index === menu.activeIndex;
-                              const keys = SLASH_SHORTCUTS[command.id];
-                              const rowClassName = cn(
-                                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
-                                  "hover:bg-muted",
-                                  isApplied && "bg-muted/70 text-foreground",
-                                  isFocused &&
-                                      "bg-muted text-foreground ring-1 ring-ring/40",
-                              );
-                              const handleRun = (
-                                  event: ReactMouseEvent<HTMLButtonElement>,
-                              ) => {
-                                  event.preventDefault();
-                                  runSlashCommand(command);
-                              };
-                              const rowContent = (
-                                  <>
-                                      <Icon className="size-4 shrink-0 text-muted-foreground" />
-                                      <span className="flex-1">
-                                          {t(command.titleKey)}
-                                      </span>
-                                      {isApplied ? (
-                                          <Check
-                                              aria-hidden
-                                              className="size-3.5 shrink-0 text-foreground"
-                                          />
-                                      ) : null}
-                                  </>
-                              );
-
-                              if (!keys) {
-                                  return (
-                                      <button
-                                          className={rowClassName}
-                                          key={command.id}
-                                          onMouseDown={handleRun}
-                                          type="button"
-                                      >
-                                          {rowContent}
-                                      </button>
-                                  );
+              <div
+                  className={cn(
+                      "fixed top-0 left-0 z-70 rounded-lg border border-border bg-popover p-1 shadow-md ring-1 ring-foreground/10",
+                      showBlocks ? "w-72" : "w-auto max-w-[calc(100vw-1rem)]"
+                  )}
+                  ref={menuReference}
+              >
+                  <TooltipProvider delay={400}>
+                      <div
+                          className={cn(
+                              "flex flex-wrap items-center gap-0.5 px-1",
+                              showBlocks && "border-b border-border pb-1"
+                          )}
+                      >
+                          <ToolbarButton
+                              active={toolbarState?.isBold}
+                              ariaLabel={t("richText.toolbar.bold")}
+                              keys={shortcut(MOD_KEY, "B")}
+                              onClick={() =>
+                                  editor.chain().focus().toggleBold().run()
                               }
+                          >
+                              <Bold />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isItalic}
+                              ariaLabel={t("richText.toolbar.italic")}
+                              keys={shortcut(MOD_KEY, "I")}
+                              onClick={() =>
+                                  editor.chain().focus().toggleItalic().run()
+                              }
+                          >
+                              <Italic />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isUnderline}
+                              ariaLabel={t("richText.toolbar.underline")}
+                              keys={shortcut(MOD_KEY, "U")}
+                              onClick={() =>
+                                  editor.chain().focus().toggleUnderline().run()
+                              }
+                          >
+                              <UnderlineIcon />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isStrike}
+                              ariaLabel={t("richText.toolbar.strike")}
+                              keys={shortcut(MOD_KEY, SHIFT_KEY, "S")}
+                              onClick={() =>
+                                  editor.chain().focus().toggleStrike().run()
+                              }
+                          >
+                              <Strikethrough />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isCode}
+                              ariaLabel={t("richText.toolbar.code")}
+                              keys={shortcut(MOD_KEY, "E")}
+                              onClick={() =>
+                                  editor.chain().focus().toggleCode().run()
+                              }
+                          >
+                              <Code2 />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isHighlight}
+                              ariaLabel={t("richText.toolbar.highlight")}
+                              keys={shortcut(MOD_KEY, SHIFT_KEY, "H")}
+                              onClick={() =>
+                                  editor.chain().focus().toggleHighlight().run()
+                              }
+                          >
+                              <Highlighter />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isLink}
+                              ariaLabel={t("richText.toolbar.link")}
+                              onClick={handleSetLink}
+                          >
+                              <Link2 />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isAlignLeft}
+                              ariaLabel={t("richText.toolbar.alignLeft")}
+                              keys={shortcut(MOD_KEY, SHIFT_KEY, "L")}
+                              onClick={() =>
+                                  editor
+                                      .chain()
+                                      .focus()
+                                      .setTextAlign("left")
+                                      .run()
+                              }
+                          >
+                              <AlignLeft />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isAlignCenter}
+                              ariaLabel={t("richText.toolbar.alignCenter")}
+                              keys={shortcut(MOD_KEY, SHIFT_KEY, "E")}
+                              onClick={() =>
+                                  editor
+                                      .chain()
+                                      .focus()
+                                      .setTextAlign("center")
+                                      .run()
+                              }
+                          >
+                              <AlignCenter />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isAlignRight}
+                              ariaLabel={t("richText.toolbar.alignRight")}
+                              keys={shortcut(MOD_KEY, SHIFT_KEY, "R")}
+                              onClick={() =>
+                                  editor
+                                      .chain()
+                                      .focus()
+                                      .setTextAlign("right")
+                                      .run()
+                              }
+                          >
+                              <AlignRight />
+                          </ToolbarButton>
+                          <ToolbarButton
+                              active={toolbarState?.isAlignJustify}
+                              ariaLabel={t("richText.toolbar.alignJustify")}
+                              keys={shortcut(MOD_KEY, SHIFT_KEY, "J")}
+                              onClick={() =>
+                                  editor
+                                      .chain()
+                                      .focus()
+                                      .setTextAlign("justify")
+                                      .run()
+                              }
+                          >
+                              <AlignJustify />
+                          </ToolbarButton>
+                      </div>
+                      {showBlocks ? (
+                          <p className="px-2 py-1 text-xs text-muted-foreground">
+                              {t("richText.slash.title")}
+                          </p>
+                      ) : null}
+                      {menu.commands.map((command, index) => {
+                          const Icon = command.icon;
+                          const isApplied = menu.activeIds.includes(command.id);
+                          const isFocused = index === menu.activeIndex;
+                          const keys = SLASH_SHORTCUTS[command.id];
+                          const rowClassName = cn(
+                              "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
+                              "hover:bg-muted",
+                              isApplied && "bg-muted/70 text-foreground",
+                              isFocused &&
+                                  "bg-muted text-foreground ring-1 ring-ring/40"
+                          );
+                          const handleRun = (
+                              event: ReactMouseEvent<HTMLButtonElement>
+                          ) => {
+                              event.preventDefault();
+                              runSlashCommand(command);
+                          };
+                          const rowContent = (
+                              <>
+                                  <Icon className="size-4 shrink-0 text-muted-foreground" />
+                                  <span className="flex-1">
+                                      {t(command.titleKey)}
+                                  </span>
+                                  {isApplied ? (
+                                      <Check
+                                          aria-hidden
+                                          className="size-3.5 shrink-0 text-foreground"
+                                      />
+                                  ) : null}
+                              </>
+                          );
 
+                          if (!keys) {
                               return (
-                                  <Tooltip key={command.id}>
-                                      <TooltipTrigger
-                                          className={rowClassName}
-                                          onMouseDown={handleRun}
-                                          type="button"
-                                      >
-                                          {rowContent}
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                          positionerClassName="z-[80]"
-                                          side="right"
-                                      >
-                                          <kbd
-                                              className="bg-background/15 px-1 py-0.5 font-mono text-[0.6875rem] leading-none"
-                                              data-slot="kbd"
-                                          >
-                                              {keys}
-                                          </kbd>
-                                      </TooltipContent>
-                                  </Tooltip>
+                                  <button
+                                      className={rowClassName}
+                                      key={command.id}
+                                      onMouseDown={handleRun}
+                                      type="button"
+                                  >
+                                      {rowContent}
+                                  </button>
                               );
-                          })}
-                      </TooltipProvider>
-                  </div>,
-                  document.body,
-              )
-            : null;
+                          }
+
+                          return (
+                              <Tooltip key={command.id}>
+                                  <TooltipTrigger
+                                      className={rowClassName}
+                                      onMouseDown={handleRun}
+                                      type="button"
+                                  >
+                                      {rowContent}
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                      positionerClassName="z-[80]"
+                                      side="right"
+                                  >
+                                      <kbd
+                                          className="bg-background/15 px-1 py-0.5 font-mono text-[0.6875rem] leading-none"
+                                          data-slot="kbd"
+                                      >
+                                          {keys}
+                                      </kbd>
+                                  </TooltipContent>
+                              </Tooltip>
+                          );
+                      })}
+                  </TooltipProvider>
+              </div>,
+              document.body
+          )
+        : null;
 
     return (
         <div
@@ -1069,7 +875,7 @@ export function RichTextEditor({
                 "dark:bg-input/20",
                 isDraggingFile &&
                     "border-dashed border-primary bg-primary/5 ring-3 ring-primary/30",
-                className,
+                className
             )}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
@@ -1166,12 +972,12 @@ export function RichTextEditor({
                     "[&_.ProseMirror_a]:break-all [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:cursor-pointer [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-4",
                     "[&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-border",
                     "[&_.ProseMirror_mark]:rounded-sm [&_.ProseMirror_mark]:bg-amber-200/70 [&_.ProseMirror_mark]:px-0.5 [&_.ProseMirror_mark]:text-foreground",
-                    "dark:[&_.ProseMirror_mark]:bg-amber-400/25",
+                    "dark:[&_.ProseMirror_mark]:bg-amber-400/25"
                 )}
                 editor={editor}
             />
 
-            {!readOnly ? (
+            {readOnly ? null : (
                 <div className="mt-1 flex items-start justify-between gap-3 px-1 text-[0.6875rem] leading-tight">
                     <p
                         aria-hidden
@@ -1179,13 +985,13 @@ export function RichTextEditor({
                     >
                         {t("richText.hint")}
                     </p>
-                    {maxLength !== undefined ? (
+                    {maxLength === undefined ? undefined : (
                         <p
                             className={cn(
                                 "shrink-0 tabular-nums",
                                 isOverLimit
                                     ? "text-destructive"
-                                    : "text-muted-foreground",
+                                    : "text-muted-foreground"
                             )}
                         >
                             {t("richText.length", {
@@ -1193,9 +999,224 @@ export function RichTextEditor({
                                 max: maxLength.toLocaleString(),
                             })}
                         </p>
-                    ) : undefined}
+                    )}
                 </div>
-            ) : null}
+            )}
         </div>
     );
+}
+
+function buildMenuState(
+    editor: Editor,
+    source: "context" | "slash",
+    reference: ReferenceRect,
+    query = ""
+): FloatingMenuState {
+    const commands = filterSlashCommands(query);
+    const activeIds = commands
+        .filter((command) => isCommandActive(editor, command.id))
+        .map((command) => command.id);
+    const activeIndex = Math.max(
+        commands.findIndex((command) => activeIds.includes(command.id)),
+        0
+    );
+
+    return {
+        activeIds,
+        activeIndex,
+        commands,
+        query,
+        reference,
+        source,
+    };
+}
+
+/** Inline-formatting bubble shown automatically on a text selection (no block list). */
+function buildSelectionMenu(reference: ReferenceRect): FloatingMenuState {
+    return {
+        activeIds: [],
+        activeIndex: 0,
+        commands: [],
+        query: "",
+        reference,
+        source: "selection",
+    };
+}
+
+function createVirtualElement(rect: ReferenceRect) {
+    return {
+        getBoundingClientRect: () => ({
+            bottom: rect.bottom,
+            height: Math.max(rect.bottom - rect.top, 1),
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            width: Math.max(rect.right - rect.left, 1),
+            x: rect.left,
+            y: rect.top,
+        }),
+    };
+}
+
+function getSelectionRect(editor: Editor) {
+    const { empty, from, to } = editor.state.selection;
+    if (empty || from === to) return;
+
+    const start = editor.view.coordsAtPos(from);
+    const end = editor.view.coordsAtPos(to);
+
+    return toReferenceRect({
+        bottom: Math.max(start.bottom, end.bottom),
+        left: Math.min(start.left, end.left),
+        right: Math.max(start.right, end.right),
+        top: Math.min(start.top, end.top),
+    });
+}
+
+function getSlashQuery(editor: Editor) {
+    const { $from } = editor.state.selection;
+    const textBefore = $from.parent.textBetween(
+        0,
+        $from.parentOffset,
+        undefined,
+        "\uFFFC"
+    );
+    const match = /(?:^|\s)\/([a-z0-9-]*)$/i.exec(textBefore);
+    if (!match) return;
+
+    return {
+        query: match[1] ?? "",
+        rect: toReferenceRect(editor.view.coordsAtPos($from.pos)),
+    };
+}
+
+/** True when the selection spans some text (not empty, not a node like an image). */
+function hasTextSelection(editor: Editor): boolean {
+    const { selection } = editor.state;
+    return (
+        !selection.empty &&
+        selection.from !== selection.to &&
+        !(selection instanceof NodeSelection)
+    );
+}
+
+function isCommandActive(editor: Editor, commandId: SlashCommand["id"]) {
+    switch (commandId) {
+        case "bullet-list": {
+            return editor.isActive("bulletList");
+        }
+        case "code-block": {
+            return editor.isActive("codeBlock");
+        }
+        case "divider": {
+            return editor.isActive("horizontalRule");
+        }
+        case "heading-1": {
+            return editor.isActive("heading", { level: 1 });
+        }
+        case "heading-2": {
+            return editor.isActive("heading", { level: 2 });
+        }
+        case "heading-3": {
+            return editor.isActive("heading", { level: 3 });
+        }
+        case "ordered-list": {
+            return editor.isActive("orderedList");
+        }
+        case "paragraph": {
+            // Plain text block — not when a list / heading / code is the primary type.
+            return (
+                editor.isActive("paragraph") &&
+                !editor.isActive("heading") &&
+                !editor.isActive("bulletList") &&
+                !editor.isActive("orderedList") &&
+                !editor.isActive("taskList") &&
+                !editor.isActive("codeBlock")
+            );
+        }
+        case "quote": {
+            return editor.isActive("blockquote");
+        }
+        case "task-list": {
+            return editor.isActive("taskList");
+        }
+        default: {
+            return false;
+        }
+    }
+}
+
+function resolveSlashMenu(editor: Editor): FloatingMenuState | undefined {
+    const slash = getSlashQuery(editor);
+    if (!slash) return undefined;
+
+    return buildMenuState(editor, "slash", slash.rect, slash.query);
+}
+
+function ToolbarButton({
+    active,
+    ariaLabel,
+    children,
+    keys,
+    onClick,
+}: {
+    active?: boolean;
+    ariaLabel: string;
+    children: ReactNode;
+    keys?: string;
+    onClick: () => void;
+}) {
+    if (!keys) {
+        return (
+            <Button
+                aria-label={ariaLabel}
+                className={cn(active && "bg-muted text-foreground")}
+                onClick={onClick}
+                size="icon-xs"
+                type="button"
+                variant="ghost"
+            >
+                {children}
+            </Button>
+        );
+    }
+
+    return (
+        <Tooltip>
+            <TooltipTrigger
+                aria-label={ariaLabel}
+                className={cn(
+                    buttonVariants({ size: "icon-xs", variant: "ghost" }),
+                    active && "bg-muted text-foreground"
+                )}
+                onClick={onClick}
+                type="button"
+            >
+                {children}
+            </TooltipTrigger>
+            <TooltipContent className="gap-2" positionerClassName="z-[80]">
+                <span>{ariaLabel}</span>
+                <kbd
+                    className="bg-background/15 px-1 py-0.5 font-mono text-[0.6875rem] leading-none"
+                    data-slot="kbd"
+                >
+                    {keys}
+                </kbd>
+            </TooltipContent>
+        </Tooltip>
+    );
+}
+
+function toReferenceRect(rect: {
+    bottom: number;
+    left: number;
+    right?: number;
+    top: number;
+}): ReferenceRect {
+    return {
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right ?? rect.left,
+        top: rect.top,
+    };
 }

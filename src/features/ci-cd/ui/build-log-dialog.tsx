@@ -168,11 +168,19 @@ export function BuildLogDialog({
                     </pre>
                 </div>
 
-                <p className="shrink-0 text-meta uppercase tracking-wide text-muted-foreground">
-                    {isStreaming
-                        ? t("cicd.logs.streaming")
-                        : t("cicd.logs.hint")}
-                </p>
+                <div className="flex shrink-0 items-center gap-2 text-meta uppercase tracking-wide text-muted-foreground">
+                    {isStreaming ? (
+                        <>
+                            <Spinner
+                                aria-label={t("cicd.logs.streaming")}
+                                className="size-4 text-amber-400"
+                            />
+                            <span>{t("cicd.logs.streaming")}</span>
+                        </>
+                    ) : (
+                        <span>{t("cicd.logs.hint")}</span>
+                    )}
+                </div>
             </DialogContent>
         </Dialog>
     );

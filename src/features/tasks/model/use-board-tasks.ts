@@ -19,6 +19,16 @@ import type {
 
 import { boardKeys } from "@/features/boards";
 import { resolveLabelNames } from "@/features/labels";
+import {
+    createNotificationsForStatusChange,
+    createNotificationsForWatchers,
+    createTaskNotifications,
+} from "@/features/notifications/api/notifications-api";
+import { notifyNewMentionsBestEffort } from "@/features/notifications/lib/notify-new-mentions";
+import { planAssigneeChangeNotifications } from "@/features/notifications/lib/plan-assignee-change-notifications";
+import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan-author-change-notifications";
+import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
+import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
@@ -52,6 +62,15 @@ const taskChannels = new Map<
     string,
     { channel: RealtimeChannel; subscribers: number }
 >();
+
+/** Author transfer for Notification fan-out — not an Activity feed field. */
+type AuthorNotificationChange = {
+    field: "author";
+    from: IdNameSnapshot | null;
+    to: IdNameSnapshot | null;
+};
+
+type IdNameSnapshot = { id: string; name: string };
 
 type TaskDetailsUpdate = Partial<
     Omit<
@@ -116,6 +135,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
         }) => {
             await persistTaskMoves(boardId, updates);
             if (activity) {
+                await notifyStatusChangeBestEffort({
+                    activityChanges: activity.changes,
+                    projectId,
+                    taskId: activity.taskId,
+                });
                 await recordTaskActivity({
                     changes: activity.changes,
                     projectId,
@@ -132,12 +156,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const updateTaskDetailsMutation = useMutation({
         mutationFn: async ({
             activityChanges,
+            authorChange,
             details,
             id,
+            previousDescription,
         }: {
             activityChanges: TaskActivityChange[];
+            /** Author is not an Activity field (SPEC); still drives fan-out. */
+            authorChange?: AuthorNotificationChange | null;
             details: TaskDetailsUpdate;
             id: string;
+            previousDescription?: string;
         }) => {
             const patch: Parameters<typeof updateTaskRecord>[1] = {};
             if (details.title !== undefined) patch.title = details.title;
@@ -180,6 +209,28 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 await replaceTaskLabels(id, details.labelIds ?? []);
             }
 
+            if (details.description !== undefined) {
+                await notifyNewMentionsBestEffort({
+                    nextBody: details.description ?? "",
+                    previousBody: previousDescription ?? "",
+                    source: "description",
+                    taskId: id,
+                });
+            }
+
+            await notifyPriorityChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
+
+            await notifyPersonFieldChangesBestEffort({
+                activityChanges,
+                authorChange,
+                projectId,
+                taskId: id,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -203,6 +254,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             status: TaskStatus;
         }) => {
             await updateTaskRecord(id, { status });
+
+            await notifyStatusChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -228,6 +286,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             taskId: string;
         }) => {
             await moveTaskToBoard(taskId, targetBoardId, targetStatus);
+
+            await notifyBoardMoveBestEffort({
+                activityChanges,
+                projectId,
+                taskId,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -422,7 +487,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
         moveTaskToOtherBoard: async (
             taskId: string,
             targetBoardId: string,
-            targetStatus: TaskStatus
+            targetStatus: TaskStatus,
+            targetStatusName?: string
         ) => {
             const task = tasks.find((item) => item.id === taskId);
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
@@ -453,7 +519,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 },
                 status: {
                     id: targetStatus,
-                    name: targetStatus,
+                    name: targetStatusName ?? targetStatus,
                 },
             };
 
@@ -488,6 +554,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             const previous = snapshot?.tasks.find((task) => task.id === id);
             let activityChanges: TaskActivityChange[] = [];
+            let authorChange: AuthorNotificationChange | null = null;
 
             if (previous && snapshot) {
                 const before = toTaskActivitySnapshot(previous, {
@@ -517,6 +584,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     type: details.type,
                 });
                 activityChanges = buildTaskActivityChanges(before, after);
+                authorChange = buildAuthorNotificationChange(
+                    previous.author,
+                    details.author
+                );
             }
 
             setTasksCache(queryClient, projectId, boardId, (current) => ({
@@ -552,7 +623,16 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     };
                 }),
             }));
-            updateTaskDetailsMutation.mutate({ activityChanges, details, id });
+            updateTaskDetailsMutation.mutate({
+                activityChanges,
+                authorChange,
+                details,
+                id,
+                previousDescription:
+                    details.description === undefined
+                        ? undefined
+                        : (previous?.description ?? ""),
+            });
         },
         updateTaskStatus: (id: string, status: TaskStatus) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
@@ -604,6 +684,39 @@ function applyTaskUpdates(
         taskPositions: new Map([...cache.taskPositions, ...positionById]),
         tasks,
     };
+}
+
+function buildAuthorNotificationChange(
+    previousAuthor: Task["author"] | undefined,
+    nextAuthor: TaskDetailsUpdate["author"]
+): AuthorNotificationChange | null {
+    if (nextAuthor === undefined) return null;
+
+    const from = previousAuthor
+        ? { id: previousAuthor.id, name: previousAuthor.name }
+        : null;
+    const to = nextAuthor ? { id: nextAuthor.id, name: nextAuthor.name } : null;
+
+    if ((from?.id ?? null) === (to?.id ?? null)) return null;
+
+    return { field: "author", from, to };
+}
+
+function extractStatusTransition(
+    activityChanges: TaskActivityChange[]
+): null | { from: IdNameSnapshot; to: IdNameSnapshot } {
+    const change = activityChanges.find((entry) => entry.field === "status");
+    if (!change) return null;
+    if (!isIdNameSnapshot(change.from) || !isIdNameSnapshot(change.to)) {
+        return null;
+    }
+    return { from: change.from, to: change.to };
+}
+
+function isIdNameSnapshot(value: unknown): value is IdNameSnapshot {
+    if (!value || typeof value !== "object") return false;
+    const snapshot = value as { id?: unknown; name?: unknown };
+    return typeof snapshot.id === "string" && typeof snapshot.name === "string";
 }
 
 function moveTaskToColumnInMemory(
@@ -659,6 +772,94 @@ function moveTaskToColumnInMemory(
     }
 
     return { tasks: next, updates };
+}
+
+async function notifyBoardMoveBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const event = planBoardMoveWatcherNotification(input.activityChanges);
+    if (!event) return;
+
+    try {
+        await createNotificationsForWatchers({
+            kind: "board_move",
+            metadata: event.metadata,
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyPersonFieldChangesBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    authorChange?: AuthorNotificationChange | null;
+    projectId: string;
+    taskId: string;
+}) {
+    const events = [
+        ...planAssigneeChangeNotifications(input.activityChanges),
+        ...planAuthorChangeNotifications(
+            input.authorChange ? [input.authorChange] : []
+        ),
+    ];
+    if (events.length === 0) return;
+
+    try {
+        await createTaskNotifications({
+            events,
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyPriorityChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const event = planPriorityWatcherNotification(input.activityChanges);
+    if (!event) return;
+
+    try {
+        await createNotificationsForWatchers({
+            kind: "priority_change",
+            metadata: event.metadata,
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyStatusChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const transition = extractStatusTransition(input.activityChanges);
+    if (!transition) return;
+
+    try {
+        await createNotificationsForStatusChange({
+            metadata: {
+                from: transition.from,
+                source: "app",
+                to: transition.to,
+            },
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
 }
 
 async function recordTaskActivity(input: {

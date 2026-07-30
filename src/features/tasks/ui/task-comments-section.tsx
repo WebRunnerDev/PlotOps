@@ -1,224 +1,55 @@
 import { Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { TaskComment } from "@/features/tasks/model/types";
+
+import { useAuth } from "@/features/auth";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
-import {
-    TASK_COMMENT_MAX_LENGTH,
-} from "@/features/tasks/model/constants";
+import { TASK_COMMENT_MAX_LENGTH } from "@/features/tasks/model/constants";
 import {
     useCreateTaskComment,
     useDeleteTaskComment,
     useTaskComments,
     useUpdateTaskComment,
 } from "@/features/tasks/model/use-task-comments";
-import type { TaskComment } from "@/features/tasks/model/types";
-import { useAuth } from "@/features/auth";
-import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { cn } from "@/shared/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
+import { Button } from "@/shared/shadcn/ui/button";
+import { Spinner } from "@/shared/shadcn/ui/spinner";
+import {
+    type MentionCandidate,
+    RichTextEditor,
+} from "@/shared/ui/rich-text-editor";
 import {
     isRichTextWithinLimit,
     normalizeEditorContent,
 } from "@/shared/ui/rich-text-editor/content";
-import { RichTextEditor } from "@/shared/ui/rich-text-editor";
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/shared/shadcn/ui/avatar";
-import { Button } from "@/shared/shadcn/ui/button";
-import { Spinner } from "@/shared/shadcn/ui/spinner";
+
+const COMMENT_HIGHLIGHT_MS = 2400;
+
+type TaskCommentItemProperties = {
+    canDelete: boolean;
+    canEdit: boolean;
+    comment: TaskComment;
+    highlighted: boolean;
+    locale: string;
+    mentionCandidates: readonly MentionCandidate[];
+    onDelete: () => void;
+    onSave: (body: string) => Promise<void>;
+    t: (key: string, options?: Record<string, unknown>) => string;
+    taskId: string;
+};
 
 type TaskCommentsSectionProperties = {
     projectId: string;
     readOnly?: boolean;
     taskId: string;
 };
-
-function initials(name: string) {
-    const parts = name.trim().split(/[\s_-]+/).filter(Boolean);
-    if (parts.length >= 2) {
-        return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-}
-
-function formatTimestamp(value: string, locale: string) {
-    return new Intl.DateTimeFormat(locale, {
-        dateStyle: "medium",
-        timeStyle: "short",
-    }).format(new Date(value));
-}
-
-type TaskCommentItemProperties = {
-    canDelete: boolean;
-    canEdit: boolean;
-    comment: TaskComment;
-    locale: string;
-    onDelete: () => void;
-    onSave: (body: string) => Promise<void>;
-    taskId: string;
-    t: (key: string, options?: Record<string, unknown>) => string;
-};
-
-function TaskCommentItem({
-    canDelete,
-    canEdit,
-    comment,
-    locale,
-    onDelete,
-    onSave,
-    taskId,
-    t,
-}: TaskCommentItemProperties) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [draft, setDraft] = useState(comment.body);
-    const [isSaving, setIsSaving] = useState(false);
-
-    const authorName = comment.author?.name ?? t("members.unknownUser");
-    const edited =
-        comment.updatedAt !== comment.createdAt
-            ? t("comments.edited")
-            : undefined;
-
-    const handleSave = async () => {
-        const next = normalizeEditorContent(draft);
-        if (!next) {
-            toast.error(t("comments.empty"));
-            return;
-        }
-        if (!isRichTextWithinLimit(next, TASK_COMMENT_MAX_LENGTH)) {
-            toast.error(t("comments.tooLong"));
-            return;
-        }
-        if (next === comment.body) {
-            setIsEditing(false);
-            return;
-        }
-
-        setIsSaving(true);
-        try {
-            await onSave(next);
-            setIsEditing(false);
-            toast.success(t("comments.updated"));
-        } catch {
-            toast.error(t("comments.updateFailed"));
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    return (
-        <article className="flex flex-col gap-3 border border-border p-3">
-            <div className="flex items-start gap-3">
-                <Avatar className="size-8 shrink-0 rounded-none">
-                    {comment.author?.avatarUrl ? (
-                        <AvatarImage alt="" src={comment.author.avatarUrl} />
-                    ) : undefined}
-                    <AvatarFallback className="rounded-none text-meta">
-                        {initials(authorName)}
-                    </AvatarFallback>
-                </Avatar>
-
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="truncate text-ui font-medium">{authorName}</p>
-                        <time
-                            className="text-meta text-muted-foreground"
-                            dateTime={comment.createdAt}
-                        >
-                            {formatTimestamp(comment.createdAt, locale)}
-                        </time>
-                        {edited ? (
-                            <span className="text-meta text-muted-foreground">
-                                {edited}
-                            </span>
-                        ) : undefined}
-                    </div>
-                </div>
-
-                {canEdit || canDelete ? (
-                    <div className="flex shrink-0 items-center gap-1">
-                        {canEdit && !isEditing ? (
-                            <Button
-                                aria-label={t("comments.edit")}
-                                onClick={() => {
-                                    setDraft(comment.body);
-                                    setIsEditing(true);
-                                }}
-                                size="icon-xs"
-                                type="button"
-                                variant="ghost"
-                            >
-                                <Pencil />
-                            </Button>
-                        ) : undefined}
-                        {canDelete ? (
-                            <Button
-                                aria-label={t("comments.delete")}
-                                onClick={onDelete}
-                                size="icon-xs"
-                                type="button"
-                                variant="ghost"
-                            >
-                                <Trash2 />
-                            </Button>
-                        ) : undefined}
-                    </div>
-                ) : undefined}
-            </div>
-
-            {isEditing ? (
-                <div className="flex flex-col gap-2">
-                    <RichTextEditor
-                        compact
-                        id={`comment-edit-${comment.id}`}
-                        maxLength={TASK_COMMENT_MAX_LENGTH}
-                        onChange={setDraft}
-                        onUploadImage={(file) => uploadTaskMedia(file, taskId)}
-                        placeholder={t("comments.placeholder")}
-                        value={draft}
-                    />
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            disabled={isSaving}
-                            onClick={() => {
-                                setDraft(comment.body);
-                                setIsEditing(false);
-                            }}
-                            type="button"
-                            variant="outline"
-                        >
-                            {t("comments.cancel")}
-                        </Button>
-                        <Button
-                            disabled={
-                                isSaving ||
-                                !isRichTextWithinLimit(
-                                    draft,
-                                    TASK_COMMENT_MAX_LENGTH,
-                                )
-                            }
-                            onClick={() => {
-                                void handleSave();
-                            }}
-                            type="button"
-                        >
-                            {t("comments.save")}
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                <RichTextEditor
-                    compact
-                    id={`comment-view-${comment.id}`}
-                    readOnly
-                    value={comment.body}
-                />
-            )}
-        </article>
-    );
-}
 
 export function TaskCommentsSection({
     projectId,
@@ -228,15 +59,61 @@ export function TaskCommentsSection({
     const { i18n, t } = useTranslation("board");
     const { user } = useAuth();
     const access = useProjectAccess(projectId);
+    const people = useProjectPeople(projectId);
+    const mentionCandidates = useMemo<MentionCandidate[]>(
+        () => people.map((person) => ({ id: person.id, label: person.name })),
+        [people]
+    );
     const { data: comments = [], isLoading } = useTaskComments(taskId);
     const createComment = useCreateTaskComment(taskId, projectId);
     const updateComment = useUpdateTaskComment(taskId);
     const deleteComment = useDeleteTaskComment(taskId);
+    const focusCommentId = useTasksUiStore((state) => state.focusCommentId);
+    const clearFocusComment = useTasksUiStore(
+        (state) => state.clearFocusComment
+    );
 
     const [draft, setDraft] = useState("");
+    const [highlightedCommentId, setHighlightedCommentId] = useState<
+        string | undefined
+    >();
 
     const canComment = access.canEditTasks && !readOnly;
     const canModerateDelete = access.canDeleteTasks && !readOnly;
+
+    useEffect(() => {
+        if (!focusCommentId || isLoading) {
+            return;
+        }
+
+        const target = comments.find(
+            (comment) => comment.id === focusCommentId
+        );
+        // Missing/deleted Comment: still leave Task open; drop focus quietly.
+        if (!target) {
+            clearFocusComment();
+            return;
+        }
+
+        setHighlightedCommentId(focusCommentId);
+        clearFocusComment();
+
+        const frame = globalThis.requestAnimationFrame(() => {
+            document
+                .querySelector(
+                    `[data-comment-id="${CSS.escape(focusCommentId)}"]`
+                )
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        const timer = globalThis.setTimeout(() => {
+            setHighlightedCommentId(undefined);
+        }, COMMENT_HIGHLIGHT_MS);
+
+        return () => {
+            globalThis.cancelAnimationFrame(frame);
+            globalThis.clearTimeout(timer);
+        };
+    }, [clearFocusComment, comments, focusCommentId, isLoading]);
 
     const handleCreate = async () => {
         const next = normalizeEditorContent(draft);
@@ -298,7 +175,11 @@ export function TaskCommentsSection({
                                     canDelete={canDelete}
                                     canEdit={canEdit}
                                     comment={comment}
+                                    highlighted={
+                                        highlightedCommentId === comment.id
+                                    }
                                     locale={i18n.language}
+                                    mentionCandidates={mentionCandidates}
                                     onDelete={() => {
                                         void handleDelete(comment.id);
                                     }}
@@ -306,10 +187,11 @@ export function TaskCommentsSection({
                                         await updateComment.mutateAsync({
                                             body,
                                             commentId: comment.id,
+                                            previousBody: comment.body,
                                         });
                                     }}
-                                    taskId={taskId}
                                     t={t}
+                                    taskId={taskId}
                                 />
                             </li>
                         );
@@ -323,6 +205,7 @@ export function TaskCommentsSection({
                         compact
                         id={`comment-compose-${taskId}`}
                         maxLength={TASK_COMMENT_MAX_LENGTH}
+                        mentionCandidates={mentionCandidates}
                         onChange={setDraft}
                         onUploadImage={(file) => uploadTaskMedia(file, taskId)}
                         placeholder={t("comments.placeholder")}
@@ -335,7 +218,7 @@ export function TaskCommentsSection({
                                 !normalizeEditorContent(draft) ||
                                 !isRichTextWithinLimit(
                                     draft,
-                                    TASK_COMMENT_MAX_LENGTH,
+                                    TASK_COMMENT_MAX_LENGTH
                                 )
                             }
                             onClick={() => {
@@ -349,5 +232,195 @@ export function TaskCommentsSection({
                 </div>
             ) : undefined}
         </section>
+    );
+}
+
+function formatTimestamp(value: string, locale: string) {
+    return new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(new Date(value));
+}
+
+function initials(name: string) {
+    const parts = name
+        .trim()
+        .split(/[\s_-]+/)
+        .filter(Boolean);
+    if (parts.length >= 2) {
+        return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+}
+
+function TaskCommentItem({
+    canDelete,
+    canEdit,
+    comment,
+    highlighted,
+    locale,
+    mentionCandidates,
+    onDelete,
+    onSave,
+    t,
+    taskId,
+}: TaskCommentItemProperties) {
+    const [isEditing, setIsEditing] = useState(false);
+    const [draft, setDraft] = useState(comment.body);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const authorName = comment.author?.name ?? t("members.unknownUser");
+    const edited =
+        comment.updatedAt === comment.createdAt
+            ? undefined
+            : t("comments.edited");
+
+    const handleSave = async () => {
+        const next = normalizeEditorContent(draft);
+        if (!next) {
+            toast.error(t("comments.empty"));
+            return;
+        }
+        if (!isRichTextWithinLimit(next, TASK_COMMENT_MAX_LENGTH)) {
+            toast.error(t("comments.tooLong"));
+            return;
+        }
+        if (next === comment.body) {
+            setIsEditing(false);
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await onSave(next);
+            setIsEditing(false);
+            toast.success(t("comments.updated"));
+        } catch {
+            toast.error(t("comments.updateFailed"));
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <article
+            className={cn(
+                "flex flex-col gap-3 border border-border p-3 transition-colors",
+                highlighted &&
+                    "border-primary bg-primary/5 ring-2 ring-primary/40"
+            )}
+            data-comment-id={comment.id}
+            data-highlighted={highlighted ? "true" : undefined}
+        >
+            <div className="flex items-start gap-3">
+                <Avatar className="size-8 shrink-0 rounded-none">
+                    {comment.author?.avatarUrl ? (
+                        <AvatarImage alt="" src={comment.author.avatarUrl} />
+                    ) : undefined}
+                    <AvatarFallback className="rounded-none text-meta">
+                        {initials(authorName)}
+                    </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="truncate text-ui font-medium">
+                            {authorName}
+                        </p>
+                        <time
+                            className="text-meta text-muted-foreground"
+                            dateTime={comment.createdAt}
+                        >
+                            {formatTimestamp(comment.createdAt, locale)}
+                        </time>
+                        {edited ? (
+                            <span className="text-meta text-muted-foreground">
+                                {edited}
+                            </span>
+                        ) : undefined}
+                    </div>
+                </div>
+
+                {canEdit || canDelete ? (
+                    <div className="flex shrink-0 items-center gap-1">
+                        {canEdit && !isEditing ? (
+                            <Button
+                                aria-label={t("comments.edit")}
+                                onClick={() => {
+                                    setDraft(comment.body);
+                                    setIsEditing(true);
+                                }}
+                                size="icon-xs"
+                                type="button"
+                                variant="ghost"
+                            >
+                                <Pencil />
+                            </Button>
+                        ) : undefined}
+                        {canDelete ? (
+                            <Button
+                                aria-label={t("comments.delete")}
+                                onClick={onDelete}
+                                size="icon-xs"
+                                type="button"
+                                variant="ghost"
+                            >
+                                <Trash2 />
+                            </Button>
+                        ) : undefined}
+                    </div>
+                ) : undefined}
+            </div>
+
+            {isEditing ? (
+                <div className="flex flex-col gap-2">
+                    <RichTextEditor
+                        compact
+                        id={`comment-edit-${comment.id}`}
+                        maxLength={TASK_COMMENT_MAX_LENGTH}
+                        mentionCandidates={mentionCandidates}
+                        onChange={setDraft}
+                        onUploadImage={(file) => uploadTaskMedia(file, taskId)}
+                        placeholder={t("comments.placeholder")}
+                        value={draft}
+                    />
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            disabled={isSaving}
+                            onClick={() => {
+                                setDraft(comment.body);
+                                setIsEditing(false);
+                            }}
+                            type="button"
+                            variant="outline"
+                        >
+                            {t("comments.cancel")}
+                        </Button>
+                        <Button
+                            disabled={
+                                isSaving ||
+                                !isRichTextWithinLimit(
+                                    draft,
+                                    TASK_COMMENT_MAX_LENGTH
+                                )
+                            }
+                            onClick={() => {
+                                void handleSave();
+                            }}
+                            type="button"
+                        >
+                            {t("comments.save")}
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <RichTextEditor
+                    compact
+                    id={`comment-view-${comment.id}`}
+                    readOnly
+                    value={comment.body}
+                />
+            )}
+        </article>
     );
 }
