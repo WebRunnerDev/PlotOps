@@ -20,7 +20,11 @@ export function AppRouter() {
         <QueryClientProvider client={queryClient}>
             <RouterProvider
                 context={{
-                    auth: { isLoading: auth.isLoading, user: auth.user },
+                    auth: {
+                        isLoading: auth.isLoading,
+                        profileNamesComplete: auth.profileNamesComplete,
+                        user: auth.user,
+                    },
                     queryClient,
                 }}
                 router={router}

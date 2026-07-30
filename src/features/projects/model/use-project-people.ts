@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import {
     useProjectMembers,
     useProjectOwnerProfile,
@@ -27,7 +28,9 @@ export function useProjectPeople(projectId: string): ProjectPerson[] {
             byId.set(ownerProfile.id, {
                 avatarUrl: ownerProfile.avatar_url ?? undefined,
                 id: ownerProfile.id,
-                name: ownerProfile.username ?? t("members.unknownUser"),
+                name:
+                    formatProfileDisplayName(ownerProfile) ||
+                    t("members.unknownUser"),
             });
         }
 
@@ -36,7 +39,9 @@ export function useProjectPeople(projectId: string): ProjectPerson[] {
             byId.set(member.user_id, {
                 avatarUrl: member.profile.avatar_url ?? undefined,
                 id: member.user_id,
-                name: member.profile.username ?? t("members.unknownUser"),
+                name:
+                    formatProfileDisplayName(member.profile) ||
+                    t("members.unknownUser"),
             });
         }
 

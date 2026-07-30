@@ -1,40 +1,62 @@
 {
-  "checkEmail": {
-    "description": "We sent a confirmation link to {{email}}. Open it to finish creating your account.",
-    "resend": "Resend confirmation email",
-    "resendLoading": "Sending...",
-    "resent": "Confirmation email sent again.",
-    "title": "Check your email"
-  },
-  "confirmPassword": "Confirm password",
-  "email": "Email",
-  "emailPlaceholder": "you@example.com",
-  "errors": {
-    "emailNotConfirmed": "Confirm your email before signing in. Check your inbox for the link.",
-    "generic": "Something went wrong. Please try again.",
-    "invalidCredentials": "Invalid email or password.",
-    "passwordMismatch": "Passwords do not match.",
-    "userAlreadyRegistered": "An account with this email already exists. Sign in instead.",
-    "weakPassword": "Password must be at least 6 characters."
-  },
-  "githubRedirecting": "Redirecting...",
-  "githubSignIn": "Sign in with GitHub",
-  "links": {
-    "backToSignIn": "Back to sign in",
-    "hasAccount": "Already have an account?",
-    "noAccount": "No account yet?",
+    "checkEmail": {
+        "description": "We sent a confirmation link to {{email}}. Open it to finish creating your account.",
+        "resend": "Resend confirmation email",
+        "resendLoading": "Sending...",
+        "resent": "Confirmation email sent again.",
+        "title": "Check your email"
+    },
+    "completeProfile": {
+        "description": "We need your name so teammates can recognize you across boards and mentions.",
+        "save": "Continue",
+        "saving": "Saving...",
+        "title": "Complete your profile"
+    },
+    "confirmPassword": "Confirm password",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "errors": {
+        "emailNotConfirmed": "Confirm your email before signing in. Check your inbox for the link.",
+        "firstNameRequired": "Enter your first name.",
+        "generic": "Something went wrong. Please try again.",
+        "invalidCredentials": "Invalid email or password.",
+        "lastNameRequired": "Enter your last name.",
+        "namesRequired": "First name and last name are required.",
+        "passwordMismatch": "Passwords do not match.",
+        "userAlreadyRegistered": "An account with this email already exists. Sign in instead.",
+        "weakPassword": "Password must be at least 6 characters."
+    },
+    "firstName": "First name",
+    "firstNamePlaceholder": "Ada",
+    "githubRedirecting": "Redirecting...",
+    "githubSignIn": "Sign in with GitHub",
+    "lastName": "Last name",
+    "lastNamePlaceholder": "Lovelace",
+    "links": {
+        "backToSignIn": "Back to sign in",
+        "hasAccount": "Already have an account?",
+        "noAccount": "No account yet?",
+        "signIn": "Sign in",
+        "signUp": "Create account"
+    },
+    "or": "or",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "settings": {
+        "profileDescription": "How you appear to project members. Your username (handle) stays separate.",
+        "profileTitle": "Profile",
+        "save": "Save changes",
+        "saved": "Profile updated",
+        "saving": "Saving...",
+        "usernameHint": "Handle from GitHub or signup — not editable here."
+    },
     "signIn": "Sign in",
-    "signUp": "Create account"
-  },
-  "or": "or",
-  "password": "Password",
-  "passwordPlaceholder": "••••••••",
-  "signIn": "Sign in",
-  "signInLoading": "Signing in...",
-  "signInSubtitle": "Sign in with GitHub or email and password",
-  "signInTitle": "Sign in to PlotOps",
-  "signUp": "Create account",
-  "signUpLoading": "Creating account...",
-  "signUpSubtitle": "Register with email — required for project invites without GitHub",
-  "signUpTitle": "Create your PlotOps account"
+    "signInLoading": "Signing in...",
+    "signInSubtitle": "Sign in with GitHub or email and password",
+    "signInTitle": "Sign in to PlotOps",
+    "signUp": "Create account",
+    "signUpLoading": "Creating account...",
+    "signUpSubtitle": "Register with email — required for project invites without GitHub",
+    "signUpTitle": "Create your PlotOps account",
+    "username": "Username"
 }

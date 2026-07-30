@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { TaskAssignee } from "@/features/tasks/model/types";
 
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import {
     useProjectMembers,
     useProjectOwnerProfile,
@@ -52,7 +53,9 @@ export function TaskMemberField({
             byId.set(ownerProfile.id, {
                 avatarUrl: ownerProfile.avatar_url ?? undefined,
                 id: ownerProfile.id,
-                name: ownerProfile.username ?? t("members.unknownUser"),
+                name:
+                    formatProfileDisplayName(ownerProfile) ||
+                    t("members.unknownUser"),
             });
         }
 
@@ -61,7 +64,9 @@ export function TaskMemberField({
             byId.set(member.user_id, {
                 avatarUrl: member.profile.avatar_url ?? undefined,
                 id: member.user_id,
-                name: member.profile.username ?? t("members.unknownUser"),
+                name:
+                    formatProfileDisplayName(member.profile) ||
+                    t("members.unknownUser"),
             });
         }
 

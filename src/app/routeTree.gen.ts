@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './../routes/__root'
+import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
 import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
 import { Route as InviteTokenRouteImport } from './../routes/invite.$token'
@@ -27,6 +28,11 @@ import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../rou
 import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
 import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
 
+const CompleteProfileRoute = CompleteProfileRouteImport.update({
+  id: '/complete-profile',
+  path: '/complete-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const mainRouteRoute = mainRouteRouteImport.update({
   id: '/(main)',
   getParentRoute: () => rootRouteImport,
@@ -121,6 +127,7 @@ const mainProjectsProjectIdBoardsBoardIdBacklogRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/complete-profile': typeof CompleteProfileRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/complete-profile': typeof CompleteProfileRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/(main)': typeof mainRouteRouteWithChildren
+  '/complete-profile': typeof CompleteProfileRoute
   '/(auth)/sign-in': typeof authSignInRoute
   '/(auth)/sign-up': typeof authSignUpRoute
   '/(main)/about': typeof mainAboutRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/complete-profile'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/complete-profile'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/(main)'
+    | '/complete-profile'
     | '/(auth)/sign-in'
     | '/(auth)/sign-up'
     | '/(main)/about'
@@ -232,6 +244,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   mainRouteRoute: typeof mainRouteRouteWithChildren
+  CompleteProfileRoute: typeof CompleteProfileRoute
   authSignInRoute: typeof authSignInRoute
   authSignUpRoute: typeof authSignUpRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -239,6 +252,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/complete-profile': {
+      id: '/complete-profile'
+      path: '/complete-profile'
+      fullPath: '/complete-profile'
+      preLoaderRoute: typeof CompleteProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(main)': {
       id: '/(main)'
       path: ''
@@ -425,6 +445,7 @@ const mainRouteRouteWithChildren = mainRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   mainRouteRoute: mainRouteRouteWithChildren,
+  CompleteProfileRoute: CompleteProfileRoute,
   authSignInRoute: authSignInRoute,
   authSignUpRoute: authSignUpRoute,
   InviteTokenRoute: InviteTokenRoute,

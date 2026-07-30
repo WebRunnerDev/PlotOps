@@ -15,6 +15,7 @@ import type {
     TaskWatcher,
 } from "@/features/notifications/model/types";
 
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
 import { supabase } from "@/shared/api/supabase";
 
@@ -32,7 +33,9 @@ type DatabaseNotificationRow = {
 
 type ProfileRow = {
     avatar_url: null | string;
+    first_name: null | string;
     id: string;
+    last_name: null | string;
     username: null | string;
 };
 
@@ -238,7 +241,9 @@ export async function fetchTaskWatchers(input: {
           user:profiles!task_watchers_user_id_fkey(
             id,
             username,
-            avatar_url
+            avatar_url,
+            first_name,
+            last_name
           )
         `
         )
@@ -254,7 +259,7 @@ export async function fetchTaskWatchers(input: {
         if (!profile) continue;
         watchers.push({
             avatarUrl: profile.avatar_url,
-            name: profile.username ?? profile.id,
+            name: formatProfileDisplayName(profile) || profile.id,
             userId: profile.id,
         });
     }

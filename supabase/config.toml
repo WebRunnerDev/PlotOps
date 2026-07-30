@@ -324,6 +324,20 @@ max_frequency = "5s"
 # Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
 # `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+#
+# Local GitHub OAuth: create a separate GitHub OAuth App (Dashboard → Settings → Developer settings
+# → OAuth Apps). Callback URL must be the local GoTrue callback:
+#   http://127.0.0.1:54321/auth/v1/callback
+# Put Client ID / Client Secret in root `.env` (see docs/SUPABASE.md), then `npm run db:stop && npm run db:start`.
+[auth.external.github]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+email_optional = false
+
 [auth.external.apple]
 enabled = false
 client_id = ""
@@ -338,6 +352,7 @@ url = ""
 skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
+
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.

@@ -7,7 +7,10 @@ export type SignInCredentials = {
     password: string;
 };
 
-export type SignUpCredentials = SignInCredentials;
+export type SignUpCredentials = SignInCredentials & {
+    firstName: string;
+    lastName: string;
+};
 
 const PENDING_INVITE_KEY = "plotops_pending_invite";
 
@@ -30,21 +33,6 @@ export function getAuthErrorKey(error: AuthError): string {
     return "errors.generic";
 }
 
-function signupEmailRedirectTo(): string {
-    const origin = globalThis.location.origin;
-    const pendingInvite = globalThis.sessionStorage?.getItem(PENDING_INVITE_KEY);
-    if (pendingInvite) {
-        return `${origin}/invite/${pendingInvite}`;
-    }
-    return `${origin}/home`;
-}
-
-export async function resetPasswordForEmail(email: string) {
-    return supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${globalThis.location.origin}/sign-in`,
-    });
-}
-
 export async function resendSignupConfirmation(email: string) {
     return supabase.auth.resend({
         email,
@@ -55,8 +43,15 @@ export async function resendSignupConfirmation(email: string) {
     });
 }
 
+export async function resetPasswordForEmail(email: string) {
+    return supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${globalThis.location.origin}/sign-in`,
+    });
+}
+
 export async function signInWithGitHub() {
-    const pendingInvite = globalThis.sessionStorage?.getItem(PENDING_INVITE_KEY);
+    const pendingInvite =
+        globalThis.sessionStorage?.getItem(PENDING_INVITE_KEY);
     const redirectTo = pendingInvite
         ? `${globalThis.location.origin}/invite/${pendingInvite}`
         : `${globalThis.location.origin}/home`;
@@ -82,8 +77,22 @@ export async function signUpWithPassword(credentials: SignUpCredentials) {
     return supabase.auth.signUp({
         email: credentials.email,
         options: {
+            data: {
+                first_name: credentials.firstName.trim(),
+                last_name: credentials.lastName.trim(),
+            },
             emailRedirectTo: signupEmailRedirectTo(),
         },
         password: credentials.password,
     });
+}
+
+function signupEmailRedirectTo(): string {
+    const origin = globalThis.location.origin;
+    const pendingInvite =
+        globalThis.sessionStorage?.getItem(PENDING_INVITE_KEY);
+    if (pendingInvite) {
+        return `${origin}/invite/${pendingInvite}`;
+    }
+    return `${origin}/home`;
 }

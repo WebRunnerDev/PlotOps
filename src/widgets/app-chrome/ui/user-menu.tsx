@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useTheme } from "@/app/model/theme";
 import { useAuth } from "@/features/auth";
 import {
+    formatProfileDisplayName,
     getUserAvatarUrl,
     getUserDisplayName,
     getUserInitials,
@@ -44,14 +45,20 @@ const locales = ["ru", "en"] as const;
 
 export function UserMenu() {
     const { i18n, t } = useTranslation("common");
-    const { signOut, user } = useAuth();
+    const { profile, signOut, user } = useAuth();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
-    const displayName = user ? getUserDisplayName(user) : null;
-    const avatarUrl = user ? getUserAvatarUrl(user) : null;
+    const displayName = profile
+        ? formatProfileDisplayName(profile) ||
+          (user ? getUserDisplayName(user) : null)
+        : user
+          ? getUserDisplayName(user)
+          : null;
+    const avatarUrl =
+        profile?.avatar_url ?? (user ? getUserAvatarUrl(user) : null);
     const initials = displayName ? getUserInitials(displayName) : null;
     const currentLocale =
         locales.find((locale) => i18n.language.startsWith(locale)) ?? "ru";

@@ -72,17 +72,23 @@ const TASK_SELECT = `
   assignee:profiles!tasks_assignee_id_fkey (
     id,
     username,
-    avatar_url
+    avatar_url,
+    first_name,
+    last_name
   ),
   author:profiles!tasks_author_id_fkey (
     id,
     username,
-    avatar_url
+    avatar_url,
+    first_name,
+    last_name
   ),
   archived_by_profile:profiles!tasks_archived_by_fkey (
     id,
     username,
-    avatar_url
+    avatar_url,
+    first_name,
+    last_name
   ),
   task_labels (
     label_id

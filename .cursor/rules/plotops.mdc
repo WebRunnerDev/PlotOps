@@ -38,8 +38,7 @@ Tables: `profiles`, `projects`, `tasks`, `activity_log`. Enable **RLS** from day
 - **Remote project ref:** parse from `.env` → `VITE_SUPABASE_URL` host (`https://<ref>.supabase.co`). Current PlotOps ref: `ijcelrdcygzyzhcijkhe`.
 - **Other Supabase projects** (e.g. bailyq / `mcuvozjlvifdhihqwosh`) belong to a different app — **never** run migrations or MCP SQL against them from this repo unless the user explicitly names that project.
 - **MCP:** pass `project_id` = PlotOps ref from `.env` on every Supabase MCP call. Do **not** use `list_projects()[0]` or any default. If MCP returns permission denied for PlotOps, stop and tell the user to re-auth MCP or use CLI — do not fall back to another project.
-- **CLI (preferred for schema):** `npm run db:push` after `npx supabase login` and `npm run db:link` (one-time). Migrations live in `supabase/migrations/`.
-- **New migrations:** `npx supabase migration new <name>` — never invent filenames.
+- **Schema workflow:** create migrations with `npx supabase migration new <name>` (never invent filenames). Verify on **local Docker** (`npm run db:start` / `npm run db:reset`). Commit SQL under `supabase/migrations/`. **Remote is updated by CI/CD** — do **not** run `npm run db:push`, `supabase db push`, or MCP `apply_migration` against PlotOps remote unless the user explicitly asks for an emergency/manual apply. Details: `docs/SUPABASE.md`.
 
 ## Key Patterns
 

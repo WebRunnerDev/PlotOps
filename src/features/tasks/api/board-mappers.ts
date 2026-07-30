@@ -5,9 +5,13 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
+
 export type DatabaseProfile = {
     avatar_url: null | string;
+    first_name: null | string;
     id: string;
+    last_name: null | string;
     username: null | string;
 };
 
@@ -105,11 +109,13 @@ function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {
 }
 
 function toTaskPerson(profile: DatabaseProfile | null | undefined) {
-    if (!profile?.username) return;
+    if (!profile) return;
+    const name = formatProfileDisplayName(profile);
+    if (!name) return;
     return {
         avatarUrl: profile.avatar_url ?? undefined,
         id: profile.id,
-        name: profile.username,
+        name,
     };
 }
 

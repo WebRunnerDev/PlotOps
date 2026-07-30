@@ -78,19 +78,25 @@ npm install
 cp .env.example .env
 ```
 
-Fill in `.env`:
+Fill in `.env` (remote PlotOps):
 
 ```env
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 ```
 
-Link and push schema (one-time link, then when migrations change):
+**Local DB (Docker)** — default place to create and verify migrations (do not push schema from your laptop):
 
 ```bash
-npm run db:link
-npm run db:push
+# Docker Desktop must be running
+npm run db:start
+# keys are printed; or copy from npm run db:local-status into .env.local
+npm run db:new -- <name>  # add migration under supabase/migrations/
+npm run db:reset          # re-apply all migrations from scratch
+npm run dev               # uses .env.local over .env
 ```
+
+Remote schema is applied by **CI/CD** after merge. Do not run `npm run db:push` in day-to-day work (emergency / explicit ask only). See [`docs/SUPABASE.md`](docs/SUPABASE.md).
 
 ### Develop
 
@@ -98,17 +104,23 @@ npm run db:push
 npm run dev
 ```
 
+With `.env.local` present, the app talks to local Supabase (`127.0.0.1:54321`). Without it, `.env` (remote) is used. See `docs/SUPABASE.md`.
+
 ### Other scripts
 
-| Script                         | Purpose                        |
-| ------------------------------ | ------------------------------ |
-| `npm run build`                | Typecheck + production build   |
-| `npm run typecheck`            | TypeScript project build check |
-| `npm run lint`                 | ESLint                         |
-| `npm run format`               | Format with Prettier           |
-| `npm run db:status`            | List linked migrations         |
-| `npm run db:new -- <name>`     | Create a new migration         |
-| `npm run shadcn:add -- <name>` | Add a shadcn/ui component      |
+| Script                         | Purpose                                      |
+| ------------------------------ | -------------------------------------------- |
+| `npm run build`                | Typecheck + production build                 |
+| `npm run typecheck`            | TypeScript project build check               |
+| `npm run lint`                 | ESLint                                       |
+| `npm run format`               | Format with Prettier                         |
+| `npm run db:status`            | List remote vs local migrations (read-only)  |
+| `npm run db:start` / `db:stop` | Local Supabase (Docker)                      |
+| `npm run db:reset`             | Reset local DB from migrations               |
+| `npm run db:local-status`      | Local URL + keys                             |
+| `npm run db:new -- <name>`     | Create a new migration                       |
+| `npm run db:push`              | Emergency remote apply only (not day-to-day) |
+| `npm run shadcn:add -- <name>` | Add a shadcn/ui component                    |
 
 Pre-commit (Husky + lint-staged): ESLint `--fix` and Prettier on staged files. Hooks install via `npm install` (`prepare`).
 
