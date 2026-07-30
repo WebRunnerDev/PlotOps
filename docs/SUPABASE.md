@@ -1,8 +1,69 @@
 # Supabase (PlotOps)
 
-Remote project ref: **ijcelrdcygzyzhcijkhe** (from `VITE_SUPABASE_URL` in `.env`).
+Remote project ref: **ijcelrdcygzyzhcijkhe**.
 
-## One-time setup
+Migrations live in `supabase/migrations/`. They are **not** applied by `npm run dev` — only by CLI commands below.
+
+| Target             | How                                                               |
+| ------------------ | ----------------------------------------------------------------- |
+| **Local Docker**   | `npm run db:start` / `npm run db:reset` → Postgres on `127.0.0.1` |
+| **Remote PlotOps** | `npm run db:push` → cloud project                                 |
+
+## Local stack (recommended for verifying migrations)
+
+Requires [Docker Desktop](https://docs.docker.com/desktop/) running.
+
+```bash
+npm run db:start          # first run pulls images; applies all migrations
+# copy API URL + anon/publishable key from the printed status into .env.local:
+#   VITE_SUPABASE_URL=http://127.0.0.1:54321
+#   VITE_SUPABASE_PUBLISHABLE_KEY=<anon key>
+npm run dev               # Vite prefers .env.local over .env → hits local DB
+```
+
+After editing a migration (or adding a new one):
+
+```bash
+npm run db:reset          # wipe local DB, re-run all migrations + seed.sql
+```
+
+Keep remote credentials in `.env`. Use `.env.local` only while developing against Docker (both are gitignored). Delete or rename `.env.local` to point the app back at remote.
+
+| Command                   | Purpose                        |
+| ------------------------- | ------------------------------ |
+| `npm run db:start`        | Start local Supabase (Docker)  |
+| `npm run db:stop`         | Stop local stack               |
+| `npm run db:reset`        | Reset local DB from migrations |
+| `npm run db:local-status` | Print local URL/keys           |
+
+### Local GitHub OAuth
+
+Remote PlotOps already has GitHub in the cloud Dashboard. Local Auth does **not** reuse that — you need a second GitHub OAuth App.
+
+1. GitHub → **Settings → Developer settings → OAuth Apps → New OAuth App**
+    - Homepage URL: `http://127.0.0.1:5173`
+    - Authorization callback URL: `http://127.0.0.1:54321/auth/v1/callback`  
+      (local GoTrue, **not** the Vite origin and not the remote `*.supabase.co` callback)
+2. Copy Client ID and generate a Client Secret.
+3. Add to root `.env` (gitignored; CLI reads these when starting local stack):
+
+```env
+SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID=Ov23...
+SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET=ghp_or_oauth_secret...
+```
+
+4. Restart local stack so GoTrue picks up secrets:
+
+```bash
+npm run db:stop
+npm run db:start
+```
+
+5. Keep `.env.local` pointing at `http://127.0.0.1:54321`, then `npm run dev` → Sign in with GitHub.
+
+Scopes used by the app: `repo read:user` (see `signInWithGitHub`). Without this setup, use email/password on local or remove `.env.local` to hit remote.
+
+## Remote (PlotOps cloud)
 
 ```bash
 npm install
@@ -14,13 +75,13 @@ npm run db:push
 
 `db:link` writes `supabase/.temp/project-ref` (gitignored). Re-run only if you clone the repo on a new machine.
 
-## Day-to-day
+## Day-to-day (remote)
 
-| Command | Purpose |
-|---------|---------|
-| `npm run db:new -- add_tasks` | Create a new migration file |
-| `npm run db:push` | Apply pending migrations to PlotOps |
-| `npm run db:status` | Compare local vs remote migration history |
+| Command                       | Purpose                                    |
+| ----------------------------- | ------------------------------------------ |
+| `npm run db:new -- add_tasks` | Create a new migration file                |
+| `npm run db:push`             | Apply pending migrations to PlotOps remote |
+| `npm run db:status`           | Compare local vs remote migration history  |
 
 ## MCP + two projects
 
