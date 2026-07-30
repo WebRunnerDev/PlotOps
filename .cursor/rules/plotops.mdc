@@ -1,11 +1,11 @@
 ---
-description: PlotOps project spec — Git-oriented CRM with GitHub integration
+description: PlotOps project spec — git-native project tracker with GitHub integration
 alwaysApply: true
 ---
 
 # PlotOps
 
-Git-oriented CRM (Jira/Linear clone) with GitHub integration. Portfolio project targeting Middle-level frontend skills.
+Git-native project tracker (Linear/Jira-style) with GitHub integration. Portfolio project targeting Middle-level frontend skills.
 
 ## Tech Stack (current)
 
@@ -17,7 +17,7 @@ Git-oriented CRM (Jira/Linear clone) with GitHub integration. Portfolio project 
 
 ## Full Spec
 
-Read `docs/SPEC.md` before implementing major features. For the latest version, fetch Notion page **"CRM system with Github integration"**.
+Read `docs/SPEC.md` before implementing major features. For the latest version, fetch Notion page **"CRM system with Github integration"** (historical Notion title; product is a project tracker, not CRM).
 
 **Progress:** current implementation status lives in `docs/SPEC.md` → Progress. After completing a roadmap item or stage, update that section in the same PR/commit.
 

@@ -1,6 +1,6 @@
 # PlotOps
 
-Git-oriented CRM (Jira/Linear clone) with GitHub integration. Collaboration and access are scoped to a Project — there is no separate Team entity in the MVP.
+Git-native project tracker (Linear/Jira-style) with GitHub integration. Collaboration and access are scoped to a Project — there is no separate Team entity in the MVP.
 
 ## Language
 

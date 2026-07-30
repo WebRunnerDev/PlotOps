@@ -1,6 +1,6 @@
 # PlotOps — Product & Technical Specification
 
-> Git-oriented CRM (Jira/Linear clone) with GitHub integration.
+> Git-native project tracker (Linear/Jira-style) with GitHub integration.
 > Source of truth: this file + [Notion page](https://app.notion.com/p/39773411f401806b85b3d072b7bff6d9).
 
 ## Progress
