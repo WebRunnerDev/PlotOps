@@ -1,4 +1,7 @@
 -- Extend invite preview with claimed_by so claimants can see waiting state.
+-- Must DROP first: CREATE OR REPLACE cannot change OUT/RETURNS TABLE shape (42P13).
+
+drop function if exists public.get_project_invite_by_token(text);
 
 create or replace function public.get_project_invite_by_token(p_token text)
 returns table (
@@ -43,3 +46,7 @@ begin
   limit 1;
 end;
 $$;
+
+revoke all on function public.get_project_invite_by_token(text) from public;
+grant execute on function public.get_project_invite_by_token(text) to authenticated;
+grant execute on function public.get_project_invite_by_token(text) to anon;
