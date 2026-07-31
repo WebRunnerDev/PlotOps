@@ -10,6 +10,7 @@
         "description": "We need your name so teammates can recognize you across boards and mentions.",
         "save": "Continue",
         "saving": "Saving...",
+        "signOut": "Sign out and use another account",
         "title": "Complete your profile"
     },
     "confirmPassword": "Confirm password",

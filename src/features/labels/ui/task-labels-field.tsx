@@ -31,8 +31,8 @@ type TaskLabelsFieldProperties = {
     allowCreate?: boolean;
     disabled?: boolean;
     labels: ProjectLabel[];
-    /** Persist Task.`labelIds` — owned by the tasks module. */
-    onLabelIdsChange: (labelIds: string[] | undefined) => void;
+    /** Persist Task.`labelIds` — owned by the tasks module. Pass `null` to clear. */
+    onLabelIdsChange: (labelIds: null | string[]) => void;
     projectId: string;
     selectedIds: string[];
 };
@@ -80,19 +80,23 @@ export function TaskLabelsField({
 
     const commitSelection = (next: ProjectLabel[]) => {
         const nextIds = next.map((label) => label.id);
-        onLabelIdsChange(nextIds.length > 0 ? nextIds : undefined);
+        onLabelIdsChange(nextIds.length > 0 ? nextIds : null);
     };
 
     const handleCreate = async (name: string, current: ProjectLabel[]) => {
-        const id = await addLabel(name);
-        if (!id) {
-            toast.error(t("labels.createFailed"));
-            return;
-        }
+        try {
+            const id = await addLabel(name);
+            if (!id) {
+                toast.error(t("labels.createFailed"));
+                return;
+            }
 
-        onLabelIdsChange([...current.map((label) => label.id), id]);
-        setQuery("");
-        toast.success(t("labels.created", { name: name.trim() }));
+            onLabelIdsChange([...current.map((label) => label.id), id]);
+            setQuery("");
+            toast.success(t("labels.created", { name: name.trim() }));
+        } catch {
+            toast.error(t("labels.createFailed"));
+        }
     };
 
     const handleValueChange = (next: LabelOption[]) => {

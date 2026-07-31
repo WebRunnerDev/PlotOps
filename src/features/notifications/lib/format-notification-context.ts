@@ -5,6 +5,7 @@ import type {
     AssignmentMetadata,
     AuthorChangeMetadata,
     BoardMoveMetadata,
+    DeadlineChangeMetadata,
     MentionMetadata,
     Notification,
     PriorityChangeMetadata,
@@ -77,6 +78,24 @@ export function formatNotificationContext(
             });
         }
         return t("notifications.kinds.boardMove");
+    }
+
+    if (notification.kind === "deadline_change") {
+        const metadata = notification.metadata as DeadlineChangeMetadata;
+        const from = metadata.from;
+        const to = metadata.to;
+        if (from && to) {
+            return t("notifications.kinds.deadlineChangeDetail", { from, to });
+        }
+        if (to && !from) {
+            return t("notifications.kinds.deadlineChangeSetDetail", { to });
+        }
+        if (from && !to) {
+            return t("notifications.kinds.deadlineChangeClearedDetail", {
+                from,
+            });
+        }
+        return t("notifications.kinds.deadlineChange");
     }
 
     if (notification.kind === "mention") {

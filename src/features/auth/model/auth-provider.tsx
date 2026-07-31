@@ -102,19 +102,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .then(async ({ data: { session: nextSession } }) => {
                 if (!mounted) return;
 
-                await syncGitHubToken(nextSession);
+                const validated = await validatePersistedSession(nextSession);
+                if (!mounted) return;
 
-                const nextUser = nextSession?.user ?? null;
-                setSession(nextSession);
+                await syncGitHubToken(validated);
+
+                const nextUser = validated?.user ?? null;
+                setSession(validated);
                 setUser(nextUser);
                 await loadProfile(nextUser);
                 if (mounted) setIsLoading(false);
+            })
+            .catch(() => {
+                if (!mounted) return;
+                clearGitHubAccessToken();
+                setSession(null);
+                setUser(null);
+                setProfile(null);
+                setIsLoading(false);
             });
 
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, nextSession) => {
             void (async () => {
+                // INITIAL_SESSION already handled via getSession + validate.
+                if (event === "INITIAL_SESSION") return;
+
                 await syncGitHubToken(nextSession, event);
 
                 const nextUser = nextSession?.user ?? null;
@@ -175,4 +189,24 @@ async function syncUserProfile(user: null | User) {
     } catch {
         // Profile sync is best-effort on session load; createProject retries upsert.
     }
+}
+
+/**
+ * `getSession()` reads local storage and can return a JWT after `db reset`
+ * (or any server-side auth wipe). Confirm with the Auth API before treating
+ * the user as signed in.
+ */
+async function validatePersistedSession(
+    session: null | Session
+): Promise<null | Session> {
+    if (!session) return null;
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+        await supabase.auth.signOut({ scope: "local" });
+        clearGitHubAccessToken();
+        return null;
+    }
+
+    return { ...session, user: data.user };
 }

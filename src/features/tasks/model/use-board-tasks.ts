@@ -7,11 +7,13 @@ import {
     useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 import type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
 import type {
     Task,
     TaskActivityChange,
+    TaskPriority,
     TaskPullRequest,
     TaskStatus,
     TaskType,
@@ -28,6 +30,7 @@ import { notifyNewMentionsBestEffort } from "@/features/notifications/lib/notify
 import { planAssigneeChangeNotifications } from "@/features/notifications/lib/plan-assignee-change-notifications";
 import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan-author-change-notifications";
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
+import { planDeadlineWatcherNotification } from "@/features/notifications/lib/plan-deadline-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -72,18 +75,7 @@ type AuthorNotificationChange = {
 
 type IdNameSnapshot = { id: string; name: string };
 
-type TaskDetailsUpdate = Partial<
-    Omit<
-        Task,
-        | "assignee"
-        | "author"
-        | "branchName"
-        | "deadline"
-        | "id"
-        | "pr"
-        | "status"
-    >
-> & {
+type TaskDetailsUpdate = {
     /** Pass `null` to clear assignee or author. */
     assignee?: null | Task["assignee"];
     author?: null | Task["author"];
@@ -91,9 +83,29 @@ type TaskDetailsUpdate = Partial<
     branchName?: null | string;
     /** Pass `null` to clear the deadline. */
     deadline?: null | string;
+    /** Pass `null` to clear the description. */
+    description?: null | string;
+    /** Pass `null` (or `[]`) to clear all labels. */
+    labelIds?: null | string[];
     /** Pass `null` to clear a linked pull request. */
     pr?: null | TaskPullRequest;
-};
+    /** Pass `null` to clear priority (“None”). */
+    priority?: null | TaskPriority;
+} & Partial<
+    Omit<
+        Task,
+        | "assignee"
+        | "author"
+        | "branchName"
+        | "deadline"
+        | "description"
+        | "id"
+        | "labelIds"
+        | "pr"
+        | "priority"
+        | "status"
+    >
+>;
 
 type TaskMoveUpdate = {
     id: string;
@@ -131,6 +143,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 changes: TaskActivityChange[];
                 taskId: string;
             };
+            previousCache?: BoardTasksCache;
             updates: TaskMoveUpdate[];
         }) => {
             await persistTaskMoves(boardId, updates);
@@ -147,6 +160,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     taskId: activity.taskId,
                 });
             }
+        },
+        onError: (_error, variables) => {
+            if (variables.previousCache) {
+                queryClient.setQueryData(
+                    taskKeys.board(projectId, boardId),
+                    variables.previousCache
+                );
+            }
+            toast.error("Failed to move task");
         },
         onSettled: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -166,6 +188,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             authorChange?: AuthorNotificationChange | null;
             details: TaskDetailsUpdate;
             id: string;
+            previousCache?: BoardTasksCache;
             previousDescription?: string;
         }) => {
             const patch: Parameters<typeof updateTaskRecord>[1] = {};
@@ -224,6 +247,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId: id,
             });
 
+            await notifyDeadlineChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
+
             await notifyPersonFieldChangesBestEffort({
                 activityChanges,
                 authorChange,
@@ -238,6 +267,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId: id,
             });
         },
+        onError: (_error, variables) => {
+            if (variables.previousCache) {
+                queryClient.setQueryData(
+                    taskKeys.board(projectId, boardId),
+                    variables.previousCache
+                );
+            }
+            toast.error("Failed to update task");
+        },
         onSettled: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         },
@@ -251,6 +289,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
         }: {
             activityChanges: TaskActivityChange[];
             id: string;
+            previousCache?: BoardTasksCache;
             status: TaskStatus;
         }) => {
             await updateTaskRecord(id, { status });
@@ -267,6 +306,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 queryClient,
                 taskId: id,
             });
+        },
+        onError: (_error, variables) => {
+            if (variables.previousCache) {
+                queryClient.setQueryData(
+                    taskKeys.board(projectId, boardId),
+                    variables.previousCache
+                );
+            }
+            toast.error("Failed to update task status");
         },
         onSettled: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -441,6 +489,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!snapshot) return;
 
+            const previousCache = queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
+            );
+
             const result = moveTaskToColumnInMemory(
                 snapshot.tasks,
                 snapshot.columns,
@@ -482,7 +534,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
             setTasksCache(queryClient, projectId, boardId, (current) =>
                 applyTaskUpdates(current, result.updates, result.tasks)
             );
-            moveTaskMutation.mutate({ activity, updates: result.updates });
+            moveTaskMutation.mutate({
+                activity,
+                previousCache,
+                updates: result.updates,
+            });
         },
         moveTaskToOtherBoard: async (
             taskId: string,
@@ -544,7 +600,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 applyTaskUpdates(current, result.updates, result.tasks)
             );
             // Position-only reorders are intentionally not logged (SPEC).
-            moveTaskMutation.mutate({ updates: result.updates });
+            moveTaskMutation.mutate({
+                previousCache: cache,
+                updates: result.updates,
+            });
         },
         restoreTask: async (taskId: string) => {
             await restoreTaskMutation.mutateAsync(taskId);
@@ -552,6 +611,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
         tasks,
         updateTaskDetails: (id: string, details: TaskDetailsUpdate) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const previousCache = queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
+            );
             const previous = snapshot?.tasks.find((task) => task.id === id);
             let activityChanges: TaskActivityChange[] = [];
             let authorChange: AuthorNotificationChange | null = null;
@@ -599,7 +661,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         author: nextAuthor,
                         branchName: nextBranch,
                         deadline: nextDeadline,
+                        description: nextDescription,
+                        labelIds: nextLabelIds,
                         pr: nextPr,
+                        priority: nextPriority,
                         ...rest
                     } = details;
                     return {
@@ -617,9 +682,25 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         ...(nextDeadline === undefined
                             ? {}
                             : { deadline: nextDeadline ?? undefined }),
+                        ...(nextDescription === undefined
+                            ? {}
+                            : {
+                                  description: nextDescription ?? undefined,
+                              }),
+                        ...(nextLabelIds === undefined
+                            ? {}
+                            : {
+                                  labelIds:
+                                      nextLabelIds && nextLabelIds.length > 0
+                                          ? nextLabelIds
+                                          : undefined,
+                              }),
                         ...(nextPr === undefined
                             ? {}
                             : { pr: nextPr ?? undefined }),
+                        ...(nextPriority === undefined
+                            ? {}
+                            : { priority: nextPriority ?? undefined }),
                     };
                 }),
             }));
@@ -628,6 +709,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 authorChange,
                 details,
                 id,
+                previousCache,
                 previousDescription:
                     details.description === undefined
                         ? undefined
@@ -636,6 +718,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
         updateTaskStatus: (id: string, status: TaskStatus) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const previousCache = queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
+            );
             const previous = snapshot?.tasks.find((task) => task.id === id);
             let activityChanges: TaskActivityChange[] = [];
 
@@ -666,7 +751,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     task.id === id ? { ...task, status } : task
                 ),
             }));
-            updateTaskStatusMutation.mutate({ activityChanges, id, status });
+            updateTaskStatusMutation.mutate({
+                activityChanges,
+                id,
+                previousCache,
+                status,
+            });
         },
     };
 }
@@ -785,6 +875,26 @@ async function notifyBoardMoveBestEffort(input: {
     try {
         await createNotificationsForWatchers({
             kind: "board_move",
+            metadata: event.metadata,
+            projectId: input.projectId,
+            taskId: input.taskId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyDeadlineChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const event = planDeadlineWatcherNotification(input.activityChanges);
+    if (!event) return;
+
+    try {
+        await createNotificationsForWatchers({
+            kind: "deadline_change",
             metadata: event.metadata,
             projectId: input.projectId,
             taskId: input.taskId,

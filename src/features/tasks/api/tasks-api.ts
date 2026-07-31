@@ -265,23 +265,14 @@ export async function persistTaskMoves(
     if (failed?.error) throw failed.error;
 }
 
+/** Replace Task labels atomically (single DB transaction via RPC). */
 export async function replaceTaskLabels(taskId: string, labelIds: string[]) {
-    const { error: deleteError } = await supabase
-        .from("task_labels")
-        .delete()
-        .eq("task_id", taskId);
+    const { error } = await supabase.rpc("replace_task_labels", {
+        p_label_ids: labelIds,
+        p_task_id: taskId,
+    });
 
-    if (deleteError) throw deleteError;
-    if (labelIds.length === 0) return;
-
-    const { error: insertError } = await supabase.from("task_labels").insert(
-        labelIds.map((labelId) => ({
-            label_id: labelId,
-            task_id: taskId,
-        }))
-    );
-
-    if (insertError) throw insertError;
+    if (error) throw error;
 }
 
 /** Restore to board; DB trigger clears archive columns. Re-appends to column. */

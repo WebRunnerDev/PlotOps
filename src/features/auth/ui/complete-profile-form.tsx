@@ -32,7 +32,7 @@ export function CompleteProfileForm({
     const { t } = useTranslation("auth");
     const navigate = useNavigate();
     const router = useRouter();
-    const { profile, refreshProfile, user } = useAuth();
+    const { profile, refreshProfile, signOut, user } = useAuth();
 
     const prefill = useMemo(() => {
         if (profile?.first_name || profile?.last_name) {
@@ -55,6 +55,19 @@ export function CompleteProfileForm({
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [formError, setFormError] = useState<null | string>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSigningOut, setIsSigningOut] = useState(false);
+
+    const handleSignOut = async () => {
+        setFormError(null);
+        setIsSigningOut(true);
+        try {
+            await signOut();
+            await navigate({ to: "/sign-in" });
+        } catch {
+            setFormError(t("errors.generic"));
+            setIsSigningOut(false);
+        }
+    };
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
@@ -179,7 +192,7 @@ export function CompleteProfileForm({
 
                     <Button
                         className="w-full"
-                        disabled={isLoading}
+                        disabled={isLoading || isSigningOut}
                         type="submit"
                     >
                         {isLoading
@@ -187,6 +200,16 @@ export function CompleteProfileForm({
                             : t("completeProfile.save")}
                     </Button>
                 </form>
+
+                <Button
+                    className="w-full"
+                    disabled={isLoading || isSigningOut}
+                    onClick={() => void handleSignOut()}
+                    type="button"
+                    variant="ghost"
+                >
+                    {t("completeProfile.signOut")}
+                </Button>
             </CardContent>
         </Card>
     );

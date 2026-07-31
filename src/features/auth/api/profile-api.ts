@@ -85,6 +85,14 @@ export async function updateProfileNames(input: {
     const first_name = input.firstName.trim();
     const last_name = input.lastName.trim();
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!authData.user || authData.user.id !== input.userId) {
+        throw new Error("Not authenticated");
+    }
+
+    await ensureUserProfile(authData.user);
+
     const { error: metaError } = await supabase.auth.updateUser({
         data: { first_name, last_name },
     });

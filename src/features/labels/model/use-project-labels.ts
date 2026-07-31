@@ -11,6 +11,7 @@ import {
     fetchProjectLabels,
     updateProjectLabel,
 } from "@/features/labels/api/labels-api";
+import { isUniqueViolation } from "@/features/labels/lib/is-unique-violation";
 import { LABEL_COLORS } from "@/features/labels/model/constants";
 import { invalidateProjectLabels } from "@/features/labels/model/invalidate-labels";
 import { labelKeys } from "@/features/labels/model/query-keys";
@@ -152,12 +153,17 @@ export function useProjectLabels(projectId: string) {
             color?: LabelColor,
             customColor?: string
         ) => {
-            const label = await addLabelMutation.mutateAsync({
-                color,
-                customColor,
-                name,
-            });
-            return label.id;
+            try {
+                const label = await addLabelMutation.mutateAsync({
+                    color,
+                    customColor,
+                    name,
+                });
+                return label.id;
+            } catch (error) {
+                if (isUniqueViolation(error)) return null;
+                throw error;
+            }
         },
         copyLabelToProject: async (
             labelId: string,
@@ -165,11 +171,16 @@ export function useProjectLabels(projectId: string) {
         ) => {
             const label = labels.find((item) => item.id === labelId);
             if (!label || label.projectId === targetProjectId) return;
-            const created = await copyLabelMutation.mutateAsync({
-                label,
-                targetProjectId,
-            });
-            return created.id;
+            try {
+                const created = await copyLabelMutation.mutateAsync({
+                    label,
+                    targetProjectId,
+                });
+                return created.id;
+            } catch (error) {
+                if (isUniqueViolation(error)) return null;
+                throw error;
+            }
         },
         deleteLabel: (labelId: string) =>
             deleteLabelMutation.mutateAsync(labelId),
@@ -193,8 +204,16 @@ export function useProjectLabels(projectId: string) {
                     label.name.toLowerCase() === trimmed.toLowerCase()
             );
             if (duplicate) return false;
-            await renameLabelMutation.mutateAsync({ labelId, name: trimmed });
-            return true;
+            try {
+                await renameLabelMutation.mutateAsync({
+                    labelId,
+                    name: trimmed,
+                });
+                return true;
+            } catch (error) {
+                if (isUniqueViolation(error)) return false;
+                throw error;
+            }
         },
         setLabelCustomColor: (labelId: string, hex: string) =>
             setLabelCustomColorMutation.mutateAsync({ hex, labelId }),

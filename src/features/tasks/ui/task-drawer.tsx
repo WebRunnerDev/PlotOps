@@ -161,6 +161,8 @@ export function TaskDrawer({
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [titleDirty, setTitleDirty] = useState(false);
+    const [descriptionDirty, setDescriptionDirty] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<null | {
         id: string;
         key: string;
@@ -183,7 +185,19 @@ export function TaskDrawer({
         if (!task) return;
         setTitle(task.title);
         setDescription(task.description ?? "");
-    }, [task]);
+        setTitleDirty(false);
+        setDescriptionDirty(false);
+    }, [task?.id]);
+
+    useEffect(() => {
+        if (!task || titleDirty) return;
+        setTitle(task.title);
+    }, [task?.title, task?.id, titleDirty]);
+
+    useEffect(() => {
+        if (!task || descriptionDirty) return;
+        setDescription(task.description ?? "");
+    }, [task?.description, task?.id, descriptionDirty]);
 
     useEffect(() => {
         setActivityOpen(false);
@@ -194,8 +208,10 @@ export function TaskDrawer({
         const next = title.trim();
         if (!next || next === task.title) {
             setTitle(task.title);
+            setTitleDirty(false);
             return;
         }
+        setTitleDirty(false);
         updateTaskDetails(task.id, { title: next });
     };
 
@@ -203,14 +219,19 @@ export function TaskDrawer({
         if (!task || !canEdit) return;
         const next = description;
         const current = task.description ?? "";
-        if (next === current) return;
+        if (next === current) {
+            setDescriptionDirty(false);
+            return;
+        }
         if (!isRichTextWithinLimit(next, TASK_DESCRIPTION_MAX_LENGTH)) {
             toast.error(t("fields.descriptionTooLong"));
             setDescription(current);
+            setDescriptionDirty(false);
             return;
         }
+        setDescriptionDirty(false);
         updateTaskDetails(task.id, {
-            description: next.length > 0 ? next : undefined,
+            description: next.length > 0 ? next : null,
         });
     };
 
@@ -374,7 +395,7 @@ export function TaskDrawer({
                                 </DrawerDescription>
                             </DrawerHeader>
 
-                            <div className="scrollbar-board mx-auto flex min-h-0 w-full min-w-7xl max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
+                            <div className="scrollbar-board mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
                                 {/* Title and Description */}
                                 <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
                                     <div className="flex flex-col gap-2">
@@ -390,9 +411,10 @@ export function TaskDrawer({
                                             id="task-title"
                                             maxLength={TASK_TITLE_MAX_LENGTH}
                                             onBlur={commitTitle}
-                                            onChange={(event) =>
-                                                setTitle(event.target.value)
-                                            }
+                                            onChange={(event) => {
+                                                setTitleDirty(true);
+                                                setTitle(event.target.value);
+                                            }}
                                             onKeyDown={(event) => {
                                                 if (event.key === "Enter") {
                                                     event.currentTarget.blur();
@@ -421,7 +443,10 @@ export function TaskDrawer({
                                                     : undefined
                                             }
                                             onBlur={commitDescription}
-                                            onChange={setDescription}
+                                            onChange={(value) => {
+                                                setDescriptionDirty(true);
+                                                setDescription(value);
+                                            }}
                                             onUploadImage={
                                                 canEdit
                                                     ? (file) =>
@@ -655,7 +680,7 @@ export function TaskDrawer({
                                                         priority:
                                                             value ===
                                                             PRIORITY_NONE
-                                                                ? undefined
+                                                                ? null
                                                                 : (value as TaskPriority),
                                                     });
                                                 }}

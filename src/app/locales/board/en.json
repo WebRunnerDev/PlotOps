@@ -375,6 +375,7 @@
         "deleteWithArchived": "This label is used on {{count}} task(s), including {{archived}} archived. Restore archived tasks before deleting the label.",
         "deleteEmpty": "This label isn't used on any task and will be permanently removed.",
         "deleteFailed": "Could not delete this label",
+        "updateFailed": "Could not update this label",
         "page": "Page {{page}} of {{total}}",
         "prevPage": "Previous page",
         "nextPage": "Next page",

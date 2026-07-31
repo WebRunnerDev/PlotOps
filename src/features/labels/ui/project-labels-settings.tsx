@@ -160,18 +160,23 @@ export function ProjectLabelsSettings({
         const trimmed = newName.trim();
         if (!trimmed) return;
 
-        const id = await labelsApi.addLabel(trimmed, newColor);
-        if (!id) {
-            toast.error(t("labels.createFailed"));
-            return;
-        }
+        try {
+            const id = await labelsApi.addLabel(trimmed, newColor);
+            if (!id) {
+                toast.error(t("labels.createFailed"));
+                return;
+            }
 
-        toast.success(t("labels.created", { name: trimmed }));
-        setNewName("");
-        setNewColor(
-            LABEL_COLORS[(projectLabels.length + 1) % LABEL_COLORS.length] ??
-                "blue"
-        );
+            toast.success(t("labels.created", { name: trimmed }));
+            setNewName("");
+            setNewColor(
+                LABEL_COLORS[
+                    (projectLabels.length + 1) % LABEL_COLORS.length
+                ] ?? "blue"
+            );
+        } catch {
+            toast.error(t("labelSettings.updateFailed"));
+        }
     };
 
     return (
@@ -462,9 +467,14 @@ function LabelRow({
             return;
         }
 
-        const ok = await renameLabel(label.id, trimmed);
-        if (!ok) {
-            toast.error(t("labels.createFailed"));
+        try {
+            const ok = await renameLabel(label.id, trimmed);
+            if (!ok) {
+                toast.error(t("labels.createFailed"));
+                setDraft(label.name);
+            }
+        } catch {
+            toast.error(t("labelSettings.updateFailed"));
             setDraft(label.name);
         }
     };
@@ -483,23 +493,28 @@ function LabelRow({
 
     const handleCopy = async () => {
         if (!targetProjectId) return;
-        const id = await copyLabelToProject(label.id, targetProjectId);
         const target = otherProjects.find(
             (project) => project.id === targetProjectId
         );
 
-        if (!id) {
-            toast.error(t("labelSettings.transferDuplicate"));
-            return;
-        }
+        try {
+            const id = await copyLabelToProject(label.id, targetProjectId);
 
-        toast.success(
-            t("labelSettings.copied", {
-                name: label.name,
-                target: target?.name ?? "",
-            })
-        );
-        setTransferOpen(false);
+            if (!id) {
+                toast.error(t("labelSettings.transferDuplicate"));
+                return;
+            }
+
+            toast.success(
+                t("labelSettings.copied", {
+                    name: label.name,
+                    target: target?.name ?? "",
+                })
+            );
+            setTransferOpen(false);
+        } catch {
+            toast.error(t("labelSettings.updateFailed"));
+        }
     };
 
     const handleMove = async () => {
