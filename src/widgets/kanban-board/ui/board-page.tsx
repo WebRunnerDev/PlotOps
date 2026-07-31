@@ -9,6 +9,7 @@ import { useProject } from "@/features/projects/model/use-projects";
 import { BoardSprintControls } from "@/features/sprints";
 import { BoardArchiveDialog } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
+import { resolveBoardPagePresence } from "@/widgets/kanban-board/model/resolve-board-page-presence";
 
 import { BoardLoading } from "./board-loading";
 import { KanbanBoard } from "./kanban-board";
@@ -21,23 +22,43 @@ type BoardPageProperties = {
 export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     const { t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
-    const { data: project, error, isLoading } = useProject(projectId);
-    const { data: boards = [] } = useProjectBoards(projectId);
+    const {
+        data: project,
+        error,
+        isLoading: projectLoading,
+    } = useProject(projectId);
+    const {
+        data: boards = [],
+        isError: boardsError,
+        isPending: boardsLoading,
+    } = useProjectBoards(projectId);
     const {
         canManageBoard,
         isError: accessError,
         isSettled,
     } = useProjectAccess(projectId);
-    const currentBoard = boards.find((board) => board.id === boardId);
-    const baseBranch: string =
-        currentBoard?.baseBranch ?? project?.github_default_branch ?? "main";
-    const branchUrl = buildGithubTreeUrl(project?.github_html_url, baseBranch);
 
-    if (isLoading) {
+    const presence = resolveBoardPagePresence({
+        boardId,
+        boards: boards.map((board) => ({
+            baseBranch: board.baseBranch,
+            id: board.id,
+        })),
+        boardsError,
+        boardsLoading,
+        project,
+        projectError: Boolean(error),
+        projectLoading,
+    });
+
+    if (
+        presence.kind === "project-loading" ||
+        presence.kind === "boards-loading"
+    ) {
         return <BoardLoading />;
     }
 
-    if (error || !project) {
+    if (presence.kind === "project-error") {
         return (
             <div className="flex flex-col gap-4 p-4">
                 <Alert variant="destructive">
@@ -46,6 +67,41 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
             </div>
         );
     }
+
+    if (presence.kind === "boards-error") {
+        return (
+            <div className="flex flex-col gap-4 p-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("boardsLoadFailed")}</AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
+    if (presence.kind === "board-not-found") {
+        return (
+            <div className="flex flex-col gap-4 p-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("boardNotFound")}</AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
+    if (!project) {
+        return (
+            <div className="flex flex-col gap-4 p-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("projectError")}</AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
+    const { currentBoard } = presence;
+    const baseBranch =
+        currentBoard.baseBranch || project.github_default_branch || "main";
+    const branchUrl = buildGithubTreeUrl(project.github_html_url, baseBranch);
 
     const branchLabel = (
         <>
@@ -61,7 +117,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                     <div className="flex flex-wrap items-center gap-2">
                         {branchUrl ? (
                             <a
-                                className="inline-flex items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline"
+                                className="inline-flex items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
                                 href={branchUrl}
                                 rel="noreferrer noopener"
                                 target="_blank"
@@ -101,7 +157,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
 
                 <div className="min-h-0 min-w-0 flex-1 px-12">
                     <KanbanBoard
-                        boardId={boardId}
+                        boardId={currentBoard.id}
                         githubToken={githubAccessToken}
                         projectId={projectId}
                         repoFullName={project.github_full_name ?? undefined}

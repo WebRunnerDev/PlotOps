@@ -2,6 +2,8 @@
     "backToProjects": "All projects",
     "loadingBoard": "Loading board…",
     "loadingBoardEmpty": "This project has no boards yet.",
+    "boardNotFound": "Board not found. It may have been deleted or you don't have access.",
+    "boardsLoadFailed": "Could not load boards for this project.",
     "projectError": "Project not found or you don't have access.",
     "columns": {
         "todo": "To Do",

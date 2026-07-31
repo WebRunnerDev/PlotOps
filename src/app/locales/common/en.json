@@ -6,15 +6,19 @@
     "en": "English",
     "nav": {
         "backlog": "Backlog",
+        "backlogShort": "Back",
         "board": "Board",
+        "boardShort": "Board",
         "breadcrumb": "Breadcrumb",
         "cicd": "CI/CD",
+        "cicdShort": "CI",
         "home": "Home",
         "notifications": "Notifications",
         "notificationsEmpty": "No new notifications",
         "projectSections": "Project sections",
         "projects": "Projects",
-        "settings": "Settings"
+        "settings": "Settings",
+        "settingsShort": "Set"
     },
     "notifications": {
         "allProjects": "All projects",

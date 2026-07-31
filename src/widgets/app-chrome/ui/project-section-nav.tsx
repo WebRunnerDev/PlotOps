@@ -5,12 +5,25 @@ import { useTranslation } from "react-i18next";
 import { useProjectBoards } from "@/features/boards";
 import { cn } from "@/shared/lib/utils";
 import { buttonVariants } from "@/shared/shadcn/ui/button";
+import { resolveSectionNavBoardId } from "@/widgets/app-chrome/model/resolve-section-nav-board-id";
 
 type ProjectSection = "backlog" | "board" | "cicd" | "settings";
 
 type ProjectSectionNavProperties = {
     boardId?: string;
     projectId: string;
+};
+
+type SectionNavItem = {
+    id: ProjectSection;
+    label: string;
+    labelShort: string;
+    params: { boardId: string; projectId: string } | { projectId: string };
+    to:
+        | "/projects/$projectId/boards/$boardId"
+        | "/projects/$projectId/boards/$boardId/backlog"
+        | "/projects/$projectId/ci-cd"
+        | "/projects/$projectId/settings";
 };
 
 export function ProjectSectionNav({
@@ -22,7 +35,11 @@ export function ProjectSectionNav({
         select: (state) =>
             state.resolvedLocation?.pathname ?? state.location.pathname,
     });
-    const { data: boards = [] } = useProjectBoards(projectId);
+    const {
+        data: boards = [],
+        isError,
+        isPending,
+    } = useProjectBoards(projectId);
 
     useEffect(() => {
         if (boardIdFromRoute) {
@@ -30,47 +47,44 @@ export function ProjectSectionNav({
         }
     }, [boardIdFromRoute, projectId]);
 
-    const remembered = boardIdFromRoute ?? readLastBoardId(projectId);
-    const boardId =
-        remembered &&
-        (boards.length === 0 || boards.some((board) => board.id === remembered))
-            ? remembered
-            : boards[0]?.id;
+    const boardId = resolveSectionNavBoardId({
+        boardIdFromRoute,
+        boards,
+        rememberedBoardId: readLastBoardId(projectId),
+        status: isPending ? "pending" : isError ? "error" : "success",
+    });
     const active = resolveSection(pathname);
 
-    if (!boardId) return null;
-
-    const items: {
-        id: ProjectSection;
-        label: string;
-        params: { boardId: string; projectId: string } | { projectId: string };
-        to:
-            | "/projects/$projectId/boards/$boardId"
-            | "/projects/$projectId/boards/$boardId/backlog"
-            | "/projects/$projectId/ci-cd"
-            | "/projects/$projectId/settings";
-    }[] = [
-        {
-            id: "board",
-            label: t("nav.board"),
-            params: { boardId, projectId },
-            to: "/projects/$projectId/boards/$boardId",
-        },
-        {
-            id: "backlog",
-            label: t("nav.backlog"),
-            params: { boardId, projectId },
-            to: "/projects/$projectId/boards/$boardId/backlog",
-        },
+    const items: SectionNavItem[] = [
+        ...(boardId
+            ? [
+                  {
+                      id: "board" as const,
+                      label: t("nav.board"),
+                      labelShort: t("nav.boardShort"),
+                      params: { boardId, projectId },
+                      to: "/projects/$projectId/boards/$boardId" as const,
+                  },
+                  {
+                      id: "backlog" as const,
+                      label: t("nav.backlog"),
+                      labelShort: t("nav.backlogShort"),
+                      params: { boardId, projectId },
+                      to: "/projects/$projectId/boards/$boardId/backlog" as const,
+                  },
+              ]
+            : []),
         {
             id: "cicd",
             label: t("nav.cicd"),
+            labelShort: t("nav.cicdShort"),
             params: { projectId },
             to: "/projects/$projectId/ci-cd",
         },
         {
             id: "settings",
             label: t("nav.settings"),
+            labelShort: t("nav.settingsShort"),
             params: { projectId },
             to: "/projects/$projectId/settings",
         },
@@ -79,16 +93,18 @@ export function ProjectSectionNav({
     return (
         <nav
             aria-label={t("nav.projectSections")}
-            className="flex items-center gap-0.5"
+            className="flex min-w-0 max-w-full items-center gap-0.5 overflow-x-auto"
         >
             {items.map((item) => {
                 const isActive = active === item.id;
                 return (
                     <Link
                         aria-current={isActive ? "page" : undefined}
+                        aria-label={item.label}
                         className={cn(
                             buttonVariants({ size: "sm", variant: "ghost" }),
-                            "text-muted-foreground",
+                            "shrink-0 text-muted-foreground focus-visible:ring-2",
+                            "max-sm:px-2",
                             isActive &&
                                 "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground"
                         )}
@@ -96,7 +112,8 @@ export function ProjectSectionNav({
                         params={item.params}
                         to={item.to}
                     >
-                        {item.label}
+                        <span className="sm:hidden">{item.labelShort}</span>
+                        <span className="hidden sm:inline">{item.label}</span>
                     </Link>
                 );
             })}

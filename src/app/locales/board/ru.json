@@ -2,6 +2,8 @@
     "backToProjects": "Все проекты",
     "loadingBoard": "Загрузка доски…",
     "loadingBoardEmpty": "У этого проекта пока нет досок.",
+    "boardNotFound": "Доска не найдена. Возможно, она удалена или у вас нет доступа.",
+    "boardsLoadFailed": "Не удалось загрузить доски этого проекта.",
     "projectError": "Проект не найден или нет доступа.",
     "columns": {
         "todo": "To Do",

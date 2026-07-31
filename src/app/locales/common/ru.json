@@ -6,15 +6,19 @@
     "en": "Английский",
     "nav": {
         "backlog": "Бэклог",
+        "backlogShort": "Бэк",
         "board": "Доска",
+        "boardShort": "Доска",
         "breadcrumb": "Навигация",
         "cicd": "CI/CD",
+        "cicdShort": "CI",
         "home": "Главная",
         "notifications": "Уведомления",
         "notificationsEmpty": "Нет новых уведомлений",
         "projectSections": "Разделы проекта",
         "projects": "Проекты",
-        "settings": "Настройки"
+        "settings": "Настройки",
+        "settingsShort": "Настр."
     },
     "notifications": {
         "allProjects": "Все проекты",
