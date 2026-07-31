@@ -391,6 +391,7 @@
         "transferTitle": "Move “{{name}}”",
         "transferDescription": "Copy keeps this label here; move removes it from this project and detaches it from its tasks.",
         "transferWithArchived": "Move is blocked: {{archived}} archived task(s) still use this label. Restore them first, or copy instead.",
+        "transferWithTasks": "This label is used on {{count}} task(s). Moving it will remove the label from those tasks.",
         "targetProject": "Target project",
         "copy": "Copy",
         "move": "Move",

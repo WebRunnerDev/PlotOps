@@ -27,5 +27,7 @@ describe("ProjectLabelsSettings tagged-tasks usage guards", () => {
         expect(source).toMatch(
             /if\s*\(\s*!usageKnown\s*\|\|\s*hasArchivedUsage/
         );
+        expect(source).toMatch(/labelSettings\.transferWithTasks/);
+        expect(source).toMatch(/labelSettings\.transferDuplicate/);
     });
 });

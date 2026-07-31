@@ -114,7 +114,10 @@ export function CloseSprintDialog({
     tasks,
 }: CloseSprintDialogProperties) {
     const { t } = useTranslation("board");
-    const { close, createDraft } = useSprintMutations(projectId, boardId);
+    const { close, createDraft, removeDraft } = useSprintMutations(
+        projectId,
+        boardId
+    );
     const lastColumnId = columns.at(-1)?.id;
 
     const suggestedCompleted = useMemo(() => {
@@ -154,6 +157,7 @@ export function CloseSprintDialog({
     };
 
     const handleClose = async () => {
+        let createdDraftId: null | string = null;
         try {
             let carryoverSprintId: null | string = null;
             if (carryover === "new") {
@@ -161,6 +165,7 @@ export function CloseSprintDialog({
                     newDraftName.trim() ||
                     t("sprints.defaultNextName", { name: sprint.name });
                 const created = await createDraft.mutateAsync({ name });
+                createdDraftId = created.id;
                 carryoverSprintId = created.id;
             } else if (carryover !== "backlog") {
                 carryoverSprintId = carryover;
@@ -174,6 +179,13 @@ export function CloseSprintDialog({
             toast.success(t("sprints.closed", { name: sprint.name }));
             handleOpen(false);
         } catch {
+            if (createdDraftId) {
+                try {
+                    await removeDraft.mutateAsync(createdDraftId);
+                } catch {
+                    // Best-effort cleanup of orphan draft from failed close.
+                }
+            }
             toast.error(t("sprints.closeFailed"));
         }
     };

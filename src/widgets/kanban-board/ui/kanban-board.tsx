@@ -113,7 +113,13 @@ export function KanbanBoard({
 
     const { columns } = columnsApi;
     const { labels } = labelsApi;
-    const { moveTaskToColumn, reorderTaskWithin, tasks } = tasksApi;
+    const {
+        commitTaskDragGesture,
+        moveTaskToColumn,
+        reorderTaskWithin,
+        rollbackTaskDragGesture,
+        tasks,
+    } = tasksApi;
     const columnIds = columns.map((column) => column.id);
     const canEdit = isSettled && canEditTasks;
     const canManage = isSettled && canManageBoard;
@@ -146,6 +152,9 @@ export function KanbanBoard({
                 : tasks;
         return filterTasks(scoped, filters);
     }, [activeSprint, boardSprintScope, filters, tasks]);
+
+    /** Same-column reorder is unsafe when filters/sprint hide cards in a column. */
+    const boardHidesTasks = filteredTasks.length !== tasks.length;
 
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
@@ -205,11 +214,10 @@ export function KanbanBoard({
 
         if (activeType === "column") {
             if (!canManage) return;
-            // Live reorder so the column physically slots into place, showing
-            // exactly where it lands (like a task). Collision is pointer-based
-            // and restricted to columns, so `over` is always a column and this
-            // stays stable (no oscillation).
-            columnsApi.reorderColumns(String(active.id), String(over.id));
+            // Live preview only — persist once on drag end.
+            columnsApi.reorderColumns(String(active.id), String(over.id), {
+                persist: false,
+            });
             return;
         }
 
@@ -218,28 +226,68 @@ export function KanbanBoard({
 
         // Only move across columns here; same-column ordering is handled
         // visually by the sort strategy and committed on drop.
-        moveTaskToColumn(String(active.id), String(over.id));
+        moveTaskToColumn(String(active.id), String(over.id), {
+            persist: false,
+        });
+    };
+
+    const handleDragCancel = () => {
+        columnsApi.rollbackColumnDragGesture();
+        rollbackTaskDragGesture();
+        clearActiveDrag();
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         clearActiveDrag();
-        if (!over || active.id === over.id) return;
 
         const activeType = active.data.current?.type as DragType | undefined;
 
-        // Column order is applied live in onDragOver; nothing to commit here.
-        if (activeType === "column") return;
-
-        if (activeType === "task") {
-            if (!canEdit) return;
-            const overType = over.data.current?.type as DragType | undefined;
-            // Cross-column placement already happened in onDragOver; here we
-            // only commit the final in-column position when dropped over a task.
-            if (overType === "task") {
-                reorderTaskWithin(String(active.id), String(over.id));
+        if (activeType === "column") {
+            if (!over || active.id === over.id) {
+                columnsApi.rollbackColumnDragGesture();
+                return;
             }
+            columnsApi.commitColumnDragGesture();
+            return;
         }
+
+        if (activeType !== "task") return;
+        if (!canEdit) {
+            rollbackTaskDragGesture();
+            return;
+        }
+
+        if (!over || active.id === over.id) {
+            // Cross-column preview may still need committing, or cancel.
+            // If over is missing/same id after a cross-column preview, keep the
+            // previewed placement and persist; pure cancel goes through onDragCancel.
+            commitTaskDragGesture(String(active.id));
+            return;
+        }
+
+        const overType = over.data.current?.type as DragType | undefined;
+        const activeTask = tasks.find((task) => task.id === String(active.id));
+        const overTask =
+            overType === "task"
+                ? tasks.find((task) => task.id === String(over.id))
+                : undefined;
+        const sameColumn =
+            activeTask && overTask && activeTask.status === overTask.status;
+
+        if (overType === "task") {
+            if (sameColumn && boardHidesTasks) {
+                // Filtered same-column reorder would rewrite positions vs hidden siblings.
+                commitTaskDragGesture(String(active.id));
+                return;
+            }
+
+            reorderTaskWithin(String(active.id), String(over.id), {
+                persist: false,
+            });
+        }
+
+        commitTaskDragGesture(String(active.id));
     };
 
     const handleAddColumn = () => {
@@ -287,7 +335,7 @@ export function KanbanBoard({
 
             <DndContext
                 collisionDetection={collisionDetection}
-                onDragCancel={clearActiveDrag}
+                onDragCancel={handleDragCancel}
                 onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
                 onDragStart={handleDragStart}

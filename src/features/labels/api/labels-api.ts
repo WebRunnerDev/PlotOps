@@ -90,6 +90,22 @@ export async function fetchProjectLabelTaggedTasks(
     }));
 }
 
+export async function moveProjectLabel(
+    labelId: string,
+    targetProjectId: string
+) {
+    // RPC from migration 20260731182504 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "move_project_label" as never,
+        {
+            p_label_id: labelId,
+            p_target_project_id: targetProjectId,
+        } as never
+    );
+
+    if (error) throw error;
+}
+
 export async function updateProjectLabel(
     labelId: string,
     patch: {

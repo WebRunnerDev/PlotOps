@@ -14,6 +14,7 @@ import {
     TASK_TITLE_MAX_LENGTH,
 } from "@/features/tasks/model/constants";
 import { resolveRestoreTaskStatus } from "@/features/tasks/model/resolve-restore-task-status";
+import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 import {
@@ -95,6 +96,23 @@ const TASK_SELECT = `
     label_id
   )
 `;
+
+export type TaskRecordPatch = {
+    assignee_id?: null | string;
+    author_id?: null | string;
+    board_id?: string;
+    branch_name?: null | string;
+    deadline?: null | string;
+    description?: null | string;
+    position?: number;
+    pr_number?: null | number;
+    pr_state?: null | string;
+    pr_url?: null | string;
+    priority?: null | TaskPriority;
+    status?: TaskStatus;
+    task_type?: TaskType;
+    title?: string;
+};
 
 /** Signal archive; DB trigger sets `archived_at` / `archived_by`. */
 export async function archiveTaskRecord(taskId: string) {
@@ -250,21 +268,24 @@ export async function persistTaskMoves(
     boardId: string,
     updates: Array<{ id: string; position: number; status: TaskStatus }>
 ) {
-    const results = await Promise.all(
-        updates.map((item) =>
-            supabase
-                .from("tasks")
-                .update({
+    if (updates.length === 0) return;
+
+    // RPC from migration 20260731182459 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "persist_task_moves" as never,
+        {
+            p_board_id: boardId,
+            p_updates: asJson(
+                updates.map((item) => ({
+                    id: item.id,
                     position: item.position,
                     status: item.status,
-                })
-                .eq("id", item.id)
-                .eq("board_id", boardId)
-        )
+                }))
+            ),
+        } as never
     );
 
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
+    if (error) throw error;
 }
 
 /** Replace Task labels atomically (single DB transaction via RPC). */
@@ -319,25 +340,35 @@ export async function restoreTaskRecord(taskId: string, boardId: string) {
     if (error) throw error;
 }
 
-export async function updateTaskRecord(
+/**
+ * Atomic task row patch + optional label replace (single DB transaction via RPC).
+ * Pass `labelIds: undefined` to leave labels unchanged; `null` / `[]` clears them.
+ */
+export async function updateTaskDetails(
     taskId: string,
-    patch: {
-        assignee_id?: null | string;
-        author_id?: null | string;
-        board_id?: string;
-        branch_name?: null | string;
-        deadline?: null | string;
-        description?: null | string;
-        position?: number;
-        pr_number?: null | number;
-        pr_state?: null | string;
-        pr_url?: null | string;
-        priority?: null | TaskPriority;
-        status?: TaskStatus;
-        task_type?: TaskType;
-        title?: string;
-    }
+    patch: TaskRecordPatch,
+    labelIds?: null | string[]
 ) {
+    const nextPatch =
+        patch.title === undefined
+            ? patch
+            : { ...patch, title: normalizeTaskTitle(patch.title) };
+
+    // RPC from migration 20260731182502 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "update_task_details" as never,
+        {
+            p_label_ids: labelIds === undefined ? null : (labelIds ?? []),
+            p_patch: asJson(nextPatch),
+            p_task_id: taskId,
+        } as never
+    );
+
+    if (error) throw error;
+}
+
+/** Row patch only — prefer `updateTaskDetails` when labels may change too. */
+export async function updateTaskRecord(taskId: string, patch: TaskRecordPatch) {
     const nextPatch =
         patch.title === undefined
             ? patch

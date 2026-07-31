@@ -9,11 +9,15 @@ import {
     createProjectLabel,
     deleteProjectLabel,
     fetchProjectLabels,
+    moveProjectLabel,
     updateProjectLabel,
 } from "@/features/labels/api/labels-api";
 import { isUniqueViolation } from "@/features/labels/lib/is-unique-violation";
 import { LABEL_COLORS } from "@/features/labels/model/constants";
-import { invalidateProjectLabels } from "@/features/labels/model/invalidate-labels";
+import {
+    invalidateProjectLabels,
+    stripLabelIdFromTaskCaches,
+} from "@/features/labels/model/invalidate-labels";
 import { labelKeys } from "@/features/labels/model/query-keys";
 import { supabase } from "@/shared/api/supabase";
 
@@ -92,7 +96,8 @@ export function useProjectLabels(projectId: string) {
 
     const deleteLabelMutation = useMutation({
         mutationFn: (labelId: string) => deleteProjectLabel(labelId),
-        onSuccess: () => {
+        onSuccess: (_data, labelId) => {
+            stripLabelIdFromTaskCaches(queryClient, projectId, labelId);
             invalidateProjectLabels(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: labelKeys.taggedTasks(projectId),
@@ -128,15 +133,14 @@ export function useProjectLabels(projectId: string) {
             label: ProjectLabel;
             targetProjectId: string;
         }) => {
-            await createProjectLabel(
-                targetProjectId,
-                label.name,
-                label.color,
-                label.customColor
-            );
-            await deleteProjectLabel(label.id);
+            await moveProjectLabel(label.id, targetProjectId);
         },
         onSuccess: (_data, variables) => {
+            stripLabelIdFromTaskCaches(
+                queryClient,
+                projectId,
+                variables.label.id
+            );
             invalidateProjectLabels(queryClient, projectId);
             invalidateProjectLabels(queryClient, variables.targetProjectId);
             void queryClient.invalidateQueries({
@@ -193,7 +197,12 @@ export function useProjectLabels(projectId: string) {
         ) => {
             const label = labels.find((item) => item.id === labelId);
             if (!label || label.projectId === targetProjectId) return;
-            await moveLabelMutation.mutateAsync({ label, targetProjectId });
+            try {
+                await moveLabelMutation.mutateAsync({ label, targetProjectId });
+            } catch (error) {
+                if (isUniqueViolation(error)) return null;
+                throw error;
+            }
         },
         refetch: () => labelsQuery.refetch(),
         renameLabel: async (labelId: string, name: string) => {

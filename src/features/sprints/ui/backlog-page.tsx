@@ -210,6 +210,8 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         taskIds: string[],
         targetSprintId: null | string
     ) => {
+        if (moveTasks.isPending) return;
+
         const uniqueIds = [...new Set(taskIds)];
         if (uniqueIds.length === 0) return;
 
@@ -286,6 +288,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             BacklogTaskDragData | undefined;
         setDraggingTasks([]);
         if (data?.type !== "backlog-task") return;
+        if (moveTasks.isPending) return;
 
         const target = parseDropTarget(event.over?.id);
         if (!target) return;

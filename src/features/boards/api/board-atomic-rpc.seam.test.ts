@@ -16,6 +16,15 @@ describe("board columns API atomic seams", () => {
         expect(source).toMatch(/rpc\(\s*["']reorder_board_columns["']/);
         expect(source).not.toMatch(/Promise\.all\(updates\)/);
     });
+
+    it("deletes via single delete_board_column RPC", () => {
+        const source = readApi("board-columns-api.ts");
+
+        expect(source).toMatch(/rpc\(\s*["']delete_board_column["']/);
+        expect(source).not.toMatch(
+            /\.from\(\s*["']tasks["']\s*\)[\s\S]*\.update\([\s\S]*status[\s\S]*\.from\(\s*["']board_columns["']\s*\)[\s\S]*\.delete\(/
+        );
+    });
 });
 
 describe("boards API atomic create seam", () => {

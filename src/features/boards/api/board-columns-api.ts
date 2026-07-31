@@ -45,22 +45,15 @@ export async function deleteBoardColumn(
     columnId: string,
     moveTasksTo?: string
 ) {
-    if (moveTasksTo) {
-        const { error: moveError } = await supabase
-            .from("tasks")
-            .update({ status: moveTasksTo })
-            .eq("board_id", boardId)
-            .eq("status", columnId)
-            .is("archived_at", null);
-
-        if (moveError) throw moveError;
-    }
-
-    const { error } = await supabase
-        .from("board_columns")
-        .delete()
-        .eq("board_id", boardId)
-        .eq("id", columnId);
+    // RPC from migration 20260731182501 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "delete_board_column" as never,
+        {
+            p_board_id: boardId,
+            p_column_id: columnId,
+            p_move_tasks_to: moveTasksTo ?? null,
+        } as never
+    );
 
     if (error) throw error;
 }

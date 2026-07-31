@@ -578,7 +578,11 @@ function LabelRow({
         );
 
         try {
-            await moveLabelToProject(label.id, targetProjectId);
+            const result = await moveLabelToProject(label.id, targetProjectId);
+            if (result === null) {
+                toast.error(t("labelSettings.transferDuplicate"));
+                return;
+            }
             toast.success(
                 t("labelSettings.moved", {
                     name: label.name,
@@ -587,7 +591,7 @@ function LabelRow({
             );
             setTransferOpen(false);
         } catch {
-            toast.error(t("labelSettings.deleteFailed"));
+            toast.error(t("labelSettings.updateFailed"));
         }
     };
 
@@ -825,7 +829,11 @@ function LabelRow({
                                     ? t("labelSettings.transferWithArchived", {
                                           archived: archivedUsageCount,
                                       })
-                                    : t("labelSettings.transferDescription")
+                                    : usageCount > 0
+                                      ? t("labelSettings.transferWithTasks", {
+                                            count: usageCount,
+                                        })
+                                      : t("labelSettings.transferDescription")
                                 : t("labelSettings.usageLoadFailed")}
                         </DialogDescription>
                     </DialogHeader>

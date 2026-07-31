@@ -19,3 +19,25 @@ describe("tasks API atomic label replace seam", () => {
         );
     });
 });
+
+describe("tasks API atomic persist moves seam", () => {
+    it("persists column moves via single persist_task_moves RPC", () => {
+        const source = readApi("tasks-api.ts");
+
+        expect(source).toMatch(/rpc\(\s*["']persist_task_moves["']/);
+        expect(source).not.toMatch(
+            /Promise\.all\(\s*updates\.map\(\s*\(item\)\s*=>\s*supabase[\s\S]*\.from\(\s*["']tasks["']\s*\)/
+        );
+    });
+});
+
+describe("tasks API atomic details + labels seam", () => {
+    it("updates task details and labels via single update_task_details RPC", () => {
+        const source = readApi("tasks-api.ts");
+
+        expect(source).toMatch(/rpc\(\s*["']update_task_details["']/);
+        expect(source).not.toMatch(
+            /await updateTaskRecord\([\s\S]*replaceTaskLabels/
+        );
+    });
+});
