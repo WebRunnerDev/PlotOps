@@ -10,7 +10,7 @@ function readUi(name: string) {
 }
 
 describe("Command palette local reset seam", () => {
-    it("resets query/creating when isOpen becomes false", () => {
+    it("resets query on close but keeps in-flight create guard", () => {
         const source = readUi("command-palette.tsx");
 
         expect(source).toMatch(/resetCommandPaletteLocalState/);
@@ -18,7 +18,7 @@ describe("Command palette local reset seam", () => {
             /useEffect\(\(\)\s*=>\s*\{[\s\S]*if\s*\(isOpen\)\s*return/
         );
         expect(source).toMatch(/setQuery\(reset\.query\)/);
-        expect(source).toMatch(/setIsCreating\(reset\.isCreating\)/);
+        expect(source).not.toMatch(/setIsCreating\(reset\.isCreating\)/);
     });
 });
 
@@ -27,8 +27,11 @@ describe("Command palette create-task columnsReady seam", () => {
         const source = readUi("command-palette.tsx");
 
         expect(source).toMatch(/columnsReady/);
+        expect(source).toMatch(/columnsError/);
         expect(source).toMatch(/resolveCreateTaskColumnGate/);
         expect(source).toMatch(/createColumnGate\s*===\s*"loading"/);
+        expect(source).toMatch(/createColumnGate\s*===\s*"error"/);
         expect(source).toMatch(/command:columnsLoading/);
+        expect(source).toMatch(/command:columnsLoadFailed/);
     });
 });

@@ -55,7 +55,7 @@ function notification(
 }
 
 describe("formatNotificationContext", () => {
-    it("shows always-on assignment as You were assigned with name", () => {
+    it("shows always-on assignment as You were assigned (ignores assignee name)", () => {
         expect(
             formatNotificationContext(
                 notification({
@@ -66,7 +66,7 @@ describe("formatNotificationContext", () => {
                 }),
                 t
             )
-        ).toBe("Assigned to Alex");
+        ).toBe("You were assigned");
     });
 
     it("shows Watcher assignee_change from → to without assignment copy", () => {

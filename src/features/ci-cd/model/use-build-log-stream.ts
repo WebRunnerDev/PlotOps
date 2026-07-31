@@ -1,16 +1,22 @@
 import { useEffect, useState } from "react";
 
-import type { BuildLogLine } from "@/features/ci-cd/model/types";
+import type { BuildLogLine, BuildStatus } from "@/features/ci-cd/model/types";
 
 import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
+
+const IN_FLIGHT_POLL_MS = 5000;
 
 /**
  * Progressive log lines for a selected build (Actions or mock provider).
  * Unsubscribes on close / build change (no full page reload).
+ * While the build is still queued/running, restarts the stream after each pass
+ * so logs appear without closing the dialog. Later passes replace lines only
+ * when the new stream finishes (avoids wiping usable output every poll).
  */
 export function useBuildLogStream(
     projectId: string,
-    buildId: string | undefined
+    buildId: string | undefined,
+    buildStatus?: BuildStatus
 ): { isStreaming: boolean; lines: BuildLogLine[] } {
     const [lines, setLines] = useState<BuildLogLine[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
@@ -22,27 +28,73 @@ export function useBuildLogStream(
             return;
         }
 
-        setLines([]);
-        setIsStreaming(true);
+        let cancelled = false;
+        let stopCurrent: (() => void) | undefined;
+        let pollTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
+        let pass = 0;
 
-        const stop = buildsProvider.streamBuildLogs(
-            projectId,
-            buildId,
-            (line) => {
-                if (line.text.length > 0) {
-                    setLines((previous) => [...previous, line]);
-                }
-                if (line.done) {
-                    setIsStreaming(false);
-                }
+        const clearPoll = () => {
+            if (pollTimer !== undefined) {
+                globalThis.clearTimeout(pollTimer);
+                pollTimer = undefined;
             }
-        );
+        };
+
+        const start = () => {
+            if (cancelled) return;
+            clearPoll();
+            stopCurrent?.();
+            pass += 1;
+            const thisPass = pass;
+            const buffer: BuildLogLine[] = [];
+            const isFirstPass = thisPass === 1;
+
+            if (isFirstPass) {
+                setLines([]);
+            }
+            setIsStreaming(true);
+
+            stopCurrent = buildsProvider.streamBuildLogs(
+                projectId,
+                buildId,
+                (line) => {
+                    if (cancelled) return;
+                    if (line.text.length > 0) {
+                        if (isFirstPass) {
+                            setLines((previous) => [...previous, line]);
+                        } else {
+                            buffer.push(line);
+                        }
+                    }
+                    if (!line.done) return;
+
+                    if (!isFirstPass) {
+                        setLines(buffer);
+                    }
+                    setIsStreaming(false);
+                    if (isInFlightStatus(buildStatus) && !cancelled) {
+                        pollTimer = globalThis.setTimeout(
+                            start,
+                            IN_FLIGHT_POLL_MS
+                        );
+                    }
+                }
+            );
+        };
+
+        start();
 
         return () => {
-            stop();
+            cancelled = true;
+            clearPoll();
+            stopCurrent?.();
             setIsStreaming(false);
         };
-    }, [buildId, projectId]);
+    }, [buildId, buildStatus, projectId]);
 
     return { isStreaming, lines };
+}
+
+function isInFlightStatus(status: BuildStatus | undefined): boolean {
+    return status === "queued" || status === "running";
 }

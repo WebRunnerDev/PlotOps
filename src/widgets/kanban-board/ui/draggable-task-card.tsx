@@ -2,12 +2,14 @@ import type { KeyboardEvent } from "react";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useRef } from "react";
 
 import type { ProjectLabel } from "@/features/labels";
 
 import { type Task, TaskCard, useTasksUiStore } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 import { shouldOpenTaskFromKeyboard } from "@/widgets/kanban-board/model/should-open-task-from-keyboard";
+import { shouldOpenTaskFromPointer } from "@/widgets/kanban-board/model/should-open-task-from-pointer";
 
 type DraggableTaskCardProperties = {
     canDrag: boolean;
@@ -21,6 +23,7 @@ export function DraggableTaskCard({
     task,
 }: DraggableTaskCardProperties) {
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const suppressOpenAfterDrag = useRef(false);
     const {
         attributes,
         isDragging,
@@ -34,10 +37,30 @@ export function DraggableTaskCard({
         id: task.id,
     });
 
-    const openTask = () => {
-        if (!isDragging) {
-            selectTask(task.id);
+    useEffect(() => {
+        if (isDragging) {
+            suppressOpenAfterDrag.current = true;
+            return;
         }
+
+        if (!suppressOpenAfterDrag.current) return;
+
+        const clear = globalThis.setTimeout(() => {
+            suppressOpenAfterDrag.current = false;
+        }, 0);
+        return () => globalThis.clearTimeout(clear);
+    }, [isDragging]);
+
+    const openTask = () => {
+        if (
+            !shouldOpenTaskFromPointer(
+                isDragging,
+                suppressOpenAfterDrag.current
+            )
+        ) {
+            return;
+        }
+        selectTask(task.id);
     };
 
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -45,7 +68,7 @@ export function DraggableTaskCard({
             return;
         }
         event.preventDefault();
-        openTask();
+        selectTask(task.id);
     };
 
     return (

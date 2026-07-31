@@ -147,9 +147,10 @@ export async function createDraftSprint(
 }
 
 export function defaultSprintEndDate(startIso: string, days = 14): string {
-    const start = new Date(`${startIso}T00:00:00Z`);
-    start.setUTCDate(start.getUTCDate() + (days - 1));
-    return start.toISOString().slice(0, 10);
+    const [year, month, day] = startIso.split("-").map(Number);
+    const start = new Date(year!, month! - 1, day!);
+    start.setDate(start.getDate() + (days - 1));
+    return todayIsoDate(start);
 }
 
 export async function deleteEmptyDraftSprint(sprintId: string): Promise<void> {
@@ -239,8 +240,12 @@ export async function startSprint(
     return mapSprint(data as DatabaseSprint);
 }
 
-export function todayIsoDate(): string {
-    return new Date().toISOString().slice(0, 10);
+/** Local calendar YYYY-MM-DD (not UTC — avoids evening timezone roll-forward). */
+export function todayIsoDate(now: Date = new Date()): string {
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
 export async function updateDraftSprint(

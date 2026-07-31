@@ -49,7 +49,7 @@ export function CommandPalette() {
     const { theme, toggleTheme } = useTheme();
     const { data: projects = [] } = useProjects();
     const { canCreateTasks, isSettled } = useProjectAccess(projectId ?? "");
-    const { columns, columnsReady } = useBoardColumns(
+    const { columns, columnsError, columnsReady } = useBoardColumns(
         projectId ?? "",
         boardId ?? ""
     );
@@ -110,7 +110,8 @@ export function CommandPalette() {
     const showActions = showTheme || createIntent !== null;
     const createColumnGate = resolveCreateTaskColumnGate(
         columnsReady,
-        columns[0]?.id
+        columns[0]?.id,
+        columnsError
     );
 
     useEffect(() => {
@@ -134,7 +135,6 @@ export function CommandPalette() {
         if (isOpen) return;
         const reset = resetCommandPaletteLocalState();
         setQuery(reset.query);
-        setIsCreating(reset.isCreating);
     }, [isOpen]);
 
     return (
@@ -186,6 +186,12 @@ export function CommandPalette() {
                                         if (createColumnGate === "loading") {
                                             toast.message(
                                                 t("command:columnsLoading")
+                                            );
+                                            return;
+                                        }
+                                        if (createColumnGate === "error") {
+                                            toast.error(
+                                                t("command:columnsLoadFailed")
                                             );
                                             return;
                                         }

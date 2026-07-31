@@ -10,6 +10,8 @@
     "reposScopeError": "GitHub access is missing the repo scope required for private repositories. Reconnect GitHub and approve access to your repositories.",
     "reconnectGitHub": "Reconnect GitHub",
     "noReposFound": "No repositories found",
+    "createProjectFailed": "Could not connect repository. Try again.",
+    "createProjectDuplicate": "This repository is already connected, or the project slug is taken.",
     "projectsError": "Failed to load projects",
     "githubRequired": "Sign in with GitHub to connect repositories",
     "emptyTitle": "No projects yet",

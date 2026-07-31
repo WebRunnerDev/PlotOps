@@ -9,7 +9,7 @@ import {
     Unlink,
     X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -79,8 +79,13 @@ export function TaskGithubPanel({
     const [prLoading, setPrLoading] = useState(false);
     const [diffOpen, setDiffOpen] = useState(false);
     const [pendingBranch, setPendingBranch] = useState<null | string>(null);
+    const prLinkAbort = useRef<AbortController | undefined>(undefined);
+    const prLinkGeneration = useRef(0);
 
     useEffect(() => {
+        prLinkAbort.current?.abort();
+        prLinkAbort.current = undefined;
+        prLinkGeneration.current += 1;
         setCopied(false);
         setLinkingBranch(false);
         setBranchDraft("");
@@ -159,13 +164,21 @@ export function TaskGithubPanel({
             return;
         }
 
+        prLinkAbort.current?.abort();
+        const controller = new AbortController();
+        prLinkAbort.current = controller;
+        const generation = ++prLinkGeneration.current;
+
         setPrLoading(true);
         try {
             const remote = await fetchPullRequest(
                 repoFullName,
                 number,
-                githubToken
+                githubToken,
+                controller.signal
             );
+            if (generation !== prLinkGeneration.current) return;
+
             const pr: TaskPullRequest = {
                 number: remote.number,
                 state: remote.merged_at ? "merged" : remote.state,
@@ -176,6 +189,9 @@ export function TaskGithubPanel({
             setPrDraft("");
             toast.success(t("github.prLinkedToast", { number: pr.number }));
         } catch (error) {
+            if (generation !== prLinkGeneration.current) return;
+            if (controller.signal.aborted) return;
+
             if (isGitHubApiError(error)) {
                 switch (error.status) {
                     case 401:
@@ -202,7 +218,9 @@ export function TaskGithubPanel({
                 toast.error(t("github.prLinkFailed", { number }));
             }
         } finally {
-            setPrLoading(false);
+            if (generation === prLinkGeneration.current) {
+                setPrLoading(false);
+            }
         }
     };
 

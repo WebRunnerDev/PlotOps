@@ -21,7 +21,11 @@ import type { Sprint } from "@/features/sprints/model/types";
 import type { BoardTaskFilters, Task } from "@/features/tasks";
 
 import { useAuth } from "@/features/auth/model/use-auth";
-import { BoardSwitcher, useBoardColumns } from "@/features/boards";
+import {
+    BoardSwitcher,
+    useBoardColumns,
+    useProjectBoards,
+} from "@/features/boards";
 import { useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
@@ -102,6 +106,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const { canManageBoard, isSettled } = useProjectAccess(projectId);
     const canManage = isSettled && canManageBoard;
     const { data: project } = useProject(projectId);
+    const {
+        data: boards = [],
+        isError: boardsError,
+        isPending: boardsLoading,
+        refetch: refetchBoards,
+    } = useProjectBoards(projectId);
     const { labels } = useProjectLabels(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const columnsApi = useBoardColumns(projectId, boardId);
@@ -340,7 +350,34 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         );
     }
 
-    const showBodySpinner = isLoading || sprintsLoading;
+    if (boardsError) {
+        return (
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("boardsLoadFailed")}</AlertDescription>
+                </Alert>
+                <Button
+                    onClick={() => void refetchBoards()}
+                    type="button"
+                    variant="outline"
+                >
+                    {t("sprints.retry")}
+                </Button>
+            </div>
+        );
+    }
+
+    if (!boardsLoading && !boards.some((board) => board.id === boardId)) {
+        return (
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("boardNotFound")}</AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
+    const showBodySpinner = isLoading || sprintsLoading || boardsLoading;
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">

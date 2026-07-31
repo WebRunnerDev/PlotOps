@@ -60,7 +60,17 @@ export function useProjectLabels(projectId: string) {
                 LABEL_COLORS[projectLabels.length % LABEL_COLORS.length]!;
             return createProjectLabel(projectId, name, nextColor, customColor);
         },
-        onSuccess: () => {
+        onSuccess: (label) => {
+            queryClient.setQueryData<ProjectLabel[]>(
+                labelKeys.project(projectId),
+                (current) => {
+                    if (!current) return [label];
+                    if (current.some((item) => item.id === label.id)) {
+                        return current;
+                    }
+                    return [...current, label];
+                }
+            );
             invalidateProjectLabels(queryClient, projectId);
         },
     });

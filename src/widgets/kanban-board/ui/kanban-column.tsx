@@ -87,6 +87,7 @@ export function KanbanColumn({
     const [draft, setDraft] = useState(name);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const inputReference = useRef<HTMLInputElement>(null);
+    const skipBlurCommit = useRef(false);
 
     const otherColumns = columns.filter((column) => column.id !== status);
     const canDelete = otherColumns.length > 0;
@@ -223,13 +224,23 @@ export function KanbanColumn({
                         <Input
                             aria-label={t("columns.renameAria")}
                             className="h-7 flex-1 border-transparent bg-transparent px-1 text-ui font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
-                            onBlur={commitRename}
+                            onBlur={() => {
+                                if (skipBlurCommit.current) {
+                                    skipBlurCommit.current = false;
+                                    return;
+                                }
+                                void commitRename();
+                            }}
                             onChange={(event) => setDraft(event.target.value)}
                             onKeyDown={(event) => {
                                 if (event.key === "Enter") {
-                                    event.currentTarget.blur();
+                                    event.preventDefault();
+                                    skipBlurCommit.current = true;
+                                    void commitRename();
                                 }
                                 if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    skipBlurCommit.current = true;
                                     setDraft(name);
                                     setIsEditing(false);
                                 }

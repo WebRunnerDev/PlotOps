@@ -154,8 +154,17 @@ export function UserMenu() {
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <Dialog onOpenChange={setLogoutDialogOpen} open={logoutDialogOpen}>
-                <DialogContent className="sm:max-w-md">
+            <Dialog
+                onOpenChange={(open) => {
+                    if (!open && isLoggingOut) return;
+                    setLogoutDialogOpen(open);
+                }}
+                open={logoutDialogOpen}
+            >
+                <DialogContent
+                    className="sm:max-w-md"
+                    showCloseButton={!isLoggingOut}
+                >
                     <DialogHeader>
                         <DialogTitle>{t("logout.title")}</DialogTitle>
                         <DialogDescription>

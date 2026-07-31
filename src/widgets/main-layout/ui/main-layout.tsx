@@ -11,11 +11,18 @@ export function MainLayoutWidget() {
 function MainLayoutContent() {
     // Use settled location — pending navigations update `location` immediately while
     // home is still painted; flipping layout then strips max-w-5xl for ~1s (board fetch).
-    const isBoard = useRouterState({
+    const layoutMode = useRouterState({
         select: (state) => {
             const path =
                 state.resolvedLocation?.pathname ?? state.location.pathname;
-            return path.startsWith("/projects/");
+            // Kanban board only — not backlog / settings / ci-cd / other project pages.
+            if (/^\/projects\/[^/]+\/boards\/[^/]+\/?$/.test(path)) {
+                return "kanban" as const;
+            }
+            if (path.startsWith("/projects/")) {
+                return "project" as const;
+            }
+            return "default" as const;
         },
     });
 
@@ -23,13 +30,20 @@ function MainLayoutContent() {
         <div
             className={cn(
                 "w-full",
-                isBoard ? "flex h-dvh flex-col overflow-hidden" : "min-h-dvh"
+                layoutMode === "kanban" &&
+                    "flex h-dvh flex-col overflow-hidden",
+                layoutMode === "project" && "min-h-dvh overflow-y-auto",
+                layoutMode === "default" && "min-h-dvh"
             )}
         >
             <AppChrome />
             <CommandPalette />
-            {isBoard ? (
+            {layoutMode === "kanban" ? (
                 <div className="min-h-0 flex-1 overflow-hidden">
+                    <Outlet />
+                </div>
+            ) : layoutMode === "project" ? (
+                <div className="w-full">
                     <Outlet />
                 </div>
             ) : (

@@ -1,9 +1,11 @@
 export type CommandPaletteLocalState = {
-    isCreating: boolean;
     query: string;
 };
 
-/** Cleared input + create spinner when the palette finishes closing. */
+/**
+ * Clears the search input when the palette finishes closing.
+ * Does not touch in-flight create — `isCreating` clears only in the mutation `finally`.
+ */
 export function resetCommandPaletteLocalState(): CommandPaletteLocalState {
-    return { isCreating: false, query: "" };
+    return { query: "" };
 }

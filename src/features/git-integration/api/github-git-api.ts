@@ -143,7 +143,8 @@ export async function fetchBranchPullRequests(
 export async function fetchPullRequest(
     repoFullName: string,
     prNumber: number,
-    token: string
+    token: string,
+    signal?: AbortSignal
 ): Promise<GitPullRequest> {
     type RawPR = {
         body: null | string;
@@ -160,7 +161,9 @@ export async function fetchPullRequest(
 
     const pr = await githubFetch<RawPR>(
         `/repos/${repoFullName}/pulls/${prNumber}`,
-        token
+        token,
+        undefined,
+        signal
     );
 
     return {
@@ -233,7 +236,8 @@ export function isGitHubApiError(error: unknown): error is GitHubApiError {
 async function githubFetch<T>(
     path: string,
     token: string,
-    parameters?: Record<string, string>
+    parameters?: Record<string, string>,
+    signal?: AbortSignal
 ): Promise<T> {
     const url = new URL(`${GITHUB_API}${path}`);
     if (parameters) {
@@ -244,6 +248,7 @@ async function githubFetch<T>(
 
     const response = await fetch(url.toString(), {
         headers: GITHUB_HEADERS(token),
+        signal,
     });
 
     if (!response.ok) {

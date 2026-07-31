@@ -1,13 +1,17 @@
-export type CreateTaskColumnGate = "empty" | "loading" | "ready";
+export type CreateTaskColumnGate = "empty" | "error" | "loading" | "ready";
 
 /**
- * Create Task must not treat an unloaded columns query as a real empty board.
+ * Create Task must not treat an unloaded columns query as a real empty board,
+ * and must not stay stuck in loading when the columns fetch failed.
  */
 export function resolveCreateTaskColumnGate(
     columnsReady: boolean,
-    firstColumnId?: string
+    firstColumnId?: string,
+    columnsError = false
 ): CreateTaskColumnGate {
-    if (!columnsReady) return "loading";
+    if (!columnsReady) {
+        return columnsError ? "error" : "loading";
+    }
     if (!firstColumnId) return "empty";
     return "ready";
 }

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -48,6 +48,7 @@ export function TaskLabelsField({
     const { t } = useTranslation("board");
     const { addLabel } = useProjectLabels(projectId);
     const anchor = useComboboxAnchor();
+    const createInFlight = useRef(false);
 
     const [query, setQuery] = useState("");
 
@@ -84,6 +85,8 @@ export function TaskLabelsField({
     };
 
     const handleCreate = async (name: string, current: ProjectLabel[]) => {
+        if (createInFlight.current) return;
+        createInFlight.current = true;
         try {
             const id = await addLabel(name);
             if (!id) {
@@ -96,6 +99,8 @@ export function TaskLabelsField({
             toast.success(t("labels.created", { name: name.trim() }));
         } catch {
             toast.error(t("labels.createFailed"));
+        } finally {
+            createInFlight.current = false;
         }
     };
 
@@ -106,7 +111,7 @@ export function TaskLabelsField({
         );
 
         if (create) {
-            handleCreate(create.name, real);
+            void handleCreate(create.name, real);
             return;
         }
 

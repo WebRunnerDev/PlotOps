@@ -12,6 +12,7 @@ import {
     useProjectBoards,
 } from "@/features/boards/model/use-project-boards";
 import { cn } from "@/shared/lib/utils";
+import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -53,7 +54,12 @@ export function ProjectBoardsSettings({
 }: ProjectBoardsSettingsProperties) {
     const { t } = useTranslation("board");
     const navigate = useNavigate();
-    const { data: boards = [] } = useProjectBoards(projectId);
+    const {
+        data: boards = [],
+        isError,
+        isPending,
+        refetch,
+    } = useProjectBoards(projectId);
     const {
         createBoard,
         deleteBoard,
@@ -114,28 +120,53 @@ export function ProjectBoardsSettings({
                 </p>
             </div>
 
-            <ul className="flex flex-col gap-2">
-                {boards.map((board) => (
-                    <BoardSettingsCard
-                        boardId={board.id}
-                        canDelete={boards.length > 1}
-                        expanded={expandedId === board.id}
-                        initialAllowed={board.allowedHeadPatterns.join("\n")}
-                        initialBase={board.baseBranch}
-                        initialName={board.name}
-                        isSaving={isUpdating}
-                        key={board.id}
-                        onDelete={() => setDeleteId(board.id)}
-                        onExpandedChange={(open) =>
-                            setExpandedId(open ? board.id : null)
-                        }
-                        onSave={async (patch) => {
-                            await updateBoard(board.id, patch);
-                            toast.success(t("boards.saved"));
-                        }}
-                    />
-                ))}
-            </ul>
+            {isPending ? (
+                <div className="flex items-center gap-2 text-ui text-muted-foreground">
+                    <Spinner className="size-4" />
+                    {t("boards.loading")}
+                </div>
+            ) : isError ? (
+                <div className="flex flex-col gap-3">
+                    <Alert variant="destructive">
+                        <AlertDescription>
+                            {t("boardsLoadFailed")}
+                        </AlertDescription>
+                    </Alert>
+                    <Button
+                        onClick={() => void refetch()}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("git.retry")}
+                    </Button>
+                </div>
+            ) : (
+                <ul className="flex flex-col gap-2">
+                    {boards.map((board) => (
+                        <BoardSettingsCard
+                            boardId={board.id}
+                            canDelete={boards.length > 1}
+                            expanded={expandedId === board.id}
+                            initialAllowed={board.allowedHeadPatterns.join(
+                                "\n"
+                            )}
+                            initialBase={board.baseBranch}
+                            initialName={board.name}
+                            isSaving={isUpdating}
+                            key={board.id}
+                            onDelete={() => setDeleteId(board.id)}
+                            onExpandedChange={(open) =>
+                                setExpandedId(open ? board.id : null)
+                            }
+                            onSave={async (patch) => {
+                                await updateBoard(board.id, patch);
+                                toast.success(t("boards.saved"));
+                            }}
+                        />
+                    ))}
+                </ul>
+            )}
 
             <Dialog onOpenChange={setCreateOpen} open={createOpen}>
                 <DialogContent>

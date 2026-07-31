@@ -1,6 +1,7 @@
 import { Lock, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import type { GitHubRepo, Project } from "@/features/projects/model/types";
 
@@ -69,8 +70,16 @@ export function AddProjectDialog({
     }, [connectedRepoIds, repos, search]);
 
     const handleConnect = async (repo: GitHubRepo) => {
-        await createProject.mutateAsync(repo);
-        onOpenChange(false);
+        try {
+            await createProject.mutateAsync(repo);
+            onOpenChange(false);
+        } catch (error) {
+            toast.error(
+                isUniqueViolation(error)
+                    ? t("createProjectDuplicate")
+                    : t("createProjectFailed")
+            );
+        }
     };
 
     const missingRepoScope = error instanceof GitHubMissingRepoScopeError;
@@ -137,7 +146,9 @@ export function AddProjectDialog({
                                 <Button
                                     className="h-auto w-full justify-between px-3 py-2.5 text-left"
                                     disabled={createProject.isPending}
-                                    onClick={() => handleConnect(repo)}
+                                    onClick={() => {
+                                        void handleConnect(repo);
+                                    }}
                                     type="button"
                                     variant="ghost"
                                 >
@@ -175,4 +186,13 @@ export function AddProjectDialog({
 
 async function handleReconnectGitHub() {
     await signInWithGitHub();
+}
+
+function isUniqueViolation(error: unknown): boolean {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: unknown }).code === "23505"
+    );
 }

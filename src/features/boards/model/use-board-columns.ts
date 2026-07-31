@@ -147,6 +147,7 @@ export function useBoardColumns(projectId: string, boardId: string) {
     return {
         addColumn: (name: string) => addColumnMutation.mutateAsync(name),
         columns,
+        columnsError: columnsQuery.isError,
         /** True once columns have been fetched (including an empty list). */
         columnsReady: columnsQuery.data !== undefined,
         commitColumnDragGesture: () => {

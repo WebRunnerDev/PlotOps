@@ -1,6 +1,7 @@
 {
     "actions": "Действия",
     "columnsLoading": "Загрузка колонок доски…",
+    "columnsLoadFailed": "Не удалось загрузить колонки доски",
     "createTaskFailed": "Не удалось создать задачу",
     "createTaskWithTitle": "Создать задачу «{{title}}»",
     "description": "Найдите команду…",

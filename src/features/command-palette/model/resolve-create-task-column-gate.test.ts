@@ -8,11 +8,19 @@ describe("resolveCreateTaskColumnGate", () => {
         expect(resolveCreateTaskColumnGate(false, "todo")).toBe("loading");
     });
 
+    it("returns error when columns fetch failed with no cache", () => {
+        expect(resolveCreateTaskColumnGate(false, undefined, true)).toBe(
+            "error"
+        );
+        expect(resolveCreateTaskColumnGate(false, "todo", true)).toBe("error");
+    });
+
     it("returns empty when ready but no first column", () => {
         expect(resolveCreateTaskColumnGate(true)).toBe("empty");
     });
 
     it("returns ready when first column exists", () => {
         expect(resolveCreateTaskColumnGate(true, "todo")).toBe("ready");
+        expect(resolveCreateTaskColumnGate(true, "todo", true)).toBe("ready");
     });
 });

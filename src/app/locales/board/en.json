@@ -5,6 +5,7 @@
     "boardNotFound": "Board not found. It may have been deleted or you don't have access.",
     "boardsLoadFailed": "Could not load boards for this project.",
     "projectError": "Project not found or you don't have access.",
+    "accessLoadFailed": "Could not load your project permissions. Editing may be limited until this recovers.",
     "columns": {
         "todo": "To Do",
         "inProgress": "In Progress",
@@ -101,6 +102,8 @@
         "addFailed": "Could not post comment",
         "empty": "Comment cannot be empty",
         "emptyList": "No comments yet.",
+        "loadFailed": "Could not load comments",
+        "retry": "Retry",
         "tooLong": "Comment is too long",
         "edit": "Edit",
         "save": "Save",
@@ -211,8 +214,10 @@
             "empty": "No log lines for this run.",
             "openOnGitHub": "Open on GitHub",
             "jobsLabel": "Jobs",
-            "noJobs": "No jobs for this run."
-        }
+            "noJobs": "No jobs for this run.",
+            "jobsLoadFailed": "Could not load jobs for this run."
+        },
+        "retry": "Retry"
     },
     "settings": {
         "link": "Settings",
@@ -228,6 +233,7 @@
     },
     "boards": {
         "loading": "Board…",
+        "unknown": "Unknown board",
         "create": "New board",
         "addBoard": "Add board",
         "createTitle": "Create board",
@@ -454,6 +460,7 @@
         "filesChanged": "{{count}} file(s) changed",
         "filesTruncated": "Showing first {{count}} files — more changes exist in this PR",
         "binaryFile": "Binary file — no diff available",
+        "diffTooLarge": "Diff is too large to display in-app",
         "selectFile": "Select a file from the list",
         "sharedBranchTitle": "Shared branch linked",
         "sharedBranchBody": "“{{branch}}” is shared across tasks. Full commit/PR lists are hidden to avoid noise. Prefer a task-specific branch, or track this work via PR and board status.",

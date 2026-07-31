@@ -54,10 +54,11 @@ export async function fetchProjects() {
 }
 
 export function slugifyRepoName(name: string): string {
-    return name
+    const slug = name
         .toLowerCase()
         .replaceAll(/[^a-z0-9]+/g, "-")
         .replaceAll(/^-+|-+$/g, "");
+    return slug || "repo";
 }
 
 export { type Project } from "@/features/projects/model/types";

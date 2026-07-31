@@ -10,6 +10,8 @@
     "reposScopeError": "У токена GitHub нет scope repo, нужного для приватных репозиториев. Переподключите GitHub и разрешите доступ к репозиториям.",
     "reconnectGitHub": "Переподключить GitHub",
     "noReposFound": "Репозитории не найдены",
+    "createProjectFailed": "Не удалось подключить репозиторий. Попробуйте снова.",
+    "createProjectDuplicate": "Этот репозиторий уже подключён, или slug проекта занят.",
     "projectsError": "Не удалось загрузить проекты",
     "githubRequired": "Войдите через GitHub, чтобы подключать репозитории",
     "emptyTitle": "Пока нет проектов",

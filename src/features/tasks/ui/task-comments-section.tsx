@@ -64,7 +64,12 @@ export function TaskCommentsSection({
         () => people.map((person) => ({ id: person.id, label: person.name })),
         [people]
     );
-    const { data: comments = [], isLoading } = useTaskComments(taskId);
+    const {
+        data: comments = [],
+        isError,
+        isLoading,
+        refetch,
+    } = useTaskComments(taskId);
     const createComment = useCreateTaskComment(taskId, projectId);
     const updateComment = useUpdateTaskComment(taskId);
     const deleteComment = useDeleteTaskComment(taskId);
@@ -155,6 +160,22 @@ export function TaskCommentsSection({
 
             {isLoading ? (
                 <Spinner className="size-5 text-primary" />
+            ) : isError ? (
+                <div className="flex flex-col items-start gap-2">
+                    <p className="text-ui text-destructive">
+                        {t("comments.loadFailed")}
+                    </p>
+                    <Button
+                        onClick={() => {
+                            void refetch();
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("comments.retry")}
+                    </Button>
+                </div>
             ) : comments.length === 0 ? (
                 <p className="text-ui text-muted-foreground">
                     {t("comments.emptyList")}

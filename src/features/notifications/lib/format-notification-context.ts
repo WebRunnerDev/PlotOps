@@ -2,7 +2,6 @@ import type { TFunction } from "i18next";
 
 import type {
     AssigneeChangeMetadata,
-    AssignmentMetadata,
     AuthorChangeMetadata,
     BoardMoveMetadata,
     DeadlineChangeMetadata,
@@ -17,11 +16,7 @@ export function formatNotificationContext(
     t: TFunction<"common">
 ): string {
     if (notification.kind === "assignment") {
-        const metadata = notification.metadata as AssignmentMetadata;
-        const name = metadata.assignee?.name;
-        if (name) {
-            return t("notifications.kinds.assignmentDetail", { name });
-        }
+        // Recipient-facing copy — ignore assignee.name (viewer is the assignee).
         return t("notifications.kinds.assignment");
     }
 

@@ -149,7 +149,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                     {accessError ? (
                         <Alert className="mt-2" variant="destructive">
                             <AlertDescription>
-                                {t("projectError")}
+                                {t("accessLoadFailed")}
                             </AlertDescription>
                         </Alert>
                     ) : undefined}

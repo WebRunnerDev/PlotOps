@@ -87,12 +87,8 @@ export function KanbanBoard({
     const columnsApi = useBoardColumns(projectId, boardId);
     const labelsApi = useProjectLabels(projectId);
     const tasksApi = useBoardTasks(projectId, boardId);
-    const {
-        canEditTasks,
-        canManageBoard,
-        isError: accessError,
-        isSettled,
-    } = useProjectAccess(projectId);
+    const { canEditTasks, canManageBoard, isSettled } =
+        useProjectAccess(projectId);
     const { data: sprints = [], error: sprintsQueryError } =
         useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
@@ -315,7 +311,7 @@ export function KanbanBoard({
         return <BoardLoading variant="columns" />;
     }
 
-    if (error || accessError) {
+    if (error) {
         return (
             <Alert variant="destructive">
                 <AlertDescription>{t("projectError")}</AlertDescription>
