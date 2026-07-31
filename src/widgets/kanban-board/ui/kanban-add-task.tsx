@@ -26,12 +26,14 @@ export function KanbanAddTask({
 }: KanbanAddTaskProperties) {
     const { t } = useTranslation("board");
     const { createTask } = useBoardTasks(projectId, boardId);
-    const { canCreateTasks } = useProjectAccess(projectId);
+    const { canCreateTasks, isSettled } = useProjectAccess(projectId);
+    const canCreate = isSettled && canCreateTasks;
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const inputReference = useRef<HTMLInputElement>(null);
+    const skipBlurSubmit = useRef(false);
 
     useEffect(() => {
         if (!open) return;
@@ -63,7 +65,7 @@ export function KanbanAddTask({
         }
     };
 
-    if (!canCreateTasks) {
+    if (!canCreate) {
         return null;
     }
 
@@ -88,16 +90,22 @@ export function KanbanAddTask({
             disabled={isSubmitting}
             maxLength={TASK_TITLE_MAX_LENGTH}
             onBlur={() => {
+                if (skipBlurSubmit.current) {
+                    skipBlurSubmit.current = false;
+                    return;
+                }
                 void submit();
             }}
             onChange={(event) => setTitle(event.target.value)}
             onKeyDown={(event) => {
                 if (event.key === "Enter") {
                     event.preventDefault();
+                    skipBlurSubmit.current = true;
                     void submit();
                 }
                 if (event.key === "Escape") {
                     event.preventDefault();
+                    skipBlurSubmit.current = true;
                     reset();
                 }
             }}

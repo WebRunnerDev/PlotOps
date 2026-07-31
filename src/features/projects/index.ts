@@ -1,6 +1,11 @@
-export { ProjectsPage } from "./ui/projects-page";
-export { ProjectMembersSettings } from "./ui/project-members-settings";
+export type {
+    ProjectAccessRole,
+    ProjectCapabilities,
+    ProjectMemberRole,
+} from "./model/access";
+export type { ProjectAccessState } from "./model/resolve-project-access";
+export type { Project } from "./model/types";
 export { useProjectAccess } from "./model/use-project-access";
 export { useProject, useProjects } from "./model/use-projects";
-export type { Project } from "./model/types";
-export type { ProjectAccessRole, ProjectCapabilities, ProjectMemberRole } from "./model/access";
+export { ProjectMembersSettings } from "./ui/project-members-settings";
+export { ProjectsPage } from "./ui/projects-page";

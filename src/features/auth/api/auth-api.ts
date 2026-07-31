@@ -1,6 +1,7 @@
 import type { AuthError } from "@supabase/supabase-js";
 
 import { supabase } from "@/shared/api/supabase";
+import { safeGetItem } from "@/shared/lib/safe-storage";
 
 export type SignInCredentials = {
     email: string;
@@ -14,7 +15,29 @@ export type SignUpCredentials = SignInCredentials & {
 
 const PENDING_INVITE_KEY = "plotops_pending_invite";
 
+const AUTH_ERROR_CODE_KEYS: Record<string, string> = {
+    email_exists: "errors.userAlreadyRegistered",
+    email_not_confirmed: "errors.emailNotConfirmed",
+    invalid_credentials: "errors.invalidCredentials",
+    user_already_exists: "errors.userAlreadyRegistered",
+    weak_password: "errors.weakPassword",
+};
+
+/** Statuses consulted when `code` is absent — before English message matching. */
+const AUTH_ERROR_STATUS_KEYS: Record<number, string> = {
+    429: "errors.generic",
+};
+
 export function getAuthErrorKey(error: AuthError): string {
+    const code = error.code?.toLowerCase();
+    if (code && AUTH_ERROR_CODE_KEYS[code]) {
+        return AUTH_ERROR_CODE_KEYS[code];
+    }
+
+    if (error.status != undefined && AUTH_ERROR_STATUS_KEYS[error.status]) {
+        return AUTH_ERROR_STATUS_KEYS[error.status];
+    }
+
     const message = error.message.toLowerCase();
 
     if (message.includes("invalid login credentials")) {
@@ -26,7 +49,11 @@ export function getAuthErrorKey(error: AuthError): string {
     if (message.includes("user already registered")) {
         return "errors.userAlreadyRegistered";
     }
-    if (message.includes("password")) {
+    if (
+        message.includes("password should be at least") ||
+        message.includes("password is known to be weak") ||
+        message.includes("weak password")
+    ) {
         return "errors.weakPassword";
     }
 
@@ -50,8 +77,7 @@ export async function resetPasswordForEmail(email: string) {
 }
 
 export async function signInWithGitHub() {
-    const pendingInvite =
-        globalThis.sessionStorage?.getItem(PENDING_INVITE_KEY);
+    const pendingInvite = safeGetItem("sessionStorage", PENDING_INVITE_KEY);
     const redirectTo = pendingInvite
         ? `${globalThis.location.origin}/invite/${pendingInvite}`
         : `${globalThis.location.origin}/home`;
@@ -89,8 +115,7 @@ export async function signUpWithPassword(credentials: SignUpCredentials) {
 
 function signupEmailRedirectTo(): string {
     const origin = globalThis.location.origin;
-    const pendingInvite =
-        globalThis.sessionStorage?.getItem(PENDING_INVITE_KEY);
+    const pendingInvite = safeGetItem("sessionStorage", PENDING_INVITE_KEY);
     if (pendingInvite) {
         return `${origin}/invite/${pendingInvite}`;
     }

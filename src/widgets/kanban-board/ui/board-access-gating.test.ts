@@ -19,6 +19,8 @@ describe("Board UI Role gating seam", () => {
         expect(board).toMatch(/moveTaskToColumn/);
         expect(column).toMatch(/canEditTasks/);
         expect(card).toMatch(/disabled:\s*!canDrag|disabled:\s*!canEditTasks/);
+        expect(board).toMatch(/isSettled/);
+        expect(column).toMatch(/isSettled/);
     });
 
     it("keeps create-task and manage-column affordances on Role capabilities", () => {
@@ -27,11 +29,12 @@ describe("Board UI Role gating seam", () => {
         const column = readUi("kanban-column.tsx");
 
         expect(addTask).toMatch(/canCreateTasks/);
-        expect(addTask).toMatch(/if\s*\(\s*!canCreateTasks\s*\)/);
-        expect(board).toMatch(/canManageBoard\s*\?/);
-        expect(column).toMatch(/canManageBoard\s*\?/);
+        expect(addTask).toMatch(/if\s*\(\s*!canCreate\s*\)/);
+        expect(board).toMatch(/canManage\s*\?/);
+        expect(column).toMatch(/canManage\s*\?/);
         // Column droppables stay enabled so Contributors can drop Tasks onto
         // empty columns; only the drag handle is Role-gated.
         expect(column).not.toMatch(/disabled:\s*!canManageBoard/);
+        expect(column).not.toMatch(/disabled:\s*!canManage\b/);
     });
 });

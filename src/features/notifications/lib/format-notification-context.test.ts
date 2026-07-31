@@ -17,6 +17,10 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.boardMove": "Moved to another Board",
         "notifications.kinds.boardMoveDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""}`,
         "notifications.kinds.boardMoveStatusDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""} (${options?.fromStatus ?? ""} → ${options?.toStatus ?? ""})`,
+        "notifications.kinds.deadlineChange": "Deadline changed",
+        "notifications.kinds.deadlineChangeClearedDetail": `Deadline cleared (was ${options?.from ?? ""})`,
+        "notifications.kinds.deadlineChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
+        "notifications.kinds.deadlineChangeSetDetail": `Deadline set to ${options?.to ?? ""}`,
         "notifications.kinds.mention": "You were mentioned",
         "notifications.kinds.mentionComment": "You were mentioned in a Comment",
         "notifications.kinds.mentionCommentDetail": `${options?.name ?? ""} mentioned you in a Comment`,
@@ -51,7 +55,7 @@ function notification(
 }
 
 describe("formatNotificationContext", () => {
-    it("shows always-on assignment as You were assigned with name", () => {
+    it("shows always-on assignment as You were assigned (ignores assignee name)", () => {
         expect(
             formatNotificationContext(
                 notification({
@@ -62,7 +66,7 @@ describe("formatNotificationContext", () => {
                 }),
                 t
             )
-        ).toBe("Assigned to Alex");
+        ).toBe("You were assigned");
     });
 
     it("shows Watcher assignee_change from → to without assignment copy", () => {
@@ -169,6 +173,51 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Priority changed");
+    });
+
+    it("shows deadline_change from → to", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "deadline_change",
+                    metadata: { from: "2026-07-01", to: "2026-07-15" },
+                }),
+                t
+            )
+        ).toBe("2026-07-01 → 2026-07-15");
+    });
+
+    it("shows deadline_change set and clear", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "deadline_change",
+                    metadata: { from: null, to: "2026-07-15" },
+                }),
+                t
+            )
+        ).toBe("Deadline set to 2026-07-15");
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "deadline_change",
+                    metadata: { from: "2026-07-15", to: null },
+                }),
+                t
+            )
+        ).toBe("Deadline cleared (was 2026-07-15)");
+    });
+
+    it("falls back when deadline_change metadata is incomplete", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "deadline_change",
+                    metadata: { from: null, to: null },
+                }),
+                t
+            )
+        ).toBe("Deadline changed");
     });
 
     it("keeps status_change detail formatting", () => {

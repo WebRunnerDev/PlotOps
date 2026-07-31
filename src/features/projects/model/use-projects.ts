@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { GitHubRepo } from "@/features/projects/model/types";
+
 import {
     createProject,
     deleteProject,
@@ -7,32 +9,8 @@ import {
     fetchProjects,
     slugifyRepoName,
 } from "@/features/projects/api/projects-api";
-import type { GitHubRepo } from "@/features/projects/model/types";
 
 import { projectKeys } from "./query-keys";
-
-export function useProjects() {
-    return useQuery({
-        queryFn: async () => {
-            const { data, error } = await fetchProjects();
-            if (error) throw error;
-            return data;
-        },
-        queryKey: projectKeys.list(),
-    });
-}
-
-export function useProject(projectId: string) {
-    return useQuery({
-        enabled: Boolean(projectId),
-        queryFn: async () => {
-            const { data, error } = await fetchProject(projectId);
-            if (error) throw error;
-            return data;
-        },
-        queryKey: projectKeys.detail(projectId),
-    });
-}
 
 export function useCreateProject() {
     const queryClient = useQueryClient();
@@ -47,7 +25,7 @@ export function useCreateProject() {
                 github_repo_id: repo.id,
                 is_private: repo.private,
                 name: repo.name,
-                slug: slugifyRepoName(repo.name),
+                slug: slugifyRepoName(repo.full_name),
             });
 
             if (error) throw error;
@@ -70,5 +48,28 @@ export function useDeleteProject() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: projectKeys.all });
         },
+    });
+}
+
+export function useProject(projectId: string) {
+    return useQuery({
+        enabled: Boolean(projectId),
+        queryFn: async () => {
+            const { data, error } = await fetchProject(projectId);
+            if (error) throw error;
+            return data;
+        },
+        queryKey: projectKeys.detail(projectId),
+    });
+}
+
+export function useProjects() {
+    return useQuery({
+        queryFn: async () => {
+            const { data, error } = await fetchProjects();
+            if (error) throw error;
+            return data;
+        },
+        queryKey: projectKeys.list(),
     });
 }

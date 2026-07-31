@@ -3,10 +3,14 @@ import type {
     ProjectMemberRole,
 } from "@/features/projects/model/access";
 
-import { expiresAtFromTtl } from "@/features/projects/model/access";
+import {
+    expiresAtFromTtl,
+    MEMBER_ROLES,
+} from "@/features/projects/model/access";
 import { supabase } from "@/shared/api/supabase";
 
 export type InvitePreview = {
+    claimed_by: null | string;
     email: string;
     expires_at: null | string;
     id: string;
@@ -174,13 +178,34 @@ export async function createProjectInvite(input: {
 export async function fetchMyProjectMembership(
     projectId: string,
     userId: string
-) {
-    return supabase
+): Promise<{
+    data: null | { role: ProjectMemberRole };
+    error: null | { message: string };
+}> {
+    const result = await supabase
         .from("project_members")
         .select("role")
         .eq("project_id", projectId)
         .eq("user_id", userId)
         .maybeSingle();
+
+    if (result.error) {
+        return { data: null, error: result.error };
+    }
+
+    if (!result.data) {
+        return { data: null, error: null };
+    }
+
+    const role = result.data.role;
+    if (!isProjectMemberRole(role)) {
+        return {
+            data: null,
+            error: { message: `Unknown project member role: ${String(role)}` },
+        };
+    }
+
+    return { data: { role }, error: null };
 }
 
 export async function fetchProjectInvites(projectId: string) {
@@ -265,4 +290,8 @@ export async function updateProjectMemberRole(
             ? mapMember(result.data as Record<string, unknown>)
             : null,
     };
+}
+
+function isProjectMemberRole(value: unknown): value is ProjectMemberRole {
+    return (MEMBER_ROLES as readonly string[]).includes(String(value));
 }

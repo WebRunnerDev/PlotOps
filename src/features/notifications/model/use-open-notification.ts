@@ -1,4 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import type { Notification } from "@/features/notifications/model/types";
 
@@ -9,6 +11,10 @@ import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 
 export function useOpenNotification() {
     const navigate = useNavigate();
+    const { t } = useTranslation("common");
+    const clearSelectedTask = useTasksUiStore(
+        (state) => state.clearSelectedTask
+    );
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const markRead = useMarkNotificationRead();
 
@@ -20,17 +26,8 @@ export function useOpenNotification() {
         }
     ) {
         try {
-            await markRead.mutateAsync([notification.id]);
-        } catch {
-            // Still navigate even if mark-read fails.
-        }
-
-        try {
             const nav = await fetchTaskNavigation({
                 taskId: notification.taskId,
-            });
-            selectTask(notification.taskId, {
-                focusCommentId: focusCommentIdFromNotification(notification),
             });
             options?.onNavigate?.();
             await navigate({
@@ -40,8 +37,23 @@ export function useOpenNotification() {
                 },
                 to: "/projects/$projectId/boards/$boardId",
             });
+            selectTask(notification.taskId, {
+                focusCommentId: focusCommentIdFromNotification(notification),
+            });
+
+            try {
+                await markRead.mutateAsync([notification.id]);
+            } catch {
+                // Navigation succeeded; unread badge may lag until next refetch.
+            }
         } catch {
-            await options?.onFallback?.();
+            clearSelectedTask();
+            toast.error(t("notifications.openFailed"));
+            try {
+                await options?.onFallback?.();
+            } catch {
+                // Fallback navigate also failed — toast already shown.
+            }
         }
     };
 }

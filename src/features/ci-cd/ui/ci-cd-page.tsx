@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import type { BuildStatus, ProjectBuild } from "@/features/ci-cd/model/types";
 
 import { useAuth } from "@/features/auth";
-import { CiCdMissingTokenError } from "@/features/ci-cd/api/github-actions-builds";
+import {
+    CiCdMissingTokenError,
+    CiCdUnauthorizedError,
+} from "@/features/ci-cd/api/github-actions-builds";
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
@@ -89,7 +92,9 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
     }
 
     const missingToken = !githubAccessToken;
-    const tokenError = buildsError instanceof CiCdMissingTokenError;
+    const tokenError =
+        buildsError instanceof CiCdMissingTokenError ||
+        buildsError instanceof CiCdUnauthorizedError;
 
     return (
         <div className="scrollbar-board mx-auto flex h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-4">
@@ -98,7 +103,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <h1 className="truncate text-h1">{t("cicd.title")}</h1>
                         <span className="truncate font-mono text-meta text-muted-foreground">
-                            {project.github_full_name}
+                            {project.github_full_name ?? project.name}
                         </span>
                     </div>
                     {buildsFetching && !buildsLoading ? (

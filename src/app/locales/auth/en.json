@@ -10,11 +10,16 @@
         "description": "We need your name so teammates can recognize you across boards and mentions.",
         "save": "Continue",
         "saving": "Saving...",
+        "signOut": "Sign out and use another account",
         "title": "Complete your profile"
     },
     "confirmPassword": "Confirm password",
     "email": "Email",
     "emailPlaceholder": "you@example.com",
+    "boot": {
+        "retry": "Retry",
+        "title": "Could not restore your session. Check your connection and try again."
+    },
     "errors": {
         "emailNotConfirmed": "Confirm your email before signing in. Check your inbox for the link.",
         "firstNameRequired": "Enter your first name.",
@@ -23,6 +28,7 @@
         "lastNameRequired": "Enter your last name.",
         "namesRequired": "First name and last name are required.",
         "passwordMismatch": "Passwords do not match.",
+        "sessionTimeout": "Sign-in succeeded but the session did not appear. Please try again.",
         "userAlreadyRegistered": "An account with this email already exists. Sign in instead.",
         "weakPassword": "Password must be at least 6 characters."
     },

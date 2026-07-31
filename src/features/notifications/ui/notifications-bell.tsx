@@ -100,6 +100,20 @@ export function NotificationsBell() {
                             <div className="flex justify-center py-10">
                                 <Spinner className="size-6 text-primary" />
                             </div>
+                        ) : listQuery.isError ? (
+                            <div className="flex flex-col items-center gap-3 px-2 py-8">
+                                <p className="text-center text-sm text-destructive">
+                                    {t("notifications.loadFailed")}
+                                </p>
+                                <Button
+                                    onClick={() => void listQuery.refetch()}
+                                    size="sm"
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {t("notifications.retry")}
+                                </Button>
+                            </div>
                         ) : (listQuery.data?.length ?? 0) === 0 ? (
                             <p className="px-2 py-8 text-center text-sm text-muted-foreground">
                                 {t("nav.notificationsEmpty")}

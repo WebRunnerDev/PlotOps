@@ -2,9 +2,9 @@ import type { TFunction } from "i18next";
 
 import type {
     AssigneeChangeMetadata,
-    AssignmentMetadata,
     AuthorChangeMetadata,
     BoardMoveMetadata,
+    DeadlineChangeMetadata,
     MentionMetadata,
     Notification,
     PriorityChangeMetadata,
@@ -16,11 +16,7 @@ export function formatNotificationContext(
     t: TFunction<"common">
 ): string {
     if (notification.kind === "assignment") {
-        const metadata = notification.metadata as AssignmentMetadata;
-        const name = metadata.assignee?.name;
-        if (name) {
-            return t("notifications.kinds.assignmentDetail", { name });
-        }
+        // Recipient-facing copy — ignore assignee.name (viewer is the assignee).
         return t("notifications.kinds.assignment");
     }
 
@@ -77,6 +73,24 @@ export function formatNotificationContext(
             });
         }
         return t("notifications.kinds.boardMove");
+    }
+
+    if (notification.kind === "deadline_change") {
+        const metadata = notification.metadata as DeadlineChangeMetadata;
+        const from = metadata.from;
+        const to = metadata.to;
+        if (from && to) {
+            return t("notifications.kinds.deadlineChangeDetail", { from, to });
+        }
+        if (to && !from) {
+            return t("notifications.kinds.deadlineChangeSetDetail", { to });
+        }
+        if (from && !to) {
+            return t("notifications.kinds.deadlineChangeClearedDetail", {
+                from,
+            });
+        }
+        return t("notifications.kinds.deadlineChange");
     }
 
     if (notification.kind === "mention") {

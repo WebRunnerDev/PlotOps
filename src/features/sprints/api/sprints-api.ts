@@ -5,6 +5,7 @@ import type {
     SprintState,
 } from "@/features/sprints/model/types";
 
+import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseSprint = {
@@ -59,20 +60,21 @@ export async function assignTasksToSprint(
 ): Promise<void> {
     if (updates.length === 0) return;
 
-    const results = await Promise.all(
-        updates.map((item) =>
-            supabase
-                .from("tasks")
-                .update({
-                    sprint_id: item.sprintId,
-                    sprint_position: item.sprintPosition,
-                })
-                .eq("id", item.taskId)
-        )
+    // RPC from migration 20260731093815 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "assign_tasks_to_sprint" as never,
+        {
+            p_updates: asJson(
+                updates.map((item) => ({
+                    sprintId: item.sprintId,
+                    sprintPosition: item.sprintPosition,
+                    taskId: item.taskId,
+                }))
+            ),
+        } as never
     );
 
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
+    if (error) throw error;
 }
 
 export async function assignTaskToSprint(
@@ -106,7 +108,7 @@ export async function closeSprint(
     carryoverSprintId: null | string
 ): Promise<Sprint> {
     const { data, error } = await supabase.rpc("close_sprint", {
-        p_carryover_sprint_id: carryoverSprintId,
+        p_carryover_sprint_id: carryoverSprintId ?? undefined,
         p_completed_task_ids: completedTaskIds,
         p_sprint_id: sprintId,
     });
@@ -145,9 +147,10 @@ export async function createDraftSprint(
 }
 
 export function defaultSprintEndDate(startIso: string, days = 14): string {
-    const start = new Date(`${startIso}T00:00:00Z`);
-    start.setUTCDate(start.getUTCDate() + (days - 1));
-    return start.toISOString().slice(0, 10);
+    const [year, month, day] = startIso.split("-").map(Number);
+    const start = new Date(year!, month! - 1, day!);
+    start.setDate(start.getDate() + (days - 1));
+    return todayIsoDate(start);
 }
 
 export async function deleteEmptyDraftSprint(sprintId: string): Promise<void> {
@@ -204,16 +207,22 @@ export async function fetchSprintEvents(
 export async function reorderSprintMembership(
     updates: Array<{ id: string; sprintPosition: number }>
 ): Promise<void> {
-    const results = await Promise.all(
-        updates.map((item) =>
-            supabase
-                .from("tasks")
-                .update({ sprint_position: item.sprintPosition })
-                .eq("id", item.id)
-        )
+    if (updates.length === 0) return;
+
+    // RPC from migration 20260731093815 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "assign_tasks_to_sprint" as never,
+        {
+            p_updates: asJson(
+                updates.map((item) => ({
+                    sprintPosition: item.sprintPosition,
+                    taskId: item.id,
+                }))
+            ),
+        } as never
     );
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
+
+    if (error) throw error;
 }
 
 export async function startSprint(
@@ -231,8 +240,12 @@ export async function startSprint(
     return mapSprint(data as DatabaseSprint);
 }
 
-export function todayIsoDate(): string {
-    return new Date().toISOString().slice(0, 10);
+/** Local calendar YYYY-MM-DD (not UTC — avoids evening timezone roll-forward). */
+export function todayIsoDate(now: Date = new Date()): string {
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
 export async function updateDraftSprint(

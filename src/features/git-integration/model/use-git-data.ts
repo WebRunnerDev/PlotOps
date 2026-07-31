@@ -1,17 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useAuth } from "@/features/auth";
 import {
     fetchBranchCommits,
     fetchBranchPullRequests,
     fetchPullRequestFiles,
 } from "@/features/git-integration/api/github-git-api";
 
-import { gitKeys } from "./query-keys";
+import { gitAuthFingerprint, gitKeys } from "./query-keys";
 
 type GitQueryOptions = {
     branchName: string | undefined;
     repoFullName: string | undefined;
-    token: string | null;
+    token: null | string;
 };
 
 export function useBranchCommits({
@@ -19,11 +20,17 @@ export function useBranchCommits({
     repoFullName,
     token,
 }: GitQueryOptions) {
+    const { user } = useAuth();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
     return useQuery({
         enabled: Boolean(token && repoFullName && branchName),
-        queryFn: () =>
-            fetchBranchCommits(repoFullName!, branchName!, token!),
-        queryKey: gitKeys.commits(repoFullName ?? "", branchName ?? ""),
+        queryFn: () => fetchBranchCommits(repoFullName!, branchName!, token!),
+        queryKey: gitKeys.commits(
+            authFingerprint,
+            repoFullName ?? "",
+            branchName ?? ""
+        ),
         staleTime: 60_000,
     });
 }
@@ -33,11 +40,18 @@ export function useBranchPullRequests({
     repoFullName,
     token,
 }: GitQueryOptions) {
+    const { user } = useAuth();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
     return useQuery({
         enabled: Boolean(token && repoFullName && branchName),
         queryFn: () =>
             fetchBranchPullRequests(repoFullName!, branchName!, token!),
-        queryKey: gitKeys.pullRequests(repoFullName ?? "", branchName ?? ""),
+        queryKey: gitKeys.pullRequests(
+            authFingerprint,
+            repoFullName ?? "",
+            branchName ?? ""
+        ),
         staleTime: 60_000,
     });
 }
@@ -45,13 +59,19 @@ export function useBranchPullRequests({
 export function usePullRequestFiles(
     repoFullName: string | undefined,
     prNumber: number | undefined,
-    token: string | null,
+    token: null | string
 ) {
+    const { user } = useAuth();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
     return useQuery({
-        enabled: Boolean(token && repoFullName && prNumber != null),
-        queryFn: () =>
-            fetchPullRequestFiles(repoFullName!, prNumber!, token!),
-        queryKey: gitKeys.prFiles(repoFullName ?? "", prNumber ?? 0),
+        enabled: Boolean(token && repoFullName && prNumber != undefined),
+        queryFn: () => fetchPullRequestFiles(repoFullName!, prNumber!, token!),
+        queryKey: gitKeys.prFiles(
+            authFingerprint,
+            repoFullName ?? "",
+            prNumber ?? 0
+        ),
         staleTime: 5 * 60_000,
     });
 }

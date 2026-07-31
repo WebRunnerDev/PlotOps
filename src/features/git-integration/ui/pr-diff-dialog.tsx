@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import type { GitPrFile } from "@/features/git-integration/api/github-git-api";
 
 import { langFromFilename } from "@/features/git-integration/lib/file-lang";
+import { resolveMissingPrPatchReason } from "@/features/git-integration/lib/resolve-missing-pr-patch-reason";
 import { wrapGithubPatch } from "@/features/git-integration/lib/wrap-github-patch";
 import { usePullRequestFiles } from "@/features/git-integration/model/use-git-data";
 import { cn } from "@/shared/lib/utils";
@@ -29,6 +30,13 @@ import {
     DialogTitle,
 } from "@/shared/shadcn/ui/dialog";
 import { ScrollArea } from "@/shared/shadcn/ui/scroll-area";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type DiffTheme = "dark" | "light";
@@ -87,12 +95,13 @@ export function PrDiffDialog({
     const [mode, setMode] = useState<DiffModeEnum>(DiffModeEnum.Split);
     const [fullscreen, setFullscreen] = useState(false);
 
-    const {
-        data: files = [],
-        isError,
-        isLoading,
-        refetch,
-    } = usePullRequestFiles(repoFullName, prNumber, token);
+    const { data, isError, isLoading, refetch } = usePullRequestFiles(
+        repoFullName,
+        prNumber,
+        token
+    );
+    const files = data?.files ?? [];
+    const truncated = data?.truncated ?? false;
 
     useEffect(() => {
         setActiveFilename(undefined);
@@ -271,13 +280,57 @@ export function PrDiffDialog({
                         {t("git.noFiles")}
                     </div>
                 ) : (
-                    <div className="flex min-h-0 flex-1 overflow-hidden">
-                        <aside className="flex min-h-0 w-56 shrink-0 flex-col overflow-hidden border-r border-border md:w-64">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+                        <div className="shrink-0 border-b border-border px-3 py-2 md:hidden">
+                            <Select
+                                onValueChange={(value) => {
+                                    if (value) setActiveFilename(value);
+                                }}
+                                value={displayFile?.filename}
+                            >
+                                <SelectTrigger
+                                    aria-label={t("git.filesChanged", {
+                                        count: files.length,
+                                    })}
+                                    className="w-full"
+                                >
+                                    <SelectValue
+                                        placeholder={t("git.selectFile")}
+                                    />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {files.map((file) => (
+                                        <SelectItem
+                                            key={file.filename}
+                                            value={file.filename}
+                                        >
+                                            {file.filename}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {truncated ? (
+                                <p className="mt-2 text-meta text-amber-500">
+                                    {t("git.filesTruncated", {
+                                        count: files.length,
+                                    })}
+                                </p>
+                            ) : null}
+                        </div>
+
+                        <aside className="hidden min-h-0 w-56 shrink-0 flex-col overflow-hidden border-r border-border md:flex md:w-64">
                             <p className="shrink-0 px-3 py-2 text-meta text-muted-foreground">
                                 {t("git.filesChanged", {
                                     count: files.length,
                                 })}
                             </p>
+                            {truncated ? (
+                                <p className="shrink-0 px-3 pb-2 text-meta text-amber-500">
+                                    {t("git.filesTruncated", {
+                                        count: files.length,
+                                    })}
+                                </p>
+                            ) : null}
                             <ScrollArea className="min-h-0 flex-1">
                                 <div className="flex flex-col gap-0.5 px-2 pb-2">
                                     {files.map((file) => (
@@ -367,9 +420,24 @@ function FileDiffPanel({
     }, [file, theme]);
 
     if (!file.patch) {
+        const reason = resolveMissingPrPatchReason(file.filename);
         return (
-            <div className="flex h-full min-h-48 items-center justify-center text-muted-foreground text-ui">
-                {t("git.binaryFile")}
+            <div className="flex h-full min-h-48 flex-col items-center justify-center gap-3 px-4 text-center text-muted-foreground text-ui">
+                <p>
+                    {reason === "binary"
+                        ? t("git.binaryFile")
+                        : t("git.diffTooLarge")}
+                </p>
+                {file.blob_url ? (
+                    <a
+                        className="text-foreground underline-offset-4 hover:underline focus-visible:ring-2"
+                        href={file.blob_url}
+                        rel="noreferrer"
+                        target="_blank"
+                    >
+                        {t("git.openOnGitHub")}
+                    </a>
+                ) : null}
             </div>
         );
     }

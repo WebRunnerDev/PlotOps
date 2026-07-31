@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -27,15 +27,18 @@ type CreateLabelOption = ProjectLabel & { isCreate: true };
 type LabelOption = CreateLabelOption | ProjectLabel;
 
 type TaskLabelsFieldProperties = {
+    /** Managers-only: create new project labels (RLS `labels_insert_managers`). */
+    allowCreate?: boolean;
     disabled?: boolean;
     labels: ProjectLabel[];
-    /** Persist Task.`labelIds` — owned by the tasks module. */
-    onLabelIdsChange: (labelIds: string[] | undefined) => void;
+    /** Persist Task.`labelIds` — owned by the tasks module. Pass `null` to clear. */
+    onLabelIdsChange: (labelIds: null | string[]) => void;
     projectId: string;
     selectedIds: string[];
 };
 
 export function TaskLabelsField({
+    allowCreate = false,
     disabled = false,
     labels,
     onLabelIdsChange,
@@ -45,6 +48,7 @@ export function TaskLabelsField({
     const { t } = useTranslation("board");
     const { addLabel } = useProjectLabels(projectId);
     const anchor = useComboboxAnchor();
+    const createInFlight = useRef(false);
 
     const [query, setQuery] = useState("");
 
@@ -55,6 +59,7 @@ export function TaskLabelsField({
 
     const trimmedQuery = query.trim();
     const canCreate =
+        allowCreate &&
         trimmedQuery.length > 0 &&
         !labels.some(
             (label) => label.name.toLowerCase() === trimmedQuery.toLowerCase()
@@ -76,19 +81,27 @@ export function TaskLabelsField({
 
     const commitSelection = (next: ProjectLabel[]) => {
         const nextIds = next.map((label) => label.id);
-        onLabelIdsChange(nextIds.length > 0 ? nextIds : undefined);
+        onLabelIdsChange(nextIds.length > 0 ? nextIds : null);
     };
 
     const handleCreate = async (name: string, current: ProjectLabel[]) => {
-        const id = await addLabel(name);
-        if (!id) {
-            toast.error(t("labels.createFailed"));
-            return;
-        }
+        if (createInFlight.current) return;
+        createInFlight.current = true;
+        try {
+            const id = await addLabel(name);
+            if (!id) {
+                toast.error(t("labels.createFailed"));
+                return;
+            }
 
-        onLabelIdsChange([...current.map((label) => label.id), id]);
-        setQuery("");
-        toast.success(t("labels.created", { name: name.trim() }));
+            onLabelIdsChange([...current.map((label) => label.id), id]);
+            setQuery("");
+            toast.success(t("labels.created", { name: name.trim() }));
+        } catch {
+            toast.error(t("labels.createFailed"));
+        } finally {
+            createInFlight.current = false;
+        }
     };
 
     const handleValueChange = (next: LabelOption[]) => {
@@ -98,7 +111,7 @@ export function TaskLabelsField({
         );
 
         if (create) {
-            handleCreate(create.name, real);
+            void handleCreate(create.name, real);
             return;
         }
 

@@ -27,7 +27,7 @@ export function TaskWatchersList(properties: {
     taskId: string;
 }) {
     const { t } = useTranslation("board");
-    const { data, isLoading } = useTaskWatchers({
+    const { data, isError, isLoading, refetch } = useTaskWatchers({
         projectId: properties.projectId,
         taskId: properties.taskId,
     });
@@ -47,6 +47,20 @@ export function TaskWatchersList(properties: {
                 </Label>
                 {isLoading ? (
                     <p className="text-sm text-muted-foreground">…</p>
+                ) : isError ? (
+                    <div className="mt-1 flex flex-col items-start gap-2">
+                        <p className="text-sm text-destructive">
+                            {t("watchers.loadFailed")}
+                        </p>
+                        <Button
+                            onClick={() => void refetch()}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                        >
+                            {t("watchers.retry")}
+                        </Button>
+                    </div>
                 ) : watchers.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                         {t("watchers.empty")}

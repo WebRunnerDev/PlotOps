@@ -5,4 +5,6 @@ export const projectKeys = {
     githubRepos: (userId: string) =>
         ["projects", "github-repos", userId] as const,
     list: () => [...projectKeys.all, "list"] as const,
+    myMembership: (projectId: string, userId: string | undefined) =>
+        [...projectKeys.detail(projectId), "my-membership", userId] as const,
 };

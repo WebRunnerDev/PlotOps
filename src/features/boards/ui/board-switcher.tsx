@@ -90,7 +90,10 @@ export function BoardSwitcher({
                     }
                 >
                     <span className="truncate">
-                        {current?.name ?? t("boards.loading")}
+                        {current?.name ??
+                            (isLoading
+                                ? t("boards.loading")
+                                : t("boards.unknown"))}
                     </span>
                     <ChevronsUpDown className="size-3.5 opacity-60" />
                 </DropdownMenuTrigger>

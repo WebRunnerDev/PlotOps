@@ -28,6 +28,7 @@ import { useLabelTaggedTasks } from "@/features/labels/model/use-label-tagged-ta
 import { useProjectLabels } from "@/features/labels/model/use-project-labels";
 import { useProjects } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
+import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -69,6 +70,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/shared/shadcn/ui/select";
+import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 const EMPTY_TASKS: LabelTaggedTask[] = [];
 const TASKS_PAGE_SIZE = 5;
@@ -95,6 +97,8 @@ type LabelRowProperties = {
     onOpenTask?: (taskId: string) => void;
     otherProjects: Project[];
     taggedTasks: LabelTaggedTask[];
+    /** False while usage query is loading or failed — block delete/move. */
+    usageKnown: boolean;
 };
 
 type ProjectLabelsSettingsProperties = {
@@ -109,13 +113,20 @@ export function ProjectLabelsSettings({
 }: ProjectLabelsSettingsProperties) {
     const { t } = useTranslation("board");
     const labelsApi = useProjectLabels(projectId);
-    const { data: taggedTasks = [] } = useLabelTaggedTasks(projectId);
+    const {
+        data: taggedTasks = [],
+        isError: taggedTasksError,
+        isLoading: taggedTasksLoading,
+        refetch: refetchTaggedTasks,
+    } = useLabelTaggedTasks(projectId);
     const { data: projects } = useProjects();
 
     const [newName, setNewName] = useState("");
     const [newColor, setNewColor] = useState<LabelColor>("blue");
     const [colorOpen, setColorOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+
+    const usageKnown = !taggedTasksLoading && !taggedTasksError;
 
     const projectLabels = useMemo(
         () =>
@@ -135,6 +146,8 @@ export function ProjectLabelsSettings({
 
     const tasksByLabel = useMemo(() => {
         const map = new Map<string, LabelTaggedTask[]>();
+        if (!usageKnown) return map;
+
         for (const task of taggedTasks) {
             for (const id of task.labelIds) {
                 const list = map.get(id);
@@ -146,7 +159,7 @@ export function ProjectLabelsSettings({
             }
         }
         return map;
-    }, [taggedTasks]);
+    }, [taggedTasks, usageKnown]);
 
     const otherProjects = useMemo(
         () =>
@@ -160,18 +173,23 @@ export function ProjectLabelsSettings({
         const trimmed = newName.trim();
         if (!trimmed) return;
 
-        const id = await labelsApi.addLabel(trimmed, newColor);
-        if (!id) {
-            toast.error(t("labels.createFailed"));
-            return;
-        }
+        try {
+            const id = await labelsApi.addLabel(trimmed, newColor);
+            if (!id) {
+                toast.error(t("labels.createFailed"));
+                return;
+            }
 
-        toast.success(t("labels.created", { name: trimmed }));
-        setNewName("");
-        setNewColor(
-            LABEL_COLORS[(projectLabels.length + 1) % LABEL_COLORS.length] ??
-                "blue"
-        );
+            toast.success(t("labels.created", { name: trimmed }));
+            setNewName("");
+            setNewColor(
+                LABEL_COLORS[
+                    (projectLabels.length + 1) % LABEL_COLORS.length
+                ] ?? "blue"
+            );
+        } catch {
+            toast.error(t("labelSettings.updateFailed"));
+        }
     };
 
     return (
@@ -228,7 +246,26 @@ export function ProjectLabelsSettings({
                 </div>
             </div>
 
-            {projectLabels.length === 0 ? (
+            {labelsApi.isLoading ? (
+                <div className="flex items-center justify-center py-10">
+                    <Spinner className="size-6 text-primary" />
+                </div>
+            ) : labelsApi.error ? (
+                <div className="flex flex-col items-start gap-3">
+                    <Alert variant="destructive">
+                        <AlertDescription>
+                            {t("labelSettings.loadFailed")}
+                        </AlertDescription>
+                    </Alert>
+                    <Button
+                        onClick={() => void labelsApi.refetch()}
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("labelSettings.retry")}
+                    </Button>
+                </div>
+            ) : projectLabels.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>{t("labelSettings.emptyTitle")}</EmptyTitle>
@@ -239,6 +276,23 @@ export function ProjectLabelsSettings({
                 </Empty>
             ) : (
                 <div className="flex flex-col gap-3">
+                    {taggedTasksError ? (
+                        <div className="flex flex-col items-start gap-3">
+                            <Alert variant="destructive">
+                                <AlertDescription>
+                                    {t("labelSettings.usageLoadFailed")}
+                                </AlertDescription>
+                            </Alert>
+                            <Button
+                                onClick={() => void refetchTaggedTasks()}
+                                type="button"
+                                variant="outline"
+                            >
+                                {t("labelSettings.retry")}
+                            </Button>
+                        </div>
+                    ) : undefined}
+
                     <div className="relative max-w-sm">
                         <Search
                             aria-hidden
@@ -268,9 +322,12 @@ export function ProjectLabelsSettings({
                                     onOpenTask={onOpenTask}
                                     otherProjects={otherProjects}
                                     taggedTasks={
-                                        tasksByLabel.get(label.id) ??
-                                        EMPTY_TASKS
+                                        usageKnown
+                                            ? (tasksByLabel.get(label.id) ??
+                                              EMPTY_TASKS)
+                                            : EMPTY_TASKS
                                     }
+                                    usageKnown={usageKnown}
                                 />
                             ))}
                         </ul>
@@ -393,6 +450,7 @@ function LabelRow({
     onOpenTask,
     otherProjects,
     taggedTasks,
+    usageKnown,
 }: LabelRowProperties) {
     const { t } = useTranslation("board");
     const {
@@ -416,11 +474,12 @@ function LabelRow({
         otherProjects[0]?.id
     );
 
-    const usageCount = taggedTasks.length;
-    const archivedUsageCount = taggedTasks.filter((task) =>
-        Boolean(task.archivedAt)
-    ).length;
+    const usageCount = usageKnown ? taggedTasks.length : 0;
+    const archivedUsageCount = usageKnown
+        ? taggedTasks.filter((task) => Boolean(task.archivedAt)).length
+        : 0;
     const hasArchivedUsage = archivedUsageCount > 0;
+    const destructiveBlocked = !usageKnown || hasArchivedUsage;
     const totalTaskPages = Math.max(1, Math.ceil(usageCount / TASKS_PAGE_SIZE));
     const pageTasks = taggedTasks.slice(
         taskPage * TASKS_PAGE_SIZE,
@@ -462,15 +521,20 @@ function LabelRow({
             return;
         }
 
-        const ok = await renameLabel(label.id, trimmed);
-        if (!ok) {
-            toast.error(t("labels.createFailed"));
+        try {
+            const ok = await renameLabel(label.id, trimmed);
+            if (!ok) {
+                toast.error(t("labels.createFailed"));
+                setDraft(label.name);
+            }
+        } catch {
+            toast.error(t("labelSettings.updateFailed"));
             setDraft(label.name);
         }
     };
 
     const handleConfirmDelete = async () => {
-        if (hasArchivedUsage) return;
+        if (!usageKnown || hasArchivedUsage) return;
 
         try {
             await deleteLabel(label.id);
@@ -483,33 +547,42 @@ function LabelRow({
 
     const handleCopy = async () => {
         if (!targetProjectId) return;
-        const id = await copyLabelToProject(label.id, targetProjectId);
-        const target = otherProjects.find(
-            (project) => project.id === targetProjectId
-        );
-
-        if (!id) {
-            toast.error(t("labelSettings.transferDuplicate"));
-            return;
-        }
-
-        toast.success(
-            t("labelSettings.copied", {
-                name: label.name,
-                target: target?.name ?? "",
-            })
-        );
-        setTransferOpen(false);
-    };
-
-    const handleMove = async () => {
-        if (!targetProjectId || hasArchivedUsage) return;
         const target = otherProjects.find(
             (project) => project.id === targetProjectId
         );
 
         try {
-            await moveLabelToProject(label.id, targetProjectId);
+            const id = await copyLabelToProject(label.id, targetProjectId);
+
+            if (!id) {
+                toast.error(t("labelSettings.transferDuplicate"));
+                return;
+            }
+
+            toast.success(
+                t("labelSettings.copied", {
+                    name: label.name,
+                    target: target?.name ?? "",
+                })
+            );
+            setTransferOpen(false);
+        } catch {
+            toast.error(t("labelSettings.updateFailed"));
+        }
+    };
+
+    const handleMove = async () => {
+        if (!targetProjectId || !usageKnown || hasArchivedUsage) return;
+        const target = otherProjects.find(
+            (project) => project.id === targetProjectId
+        );
+
+        try {
+            const result = await moveLabelToProject(label.id, targetProjectId);
+            if (result === null) {
+                toast.error(t("labelSettings.transferDuplicate"));
+                return;
+            }
             toast.success(
                 t("labelSettings.moved", {
                     name: label.name,
@@ -518,7 +591,7 @@ function LabelRow({
             );
             setTransferOpen(false);
         } catch {
-            toast.error(t("labelSettings.deleteFailed"));
+            toast.error(t("labelSettings.updateFailed"));
         }
     };
 
@@ -586,7 +659,7 @@ function LabelRow({
 
             <Button
                 aria-label={t("labelSettings.transfer")}
-                disabled={otherProjects.length === 0}
+                disabled={otherProjects.length === 0 || !usageKnown}
                 onClick={() => setTransferOpen(true)}
                 size="icon-sm"
                 type="button"
@@ -598,6 +671,7 @@ function LabelRow({
             <Button
                 aria-label={t("labelSettings.delete")}
                 className="text-muted-foreground hover:text-destructive"
+                disabled={!usageKnown}
                 onClick={() => setDeleteOpen(true)}
                 size="icon-sm"
                 type="button"
@@ -618,16 +692,18 @@ function LabelRow({
                             })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {hasArchivedUsage
-                                ? t("labelSettings.deleteWithArchived", {
-                                      archived: archivedUsageCount,
-                                      count: usageCount,
-                                  })
-                                : usageCount > 0
-                                  ? t("labelSettings.deleteWithTasks", {
-                                        count: usageCount,
-                                    })
-                                  : t("labelSettings.deleteEmpty")}
+                            {usageKnown
+                                ? hasArchivedUsage
+                                    ? t("labelSettings.deleteWithArchived", {
+                                          archived: archivedUsageCount,
+                                          count: usageCount,
+                                      })
+                                    : usageCount > 0
+                                      ? t("labelSettings.deleteWithTasks", {
+                                            count: usageCount,
+                                        })
+                                      : t("labelSettings.deleteEmpty")
+                                : t("labelSettings.usageLoadFailed")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
 
@@ -729,7 +805,7 @@ function LabelRow({
                             {t("labelSettings.cancel")}
                         </AlertDialogCancel>
                         <AlertDialogAction
-                            disabled={hasArchivedUsage}
+                            disabled={destructiveBlocked}
                             onClick={handleConfirmDelete}
                             variant="destructive"
                         >
@@ -748,11 +824,17 @@ function LabelRow({
                             })}
                         </DialogTitle>
                         <DialogDescription>
-                            {hasArchivedUsage
-                                ? t("labelSettings.transferWithArchived", {
-                                      archived: archivedUsageCount,
-                                  })
-                                : t("labelSettings.transferDescription")}
+                            {usageKnown
+                                ? hasArchivedUsage
+                                    ? t("labelSettings.transferWithArchived", {
+                                          archived: archivedUsageCount,
+                                      })
+                                    : usageCount > 0
+                                      ? t("labelSettings.transferWithTasks", {
+                                            count: usageCount,
+                                        })
+                                      : t("labelSettings.transferDescription")
+                                : t("labelSettings.usageLoadFailed")}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -800,7 +882,7 @@ function LabelRow({
                             {t("labelSettings.copy")}
                         </Button>
                         <Button
-                            disabled={!targetProjectId || hasArchivedUsage}
+                            disabled={!targetProjectId || destructiveBlocked}
                             onClick={handleMove}
                             type="button"
                         >

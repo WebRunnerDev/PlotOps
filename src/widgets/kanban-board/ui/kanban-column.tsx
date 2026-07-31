@@ -65,7 +65,10 @@ export function KanbanColumn({
         projectId,
         boardId
     );
-    const { canEditTasks, canManageBoard } = useProjectAccess(projectId);
+    const { canEditTasks, canManageBoard, isSettled } =
+        useProjectAccess(projectId);
+    const canEdit = isSettled && canEditTasks;
+    const canManage = isSettled && canManageBoard;
 
     const {
         attributes,
@@ -84,6 +87,7 @@ export function KanbanColumn({
     const [draft, setDraft] = useState(name);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const inputReference = useRef<HTMLInputElement>(null);
+    const skipBlurCommit = useRef(false);
 
     const otherColumns = columns.filter((column) => column.id !== status);
     const canDelete = otherColumns.length > 0;
@@ -123,9 +127,13 @@ export function KanbanColumn({
             return;
         }
 
-        const ok = await renameColumn(status, trimmed);
-        if (!ok) {
-            toast.error(t("columns.renameFailed"));
+        try {
+            const ok = await renameColumn(status, trimmed);
+            if (!ok) {
+                toast.error(t("columns.renameFailed"));
+                setDraft(name);
+            }
+        } catch {
             setDraft(name);
         }
         setIsEditing(false);
@@ -145,12 +153,20 @@ export function KanbanColumn({
             visibleTaskCount: tasks.length,
         });
         const movedVisibleTasks = tasks.length > 0;
-        const ok = await deleteColumn(status, moveTasksTo);
+
+        let ok = false;
+        try {
+            ok = await deleteColumn(status, moveTasksTo);
+        } catch {
+            return;
+        }
 
         if (!ok) {
             toast.error(t("columns.deleteFailed"));
             return;
         }
+
+        setDeleteOpen(false);
 
         // Remap covers active tasks moved off the deleted column.
         if (moveTasksTo) {
@@ -174,7 +190,6 @@ export function KanbanColumn({
                   })
                 : t("columns.deleted", { name })
         );
-        setDeleteOpen(false);
     };
 
     return (
@@ -193,7 +208,7 @@ export function KanbanColumn({
                 }}
             >
                 <header className="flex items-center gap-1.5 px-0.5">
-                    {canManageBoard ? (
+                    {canManage ? (
                         <button
                             aria-label={t("columns.dragAria")}
                             className="flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
@@ -205,17 +220,27 @@ export function KanbanColumn({
                         </button>
                     ) : undefined}
 
-                    {isEditing && canManageBoard ? (
+                    {isEditing && canManage ? (
                         <Input
                             aria-label={t("columns.renameAria")}
                             className="h-7 flex-1 border-transparent bg-transparent px-1 text-ui font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
-                            onBlur={commitRename}
+                            onBlur={() => {
+                                if (skipBlurCommit.current) {
+                                    skipBlurCommit.current = false;
+                                    return;
+                                }
+                                void commitRename();
+                            }}
                             onChange={(event) => setDraft(event.target.value)}
                             onKeyDown={(event) => {
                                 if (event.key === "Enter") {
-                                    event.currentTarget.blur();
+                                    event.preventDefault();
+                                    skipBlurCommit.current = true;
+                                    void commitRename();
                                 }
                                 if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    skipBlurCommit.current = true;
                                     setDraft(name);
                                     setIsEditing(false);
                                 }
@@ -223,7 +248,7 @@ export function KanbanColumn({
                             ref={inputReference}
                             value={draft}
                         />
-                    ) : canManageBoard ? (
+                    ) : canManage ? (
                         <button
                             className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-ui font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => setIsEditing(true)}
@@ -239,7 +264,7 @@ export function KanbanColumn({
                     <span className="shrink-0 text-meta text-muted-foreground">
                         {tasks.length}
                     </span>
-                    {canManageBoard ? (
+                    {canManage ? (
                         <Button
                             aria-label={t("columns.deleteAria")}
                             className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100"
@@ -260,7 +285,7 @@ export function KanbanColumn({
                     >
                         {tasks.map((task) => (
                             <DraggableTaskCard
-                                canDrag={canEditTasks}
+                                canDrag={canEdit}
                                 key={task.id}
                                 labels={labelsByTaskId.get(task.id) ?? []}
                                 task={task}

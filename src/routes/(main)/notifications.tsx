@@ -263,6 +263,20 @@ function NotificationsPage() {
                         </li>
                     ))}
                 </ul>
+            ) : listQuery.isError ? (
+                <div className="flex flex-col items-center gap-3 py-10">
+                    <p className="text-center text-sm text-destructive">
+                        {t("notifications.loadFailed")}
+                    </p>
+                    <Button
+                        onClick={() => void listQuery.refetch()}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("notifications.retry")}
+                    </Button>
+                </div>
             ) : (listQuery.data?.length ?? 0) === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
                     {t("nav.notificationsEmpty")}

@@ -1,13 +1,14 @@
 import { Lock, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+
+import type { GitHubRepo, Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub } from "@/features/auth";
-import type { GitHubRepo, Project } from "@/features/projects/model/types";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
-
-import { useCreateProject } from "@/features/projects/model/use-projects";
 import { useGitHubRepos } from "@/features/projects/model/use-github-repos";
+import { useCreateProject } from "@/features/projects/model/use-projects";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -20,7 +21,7 @@ import {
 import { Input } from "@/shared/shadcn/ui/input";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
-type AddProjectDialogProps = {
+type AddProjectDialogProperties = {
     accessToken: null | string;
     connectedProjects: Project[];
     onOpenChange: (open: boolean) => void;
@@ -34,7 +35,7 @@ export function AddProjectDialog({
     onOpenChange,
     open,
     userId,
-}: AddProjectDialogProps) {
+}: AddProjectDialogProperties) {
     const { t } = useTranslation("home");
     const [search, setSearch] = useState("");
     const createProject = useCreateProject();
@@ -45,8 +46,13 @@ export function AddProjectDialog({
     } = useGitHubRepos(accessToken, userId);
 
     const connectedRepoIds = useMemo(
-        () => new Set(connectedProjects.map((project) => project.github_repo_id)),
-        [connectedProjects],
+        () =>
+            new Set(
+                connectedProjects
+                    .map((project) => project.github_repo_id)
+                    .filter((id): id is number => id != undefined)
+            ),
+        [connectedProjects]
     );
 
     const availableRepos = useMemo(() => {
@@ -64,12 +70,16 @@ export function AddProjectDialog({
     }, [connectedRepoIds, repos, search]);
 
     const handleConnect = async (repo: GitHubRepo) => {
-        await createProject.mutateAsync(repo);
-        onOpenChange(false);
-    };
-
-    const handleReconnectGitHub = async () => {
-        await signInWithGitHub();
+        try {
+            await createProject.mutateAsync(repo);
+            onOpenChange(false);
+        } catch (error) {
+            toast.error(
+                isUniqueViolation(error)
+                    ? t("createProjectDuplicate")
+                    : t("createProjectFailed")
+            );
+        }
     };
 
     const missingRepoScope = error instanceof GitHubMissingRepoScopeError;
@@ -136,7 +146,9 @@ export function AddProjectDialog({
                                 <Button
                                     className="h-auto w-full justify-between px-3 py-2.5 text-left"
                                     disabled={createProject.isPending}
-                                    onClick={() => handleConnect(repo)}
+                                    onClick={() => {
+                                        void handleConnect(repo);
+                                    }}
                                     type="button"
                                     variant="ghost"
                                 >
@@ -169,5 +181,18 @@ export function AddProjectDialog({
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+async function handleReconnectGitHub() {
+    await signInWithGitHub();
+}
+
+function isUniqueViolation(error: unknown): boolean {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: unknown }).code === "23505"
     );
 }

@@ -1,52 +1,55 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchMyProjectMembership } from "@/features/projects/api/members-api";
-import {
-    capabilitiesForRole,
-    type ProjectAccessRole,
-    type ProjectCapabilities,
-} from "@/features/projects/model/access";
-import { projectKeys } from "@/features/projects/model/query-keys";
-import { useProject } from "@/features/projects/model/use-projects";
 import { useAuth } from "@/features/auth";
+import { fetchMyProjectMembership } from "@/features/projects/api/members-api";
+import { projectKeys } from "@/features/projects/model/query-keys";
+import {
+    type ProjectAccessState,
+    resolveProjectAccess,
+} from "@/features/projects/model/resolve-project-access";
+import { useProject } from "@/features/projects/model/use-projects";
 
-const EMPTY: ProjectCapabilities = capabilitiesForRole(null);
-
-export function useProjectAccess(projectId: string): ProjectCapabilities & {
-    isLoading: boolean;
-} {
+export function useProjectAccess(projectId: string): ProjectAccessState {
     const { user } = useAuth();
-    const { data: project, isLoading: projectLoading } = useProject(projectId);
+    const {
+        data: project,
+        isError: projectError,
+        isLoading: projectLoading,
+    } = useProject(projectId);
 
     const membershipQuery = useQuery({
-        enabled: Boolean(projectId && user?.id && project && project.owner_id !== user.id),
+        enabled: Boolean(
+            projectId && user?.id && project && project.owner_id !== user.id
+        ),
         queryFn: async () => {
             if (!user?.id) return null;
             const { data, error } = await fetchMyProjectMembership(
                 projectId,
-                user.id,
+                user.id
             );
             if (error) throw error;
             return data;
         },
-        queryKey: [...projectKeys.detail(projectId), "my-membership", user?.id],
+        queryKey: projectKeys.myMembership(projectId, user?.id),
     });
 
-    if (!user || !project) {
-        return { ...EMPTY, isLoading: projectLoading || membershipQuery.isLoading };
+    const access = resolveProjectAccess({
+        membership: membershipQuery.data,
+        membershipError: membershipQuery.isError,
+        membershipLoading: membershipQuery.isLoading,
+        project,
+        projectLoading,
+        userId: user?.id,
+    });
+
+    if (projectError && !project) {
+        return {
+            ...access,
+            isError: true,
+            isLoading: false,
+            isSettled: true,
+        };
     }
 
-    let role: null | ProjectAccessRole = null;
-    if (project.owner_id === user.id) {
-        role = "owner";
-    } else if (membershipQuery.data?.role) {
-        role = membershipQuery.data.role;
-    }
-
-    return {
-        ...capabilitiesForRole(role),
-        isLoading:
-            projectLoading ||
-            (project.owner_id !== user.id && membershipQuery.isLoading),
-    };
+    return access;
 }

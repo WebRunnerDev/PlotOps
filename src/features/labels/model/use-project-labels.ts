@@ -9,10 +9,15 @@ import {
     createProjectLabel,
     deleteProjectLabel,
     fetchProjectLabels,
+    moveProjectLabel,
     updateProjectLabel,
 } from "@/features/labels/api/labels-api";
+import { isUniqueViolation } from "@/features/labels/lib/is-unique-violation";
 import { LABEL_COLORS } from "@/features/labels/model/constants";
-import { invalidateProjectLabels } from "@/features/labels/model/invalidate-labels";
+import {
+    invalidateProjectLabels,
+    stripLabelIdFromTaskCaches,
+} from "@/features/labels/model/invalidate-labels";
 import { labelKeys } from "@/features/labels/model/query-keys";
 import { supabase } from "@/shared/api/supabase";
 
@@ -55,7 +60,17 @@ export function useProjectLabels(projectId: string) {
                 LABEL_COLORS[projectLabels.length % LABEL_COLORS.length]!;
             return createProjectLabel(projectId, name, nextColor, customColor);
         },
-        onSuccess: () => {
+        onSuccess: (label) => {
+            queryClient.setQueryData<ProjectLabel[]>(
+                labelKeys.project(projectId),
+                (current) => {
+                    if (!current) return [label];
+                    if (current.some((item) => item.id === label.id)) {
+                        return current;
+                    }
+                    return [...current, label];
+                }
+            );
             invalidateProjectLabels(queryClient, projectId);
         },
     });
@@ -91,7 +106,8 @@ export function useProjectLabels(projectId: string) {
 
     const deleteLabelMutation = useMutation({
         mutationFn: (labelId: string) => deleteProjectLabel(labelId),
-        onSuccess: () => {
+        onSuccess: (_data, labelId) => {
+            stripLabelIdFromTaskCaches(queryClient, projectId, labelId);
             invalidateProjectLabels(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: labelKeys.taggedTasks(projectId),
@@ -127,15 +143,14 @@ export function useProjectLabels(projectId: string) {
             label: ProjectLabel;
             targetProjectId: string;
         }) => {
-            await createProjectLabel(
-                targetProjectId,
-                label.name,
-                label.color,
-                label.customColor
-            );
-            await deleteProjectLabel(label.id);
+            await moveProjectLabel(label.id, targetProjectId);
         },
         onSuccess: (_data, variables) => {
+            stripLabelIdFromTaskCaches(
+                queryClient,
+                projectId,
+                variables.label.id
+            );
             invalidateProjectLabels(queryClient, projectId);
             invalidateProjectLabels(queryClient, variables.targetProjectId);
             void queryClient.invalidateQueries({
@@ -152,12 +167,17 @@ export function useProjectLabels(projectId: string) {
             color?: LabelColor,
             customColor?: string
         ) => {
-            const label = await addLabelMutation.mutateAsync({
-                color,
-                customColor,
-                name,
-            });
-            return label.id;
+            try {
+                const label = await addLabelMutation.mutateAsync({
+                    color,
+                    customColor,
+                    name,
+                });
+                return label.id;
+            } catch (error) {
+                if (isUniqueViolation(error)) return null;
+                throw error;
+            }
         },
         copyLabelToProject: async (
             labelId: string,
@@ -165,11 +185,16 @@ export function useProjectLabels(projectId: string) {
         ) => {
             const label = labels.find((item) => item.id === labelId);
             if (!label || label.projectId === targetProjectId) return;
-            const created = await copyLabelMutation.mutateAsync({
-                label,
-                targetProjectId,
-            });
-            return created.id;
+            try {
+                const created = await copyLabelMutation.mutateAsync({
+                    label,
+                    targetProjectId,
+                });
+                return created.id;
+            } catch (error) {
+                if (isUniqueViolation(error)) return null;
+                throw error;
+            }
         },
         deleteLabel: (labelId: string) =>
             deleteLabelMutation.mutateAsync(labelId),
@@ -182,8 +207,14 @@ export function useProjectLabels(projectId: string) {
         ) => {
             const label = labels.find((item) => item.id === labelId);
             if (!label || label.projectId === targetProjectId) return;
-            await moveLabelMutation.mutateAsync({ label, targetProjectId });
+            try {
+                await moveLabelMutation.mutateAsync({ label, targetProjectId });
+            } catch (error) {
+                if (isUniqueViolation(error)) return null;
+                throw error;
+            }
         },
+        refetch: () => labelsQuery.refetch(),
         renameLabel: async (labelId: string, name: string) => {
             const trimmed = name.trim();
             if (!trimmed) return false;
@@ -193,8 +224,16 @@ export function useProjectLabels(projectId: string) {
                     label.name.toLowerCase() === trimmed.toLowerCase()
             );
             if (duplicate) return false;
-            await renameLabelMutation.mutateAsync({ labelId, name: trimmed });
-            return true;
+            try {
+                await renameLabelMutation.mutateAsync({
+                    labelId,
+                    name: trimmed,
+                });
+                return true;
+            } catch (error) {
+                if (isUniqueViolation(error)) return false;
+                throw error;
+            }
         },
         setLabelCustomColor: (labelId: string, hex: string) =>
             setLabelCustomColorMutation.mutateAsync({ hex, labelId }),

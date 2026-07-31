@@ -17,6 +17,7 @@ import type {
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
+import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseNotificationRow = {
@@ -77,7 +78,7 @@ export async function createNotificationsForAssignmentChange(input: {
     const { error } = await supabase.rpc(
         "create_notifications_for_assignment_change",
         {
-            p_metadata: input.metadata,
+            p_metadata: asJson(input.metadata),
             p_project_id: input.projectId,
             p_recipient_id: input.recipientId,
             p_task_id: input.taskId,
@@ -95,7 +96,7 @@ export async function createNotificationsForAuthorChange(input: {
     const { error } = await supabase.rpc(
         "create_notifications_for_author_change",
         {
-            p_metadata: input.metadata,
+            p_metadata: asJson(input.metadata),
             p_project_id: input.projectId,
             p_recipient_id: input.recipientId,
             p_task_id: input.taskId,
@@ -108,8 +109,8 @@ export async function createNotificationsForMentions(
     input: MentionFanOutRequest
 ) {
     const { error } = await supabase.rpc("create_notifications_for_mentions", {
-        p_actor_name: input.actorName,
-        p_comment_id: input.commentId,
+        p_actor_name: input.actorName ?? undefined,
+        p_comment_id: input.commentId ?? undefined,
         p_mentionee_ids: input.mentioneeIds,
         p_source: input.source,
         p_task_id: input.taskId,
@@ -125,7 +126,7 @@ export async function createNotificationsForStatusChange(input: {
     const { error } = await supabase.rpc(
         "create_notifications_for_status_change",
         {
-            p_metadata: input.metadata,
+            p_metadata: asJson(input.metadata),
             p_project_id: input.projectId,
             p_task_id: input.taskId,
         }
@@ -143,7 +144,7 @@ export async function createNotificationsForWatchers(input: {
     const { error } = await supabase.rpc("create_notifications_for_watchers", {
         p_exclude_recipient_ids: input.excludeRecipientIds ?? [],
         p_kind: input.kind,
-        p_metadata: input.metadata,
+        p_metadata: asJson(input.metadata),
         p_project_id: input.projectId,
         p_task_id: input.taskId,
     });
@@ -159,11 +160,15 @@ export async function createTaskNotifications(input: {
     if (input.events.length === 0) return;
 
     const { error } = await supabase.rpc("create_task_notifications", {
-        p_events: input.events.map((event) => ({
-            kind: event.kind,
-            metadata: event.metadata,
-            ...(event.recipientId ? { recipient_id: event.recipientId } : {}),
-        })),
+        p_events: asJson(
+            input.events.map((event) => ({
+                kind: event.kind,
+                metadata: event.metadata,
+                ...(event.recipientId
+                    ? { recipient_id: event.recipientId }
+                    : {}),
+            }))
+        ),
         p_project_id: input.projectId,
         p_task_id: input.taskId,
     });
@@ -192,15 +197,15 @@ export async function fetchNotificationsList(input: {
             p_extra_patterns:
                 expansion.extraPatterns.length > 0
                     ? expansion.extraPatterns
-                    : null,
+                    : undefined,
             p_limit: limit,
             p_matched_kinds:
                 expansion.matchedKinds.length > 0
                     ? expansion.matchedKinds
-                    : null,
+                    : undefined,
             p_offset: offset,
-            p_project_id: input.projectId ?? null,
-            p_q: q,
+            p_project_id: input.projectId,
+            p_q: q ?? undefined,
         }
     );
     if (error) throw error;
@@ -291,7 +296,7 @@ export async function fetchUnreadNotificationsCount(input: {
 
 export async function markAllNotificationsRead(input: { projectId?: string }) {
     const { error } = await supabase.rpc("mark_notifications_read_in_scope", {
-        p_project_id: input.projectId ?? null,
+        p_project_id: input.projectId,
     });
     if (error) throw error;
 }

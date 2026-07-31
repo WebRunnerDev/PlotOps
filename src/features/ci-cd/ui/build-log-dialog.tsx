@@ -40,10 +40,15 @@ export function BuildLogDialog({
     const { t } = useTranslation("board");
     const { isStreaming, lines } = useBuildLogStream(
         projectId,
-        open && build ? build.id : undefined
+        open && build ? build.id : undefined,
+        build?.status
     );
-    const { data: jobs = build?.jobs ?? [], isLoading: jobsLoading } =
-        useBuildJobs(projectId, build?.id, open && Boolean(build));
+    const {
+        data: jobs = build?.jobs ?? [],
+        isError: jobsError,
+        isLoading: jobsLoading,
+        refetch: refetchJobs,
+    } = useBuildJobs(projectId, build?.id, open && Boolean(build));
 
     return (
         <Dialog
@@ -108,6 +113,20 @@ export function BuildLogDialog({
                     {jobsLoading && jobs.length === 0 ? (
                         <div className="flex justify-center py-2">
                             <Spinner className="size-4 text-muted-foreground" />
+                        </div>
+                    ) : jobsError && jobs.length === 0 ? (
+                        <div className="flex flex-col gap-2">
+                            <p className="text-ui text-destructive">
+                                {t("cicd.logs.jobsLoadFailed")}
+                            </p>
+                            <Button
+                                onClick={() => void refetchJobs()}
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                            >
+                                {t("cicd.retry")}
+                            </Button>
                         </div>
                     ) : jobs.length === 0 ? (
                         <p className="text-ui text-muted-foreground">

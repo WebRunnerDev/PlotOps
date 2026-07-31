@@ -1,5 +1,13 @@
 import type { User } from "@supabase/supabase-js";
 
+import type { Database } from "@/shared/api/database.types";
+
+import {
+    parseProfileNameRow,
+    parseUserProfile,
+    parseUserProfileOrNull,
+    type UserProfile,
+} from "@/features/auth/api/profile-schema";
 import {
     getUserAvatarUrl,
     getUserUsername,
@@ -7,16 +15,13 @@ import {
 } from "@/features/auth/lib/user-display";
 import { supabase } from "@/shared/api/supabase";
 
-export type UserProfile = {
-    avatar_url: null | string;
-    first_name: null | string;
-    id: string;
-    last_name: null | string;
-    username: null | string;
-};
+export type { UserProfile } from "@/features/auth/api/profile-schema";
+
+type ProfileInsert = Database["public"]["Tables"]["profiles"]["Insert"];
+type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
 
 export async function ensureUserProfile(user: User) {
-    const { data: existingProfile, error: selectError } = await supabase
+    const { data: existingRow, error: selectError } = await supabase
         .from("profiles")
         .select("id, first_name, last_name")
         .eq("id", user.id)
@@ -24,20 +29,18 @@ export async function ensureUserProfile(user: User) {
 
     if (selectError) throw selectError;
 
-    if (existingProfile) {
-        if (isProfileNamesComplete(existingProfile as UserProfile)) return;
+    if (existingRow) {
+        const existingProfile = parseProfileNameRow(existingRow);
+        if (isProfileNamesComplete(existingProfile)) return;
 
         const first_name = metadataName(user, "first_name");
         const last_name = metadataName(user, "last_name");
-        const patch: {
-            first_name?: string;
-            last_name?: string;
-        } = {};
+        const patch: ProfileUpdate = {};
 
-        if (first_name && !(existingProfile as UserProfile).first_name) {
+        if (first_name && !existingProfile.first_name) {
             patch.first_name = first_name;
         }
-        if (last_name && !(existingProfile as UserProfile).last_name) {
+        if (last_name && !existingProfile.last_name) {
             patch.last_name = last_name;
         }
         if (Object.keys(patch).length === 0) return;
@@ -51,13 +54,17 @@ export async function ensureUserProfile(user: User) {
         return;
     }
 
-    const { error: insertError } = await supabase.from("profiles").insert({
+    const insertRow: ProfileInsert = {
         avatar_url: getUserAvatarUrl(user),
         first_name: metadataName(user, "first_name"),
         id: user.id,
         last_name: metadataName(user, "last_name"),
         username: getUserUsername(user),
-    });
+    };
+
+    const { error: insertError } = await supabase
+        .from("profiles")
+        .insert(insertRow);
 
     if (insertError && insertError.code !== "23505") {
         throw insertError;
@@ -74,7 +81,7 @@ export async function fetchOwnProfile(
         .maybeSingle();
 
     if (error) throw error;
-    return data as null | UserProfile;
+    return parseUserProfileOrNull(data);
 }
 
 export async function updateProfileNames(input: {
@@ -85,6 +92,14 @@ export async function updateProfileNames(input: {
     const first_name = input.firstName.trim();
     const last_name = input.lastName.trim();
 
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    if (!authData.user || authData.user.id !== input.userId) {
+        throw new Error("Not authenticated");
+    }
+
+    await ensureUserProfile(authData.user);
+
     const { error: metaError } = await supabase.auth.updateUser({
         data: { first_name, last_name },
     });
@@ -92,13 +107,13 @@ export async function updateProfileNames(input: {
 
     const { data, error } = await supabase
         .from("profiles")
-        .update({ first_name, last_name })
+        .update({ first_name, last_name } satisfies ProfileUpdate)
         .eq("id", input.userId)
         .select("id, username, avatar_url, first_name, last_name")
         .single();
 
     if (error) throw error;
-    return data as UserProfile;
+    return parseUserProfile(data);
 }
 
 function metadataName(

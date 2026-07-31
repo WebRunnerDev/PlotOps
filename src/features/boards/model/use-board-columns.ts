@@ -1,7 +1,7 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import type { BoardColumn } from "@/features/boards/model/types";
@@ -26,6 +26,7 @@ const columnChannels = new Map<
 
 export function useBoardColumns(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
+    const dragGestureColumnsReference = useRef<BoardColumn[] | null>(null);
 
     const columnsQuery = useQuery({
         enabled: Boolean(projectId && boardId),
@@ -44,6 +45,9 @@ export function useBoardColumns(projectId: string, boardId: string) {
     const addColumnMutation = useMutation({
         mutationFn: (name: string) =>
             createBoardColumn(projectId, boardId, name),
+        onError: () => {
+            toast.error("Failed to add column");
+        },
         onSuccess: () => {
             invalidateBoardColumns(queryClient, projectId);
         },
@@ -52,6 +56,9 @@ export function useBoardColumns(projectId: string, boardId: string) {
     const renameColumnMutation = useMutation({
         mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
             renameBoardColumn(boardId, columnId, name),
+        onError: () => {
+            toast.error("Failed to rename column");
+        },
         onSuccess: () => {
             invalidateBoardColumns(queryClient, projectId);
         },
@@ -65,6 +72,9 @@ export function useBoardColumns(projectId: string, boardId: string) {
             columnId: string;
             moveTasksTo?: string;
         }) => deleteBoardColumn(boardId, columnId, moveTasksTo),
+        onError: () => {
+            toast.error("Failed to delete column");
+        },
         onSuccess: () => {
             invalidateBoardColumns(queryClient, projectId);
         },
@@ -83,11 +93,86 @@ export function useBoardColumns(projectId: string, boardId: string) {
 
     const columns = columnsQuery.data ?? [];
 
+    const applyColumnOrder = (
+        activeId: string,
+        overId: string,
+        persist: boolean
+    ) => {
+        const currentColumns =
+            queryClient.getQueryData<BoardColumn[]>(
+                boardKeys.columns(projectId, boardId)
+            ) ?? columns;
+        const oldIndex = currentColumns.findIndex(
+            (column) => column.id === activeId
+        );
+        const newIndex = currentColumns.findIndex(
+            (column) => column.id === overId
+        );
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+            return;
+        }
+
+        if (!persist && !dragGestureColumnsReference.current) {
+            dragGestureColumnsReference.current = currentColumns;
+        }
+
+        const next = [...currentColumns];
+        const [moved] = next.splice(oldIndex, 1);
+        if (!moved) return;
+        next.splice(newIndex, 0, moved);
+
+        const ordered = next.map((column) => column.id);
+        queryClient.setQueryData<BoardColumn[]>(
+            boardKeys.columns(projectId, boardId),
+            (current) =>
+                current
+                    ? orderColumnsByIds(current, ordered)
+                    : orderColumnsByIds(currentColumns, ordered)
+        );
+
+        if (!persist) return;
+
+        const previous = dragGestureColumnsReference.current ?? currentColumns;
+        reorderColumnsMutation.mutate(ordered, {
+            onError: () => {
+                queryClient.setQueryData(
+                    boardKeys.columns(projectId, boardId),
+                    previous
+                );
+            },
+        });
+        dragGestureColumnsReference.current = null;
+    };
+
     return {
         addColumn: (name: string) => addColumnMutation.mutateAsync(name),
         columns,
+        columnsError: columnsQuery.isError,
         /** True once columns have been fetched (including an empty list). */
         columnsReady: columnsQuery.data !== undefined,
+        commitColumnDragGesture: () => {
+            const previous = dragGestureColumnsReference.current;
+            if (!previous) return;
+
+            const current = queryClient.getQueryData<BoardColumn[]>(
+                boardKeys.columns(projectId, boardId)
+            );
+            dragGestureColumnsReference.current = null;
+            if (!current) return;
+
+            const ordered = current.map((column) => column.id);
+            const previousIds = previous.map((column) => column.id);
+            if (ordered.join("\0") === previousIds.join("\0")) return;
+
+            reorderColumnsMutation.mutate(ordered, {
+                onError: () => {
+                    queryClient.setQueryData(
+                        boardKeys.columns(projectId, boardId),
+                        previous
+                    );
+                },
+            });
+        },
         deleteColumn: async (columnId: string, moveTasksTo?: string) => {
             if (columns.length <= 1) return false;
             await deleteColumnMutation.mutateAsync({ columnId, moveTasksTo });
@@ -110,31 +195,21 @@ export function useBoardColumns(projectId: string, boardId: string) {
             });
             return true;
         },
-        reorderColumns: (activeId: string, overId: string) => {
-            const oldIndex = columns.findIndex(
-                (column) => column.id === activeId
-            );
-            const newIndex = columns.findIndex(
-                (column) => column.id === overId
-            );
-            if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-                return;
-            }
-
-            const next = [...columns];
-            const [moved] = next.splice(oldIndex, 1);
-            if (!moved) return;
-            next.splice(newIndex, 0, moved);
-
-            const ordered = next.map((column) => column.id);
-            queryClient.setQueryData<BoardColumn[]>(
+        reorderColumns: (
+            activeId: string,
+            overId: string,
+            options?: { persist?: boolean }
+        ) => {
+            applyColumnOrder(activeId, overId, options?.persist ?? true);
+        },
+        rollbackColumnDragGesture: () => {
+            const previous = dragGestureColumnsReference.current;
+            dragGestureColumnsReference.current = null;
+            if (!previous) return;
+            queryClient.setQueryData(
                 boardKeys.columns(projectId, boardId),
-                (current) =>
-                    current
-                        ? orderColumnsByIds(current, ordered)
-                        : orderColumnsByIds(columns, ordered)
+                previous
             );
-            reorderColumnsMutation.mutate(ordered);
         },
     };
 }

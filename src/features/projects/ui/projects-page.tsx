@@ -2,10 +2,12 @@ import { FolderGit2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
+import { toast } from "sonner";
 
 import type { Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
+import { capabilitiesForRole } from "@/features/projects/model/access";
 import {
     useDeleteProject,
     useProjects,
@@ -59,8 +61,12 @@ export function ProjectsPage() {
     const handleConfirmRemove = async () => {
         if (!projectToRemove) return;
 
-        await deleteProject.mutateAsync(projectToRemove.id);
-        setProjectToRemove(null);
+        try {
+            await deleteProject.mutateAsync(projectToRemove.id);
+            setProjectToRemove(null);
+        } catch {
+            toast.error(t("removeProjectFailed"));
+        }
     };
 
     return (
@@ -169,6 +175,14 @@ export function ProjectsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     {projects.map((project) => (
                         <ProjectCard
+                            canDeleteProject={
+                                capabilitiesForRole(
+                                    user != undefined &&
+                                        project.owner_id === user.id
+                                        ? "owner"
+                                        : null
+                                ).canDeleteProject
+                            }
                             isRemoving={
                                 deleteProject.isPending &&
                                 projectToRemove?.id === project.id

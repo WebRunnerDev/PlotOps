@@ -1,6 +1,7 @@
 export {
     CiCdMissingTokenError,
     CiCdProjectError,
+    CiCdUnauthorizedError,
     githubActionsBuilds,
 } from "./api/github-actions-builds";
 export { mockBuildsForProject } from "./api/mock-builds";
