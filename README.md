@@ -153,6 +153,10 @@ Dark, strict, Linear / Neobrutalism-inspired: sharp borders, monospace for git e
 | [`docs/adr/`](docs/adr/)                                       | Architecture decision records                           |
 | [`docs/agents/`](docs/agents/)                                 | Agent notes (issue tracker, triage, domain)             |
 
+## Disclaimer
+
+PlotOps is a portfolio / demo project, not a commercial service. Account data (first name, last name, email, GitHub profile fields) is stored with third-party providers (including Supabase) outside Kazakhstan. Use at your own risk. To request deletion of your account or personal data, open a GitHub issue on this repository or contact the repository owner.
+
 ## License
 
-Private portfolio project.
+This project is licensed under the [MIT License](LICENSE).
