@@ -30,9 +30,12 @@ export function useConfirmProjectInvite(projectId: string) {
             if (error) throw error;
             return data;
         },
-        onSuccess: () => {
+        onSuccess: (_data, input) => {
             queryClient.invalidateQueries({ queryKey: invitesKey(projectId) });
             queryClient.invalidateQueries({ queryKey: membersKey(projectId) });
+            queryClient.invalidateQueries({
+                queryKey: projectKeys.myMembership(projectId, input.userId),
+            });
         },
     });
 }
@@ -106,15 +109,24 @@ export function useProjectOwnerProfile(ownerId: string | undefined) {
 
 export function useRemoveProjectMember(projectId: string) {
     const queryClient = useQueryClient();
+    const { user } = useAuth();
 
     return useMutation({
         mutationFn: async (userId: string) => {
             const { error } = await removeProjectMember(projectId, userId);
             if (error) throw error;
         },
-        onSuccess: () => {
+        onSuccess: (_data, removedUserId) => {
             queryClient.invalidateQueries({ queryKey: membersKey(projectId) });
             queryClient.invalidateQueries({ queryKey: projectKeys.all });
+            queryClient.invalidateQueries({
+                queryKey: projectKeys.myMembership(projectId, removedUserId),
+            });
+            if (user?.id) {
+                queryClient.invalidateQueries({
+                    queryKey: projectKeys.myMembership(projectId, user.id),
+                });
+            }
         },
     });
 }
@@ -136,6 +148,7 @@ export function useRevokeProjectInvite(projectId: string) {
 
 export function useUpdateMemberRole(projectId: string) {
     const queryClient = useQueryClient();
+    const { user } = useAuth();
 
     return useMutation({
         mutationFn: async (input: {
@@ -150,8 +163,16 @@ export function useUpdateMemberRole(projectId: string) {
             if (error) throw error;
             return data;
         },
-        onSuccess: () => {
+        onSuccess: (_data, input) => {
             queryClient.invalidateQueries({ queryKey: membersKey(projectId) });
+            queryClient.invalidateQueries({
+                queryKey: projectKeys.myMembership(projectId, input.userId),
+            });
+            if (user?.id) {
+                queryClient.invalidateQueries({
+                    queryKey: projectKeys.myMembership(projectId, user.id),
+                });
+            }
         },
     });
 }

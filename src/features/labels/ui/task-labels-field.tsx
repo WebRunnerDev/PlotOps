@@ -27,6 +27,8 @@ type CreateLabelOption = ProjectLabel & { isCreate: true };
 type LabelOption = CreateLabelOption | ProjectLabel;
 
 type TaskLabelsFieldProperties = {
+    /** Managers-only: create new project labels (RLS `labels_insert_managers`). */
+    allowCreate?: boolean;
     disabled?: boolean;
     labels: ProjectLabel[];
     /** Persist Task.`labelIds` — owned by the tasks module. */
@@ -36,6 +38,7 @@ type TaskLabelsFieldProperties = {
 };
 
 export function TaskLabelsField({
+    allowCreate = false,
     disabled = false,
     labels,
     onLabelIdsChange,
@@ -55,6 +58,7 @@ export function TaskLabelsField({
 
     const trimmedQuery = query.trim();
     const canCreate =
+        allowCreate &&
         trimmedQuery.length > 0 &&
         !labels.some(
             (label) => label.name.toLowerCase() === trimmedQuery.toLowerCase()

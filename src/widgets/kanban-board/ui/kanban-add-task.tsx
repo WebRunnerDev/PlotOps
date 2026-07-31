@@ -26,7 +26,8 @@ export function KanbanAddTask({
 }: KanbanAddTaskProperties) {
     const { t } = useTranslation("board");
     const { createTask } = useBoardTasks(projectId, boardId);
-    const { canCreateTasks } = useProjectAccess(projectId);
+    const { canCreateTasks, isSettled } = useProjectAccess(projectId);
+    const canCreate = isSettled && canCreateTasks;
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
@@ -63,7 +64,7 @@ export function KanbanAddTask({
         }
     };
 
-    if (!canCreateTasks) {
+    if (!canCreate) {
         return null;
     }
 

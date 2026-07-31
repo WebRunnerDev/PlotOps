@@ -29,8 +29,14 @@ function ProjectSettingsRoute() {
     const { t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
     const { data: project, error, isLoading } = useProject(projectId);
-    const { canManageBoard, canManageMembers, canView } =
-        useProjectAccess(projectId);
+    const {
+        canManageBoard,
+        canManageMembers,
+        canView,
+        isError: accessError,
+        isLoading: accessLoading,
+        isSettled,
+    } = useProjectAccess(projectId);
     const { data: boards = [] } = useProjectBoards(projectId);
     const { data: members = [] } = useProjectMembers(projectId);
     const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
@@ -76,13 +82,13 @@ function ProjectSettingsRoute() {
                 count: boards.length,
                 id: "boards",
                 label: t("settings.nav.boards"),
-                visible: canManageBoard,
+                visible: isSettled && canManageBoard,
             },
             {
                 count: projectLabels.length,
                 id: "labels",
                 label: t("settings.nav.labels"),
-                visible: canManageBoard,
+                visible: isSettled && canManageBoard,
             },
         ];
         return items.filter((item) => item.visible);
@@ -91,6 +97,7 @@ function ProjectSettingsRoute() {
         canManageBoard,
         canManageMembers,
         canView,
+        isSettled,
         membersCount,
         projectLabels.length,
         t,
@@ -102,10 +109,20 @@ function ProjectSettingsRoute() {
         }
     }, [navItems, section]);
 
-    if (isLoading) {
+    if (isLoading || accessLoading) {
         return (
             <div className="flex justify-center py-16">
                 <Spinner className="size-8 text-primary" />
+            </div>
+        );
+    }
+
+    if (accessError) {
+        return (
+            <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 px-4 py-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("projectError")}</AlertDescription>
+                </Alert>
             </div>
         );
     }
@@ -170,7 +187,9 @@ function ProjectSettingsRoute() {
                     {activeSection === "members" ? (
                         <ProjectMembersSettings projectId={projectId} />
                     ) : undefined}
-                    {activeSection === "boards" && canManageBoard ? (
+                    {activeSection === "boards" &&
+                    isSettled &&
+                    canManageBoard ? (
                         <ProjectBoardsSettings
                             defaultBaseBranch={
                                 project.github_default_branch ?? "main"
@@ -178,7 +197,9 @@ function ProjectSettingsRoute() {
                             projectId={projectId}
                         />
                     ) : undefined}
-                    {activeSection === "labels" && canManageBoard ? (
+                    {activeSection === "labels" &&
+                    isSettled &&
+                    canManageBoard ? (
                         <ProjectLabelsSettings
                             onOpenTask={selectTask}
                             projectId={projectId}
@@ -189,7 +210,7 @@ function ProjectSettingsRoute() {
                             boardId={defaultBoardId}
                             githubToken={githubAccessToken}
                             projectId={projectId}
-                            repoFullName={project.github_full_name}
+                            repoFullName={project.github_full_name ?? undefined}
                         />
                     ) : undefined}
                 </div>

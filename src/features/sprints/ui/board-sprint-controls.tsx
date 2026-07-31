@@ -19,7 +19,8 @@ export function BoardSprintControls({
     projectId,
 }: BoardSprintControlsProperties) {
     const { t } = useTranslation("board");
-    const { canManageBoard } = useProjectAccess(projectId);
+    const { canManageBoard, isSettled } = useProjectAccess(projectId);
+    const canManage = isSettled && canManageBoard;
     const { tasks } = useBoardTasks(projectId, boardId);
     const { data: sprints = [] } = useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
@@ -43,7 +44,7 @@ export function BoardSprintControls({
     const effectiveScope =
         boardSprintScope === "active" && !active ? "entire" : boardSprintScope;
 
-    const showStart = canManageBoard && !active && Boolean(startCandidate);
+    const showStart = canManage && !active && Boolean(startCandidate);
 
     return (
         <div className="flex flex-wrap items-center gap-2">

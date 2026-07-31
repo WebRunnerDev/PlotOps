@@ -78,8 +78,9 @@ export function TaskCommentsSection({
         string | undefined
     >();
 
-    const canComment = access.canEditTasks && !readOnly;
-    const canModerateDelete = access.canDeleteTasks && !readOnly;
+    const canComment = access.isSettled && access.canEditTasks && !readOnly;
+    const canModerateDelete =
+        access.isSettled && access.canDeleteTasks && !readOnly;
 
     useEffect(() => {
         if (!focusCommentId || isLoading) {
@@ -163,8 +164,12 @@ export function TaskCommentsSection({
                     {comments.map((comment) => {
                         const isAuthor = comment.author?.id === user?.id;
                         const canEdit =
-                            isAuthor && access.canEditTasks && !readOnly;
+                            access.isSettled &&
+                            isAuthor &&
+                            access.canEditTasks &&
+                            !readOnly;
                         const canDelete =
+                            access.isSettled &&
                             ((isAuthor && access.canEditTasks) ||
                                 canModerateDelete) &&
                             !readOnly;

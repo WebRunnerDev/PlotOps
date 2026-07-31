@@ -130,7 +130,8 @@ export function TaskDrawer({
     const { data: boards = [] } = useProjectBoards(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
-    const { canDeleteTasks, canEditTasks } = useProjectAccess(projectId);
+    const { canDeleteTasks, canEditTasks, canManageBoard, isSettled } =
+        useProjectAccess(projectId);
     const people = useProjectPeople(projectId);
     const mentionCandidates = useMemo<MentionCandidate[]>(
         () => people.map((person) => ({ id: person.id, label: person.name })),
@@ -149,7 +150,9 @@ export function TaskDrawer({
     const task =
         boardTask ?? archivedTasks.find((item) => item.id === selectedTaskId);
     const isArchived = Boolean(task?.archivedAt);
-    const canEdit = canEditTasks && !isArchived;
+    const canEdit = isSettled && canEditTasks && !isArchived;
+    const canDelete = isSettled && canDeleteTasks;
+    const allowCreateLabels = isSettled && canManageBoard;
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -773,6 +776,7 @@ export function TaskDrawer({
                                             {t("fields.labels")}
                                         </Label>
                                         <TaskLabelsField
+                                            allowCreate={allowCreateLabels}
                                             disabled={!canEdit}
                                             labels={projectLabels}
                                             onLabelIdsChange={(labelIds) => {
@@ -834,7 +838,7 @@ export function TaskDrawer({
                                         )}
 
                                     <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
-                                        {canDeleteTasks && !isArchived ? (
+                                        {canDelete && !isArchived ? (
                                             <Button
                                                 className="w-full"
                                                 disabled={isArchiving}
@@ -848,7 +852,7 @@ export function TaskDrawer({
                                                 {t("archive.action")}
                                             </Button>
                                         ) : undefined}
-                                        {canDeleteTasks && isArchived ? (
+                                        {canDelete && isArchived ? (
                                             <>
                                                 <Button
                                                     className="w-full"

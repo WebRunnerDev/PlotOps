@@ -16,18 +16,21 @@ import {
 } from "@/shared/shadcn/ui/card";
 
 type ProjectCardProperties = {
+    canDeleteProject?: boolean;
     isRemoving?: boolean;
     onRemove: (project: Project) => void;
     project: Project;
 };
 
 export function ProjectCard({
+    canDeleteProject = false,
     isRemoving = false,
     onRemove,
     project,
 }: ProjectCardProperties) {
     const { t } = useTranslation("home");
     const navigate = useNavigate();
+    const defaultBranch = project.github_default_branch ?? "main";
 
     return (
         <Card
@@ -60,25 +63,29 @@ export function ProjectCard({
                         />
                     )}
                 </CardTitle>
-                <CardDescription className="text-code">
-                    {project.github_full_name}
-                </CardDescription>
-                <CardAction>
-                    <Button
-                        aria-label={t("removeProject")}
-                        className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                        disabled={isRemoving}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onRemove(project);
-                        }}
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <Trash2 />
-                    </Button>
-                </CardAction>
+                {project.github_full_name ? (
+                    <CardDescription className="text-code">
+                        {project.github_full_name}
+                    </CardDescription>
+                ) : undefined}
+                {canDeleteProject ? (
+                    <CardAction>
+                        <Button
+                            aria-label={t("removeProject")}
+                            className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                            disabled={isRemoving}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onRemove(project);
+                            }}
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            <Trash2 />
+                        </Button>
+                    </CardAction>
+                ) : undefined}
             </CardHeader>
 
             {project.description && (
@@ -92,27 +99,29 @@ export function ProjectCard({
             <CardFooter className="justify-between border-0 bg-transparent">
                 <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
                     <GitBranch />
-                    {project.github_default_branch}
+                    {defaultBranch}
                 </span>
 
-                <Button
-                    nativeButton={false}
-                    onClick={(event) => {
-                        event.stopPropagation();
-                    }}
-                    render={
-                        <a
-                            href={project.github_html_url}
-                            rel="noreferrer"
-                            target="_blank"
-                        />
-                    }
-                    size="xs"
-                    variant="link"
-                >
-                    GitHub
-                    <ExternalLink data-icon="inline-end" />
-                </Button>
+                {project.github_html_url ? (
+                    <Button
+                        nativeButton={false}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                        }}
+                        render={
+                            <a
+                                href={project.github_html_url}
+                                rel="noreferrer"
+                                target="_blank"
+                            />
+                        }
+                        size="xs"
+                        variant="link"
+                    >
+                        GitHub
+                        <ExternalLink data-icon="inline-end" />
+                    </Button>
+                ) : undefined}
             </CardFooter>
         </Card>
     );

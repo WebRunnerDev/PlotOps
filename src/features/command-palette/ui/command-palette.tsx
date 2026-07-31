@@ -46,7 +46,7 @@ export function CommandPalette() {
         typeof parameters.boardId === "string" ? parameters.boardId : null;
     const { theme, toggleTheme } = useTheme();
     const { data: projects = [] } = useProjects();
-    const { canCreateTasks } = useProjectAccess(projectId ?? "");
+    const { canCreateTasks, isSettled } = useProjectAccess(projectId ?? "");
     const { columns } = useBoardColumns(projectId ?? "", boardId ?? "");
     const { createTask } = useBoardTasks(projectId ?? "", boardId ?? "");
     const { data: projectTasks = [] } = useProjectTasks(
@@ -66,7 +66,7 @@ export function CommandPalette() {
 
     const routeContext = {
         boardId,
-        canCreateTasks,
+        canCreateTasks: isSettled && canCreateTasks,
         projectId,
     };
     const paletteProjects = projects.map((project) => ({

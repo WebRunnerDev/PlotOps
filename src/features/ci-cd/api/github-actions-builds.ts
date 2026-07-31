@@ -262,6 +262,12 @@ async function resolveRepoContext(projectId: string): Promise<{
         );
     }
 
+    if (!project.github_full_name) {
+        throw new CiCdProjectError(
+            "Project has no linked GitHub repository for CI/CD"
+        );
+    }
+
     return { repoFullName: project.github_full_name, token };
 }
 

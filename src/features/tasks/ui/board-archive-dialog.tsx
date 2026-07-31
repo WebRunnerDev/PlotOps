@@ -40,7 +40,8 @@ export function BoardArchiveDialog({
 }: BoardArchiveDialogProperties) {
     const { i18n, t } = useTranslation("board");
     const [open, setOpen] = useState(false);
-    const { canDeleteTasks } = useProjectAccess(projectId);
+    const { canDeleteTasks, isSettled } = useProjectAccess(projectId);
+    const canDelete = isSettled && canDeleteTasks;
     const { deleteTask, restoreTask } = useBoardTasks(projectId, boardId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
@@ -186,7 +187,7 @@ export function BoardArchiveDialog({
                                                     <PanelBottom data-icon="inline-start" />
                                                     {t("archive.view")}
                                                 </Button>
-                                                {canDeleteTasks ? (
+                                                {canDelete ? (
                                                     <>
                                                         <Button
                                                             disabled={

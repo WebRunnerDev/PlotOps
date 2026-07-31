@@ -103,7 +103,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <h1 className="truncate text-h1">{t("cicd.title")}</h1>
                         <span className="truncate font-mono text-meta text-muted-foreground">
-                            {project.github_full_name}
+                            {project.github_full_name ?? project.name}
                         </span>
                     </div>
                     {buildsFetching && !buildsLoading ? (

@@ -99,7 +99,8 @@ type BacklogPageProperties = {
 export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const { t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
-    const { canManageBoard } = useProjectAccess(projectId);
+    const { canManageBoard, isSettled } = useProjectAccess(projectId);
+    const canManage = isSettled && canManageBoard;
     const { data: project } = useProject(projectId);
     const { labels } = useProjectLabels(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
@@ -332,7 +333,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     <div className="flex flex-wrap items-center gap-2">
                         <BoardSwitcher
                             boardId={boardId}
-                            canManage={canManageBoard}
+                            canManage={canManage}
                             defaultBaseBranch={
                                 project?.github_default_branch ?? "main"
                             }
@@ -342,7 +343,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     </div>
                 </div>
 
-                {canManageBoard ? (
+                {canManage ? (
                     <div className="flex flex-wrap gap-2">
                         <Input
                             className="max-w-xs"
@@ -397,7 +398,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 </div>
             ) : (
                 <>
-                    {canManageBoard && planningSprints.length === 0 ? (
+                    {canManage && planningSprints.length === 0 ? (
                         <Alert>
                             <AlertDescription>
                                 {t("sprints.emptyPlanningHint")}
@@ -421,7 +422,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         </div>
                     ) : null}
 
-                    {canManageBoard && selectedCount > 0 ? (
+                    {canManage && selectedCount > 0 ? (
                         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
                             <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur">
                                 <p className="text-ui whitespace-nowrap">
@@ -488,7 +489,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                     <SprintSection
                                         activeSprint={active}
                                         boardId={boardId}
-                                        canManage={canManageBoard}
+                                        canManage={canManage}
                                         columns={columns}
                                         drafts={drafts}
                                         draggingTaskIds={draggingTasks.map(
@@ -519,7 +520,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         </p>
                                     </header>
                                     <SprintTaskTable
-                                        canManage={canManageBoard}
+                                        canManage={canManage}
                                         containerId={BACKLOG_DROP_ID}
                                         draggingTaskIds={draggingTasks.map(
                                             (task) => task.id
@@ -556,7 +557,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                             ? pastSprints.map((sprint) => (
                                                   <PastSprintSection
                                                       boardId={boardId}
-                                                      canManage={canManageBoard}
+                                                      canManage={canManage}
                                                       key={sprint.id}
                                                       projectId={projectId}
                                                       sprint={sprint}
@@ -606,7 +607,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         boardId={boardId}
                         githubToken={githubAccessToken}
                         projectId={projectId}
-                        repoFullName={project?.github_full_name}
+                        repoFullName={project?.github_full_name ?? undefined}
                     />
                 </>
             )}

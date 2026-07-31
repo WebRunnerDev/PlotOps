@@ -136,6 +136,14 @@ export function ProjectMembersSettings({
         (project && ownerProfile ? 1 : 0) + (members?.length ?? 0);
     const visiblePeopleCount = (showOwner ? 1 : 0) + filteredMembers.length;
 
+    if (access.isLoading) {
+        return null;
+    }
+
+    if (access.isError) {
+        return null;
+    }
+
     if (!access.canManageMembers && !access.canView) {
         return null;
     }
