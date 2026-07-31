@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -129,12 +129,15 @@ export function CloseSprintDialog({
     const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
     const [carryover, setCarryover] = useState<string>("backlog");
     const [newDraftName, setNewDraftName] = useState("");
+    const wasOpenReference = useRef(false);
 
     useEffect(() => {
-        if (!open) return;
-        setCompletedIds(new Set(suggestedCompleted));
-        setCarryover("backlog");
-        setNewDraftName("");
+        if (open && !wasOpenReference.current) {
+            setCompletedIds(new Set(suggestedCompleted));
+            setCarryover("backlog");
+            setNewDraftName("");
+        }
+        wasOpenReference.current = open;
     }, [open, suggestedCompleted]);
 
     const handleOpen = (next: boolean) => {
@@ -169,7 +172,7 @@ export function CloseSprintDialog({
                 sprintId: sprint.id,
             });
             toast.success(t("sprints.closed", { name: sprint.name }));
-            onOpenChange(false);
+            handleOpen(false);
         } catch {
             toast.error(t("sprints.closeFailed"));
         }
@@ -268,7 +271,7 @@ export function CloseSprintDialog({
 
                 <DialogFooter>
                     <Button
-                        onClick={() => onOpenChange(false)}
+                        onClick={() => handleOpen(false)}
                         type="button"
                         variant="outline"
                     >
@@ -319,7 +322,7 @@ export function StartSprintDialog({
                 startsOn,
             });
             toast.success(t("sprints.started", { name: sprint.name }));
-            onOpenChange(false);
+            handleOpen(false);
         } catch {
             toast.error(t("sprints.startFailed"));
         }
@@ -369,7 +372,7 @@ export function StartSprintDialog({
                 </div>
                 <DialogFooter>
                     <Button
-                        onClick={() => onOpenChange(false)}
+                        onClick={() => handleOpen(false)}
                         type="button"
                         variant="outline"
                     >

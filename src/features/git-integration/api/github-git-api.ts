@@ -43,6 +43,12 @@ export type GitPullRequest = {
     url: string;
 };
 
+export type PullRequestFilesResult = {
+    files: GitPrFile[];
+    /** True when GitHub still had more pages after `PR_FILES_MAX_PAGES`. */
+    truncated: boolean;
+};
+
 export class GitHubApiError extends Error {
     readonly status: number;
 
@@ -176,7 +182,7 @@ export async function fetchPullRequestFiles(
     repoFullName: string,
     prNumber: number,
     token: string
-): Promise<GitPrFile[]> {
+): Promise<PullRequestFilesResult> {
     type RawFile = {
         additions: number;
         blob_url: string;
@@ -188,6 +194,7 @@ export async function fetchPullRequestFiles(
     };
 
     const files: GitPrFile[] = [];
+    let truncated = false;
     for (let page = 1; page <= PR_FILES_MAX_PAGES; page += 1) {
         const raw = await githubFetch<RawFile[]>(
             `/repos/${repoFullName}/pulls/${prNumber}/files`,
@@ -211,9 +218,12 @@ export async function fetchPullRequestFiles(
         }
 
         if (raw.length < PR_FILES_PAGE_SIZE) break;
+        if (page === PR_FILES_MAX_PAGES) {
+            truncated = true;
+        }
     }
 
-    return files;
+    return { files, truncated };
 }
 
 export function isGitHubApiError(error: unknown): error is GitHubApiError {

@@ -87,12 +87,13 @@ export function PrDiffDialog({
     const [mode, setMode] = useState<DiffModeEnum>(DiffModeEnum.Split);
     const [fullscreen, setFullscreen] = useState(false);
 
-    const {
-        data: files = [],
-        isError,
-        isLoading,
-        refetch,
-    } = usePullRequestFiles(repoFullName, prNumber, token);
+    const { data, isError, isLoading, refetch } = usePullRequestFiles(
+        repoFullName,
+        prNumber,
+        token
+    );
+    const files = data?.files ?? [];
+    const truncated = data?.truncated ?? false;
 
     useEffect(() => {
         setActiveFilename(undefined);
@@ -278,6 +279,13 @@ export function PrDiffDialog({
                                     count: files.length,
                                 })}
                             </p>
+                            {truncated ? (
+                                <p className="shrink-0 px-3 pb-2 text-meta text-amber-500">
+                                    {t("git.filesTruncated", {
+                                        count: files.length,
+                                    })}
+                                </p>
+                            ) : null}
                             <ScrollArea className="min-h-0 flex-1">
                                 <div className="flex flex-col gap-0.5 px-2 pb-2">
                                     {files.map((file) => (

@@ -23,10 +23,19 @@ const AUTH_ERROR_CODE_KEYS: Record<string, string> = {
     weak_password: "errors.weakPassword",
 };
 
+/** Statuses consulted when `code` is absent — before English message matching. */
+const AUTH_ERROR_STATUS_KEYS: Record<number, string> = {
+    429: "errors.generic",
+};
+
 export function getAuthErrorKey(error: AuthError): string {
     const code = error.code?.toLowerCase();
     if (code && AUTH_ERROR_CODE_KEYS[code]) {
         return AUTH_ERROR_CODE_KEYS[code];
+    }
+
+    if (error.status != undefined && AUTH_ERROR_STATUS_KEYS[error.status]) {
+        return AUTH_ERROR_STATUS_KEYS[error.status];
     }
 
     const message = error.message.toLowerCase();

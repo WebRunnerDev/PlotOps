@@ -452,6 +452,7 @@
         "diff": "Diff",
         "closeDiff": "Закрыть diff",
         "filesChanged": "Изменено файлов: {{count}}",
+        "filesTruncated": "Показаны первые {{count}} файлов — в PR есть ещё изменения",
         "binaryFile": "Бинарный файл — diff недоступен",
         "selectFile": "Выберите файл из списка",
         "sharedBranchTitle": "Привязана общая ветка",

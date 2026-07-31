@@ -450,6 +450,7 @@
         "diff": "Diff",
         "closeDiff": "Close diff",
         "filesChanged": "{{count}} file(s) changed",
+        "filesTruncated": "Showing first {{count}} files — more changes exist in this PR",
         "binaryFile": "Binary file — no diff available",
         "selectFile": "Select a file from the list",
         "sharedBranchTitle": "Shared branch linked",

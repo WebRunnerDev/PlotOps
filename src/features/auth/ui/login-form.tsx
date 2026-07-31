@@ -95,6 +95,7 @@ export function LoginForm() {
         setError(null);
         setIsEmailLoading(true);
 
+        let keepLoadingForRedirect = false;
         try {
             const { error: authError } = await signInWithPassword({
                 email,
@@ -103,14 +104,17 @@ export function LoginForm() {
 
             if (authError) {
                 setError(t(getAuthErrorKey(authError)));
-                setIsEmailLoading(false);
                 return;
             }
 
+            keepLoadingForRedirect = true;
             setAwaitingRedirect(true);
         } catch {
             setError(t("errors.generic"));
-            setIsEmailLoading(false);
+        } finally {
+            if (!keepLoadingForRedirect) {
+                setIsEmailLoading(false);
+            }
         }
     };
 

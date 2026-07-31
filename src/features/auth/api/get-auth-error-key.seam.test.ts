@@ -55,6 +55,17 @@ describe("getAuthErrorKey", () => {
         ).toBe("errors.invalidCredentials");
     });
 
+    it("maps known HTTP status before message matching when code is missing", () => {
+        expect(
+            getAuthErrorKey(
+                authError({
+                    message: "Password is known to be weak",
+                    status: 429,
+                })
+            )
+        ).toBe("errors.generic");
+    });
+
     it("does not treat unrelated password mentions as weakPassword when code is unknown", () => {
         expect(
             getAuthErrorKey(
