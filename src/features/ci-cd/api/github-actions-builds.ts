@@ -7,7 +7,10 @@ import type {
     ProjectBuild,
 } from "@/features/ci-cd/model/types";
 
-import { getGitHubAccessToken } from "@/features/auth/model/github-token";
+import {
+    clearGitHubAccessToken,
+    getGitHubAccessToken,
+} from "@/features/auth/model/github-token";
 import { mapActionsStatus } from "@/features/ci-cd/model/map-actions-status";
 import { fetchProject } from "@/features/projects/api/projects-api";
 
@@ -66,6 +69,13 @@ export class CiCdProjectError extends Error {
     }
 }
 
+export class CiCdUnauthorizedError extends Error {
+    constructor() {
+        super("GitHub access token is invalid or expired");
+        this.name = "CiCdUnauthorizedError";
+    }
+}
+
 /** Pure mapper — exported for unit tests. */
 export function mapWorkflowRunToBuild(run: RawWorkflowRun): ProjectBuild {
     const commitMessage =
@@ -94,6 +104,46 @@ export function mapWorkflowRunToBuild(run: RawWorkflowRun): ProjectBuild {
 export function splitLogLines(text: string): string[] {
     if (!text) return [];
     return text.replaceAll("\r\n", "\n").replace(/\n$/, "").split("\n");
+}
+
+/** Pure progressive emitter — exported for unit tests. */
+export function streamLinesProgressively(
+    lines: string[],
+    onLine: (line: BuildLogLine) => void
+): () => void {
+    if (lines.length === 0) {
+        const timer = setTimeout(() => {
+            onLine({ done: true, index: 0, text: "" });
+        }, 0);
+        return () => {
+            clearTimeout(timer);
+        };
+    }
+
+    let index = 0;
+    let stopped = false;
+    const timer = setInterval(() => {
+        if (stopped) {
+            clearInterval(timer);
+            return;
+        }
+        const text = lines[index];
+        if (text === undefined) {
+            clearInterval(timer);
+            return;
+        }
+        const done = index === lines.length - 1;
+        onLine({ done, index, text });
+        index += 1;
+        if (done) {
+            clearInterval(timer);
+        }
+    }, STREAM_CHUNK_MS);
+
+    return () => {
+        stopped = true;
+        clearInterval(timer);
+    };
 }
 
 /** Extract concatenated text files from a GitHub Actions job-logs zip. */
@@ -132,6 +182,8 @@ async function fetchJobLogText(
     if (response.status === 404) {
         return undefined;
     }
+
+    throwIfUnauthorized(response.status);
 
     if (!response.ok) {
         throw new Error(`GitHub API ${response.status}: job logs ${jobId}`);
@@ -177,6 +229,8 @@ async function githubJson<T>(
         headers: GITHUB_HEADERS(token),
     });
 
+    throwIfUnauthorized(response.status);
+
     if (!response.ok) {
         throw new Error(`GitHub API ${response.status}: ${path}`);
     }
@@ -211,43 +265,10 @@ async function resolveRepoContext(projectId: string): Promise<{
     return { repoFullName: project.github_full_name, token };
 }
 
-function streamLinesProgressively(
-    lines: string[],
-    onLine: (line: BuildLogLine) => void
-): () => void {
-    if (lines.length === 0) {
-        const timer = setTimeout(() => {
-            onLine({ done: true, index: 0, text: "" });
-        }, 0);
-        return () => {
-            clearTimeout(timer);
-        };
-    }
-
-    let index = 0;
-    let stopped = false;
-    const timer = setInterval(() => {
-        if (stopped) {
-            clearInterval(timer);
-            return;
-        }
-        const text = lines[index];
-        if (text === undefined) {
-            clearInterval(timer);
-            return;
-        }
-        const done = index === lines.length - 1;
-        onLine({ done, index, text });
-        index += 1;
-        if (done) {
-            clearInterval(timer);
-        }
-    }, STREAM_CHUNK_MS);
-
-    return () => {
-        stopped = true;
-        clearInterval(timer);
-    };
+function throwIfUnauthorized(status: number): void {
+    if (status !== 401) return;
+    clearGitHubAccessToken();
+    throw new CiCdUnauthorizedError();
 }
 
 export const githubActionsBuilds: BuildsForProject = {
@@ -320,8 +341,11 @@ export const githubActionsBuilds: BuildsForProject = {
                     lines.push("");
                 }
 
-                if (cancelled) return;
                 stopProgress = streamLinesProgressively(lines, onLine);
+                if (cancelled) {
+                    stopProgress();
+                    return;
+                }
             } catch (error) {
                 if (cancelled) return;
                 const message =
@@ -329,6 +353,9 @@ export const githubActionsBuilds: BuildsForProject = {
                         ? error.message
                         : "Failed to load build logs";
                 stopProgress = streamLinesProgressively([message], onLine);
+                if (cancelled) {
+                    stopProgress();
+                }
             }
         })();
 

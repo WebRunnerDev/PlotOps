@@ -6,6 +6,7 @@ import {
     useEffect,
     useMemo,
     useState,
+    useSyncExternalStore,
 } from "react";
 import { flushSync } from "react-dom";
 
@@ -23,6 +24,8 @@ import {
     clearGitHubAccessToken,
     getGitHubAccessToken,
     setGitHubAccessToken,
+    subscribeGitHubAccessToken,
+    validateGitHubAccessToken,
 } from "@/features/auth/model/github-token";
 import { supabase } from "@/shared/api/supabase";
 
@@ -31,8 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<null | User>(null);
     const [profile, setProfile] = useState<null | UserProfile>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [storedGitHubToken, setStoredGitHubToken] = useState<null | string>(
-        () => getGitHubAccessToken()
+    const githubAccessToken = useSyncExternalStore(
+        subscribeGitHubAccessToken,
+        getGitHubAccessToken,
+        () => null
     );
 
     const loadProfile = useCallback(async (nextUser: null | User) => {
@@ -63,16 +68,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         let mounted = true;
+        const abortController = new AbortController();
+
+        async function syncGitHubToken(
+            nextSession: null | Session,
+            event?: string
+        ) {
+            if (event === "SIGNED_OUT" || !nextSession) {
+                clearGitHubAccessToken();
+                return;
+            }
+
+            if (nextSession.provider_token) {
+                setGitHubAccessToken(nextSession.provider_token);
+                return;
+            }
+
+            const cached = getGitHubAccessToken();
+            if (!cached) return;
+
+            const valid = await validateGitHubAccessToken(
+                cached,
+                abortController.signal
+            );
+            if (!mounted) return;
+            if (!valid) {
+                clearGitHubAccessToken();
+            }
+        }
 
         supabase.auth
             .getSession()
             .then(async ({ data: { session: nextSession } }) => {
                 if (!mounted) return;
 
-                if (nextSession?.provider_token) {
-                    setGitHubAccessToken(nextSession.provider_token);
-                    setStoredGitHubToken(nextSession.provider_token);
-                }
+                await syncGitHubToken(nextSession);
 
                 const nextUser = nextSession?.user ?? null;
                 setSession(nextSession);
@@ -83,17 +113,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        } = supabase.auth.onAuthStateChange((event, nextSession) => {
             void (async () => {
-                if (nextSession?.provider_token) {
-                    setGitHubAccessToken(nextSession.provider_token);
-                    setStoredGitHubToken(nextSession.provider_token);
-                }
-
-                if (_event === "SIGNED_OUT") {
-                    clearGitHubAccessToken();
-                    setStoredGitHubToken(null);
-                }
+                await syncGitHubToken(nextSession, event);
 
                 const nextUser = nextSession?.user ?? null;
                 setSession(nextSession);
@@ -105,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return () => {
             mounted = false;
+            abortController.abort();
             subscription.unsubscribe();
         };
     }, [loadProfile]);
@@ -113,9 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { error } = await signOutApi();
         if (error) throw error;
     }, []);
-
-    const githubAccessToken =
-        session?.provider_token ?? storedGitHubToken ?? null;
 
     const profileNamesComplete = isProfileNamesComplete(profile);
 

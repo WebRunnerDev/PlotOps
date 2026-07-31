@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/features/auth";
 import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
-import { CiCdMissingTokenError } from "@/features/ci-cd/api/github-actions-builds";
+import {
+    CiCdMissingTokenError,
+    CiCdUnauthorizedError,
+} from "@/features/ci-cd/api/github-actions-builds";
 import { ciKeys } from "@/features/ci-cd/model/query-keys";
 
 const POLL_MS = 10_000;
@@ -18,6 +21,7 @@ export function useProjectBuilds(projectId: string) {
             hasInFlightBuilds(query.state.data) ? POLL_MS : false,
         retry: (failureCount, error) => {
             if (error instanceof CiCdMissingTokenError) return false;
+            if (error instanceof CiCdUnauthorizedError) return false;
             return failureCount < 2;
         },
         staleTime: 15_000,

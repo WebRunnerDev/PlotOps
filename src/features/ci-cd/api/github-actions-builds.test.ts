@@ -1,11 +1,40 @@
 import { zipSync } from "fflate";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    clearGitHubAccessToken,
+    getGitHubAccessToken,
+    setGitHubAccessToken,
+} from "@/features/auth/model/github-token";
+import {
+    CiCdUnauthorizedError,
+    githubActionsBuilds,
     mapWorkflowRunToBuild,
     splitLogLines,
+    streamLinesProgressively,
     unzipJobLogs,
 } from "@/features/ci-cd/api/github-actions-builds";
+import * as projectsApi from "@/features/projects/api/projects-api";
+
+function createMemoryStorage(): Storage {
+    const store = new Map<string, string>();
+    return {
+        clear: () => {
+            store.clear();
+        },
+        getItem: (key: string) => store.get(key) ?? null,
+        key: (index: number) => [...store.keys()][index] ?? null,
+        get length() {
+            return store.size;
+        },
+        removeItem: (key: string) => {
+            store.delete(key);
+        },
+        setItem: (key: string, value: string) => {
+            store.set(key, value);
+        },
+    };
+}
 
 describe("mapWorkflowRunToBuild", () => {
     it("maps a completed successful run", () => {
@@ -74,5 +103,79 @@ describe("unzipJobLogs", () => {
         const text = unzipJobLogs(zipped);
         expect(text).toContain("line one");
         expect(text).toContain("lint ok");
+    });
+});
+
+describe("streamLinesProgressively cancel after assign", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("stops immediately when unsubscribe runs right after start", () => {
+        const lines: string[] = [];
+        const stop = streamLinesProgressively(["a", "b", "c"], (line) => {
+            lines.push(line.text);
+        });
+
+        // Race fix pattern: assign then cancel before first tick.
+        stop();
+        vi.advanceTimersByTime(500);
+        expect(lines).toEqual([]);
+    });
+});
+
+describe("GitHub Actions 401 clears token SoT", () => {
+    beforeEach(() => {
+        vi.stubGlobal("localStorage", createMemoryStorage());
+        clearGitHubAccessToken();
+        setGitHubAccessToken("stale-token");
+    });
+
+    afterEach(() => {
+        clearGitHubAccessToken();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it("listBuilds clears the SoT and throws CiCdUnauthorizedError on 401", async () => {
+        vi.spyOn(projectsApi, "fetchProject").mockResolvedValue({
+            count: null,
+            data: {
+                created_at: "2026-01-01T00:00:00.000Z",
+                description: null,
+                github_default_branch: "main",
+                github_full_name: "org/repo",
+                github_html_url: "https://github.com/org/repo",
+                github_repo_id: 1,
+                id: "project-1",
+                is_private: false,
+                name: "Repo",
+                owner_id: "user-1",
+                slug: "repo",
+                updated_at: "2026-01-01T00:00:00.000Z",
+            },
+            error: null,
+            status: 200,
+            statusText: "OK",
+            success: true,
+        });
+
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                ok: false,
+                status: 401,
+            })
+        );
+
+        await expect(
+            githubActionsBuilds.listBuilds("project-1")
+        ).rejects.toBeInstanceOf(CiCdUnauthorizedError);
+
+        expect(getGitHubAccessToken()).toBeNull();
     });
 });
