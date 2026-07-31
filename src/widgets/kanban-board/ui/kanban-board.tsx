@@ -238,20 +238,26 @@ export function KanbanBoard({
     };
 
     const handleAddColumn = () => {
-        void columnsApi.addColumn(t("columns.newStatus")).then((id) => {
-            setFocusColumnId(id);
+        void columnsApi
+            .addColumn(t("columns.newStatus"))
+            .then((id) => {
+                setFocusColumnId(id);
 
-            globalThis.requestAnimationFrame(() => {
-                const node = document.querySelector(`[data-column-id="${id}"]`);
-                node?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "nearest",
-                    inline: "end",
+                globalThis.requestAnimationFrame(() => {
+                    const node = document.querySelector(
+                        `[data-column-id="${id}"]`
+                    );
+                    node?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                        inline: "end",
+                    });
                 });
+            })
+            .catch(() => {
+                // Toast comes from useBoardColumns onError.
             });
-        });
     };
-
     if (isLoading) {
         return <BoardLoading variant="columns" />;
     }

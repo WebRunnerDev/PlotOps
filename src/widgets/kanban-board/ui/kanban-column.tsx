@@ -126,9 +126,13 @@ export function KanbanColumn({
             return;
         }
 
-        const ok = await renameColumn(status, trimmed);
-        if (!ok) {
-            toast.error(t("columns.renameFailed"));
+        try {
+            const ok = await renameColumn(status, trimmed);
+            if (!ok) {
+                toast.error(t("columns.renameFailed"));
+                setDraft(name);
+            }
+        } catch {
             setDraft(name);
         }
         setIsEditing(false);
@@ -148,12 +152,20 @@ export function KanbanColumn({
             visibleTaskCount: tasks.length,
         });
         const movedVisibleTasks = tasks.length > 0;
-        const ok = await deleteColumn(status, moveTasksTo);
+
+        let ok = false;
+        try {
+            ok = await deleteColumn(status, moveTasksTo);
+        } catch {
+            return;
+        }
 
         if (!ok) {
             toast.error(t("columns.deleteFailed"));
             return;
         }
+
+        setDeleteOpen(false);
 
         // Remap covers active tasks moved off the deleted column.
         if (moveTasksTo) {
@@ -177,7 +189,6 @@ export function KanbanColumn({
                   })
                 : t("columns.deleted", { name })
         );
-        setDeleteOpen(false);
     };
 
     return (

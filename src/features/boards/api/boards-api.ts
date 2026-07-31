@@ -1,6 +1,5 @@
 import type { ProjectBoardRecord } from "@/features/boards/model/types";
 
-import { DEFAULT_KANBAN_COLUMNS } from "@/features/boards/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseBoard = {
@@ -27,49 +26,20 @@ export async function createBoard(
     name: string,
     baseBranch: string
 ) {
-    const { data: existing, error: existingError } = await supabase
-        .from("boards")
-        .select("position")
-        .eq("project_id", projectId)
-        .order("position", { ascending: false })
-        .limit(1);
-
-    if (existingError) throw existingError;
-
-    const position = (existing?.[0]?.position ?? -1) + 1;
-
-    const { data, error } = await supabase
-        .from("boards")
-        .insert({
-            base_branch: baseBranch || "main",
-            name: name.trim() || "Board",
-            position,
-            project_id: projectId,
-        })
-        .select(
-            "id, project_id, name, position, base_branch, allowed_head_patterns"
-        )
-        .single();
+    const { data, error } = await supabase.rpc("create_board_with_columns", {
+        p_base_branch: baseBranch || "main",
+        p_name: name.trim() || "Board",
+        p_project_id: projectId,
+    });
 
     if (error) throw error;
 
-    const board = mapDatabaseBoard(data as DatabaseBoard);
+    const row = data as DatabaseBoard | null;
+    if (!row) {
+        throw new Error("create_board_with_columns returned no board");
+    }
 
-    const columns = DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
-        board_id: board.id,
-        id: column.id,
-        name: column.name,
-        position: index,
-        project_id: projectId,
-    }));
-
-    const { error: columnsError } = await supabase
-        .from("board_columns")
-        .insert(columns);
-
-    if (columnsError) throw columnsError;
-
-    return board;
+    return mapDatabaseBoard(row);
 }
 
 export async function deleteBoard(boardId: string) {

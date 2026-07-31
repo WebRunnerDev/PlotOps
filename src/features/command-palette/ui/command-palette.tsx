@@ -12,6 +12,8 @@ import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
 import { useBoardColumns } from "@/features/boards";
+import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
+import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
 import {
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
@@ -47,7 +49,10 @@ export function CommandPalette() {
     const { theme, toggleTheme } = useTheme();
     const { data: projects = [] } = useProjects();
     const { canCreateTasks, isSettled } = useProjectAccess(projectId ?? "");
-    const { columns } = useBoardColumns(projectId ?? "", boardId ?? "");
+    const { columns, columnsReady } = useBoardColumns(
+        projectId ?? "",
+        boardId ?? ""
+    );
     const { createTask } = useBoardTasks(projectId ?? "", boardId ?? "");
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
@@ -103,6 +108,10 @@ export function CommandPalette() {
                   project.name.toLowerCase().includes(normalizedQuery)
               );
     const showActions = showTheme || createIntent !== null;
+    const createColumnGate = resolveCreateTaskColumnGate(
+        columnsReady,
+        columns[0]?.id
+    );
 
     useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
@@ -121,6 +130,13 @@ export function CommandPalette() {
         };
     }, [toggle]);
 
+    useEffect(() => {
+        if (isOpen) return;
+        const reset = resetCommandPaletteLocalState();
+        setQuery(reset.query);
+        setIsCreating(reset.isCreating);
+    }, [isOpen]);
+
     return (
         <CommandDialog
             description={t("command:description")}
@@ -129,8 +145,6 @@ export function CommandPalette() {
                     open();
                 } else {
                     close();
-                    setQuery("");
-                    setIsCreating(false);
                 }
             }}
             open={isOpen}
@@ -163,9 +177,25 @@ export function CommandPalette() {
                             ) : null}
                             {createIntent ? (
                                 <CommandItem
-                                    disabled={isCreating}
+                                    disabled={
+                                        isCreating ||
+                                        createColumnGate === "loading"
+                                    }
                                     onSelect={() => {
                                         if (isCreating || !projectId) return;
+                                        if (createColumnGate === "loading") {
+                                            toast.message(
+                                                t("command:columnsLoading")
+                                            );
+                                            return;
+                                        }
+                                        if (createColumnGate === "empty") {
+                                            toast.error(
+                                                t("command:createTaskFailed")
+                                            );
+                                            return;
+                                        }
+
                                         const firstColumn = columns[0];
                                         if (!firstColumn) {
                                             toast.error(
@@ -182,7 +212,6 @@ export function CommandPalette() {
                                             .then((task) => {
                                                 selectTask(task.id);
                                                 close();
-                                                setQuery("");
                                             })
                                             .catch(() => {
                                                 toast.error(

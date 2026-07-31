@@ -123,17 +123,12 @@ export async function reorderBoardColumns(
     boardId: string,
     columnIds: string[]
 ) {
-    const updates = columnIds.map((id, position) =>
-        supabase
-            .from("board_columns")
-            .update({ position })
-            .eq("board_id", boardId)
-            .eq("id", id)
-    );
+    const { error } = await supabase.rpc("reorder_board_columns", {
+        p_board_id: boardId,
+        p_column_ids: columnIds,
+    });
 
-    const results = await Promise.all(updates);
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
+    if (error) throw error;
 }
 
 async function ensureDefaultColumns(projectId: string, boardId: string) {

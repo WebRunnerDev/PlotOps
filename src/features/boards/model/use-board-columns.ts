@@ -44,6 +44,9 @@ export function useBoardColumns(projectId: string, boardId: string) {
     const addColumnMutation = useMutation({
         mutationFn: (name: string) =>
             createBoardColumn(projectId, boardId, name),
+        onError: () => {
+            toast.error("Failed to add column");
+        },
         onSuccess: () => {
             invalidateBoardColumns(queryClient, projectId);
         },
@@ -52,6 +55,9 @@ export function useBoardColumns(projectId: string, boardId: string) {
     const renameColumnMutation = useMutation({
         mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
             renameBoardColumn(boardId, columnId, name),
+        onError: () => {
+            toast.error("Failed to rename column");
+        },
         onSuccess: () => {
             invalidateBoardColumns(queryClient, projectId);
         },
@@ -65,6 +71,9 @@ export function useBoardColumns(projectId: string, boardId: string) {
             columnId: string;
             moveTasksTo?: string;
         }) => deleteBoardColumn(boardId, columnId, moveTasksTo),
+        onError: () => {
+            toast.error("Failed to delete column");
+        },
         onSuccess: () => {
             invalidateBoardColumns(queryClient, projectId);
         },

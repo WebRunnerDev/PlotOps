@@ -1,5 +1,6 @@
 {
     "actions": "Actions",
+    "columnsLoading": "Loading board columns…",
     "createTaskFailed": "Could not create task",
     "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
