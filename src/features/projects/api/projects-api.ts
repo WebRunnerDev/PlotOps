@@ -1,17 +1,7 @@
-import type {
-    CreateProjectInput,
-    Project,
-} from "@/features/projects/model/types";
+import type { CreateProjectInput } from "@/features/projects/model/types";
 
 import { ensureUserProfile } from "@/features/auth/api/profile-api";
 import { supabase } from "@/shared/api/supabase";
-
-export function slugifyRepoName(name: string): string {
-    return name
-        .toLowerCase()
-        .replaceAll(/[^a-z0-9]+/g, "-")
-        .replaceAll(/^-+|-+$/g, "");
-}
 
 export async function createProject(input: CreateProjectInput) {
     const {
@@ -35,7 +25,25 @@ export async function createProject(input: CreateProjectInput) {
 }
 
 export async function deleteProject(projectId: string) {
-    return supabase.from("projects").delete().eq("id", projectId);
+    const { data, error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", projectId)
+        .select("id")
+        .maybeSingle();
+
+    if (error) return { data: null, error };
+    if (!data) {
+        return {
+            data: null,
+            error: new Error("Project not found or delete not permitted"),
+        };
+    }
+    return { data, error: null };
+}
+
+export async function fetchProject(projectId: string) {
+    return supabase.from("projects").select("*").eq("id", projectId).single();
 }
 
 export async function fetchProjects() {
@@ -45,8 +53,11 @@ export async function fetchProjects() {
         .order("created_at", { ascending: false });
 }
 
-export async function fetchProject(projectId: string) {
-    return supabase.from("projects").select("*").eq("id", projectId).single();
+export function slugifyRepoName(name: string): string {
+    return name
+        .toLowerCase()
+        .replaceAll(/[^a-z0-9]+/g, "-")
+        .replaceAll(/^-+|-+$/g, "");
 }
 
-export type { Project };
+export { type Project } from "@/features/projects/model/types";

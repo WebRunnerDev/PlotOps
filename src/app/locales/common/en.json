@@ -24,6 +24,9 @@
         "allProjects": "All projects",
         "backToProjects": "Back to projects",
         "backToBoard": "Back to board",
+        "loadFailed": "Could not load notifications",
+        "openFailed": "Could not open this notification",
+        "retry": "Retry",
         "kinds": {
             "assigneeChange": "Assignee changed",
             "assigneeChangeDetail": "Assignee → {{name}}",

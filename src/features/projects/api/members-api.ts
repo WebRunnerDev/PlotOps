@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/shared/api/supabase";
 
 export type InvitePreview = {
+    claimed_by: null | string;
     email: string;
     expires_at: null | string;
     id: string;

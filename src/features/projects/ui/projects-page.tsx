@@ -2,6 +2,7 @@ import { FolderGit2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
+import { toast } from "sonner";
 
 import type { Project } from "@/features/projects/model/types";
 
@@ -60,8 +61,12 @@ export function ProjectsPage() {
     const handleConfirmRemove = async () => {
         if (!projectToRemove) return;
 
-        await deleteProject.mutateAsync(projectToRemove.id);
-        setProjectToRemove(null);
+        try {
+            await deleteProject.mutateAsync(projectToRemove.id);
+            setProjectToRemove(null);
+        } catch {
+            toast.error(t("removeProjectFailed"));
+        }
     };
 
     return (

@@ -1,7 +1,7 @@
 import {
+    ExternalLink,
     GitCommit,
     GitPullRequest,
-    ExternalLink,
     RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
@@ -28,16 +28,11 @@ type TaskGitTabProperties = {
     token: string;
 };
 
-const PR_STATE_CLASS: Record<GitPR["state"] | "merged", string> = {
+const PR_STATE_CLASS: Record<"merged" | GitPR["state"], string> = {
     closed: "border-red-500/40 text-red-400",
     merged: "border-violet-500/40 text-violet-400",
     open: "border-emerald-500/40 text-emerald-400",
 };
-
-function prDisplayState(pr: GitPR): "closed" | "merged" | "open" {
-    if (pr.merged_at) return "merged";
-    return pr.state;
-}
 
 export function TaskGitTab({
     branchName,
@@ -50,6 +45,7 @@ export function TaskGitTab({
 
     const {
         data: prs = [],
+        isError: prsError,
         isLoading: prsLoading,
         refetch: refetchPrs,
     } = useBranchPullRequests({
@@ -60,6 +56,7 @@ export function TaskGitTab({
 
     const {
         data: commits = [],
+        isError: commitsError,
         isLoading: commitsLoading,
         refetch: refetchCommits,
     } = useBranchCommits({
@@ -83,7 +80,7 @@ export function TaskGitTab({
                         {branchName}
                     </span>
                 </p>
-                {!isShared ? (
+                {isShared ? undefined : (
                     <Button
                         aria-label={t("git.refresh")}
                         onClick={handleRefresh}
@@ -93,7 +90,7 @@ export function TaskGitTab({
                     >
                         <RefreshCw className="size-3.5" />
                     </Button>
-                ) : undefined}
+                )}
             </div>
 
             {isShared ? (
@@ -116,6 +113,20 @@ export function TaskGitTab({
                                 <Spinner className="size-3.5" />
                                 {t("git.loading")}
                             </div>
+                        ) : prsError ? (
+                            <div className="flex flex-col items-start gap-2">
+                                <p className="text-ui text-destructive">
+                                    {t("git.loadFailed")}
+                                </p>
+                                <Button
+                                    onClick={() => void refetchPrs()}
+                                    size="xs"
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {t("git.retry")}
+                                </Button>
+                            </div>
                         ) : prs.length === 0 ? (
                             <p className="text-ui text-muted-foreground">
                                 {t("git.noPrs")}
@@ -136,7 +147,7 @@ export function TaskGitTab({
                                                             "shrink-0 text-meta",
                                                             PR_STATE_CLASS[
                                                                 state
-                                                            ],
+                                                            ]
                                                         )}
                                                         variant="outline"
                                                     >
@@ -169,7 +180,7 @@ export function TaskGitTab({
                                                 </Button>
                                                 <Button
                                                     aria-label={t(
-                                                        "git.openOnGitHub",
+                                                        "git.openOnGitHub"
                                                     )}
                                                     nativeButton={false}
                                                     render={
@@ -203,6 +214,20 @@ export function TaskGitTab({
                             <div className="flex items-center gap-2 text-ui text-muted-foreground">
                                 <Spinner className="size-3.5" />
                                 {t("git.loading")}
+                            </div>
+                        ) : commitsError ? (
+                            <div className="flex flex-col items-start gap-2">
+                                <p className="text-ui text-destructive">
+                                    {t("git.loadFailed")}
+                                </p>
+                                <Button
+                                    onClick={() => void refetchCommits()}
+                                    size="xs"
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {t("git.retry")}
+                                </Button>
                             </div>
                         ) : commits.length === 0 ? (
                             <p className="text-ui text-muted-foreground">
@@ -245,4 +270,9 @@ export function TaskGitTab({
             )}
         </div>
     );
+}
+
+function prDisplayState(pr: GitPR): "closed" | "merged" | "open" {
+    if (pr.merged_at) return "merged";
+    return pr.state;
 }

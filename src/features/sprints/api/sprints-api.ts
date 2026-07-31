@@ -59,20 +59,15 @@ export async function assignTasksToSprint(
 ): Promise<void> {
     if (updates.length === 0) return;
 
-    const results = await Promise.all(
-        updates.map((item) =>
-            supabase
-                .from("tasks")
-                .update({
-                    sprint_id: item.sprintId,
-                    sprint_position: item.sprintPosition,
-                })
-                .eq("id", item.taskId)
-        )
-    );
+    const { error } = await supabase.rpc("assign_tasks_to_sprint", {
+        p_updates: updates.map((item) => ({
+            sprintId: item.sprintId,
+            sprintPosition: item.sprintPosition,
+            taskId: item.taskId,
+        })),
+    });
 
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
+    if (error) throw error;
 }
 
 export async function assignTaskToSprint(
@@ -204,16 +199,16 @@ export async function fetchSprintEvents(
 export async function reorderSprintMembership(
     updates: Array<{ id: string; sprintPosition: number }>
 ): Promise<void> {
-    const results = await Promise.all(
-        updates.map((item) =>
-            supabase
-                .from("tasks")
-                .update({ sprint_position: item.sprintPosition })
-                .eq("id", item.id)
-        )
-    );
-    const failed = results.find((result) => result.error);
-    if (failed?.error) throw failed.error;
+    if (updates.length === 0) return;
+
+    const { error } = await supabase.rpc("assign_tasks_to_sprint", {
+        p_updates: updates.map((item) => ({
+            sprintPosition: item.sprintPosition,
+            taskId: item.id,
+        })),
+    });
+
+    if (error) throw error;
 }
 
 export async function startSprint(

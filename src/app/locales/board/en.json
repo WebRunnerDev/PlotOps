@@ -89,7 +89,9 @@
         "empty": "No watchers yet",
         "watch": "Watch",
         "unwatch": "Unwatch",
-        "updateFailed": "Could not update watch"
+        "updateFailed": "Could not update watch",
+        "loadFailed": "Could not load watchers",
+        "retry": "Retry"
     },
     "comments": {
         "title": "Comments ({{count}})",
@@ -342,6 +344,8 @@
         "claim": "Claim with this account",
         "claimSuccess": "Claimed — ask an owner or admin to confirm in project settings.",
         "claimFailed": "Could not claim invite",
+        "claimWaitingSelf": "Claimed with this account — waiting for an owner or admin to confirm in project settings.",
+        "claimWaitingOther": "This invite was already claimed by another account. An owner or admin must confirm it.",
         "status": {
             "accepted": "This invite was already accepted.",
             "expired": "This invite has expired.",
@@ -361,6 +365,8 @@
         "noSearchMatches": "No labels match this search.",
         "emptyTitle": "No labels yet",
         "emptyDescription": "Create a label above to start tagging tasks.",
+        "loadFailed": "Could not load labels",
+        "retry": "Retry",
         "usage": "{{count}} tasks",
         "changeColor": "Change color",
         "customColor": "Custom color",
@@ -424,6 +430,9 @@
         "prRequired": "Enter a valid PR number or URL",
         "prNeedsGithub": "Connect GitHub and link a repository to look up pull requests",
         "prNotFound": "Pull request #{{number}} was not found in this repository",
+        "prAuthFailed": "GitHub rejected the request — reconnect GitHub and try again",
+        "prRateLimited": "GitHub rate limit hit — wait a moment and try again",
+        "prLinkFailed": "Could not link pull request #{{number}}",
         "prLinkedToast": "Linked PR #{{number}}",
         "prLink": "PR #{{number}} · {{state}}"
     },
@@ -452,6 +461,7 @@
         "loadingDiff": "Loading diff…",
         "diffLoadFailed": "Could not load pull request files",
         "retry": "Retry",
+        "loadFailed": "Could not load GitHub data for this branch",
         "noFiles": "No files changed in this pull request"
     },
     "copiedCheckout": "Checkout command copied",
@@ -521,6 +531,8 @@
         "backlogLink": "Backlog",
         "backlogTitle": "Backlog & sprints",
         "backToBoard": "Back to board",
+        "loadFailed": "Could not load sprints",
+        "retry": "Retry",
         "cancel": "Cancel sprint",
         "cancelAction": "Dismiss",
         "cancelConfirm": "Cancel sprint",

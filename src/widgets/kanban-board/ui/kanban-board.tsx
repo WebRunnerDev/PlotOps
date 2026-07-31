@@ -93,7 +93,8 @@ export function KanbanBoard({
         isError: accessError,
         isSettled,
     } = useProjectAccess(projectId);
-    const { data: sprints = [] } = useBoardSprints(boardId);
+    const { data: sprints = [], error: sprintsQueryError } =
+        useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );
@@ -119,7 +120,11 @@ export function KanbanBoard({
 
     const isLoading =
         columnsApi.isLoading || labelsApi.isLoading || tasksApi.isLoading;
-    const error = columnsApi.error ?? labelsApi.error ?? tasksApi.error;
+    const error =
+        columnsApi.error ??
+        labelsApi.error ??
+        tasksApi.error ??
+        sprintsQueryError;
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -130,12 +130,14 @@ export function CloseSprintDialog({
     const [carryover, setCarryover] = useState<string>("backlog");
     const [newDraftName, setNewDraftName] = useState("");
 
+    useEffect(() => {
+        if (!open) return;
+        setCompletedIds(new Set(suggestedCompleted));
+        setCarryover("backlog");
+        setNewDraftName("");
+    }, [open, suggestedCompleted]);
+
     const handleOpen = (next: boolean) => {
-        if (next) {
-            setCompletedIds(new Set(suggestedCompleted));
-            setCarryover("backlog");
-            setNewDraftName("");
-        }
         onOpenChange(next);
     };
 
@@ -298,12 +300,14 @@ export function StartSprintDialog({
     const [startsOn, setStartsOn] = useState(todayIsoDate());
     const [endsOn, setEndsOn] = useState(defaultSprintEndDate(todayIsoDate()));
 
+    useEffect(() => {
+        if (!open) return;
+        const start = todayIsoDate();
+        setStartsOn(start);
+        setEndsOn(defaultSprintEndDate(start));
+    }, [open]);
+
     const handleOpen = (next: boolean) => {
-        if (next) {
-            const start = todayIsoDate();
-            setStartsOn(start);
-            setEndsOn(defaultSprintEndDate(start));
-        }
         onOpenChange(next);
     };
 

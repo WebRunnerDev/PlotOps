@@ -89,7 +89,9 @@
         "empty": "Пока никого нет",
         "watch": "Следить",
         "unwatch": "Не следить",
-        "updateFailed": "Не удалось обновить подписку"
+        "updateFailed": "Не удалось обновить подписку",
+        "loadFailed": "Не удалось загрузить наблюдателей",
+        "retry": "Повторить"
     },
     "comments": {
         "title": "Комментарии ({{count}})",
@@ -344,6 +346,8 @@
         "claim": "Заявить этот аккаунт",
         "claimSuccess": "Заявлено — попросите владельца или админа подтвердить в настройках проекта.",
         "claimFailed": "Не удалось заявить приглашение",
+        "claimWaitingSelf": "Заявлено этим аккаунтом — ждите подтверждения владельца или админа в настройках проекта.",
+        "claimWaitingOther": "Это приглашение уже заявил другой аккаунт. Нужно подтверждение владельца или админа.",
         "status": {
             "accepted": "Это приглашение уже принято.",
             "expired": "Срок приглашения истёк.",
@@ -363,6 +367,8 @@
         "noSearchMatches": "Нет меток по этому запросу.",
         "emptyTitle": "Меток пока нет",
         "emptyDescription": "Создайте метку выше, чтобы помечать задачи.",
+        "loadFailed": "Не удалось загрузить метки",
+        "retry": "Повторить",
         "usage": "{{count}} задач",
         "changeColor": "Изменить цвет",
         "customColor": "Свой цвет",
@@ -426,6 +432,9 @@
         "prRequired": "Введите корректный номер PR или URL",
         "prNeedsGithub": "Подключите GitHub и репозиторий, чтобы искать pull request",
         "prNotFound": "Pull request #{{number}} не найден в этом репозитории",
+        "prAuthFailed": "GitHub отклонил запрос — переподключите GitHub и попробуйте снова",
+        "prRateLimited": "Лимит GitHub — подождите и попробуйте снова",
+        "prLinkFailed": "Не удалось привязать pull request #{{number}}",
         "prLinkedToast": "Привязан PR #{{number}}",
         "prLink": "PR #{{number}} · {{state}}"
     },
@@ -454,6 +463,7 @@
         "loadingDiff": "Загрузка diff…",
         "diffLoadFailed": "Не удалось загрузить файлы pull request",
         "retry": "Повторить",
+        "loadFailed": "Не удалось загрузить данные GitHub для этой ветки",
         "noFiles": "В этом pull request нет изменённых файлов"
     },
     "copiedCheckout": "Команда checkout скопирована",
@@ -523,6 +533,8 @@
         "backlogLink": "Бэклог",
         "backlogTitle": "Бэклог и спринты",
         "backToBoard": "К доске",
+        "loadFailed": "Не удалось загрузить спринты",
+        "retry": "Повторить",
         "cancel": "Отменить спринт",
         "cancelAction": "Закрыть",
         "cancelConfirm": "Отменить спринт",

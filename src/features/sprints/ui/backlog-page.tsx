@@ -108,10 +108,14 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const tasksApi = useBoardTasks(projectId, boardId);
     const { columns } = columnsApi;
     const { tasks } = tasksApi;
-    const error = columnsApi.error ?? tasksApi.error;
+    const {
+        data: sprints = [],
+        error: sprintsError,
+        isLoading: sprintsLoading,
+        refetch: refetchSprints,
+    } = useBoardSprints(boardId);
+    const error = columnsApi.error ?? tasksApi.error ?? sprintsError;
     const isLoading = columnsApi.isLoading || tasksApi.isLoading;
-    const { data: sprints = [], isLoading: sprintsLoading } =
-        useBoardSprints(boardId);
     const { createDraft, moveTasks } = useSprintMutations(projectId, boardId);
     const [newName, setNewName] = useState("");
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -314,8 +318,21 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         return (
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">
-                    <AlertDescription>{t("projectError")}</AlertDescription>
+                    <AlertDescription>
+                        {sprintsError
+                            ? t("sprints.loadFailed")
+                            : t("projectError")}
+                    </AlertDescription>
                 </Alert>
+                {sprintsError ? (
+                    <Button
+                        onClick={() => void refetchSprints()}
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("sprints.retry")}
+                    </Button>
+                ) : null}
             </div>
         );
     }

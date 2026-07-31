@@ -24,6 +24,9 @@
         "allProjects": "Все проекты",
         "backToProjects": "Вернуться к проектам",
         "backToBoard": "Вернуться к доске",
+        "loadFailed": "Не удалось загрузить уведомления",
+        "openFailed": "Не удалось открыть уведомление",
+        "retry": "Повторить",
         "kinds": {
             "assigneeChange": "Исполнитель изменён",
             "assigneeChangeDetail": "Исполнитель → {{name}}",

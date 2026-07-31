@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<null | User>(null);
     const [profile, setProfile] = useState<null | UserProfile>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [bootError, setBootError] = useState(false);
+    const [bootAttempt, setBootAttempt] = useState(0);
     const githubAccessToken = useSyncExternalStore(
         subscribeGitHubAccessToken,
         getGitHubAccessToken,
@@ -66,6 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     }, [user]);
 
+    const retryBoot = useCallback(() => {
+        setBootError(false);
+        setIsLoading(true);
+        setBootAttempt((n) => n + 1);
+    }, []);
+
     useEffect(() => {
         let mounted = true;
         const abortController = new AbortController();
@@ -97,21 +105,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         }
 
+        setBootError(false);
+
         supabase.auth
             .getSession()
             .then(async ({ data: { session: nextSession } }) => {
                 if (!mounted) return;
 
-                const validated = await validatePersistedSession(nextSession);
-                if (!mounted) return;
+                try {
+                    const validated =
+                        await validatePersistedSession(nextSession);
+                    if (!mounted) return;
 
-                await syncGitHubToken(validated);
+                    await syncGitHubToken(validated);
 
-                const nextUser = validated?.user ?? null;
-                setSession(validated);
-                setUser(nextUser);
-                await loadProfile(nextUser);
-                if (mounted) setIsLoading(false);
+                    const nextUser = validated?.user ?? null;
+                    setSession(validated);
+                    setUser(nextUser);
+                    await loadProfile(nextUser);
+                    if (mounted) {
+                        setBootError(false);
+                        setIsLoading(false);
+                    }
+                } catch {
+                    if (!mounted) return;
+                    clearGitHubAccessToken();
+                    setSession(null);
+                    setUser(null);
+                    setProfile(null);
+                    setBootError(true);
+                    setIsLoading(false);
+                }
             })
             .catch(() => {
                 if (!mounted) return;
@@ -119,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setSession(null);
                 setUser(null);
                 setProfile(null);
+                setBootError(true);
                 setIsLoading(false);
             });
 
@@ -144,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             abortController.abort();
             subscription.unsubscribe();
         };
-    }, [loadProfile]);
+    }, [bootAttempt, loadProfile]);
 
     const signOut = useCallback(async () => {
         const { error } = await signOutApi();
@@ -155,16 +180,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo<AuthContextValue>(
         () => ({
+            bootError,
             githubAccessToken,
             isLoading,
             profile,
             profileNamesComplete,
             refreshProfile,
+            retryBoot,
             session,
             signOut,
             user,
         }),
         [
+            bootError,
             githubAccessToken,
             session,
             user,
@@ -172,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profileNamesComplete,
             isLoading,
             refreshProfile,
+            retryBoot,
             signOut,
         ]
     );

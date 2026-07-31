@@ -8,6 +8,7 @@ import {
     signUpWithPassword,
 } from "@/features/auth/api/auth-api";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -19,6 +20,8 @@ import {
 } from "@/shared/shadcn/ui/card";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
+
+const REDIRECT_TIMEOUT_MS = 8000;
 
 type SignUpFormProperties = {
     initialEmail?: string;
@@ -43,20 +46,43 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     useEffect(() => {
         if (!awaitingRedirect || !user) return;
 
-        const pendingInvite = globalThis.sessionStorage.getItem(
+        const pendingInvite = safeGetItem(
+            "sessionStorage",
             "plotops_pending_invite"
         );
         if (pendingInvite) {
-            globalThis.sessionStorage.removeItem("plotops_pending_invite");
+            safeRemoveItem("sessionStorage", "plotops_pending_invite");
             void navigate({
                 params: { token: pendingInvite },
                 to: "/invite/$token",
+            }).catch(() => {
+                setAwaitingRedirect(false);
+                setIsLoading(false);
+                setError(t("errors.generic"));
             });
             return;
         }
 
-        void navigate({ to: "/home" });
-    }, [awaitingRedirect, navigate, user]);
+        void navigate({ to: "/home" }).catch(() => {
+            setAwaitingRedirect(false);
+            setIsLoading(false);
+            setError(t("errors.generic"));
+        });
+    }, [awaitingRedirect, navigate, t, user]);
+
+    useEffect(() => {
+        if (!awaitingRedirect || user) return;
+
+        const timer = globalThis.setTimeout(() => {
+            setAwaitingRedirect(false);
+            setIsLoading(false);
+            setError(t("errors.sessionTimeout"));
+        }, REDIRECT_TIMEOUT_MS);
+
+        return () => {
+            globalThis.clearTimeout(timer);
+        };
+    }, [awaitingRedirect, t, user]);
 
     const handleSignUp = async (event: FormEvent) => {
         event.preventDefault();
@@ -80,34 +106,41 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
         setIsLoading(true);
 
-        const { data, error: authError } = await signUpWithPassword({
-            email,
-            firstName,
-            lastName,
-            password,
-        });
+        let keepLoadingForRedirect = false;
+        try {
+            const { data, error: authError } = await signUpWithPassword({
+                email,
+                firstName,
+                lastName,
+                password,
+            });
 
-        if (authError) {
-            setIsLoading(false);
-            setError(t(getAuthErrorKey(authError)));
-            return;
+            if (authError) {
+                setError(t(getAuthErrorKey(authError)));
+                return;
+            }
+
+            // With confirmations on, an existing email may return a user with no identities.
+            if (data.user && (data.user.identities?.length ?? 0) === 0) {
+                setError(t("errors.userAlreadyRegistered"));
+                return;
+            }
+
+            // Confirm-email ON: no session until the link is clicked.
+            if (!data.session) {
+                setAwaitingConfirmation(true);
+                return;
+            }
+
+            keepLoadingForRedirect = true;
+            setAwaitingRedirect(true);
+        } catch {
+            setError(t("errors.generic"));
+        } finally {
+            if (!keepLoadingForRedirect) {
+                setIsLoading(false);
+            }
         }
-
-        // With confirmations on, an existing email may return a user with no identities.
-        if (data.user && (data.user.identities?.length ?? 0) === 0) {
-            setIsLoading(false);
-            setError(t("errors.userAlreadyRegistered"));
-            return;
-        }
-
-        // Confirm-email ON: no session until the link is clicked.
-        if (!data.session) {
-            setIsLoading(false);
-            setAwaitingConfirmation(true);
-            return;
-        }
-
-        setAwaitingRedirect(true);
     };
 
     const handleResend = async () => {

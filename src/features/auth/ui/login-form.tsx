@@ -8,6 +8,7 @@ import {
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -20,6 +21,8 @@ import {
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
+
+const REDIRECT_TIMEOUT_MS = 8000;
 
 export function LoginForm() {
     const navigate = useNavigate();
@@ -37,29 +40,54 @@ export function LoginForm() {
     useEffect(() => {
         if (!awaitingRedirect || !user) return;
 
-        const pendingInvite = globalThis.sessionStorage.getItem(
+        const pendingInvite = safeGetItem(
+            "sessionStorage",
             "plotops_pending_invite"
         );
         if (pendingInvite) {
-            globalThis.sessionStorage.removeItem("plotops_pending_invite");
+            safeRemoveItem("sessionStorage", "plotops_pending_invite");
             void navigate({
                 params: { token: pendingInvite },
                 to: "/invite/$token",
+            }).catch(() => {
+                setAwaitingRedirect(false);
+                setIsEmailLoading(false);
+                setError(t("errors.generic"));
             });
             return;
         }
 
-        void navigate({ to: "/home" });
-    }, [awaitingRedirect, navigate, user]);
+        void navigate({ to: "/home" }).catch(() => {
+            setAwaitingRedirect(false);
+            setIsEmailLoading(false);
+            setError(t("errors.generic"));
+        });
+    }, [awaitingRedirect, navigate, t, user]);
+
+    useEffect(() => {
+        if (!awaitingRedirect || user) return;
+
+        const timer = globalThis.setTimeout(() => {
+            setAwaitingRedirect(false);
+            setIsEmailLoading(false);
+            setError(t("errors.sessionTimeout"));
+        }, REDIRECT_TIMEOUT_MS);
+
+        return () => {
+            globalThis.clearTimeout(timer);
+        };
+    }, [awaitingRedirect, t, user]);
 
     const handleGitHubLogin = async () => {
         setError(null);
         setIsGitHubLoading(true);
 
-        const { error: authError } = await signInWithGitHub();
-
-        setIsGitHubLoading(false);
-        if (authError) setError(t(getAuthErrorKey(authError)));
+        try {
+            const { error: authError } = await signInWithGitHub();
+            if (authError) setError(t(getAuthErrorKey(authError)));
+        } finally {
+            setIsGitHubLoading(false);
+        }
     };
 
     const handleEmailLogin = async (event: FormEvent) => {
@@ -67,18 +95,23 @@ export function LoginForm() {
         setError(null);
         setIsEmailLoading(true);
 
-        const { error: authError } = await signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            const { error: authError } = await signInWithPassword({
+                email,
+                password,
+            });
 
-        if (authError) {
+            if (authError) {
+                setError(t(getAuthErrorKey(authError)));
+                setIsEmailLoading(false);
+                return;
+            }
+
+            setAwaitingRedirect(true);
+        } catch {
+            setError(t("errors.generic"));
             setIsEmailLoading(false);
-            setError(t(getAuthErrorKey(authError)));
-            return;
         }
-
-        setAwaitingRedirect(true);
     };
 
     return (

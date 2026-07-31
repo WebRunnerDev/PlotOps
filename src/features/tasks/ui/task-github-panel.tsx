@@ -16,7 +16,10 @@ import { toast } from "sonner";
 import type { Task, TaskPullRequest } from "@/features/tasks/model/types";
 
 import { matchesAllowedHeadPatterns } from "@/features/boards";
-import { fetchPullRequest } from "@/features/git-integration/api/github-git-api";
+import {
+    fetchPullRequest,
+    isGitHubApiError,
+} from "@/features/git-integration/api/github-git-api";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
 import {
     generateBranchName,
@@ -172,8 +175,32 @@ export function TaskGithubPanel({
             setLinkingPr(false);
             setPrDraft("");
             toast.success(t("github.prLinkedToast", { number: pr.number }));
-        } catch {
-            toast.error(t("github.prNotFound", { number }));
+        } catch (error) {
+            if (isGitHubApiError(error)) {
+                switch (error.status) {
+                    case 401:
+                    case 403: {
+                        toast.error(t("github.prAuthFailed"));
+
+                        break;
+                    }
+                    case 404: {
+                        toast.error(t("github.prNotFound", { number }));
+
+                        break;
+                    }
+                    case 429: {
+                        toast.error(t("github.prRateLimited"));
+
+                        break;
+                    }
+                    default: {
+                        toast.error(t("github.prLinkFailed", { number }));
+                    }
+                }
+            } else {
+                toast.error(t("github.prLinkFailed", { number }));
+            }
         } finally {
             setPrLoading(false);
         }

@@ -195,6 +195,7 @@ export function useProjectLabels(projectId: string) {
             if (!label || label.projectId === targetProjectId) return;
             await moveLabelMutation.mutateAsync({ label, targetProjectId });
         },
+        refetch: () => labelsQuery.refetch(),
         renameLabel: async (labelId: string, name: string) => {
             const trimmed = name.trim();
             if (!trimmed) return false;

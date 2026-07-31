@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { useAuth } from "@/features/auth";
 import {
     acceptInviteByToken,
     claimInviteByToken,
     getInviteByToken,
     type InvitePreview,
 } from "@/features/projects/api/members-api";
-import { useAuth } from "@/features/auth";
+import { safeRemoveItem, safeSetItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -32,18 +33,32 @@ function InviteAcceptPage() {
     useEffect(() => {
         let cancelled = false;
         setIsLoadingInvite(true);
-        void getInviteByToken(token).then(({ data, error }) => {
-            if (cancelled) return;
-            const row = Array.isArray(data) ? data[0] : data;
-            if (error || !row) {
+        void getInviteByToken(token)
+            .then(({ data, error }) => {
+                if (cancelled) return;
+                const row = Array.isArray(data) ? data[0] : data;
+                if (error || !row) {
+                    setLoadError(true);
+                    setInvite(null);
+                } else {
+                    const preview = row as InvitePreview;
+                    setInvite({
+                        ...preview,
+                        claimed_by:
+                            (preview as { claimed_by?: null | string })
+                                .claimed_by ?? null,
+                    });
+                    setLoadError(false);
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
                 setLoadError(true);
                 setInvite(null);
-            } else {
-                setInvite(row as InvitePreview);
-                setLoadError(false);
-            }
-            setIsLoadingInvite(false);
-        });
+            })
+            .finally(() => {
+                if (!cancelled) setIsLoadingInvite(false);
+            });
         return () => {
             cancelled = true;
         };
@@ -60,7 +75,7 @@ function InviteAcceptPage() {
         try {
             const { error } = await acceptInviteByToken(token);
             if (error) throw error;
-            globalThis.sessionStorage.removeItem("plotops_pending_invite");
+            safeRemoveItem("sessionStorage", "plotops_pending_invite");
             toast.success(t("invite.acceptSuccess"));
             void navigate({
                 params: { projectId: invite.project_id },
@@ -80,6 +95,11 @@ function InviteAcceptPage() {
             const { error } = await claimInviteByToken(token);
             if (error) throw error;
             toast.success(t("invite.claimSuccess"));
+            const { data, error: previewError } = await getInviteByToken(token);
+            if (!previewError) {
+                const row = Array.isArray(data) ? data[0] : data;
+                if (row) setInvite(row as InvitePreview);
+            }
         } catch {
             toast.error(t("invite.claimFailed"));
         } finally {
@@ -88,11 +108,11 @@ function InviteAcceptPage() {
     };
 
     const goSignIn = () => {
-        globalThis.sessionStorage.setItem("plotops_pending_invite", token);
+        safeSetItem("sessionStorage", "plotops_pending_invite", token);
     };
 
     const goSignUp = () => {
-        globalThis.sessionStorage.setItem("plotops_pending_invite", token);
+        safeSetItem("sessionStorage", "plotops_pending_invite", token);
     };
 
     if (authLoading || isLoadingInvite) {
@@ -145,15 +165,64 @@ function InviteAcceptPage() {
                 )}
             </div>
 
-            {invite.status !== "pending" ? (
+            {invite.status === "pending" ? undefined : (
                 <Alert>
                     <AlertDescription>
                         {t(`invite.status.${invite.status}`)}
                     </AlertDescription>
                 </Alert>
-            ) : undefined}
+            )}
 
-            {!user ? (
+            {user ? (
+                invite.status === "pending" ? (
+                    <div className="flex flex-col gap-3">
+                        <p className="text-ui text-muted-foreground">
+                            {t("invite.signedInAs", {
+                                email: user.email ?? t("members.unknownUser"),
+                            })}
+                        </p>
+                        {emailMatches ? (
+                            <Button
+                                disabled={isActing}
+                                onClick={() => void onAccept()}
+                                type="button"
+                            >
+                                {isActing ? (
+                                    <Spinner className="size-4" />
+                                ) : undefined}
+                                {t("invite.accept")}
+                            </Button>
+                        ) : invite.claimed_by ? (
+                            <Alert>
+                                <AlertDescription>
+                                    {invite.claimed_by === user.id
+                                        ? t("invite.claimWaitingSelf")
+                                        : t("invite.claimWaitingOther")}
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <>
+                                <Alert>
+                                    <AlertDescription>
+                                        {t("invite.emailMismatch")}
+                                    </AlertDescription>
+                                </Alert>
+                                <Button
+                                    disabled={isActing}
+                                    onClick={() => void onClaim()}
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {isActing ? (
+                                        <Spinner className="size-4" />
+                                    ) : undefined}
+                                    {t("invite.claim")}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                ) : undefined
+            ) : (
                 <div className="flex flex-col gap-3">
                     <p className="text-ui text-muted-foreground">
                         {t("invite.createAccountFirst")}
@@ -179,46 +248,7 @@ function InviteAcceptPage() {
                         {t("invite.signIn")}
                     </Button>
                 </div>
-            ) : invite.status === "pending" ? (
-                <div className="flex flex-col gap-3">
-                    <p className="text-ui text-muted-foreground">
-                        {t("invite.signedInAs", {
-                            email: user.email ?? t("members.unknownUser"),
-                        })}
-                    </p>
-                    {emailMatches ? (
-                        <Button
-                            disabled={isActing}
-                            onClick={() => void onAccept()}
-                            type="button"
-                        >
-                            {isActing ? (
-                                <Spinner className="size-4" />
-                            ) : undefined}
-                            {t("invite.accept")}
-                        </Button>
-                    ) : (
-                        <>
-                            <Alert>
-                                <AlertDescription>
-                                    {t("invite.emailMismatch")}
-                                </AlertDescription>
-                            </Alert>
-                            <Button
-                                disabled={isActing}
-                                onClick={() => void onClaim()}
-                                type="button"
-                                variant="outline"
-                            >
-                                {isActing ? (
-                                    <Spinner className="size-4" />
-                                ) : undefined}
-                                {t("invite.claim")}
-                            </Button>
-                        </>
-                    )}
-                </div>
-            ) : undefined}
+            )}
         </div>
     );
 }

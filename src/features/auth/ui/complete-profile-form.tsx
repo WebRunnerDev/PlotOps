@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { updateProfileNames } from "@/features/auth/api/profile-api";
 import { splitFullName } from "@/features/auth/lib/user-display";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -216,11 +217,12 @@ export function CompleteProfileForm({
 }
 
 function resolvePostSavePath(redirectTo?: string): string {
-    const pendingInvite = globalThis.sessionStorage.getItem(
+    const pendingInvite = safeGetItem(
+        "sessionStorage",
         "plotops_pending_invite"
     );
     if (pendingInvite) {
-        globalThis.sessionStorage.removeItem("plotops_pending_invite");
+        safeRemoveItem("sessionStorage", "plotops_pending_invite");
         return `/invite/${pendingInvite}`;
     }
 

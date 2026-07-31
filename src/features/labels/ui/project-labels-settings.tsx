@@ -28,6 +28,7 @@ import { useLabelTaggedTasks } from "@/features/labels/model/use-label-tagged-ta
 import { useProjectLabels } from "@/features/labels/model/use-project-labels";
 import { useProjects } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
+import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -69,6 +70,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/shared/shadcn/ui/select";
+import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 const EMPTY_TASKS: LabelTaggedTask[] = [];
 const TASKS_PAGE_SIZE = 5;
@@ -233,7 +235,26 @@ export function ProjectLabelsSettings({
                 </div>
             </div>
 
-            {projectLabels.length === 0 ? (
+            {labelsApi.isLoading ? (
+                <div className="flex items-center justify-center py-10">
+                    <Spinner className="size-6 text-primary" />
+                </div>
+            ) : labelsApi.error ? (
+                <div className="flex flex-col items-start gap-3">
+                    <Alert variant="destructive">
+                        <AlertDescription>
+                            {t("labelSettings.loadFailed")}
+                        </AlertDescription>
+                    </Alert>
+                    <Button
+                        onClick={() => void labelsApi.refetch()}
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("labelSettings.retry")}
+                    </Button>
+                </div>
+            ) : projectLabels.length === 0 ? (
                 <Empty>
                     <EmptyHeader>
                         <EmptyTitle>{t("labelSettings.emptyTitle")}</EmptyTitle>
