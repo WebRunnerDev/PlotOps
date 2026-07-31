@@ -5,7 +5,7 @@ export type CreateTaskColumnGate = "empty" | "loading" | "ready";
  */
 export function resolveCreateTaskColumnGate(
     columnsReady: boolean,
-    firstColumnId: string | undefined
+    firstColumnId?: string
 ): CreateTaskColumnGate {
     if (!columnsReady) return "loading";
     if (!firstColumnId) return "empty";

@@ -48,7 +48,8 @@ describe("safe storage helpers", () => {
     });
 
     it("returns null when storage is missing", () => {
-        vi.stubGlobal("sessionStorage");
+        // Falsy stub — unicorn strips bare `undefined` from stubGlobal.
+        vi.stubGlobal("sessionStorage", false as never);
         expect(safeGetItem("sessionStorage", "k")).toBeNull();
         expect(() => safeSetItem("sessionStorage", "k", "v")).not.toThrow();
     });
