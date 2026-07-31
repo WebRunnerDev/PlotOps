@@ -6,6 +6,7 @@ import type {
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
+import type { Database } from "@/shared/api/database.types";
 
 import { fetchBoardColumnIds } from "@/features/boards";
 import {
@@ -132,6 +133,7 @@ export async function createTaskRecord(
 
     const { data, error } = await supabase
         .from("tasks")
+        // task_key is NOT NULL but filled by trg_set_task_key before insert.
         .insert({
             author_id: user?.id ?? null,
             board_id: boardId,
@@ -141,7 +143,7 @@ export async function createTaskRecord(
             status,
             task_type: taskType,
             title: normalizeTaskTitle(title),
-        })
+        } as Database["public"]["Tables"]["tasks"]["Insert"])
         .select(TASK_SELECT)
         .single();
 

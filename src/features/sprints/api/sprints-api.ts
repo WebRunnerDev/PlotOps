@@ -5,6 +5,7 @@ import type {
     SprintState,
 } from "@/features/sprints/model/types";
 
+import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseSprint = {
@@ -59,13 +60,19 @@ export async function assignTasksToSprint(
 ): Promise<void> {
     if (updates.length === 0) return;
 
-    const { error } = await supabase.rpc("assign_tasks_to_sprint", {
-        p_updates: updates.map((item) => ({
-            sprintId: item.sprintId,
-            sprintPosition: item.sprintPosition,
-            taskId: item.taskId,
-        })),
-    });
+    // RPC from migration 20260731093815 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "assign_tasks_to_sprint" as never,
+        {
+            p_updates: asJson(
+                updates.map((item) => ({
+                    sprintId: item.sprintId,
+                    sprintPosition: item.sprintPosition,
+                    taskId: item.taskId,
+                }))
+            ),
+        } as never
+    );
 
     if (error) throw error;
 }
@@ -101,7 +108,7 @@ export async function closeSprint(
     carryoverSprintId: null | string
 ): Promise<Sprint> {
     const { data, error } = await supabase.rpc("close_sprint", {
-        p_carryover_sprint_id: carryoverSprintId,
+        p_carryover_sprint_id: carryoverSprintId ?? undefined,
         p_completed_task_ids: completedTaskIds,
         p_sprint_id: sprintId,
     });
@@ -201,12 +208,18 @@ export async function reorderSprintMembership(
 ): Promise<void> {
     if (updates.length === 0) return;
 
-    const { error } = await supabase.rpc("assign_tasks_to_sprint", {
-        p_updates: updates.map((item) => ({
-            sprintPosition: item.sprintPosition,
-            taskId: item.id,
-        })),
-    });
+    // RPC from migration 20260731093815 — regenerate types after local DB includes it.
+    const { error } = await supabase.rpc(
+        "assign_tasks_to_sprint" as never,
+        {
+            p_updates: asJson(
+                updates.map((item) => ({
+                    sprintPosition: item.sprintPosition,
+                    taskId: item.id,
+                }))
+            ),
+        } as never
+    );
 
     if (error) throw error;
 }

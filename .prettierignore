@@ -3,6 +3,7 @@ node_modules
 coverage
 .tanstack
 src/app/routeTree.gen.ts
+src/shared/api/database.types.ts
 src/shared/shadcn/ui
 supabase/.temp
 supabase/.branches

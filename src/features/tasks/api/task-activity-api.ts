@@ -6,6 +6,7 @@ import type {
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { TASK_ACTIVITY_FEED_LIMIT } from "@/features/tasks/model/constants";
+import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseActivityLog = {
@@ -85,7 +86,9 @@ export async function insertTaskActivityEvent(input: {
         .from("activity_log")
         .insert({
             action: input.action,
-            metadata: { changes: input.changes } satisfies TaskActivityMetadata,
+            metadata: asJson({
+                changes: input.changes,
+            } satisfies TaskActivityMetadata),
             project_id: input.projectId,
             task_id: input.taskId,
             user_id: user.id,
