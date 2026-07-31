@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     clearGitHubAccessToken,
     getGitHubAccessToken,
+    getGitHubAccessTokenOwnerId,
+    retainGitHubAccessTokenForUser,
     setGitHubAccessToken,
     subscribeGitHubAccessToken,
     validateGitHubAccessToken,
@@ -43,17 +45,24 @@ describe("GitHub access token SoT", () => {
     });
 
     it("stores and returns the token from memory and localStorage", () => {
-        setGitHubAccessToken("gh_token_1");
+        setGitHubAccessToken("gh_token_1", "user_a");
 
         expect(getGitHubAccessToken()).toBe("gh_token_1");
-        expect(globalThis.localStorage.getItem(STORAGE_KEY)).toBe("gh_token_1");
+        expect(getGitHubAccessTokenOwnerId()).toBe("user_a");
+        expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain(
+            "gh_token_1"
+        );
+        expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain(
+            "user_a"
+        );
     });
 
     it("clears memory and localStorage", () => {
-        setGitHubAccessToken("gh_token_1");
+        setGitHubAccessToken("gh_token_1", "user_a");
         clearGitHubAccessToken();
 
         expect(getGitHubAccessToken()).toBeNull();
+        expect(getGitHubAccessTokenOwnerId()).toBeNull();
         expect(globalThis.localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
@@ -61,15 +70,42 @@ describe("GitHub access token SoT", () => {
         const listener = vi.fn();
         const unsubscribe = subscribeGitHubAccessToken(listener);
 
-        setGitHubAccessToken("gh_token_1");
+        setGitHubAccessToken("gh_token_1", "user_a");
         expect(listener).toHaveBeenCalledTimes(1);
 
         clearGitHubAccessToken();
         expect(listener).toHaveBeenCalledTimes(2);
 
         unsubscribe();
-        setGitHubAccessToken("gh_token_2");
+        setGitHubAccessToken("gh_token_2", "user_b");
         expect(listener).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears a cached token when a different user signs in without provider_token", () => {
+        setGitHubAccessToken("gh_token_user_a", "user_a");
+
+        expect(retainGitHubAccessTokenForUser("user_b")).toBeNull();
+        expect(getGitHubAccessToken()).toBeNull();
+        expect(getGitHubAccessTokenOwnerId()).toBeNull();
+    });
+
+    it("keeps a cached token when it belongs to the current user", () => {
+        setGitHubAccessToken("gh_token_user_a", "user_a");
+
+        expect(retainGitHubAccessTokenForUser("user_a")).toBe(
+            "gh_token_user_a"
+        );
+        expect(getGitHubAccessToken()).toBe("gh_token_user_a");
+        expect(getGitHubAccessTokenOwnerId()).toBe("user_a");
+    });
+
+    it("discards a legacy unbound token from localStorage", () => {
+        clearGitHubAccessToken();
+        globalThis.localStorage.setItem(STORAGE_KEY, "legacy_plain_token");
+
+        expect(retainGitHubAccessTokenForUser("user_a")).toBeNull();
+        expect(getGitHubAccessToken()).toBeNull();
+        expect(globalThis.localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
     it("validateGitHubAccessToken returns true on ok response", async () => {

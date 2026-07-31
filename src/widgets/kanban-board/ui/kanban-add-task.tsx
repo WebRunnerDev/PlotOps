@@ -33,6 +33,7 @@ export function KanbanAddTask({
     const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const inputReference = useRef<HTMLInputElement>(null);
+    const skipBlurSubmit = useRef(false);
 
     useEffect(() => {
         if (!open) return;
@@ -89,16 +90,22 @@ export function KanbanAddTask({
             disabled={isSubmitting}
             maxLength={TASK_TITLE_MAX_LENGTH}
             onBlur={() => {
+                if (skipBlurSubmit.current) {
+                    skipBlurSubmit.current = false;
+                    return;
+                }
                 void submit();
             }}
             onChange={(event) => setTitle(event.target.value)}
             onKeyDown={(event) => {
                 if (event.key === "Enter") {
                     event.preventDefault();
+                    skipBlurSubmit.current = true;
                     void submit();
                 }
                 if (event.key === "Escape") {
                     event.preventDefault();
+                    skipBlurSubmit.current = true;
                     reset();
                 }
             }}

@@ -366,6 +366,7 @@
         "emptyTitle": "No labels yet",
         "emptyDescription": "Create a label above to start tagging tasks.",
         "loadFailed": "Could not load labels",
+        "usageLoadFailed": "Could not load which tasks use these labels. Retry before deleting or moving a label.",
         "retry": "Retry",
         "usage": "{{count}} tasks",
         "changeColor": "Change color",

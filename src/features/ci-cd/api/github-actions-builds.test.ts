@@ -132,7 +132,7 @@ describe("GitHub Actions 401 clears token SoT", () => {
     beforeEach(() => {
         vi.stubGlobal("localStorage", createMemoryStorage());
         clearGitHubAccessToken();
-        setGitHubAccessToken("stale-token");
+        setGitHubAccessToken("stale-token", "user-1");
     });
 
     afterEach(() => {

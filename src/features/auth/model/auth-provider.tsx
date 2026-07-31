@@ -5,6 +5,7 @@ import {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState,
     useSyncExternalStore,
 } from "react";
@@ -19,10 +20,12 @@ import {
     type UserProfile,
 } from "@/features/auth/api/profile-api";
 import { isProfileNamesComplete } from "@/features/auth/lib/user-display";
+import { createAsyncGenerationGate } from "@/features/auth/model/async-generation-gate";
 import { AuthContext } from "@/features/auth/model/auth-context";
 import {
     clearGitHubAccessToken,
     getGitHubAccessToken,
+    retainGitHubAccessTokenForUser,
     setGitHubAccessToken,
     subscribeGitHubAccessToken,
     validateGitHubAccessToken,
@@ -36,26 +39,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [bootError, setBootError] = useState(false);
     const [bootAttempt, setBootAttempt] = useState(0);
+    const sessionUserIdReference = useRef<null | string>(null);
     const githubAccessToken = useSyncExternalStore(
         subscribeGitHubAccessToken,
         getGitHubAccessToken,
         () => null
     );
+    const profileLoadGate = useMemo(() => createAsyncGenerationGate(), []);
+    const authEventGate = useMemo(() => createAsyncGenerationGate(), []);
 
-    const loadProfile = useCallback(async (nextUser: null | User) => {
-        if (!nextUser) {
-            setProfile(null);
-            return;
-        }
-
-        try {
-            await syncUserProfile(nextUser);
-            const nextProfile = await fetchOwnProfile(nextUser.id);
-            setProfile(nextProfile);
-        } catch {
-            setProfile(null);
-        }
+    const applySessionUser = useCallback((nextUser: null | User) => {
+        sessionUserIdReference.current = nextUser?.id ?? null;
+        setUser(nextUser);
     }, []);
+
+    const loadProfile = useCallback(
+        async (nextUser: null | User) => {
+            const generation = profileLoadGate.begin();
+            const requestedUserId = nextUser?.id ?? null;
+
+            if (!nextUser) {
+                if (
+                    profileLoadGate.isCurrent(generation) &&
+                    sessionUserIdReference.current === null
+                ) {
+                    setProfile(null);
+                }
+                return;
+            }
+
+            try {
+                await syncUserProfile(nextUser);
+                const nextProfile = await fetchOwnProfile(nextUser.id);
+                if (!profileLoadGate.isCurrent(generation)) return;
+                if (sessionUserIdReference.current !== requestedUserId) return;
+                setProfile(nextProfile);
+            } catch {
+                if (!profileLoadGate.isCurrent(generation)) return;
+                if (sessionUserIdReference.current !== requestedUserId) return;
+                setProfile(null);
+            }
+        },
+        [profileLoadGate]
+    );
 
     const refreshProfile = useCallback(async () => {
         if (!user) {
@@ -82,17 +108,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             nextSession: null | Session,
             event?: string
         ) {
-            if (event === "SIGNED_OUT" || !nextSession) {
+            if (event === "SIGNED_OUT" || !nextSession?.user?.id) {
                 clearGitHubAccessToken();
                 return;
             }
 
+            const userId = nextSession.user.id;
+
             if (nextSession.provider_token) {
-                setGitHubAccessToken(nextSession.provider_token);
+                setGitHubAccessToken(nextSession.provider_token, userId);
                 return;
             }
 
-            const cached = getGitHubAccessToken();
+            const cached = retainGitHubAccessTokenForUser(userId);
             if (!cached) return;
 
             const valid = await validateGitHubAccessToken(
@@ -121,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                     const nextUser = validated?.user ?? null;
                     setSession(validated);
-                    setUser(nextUser);
+                    applySessionUser(nextUser);
                     await loadProfile(nextUser);
                     if (mounted) {
                         setBootError(false);
@@ -131,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     if (!mounted) return;
                     clearGitHubAccessToken();
                     setSession(null);
-                    setUser(null);
+                    applySessionUser(null);
                     setProfile(null);
                     setBootError(true);
                     setIsLoading(false);
@@ -141,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (!mounted) return;
                 clearGitHubAccessToken();
                 setSession(null);
-                setUser(null);
+                applySessionUser(null);
                 setProfile(null);
                 setBootError(true);
                 setIsLoading(false);
@@ -154,13 +182,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // INITIAL_SESSION already handled via getSession + validate.
                 if (event === "INITIAL_SESSION") return;
 
+                const eventGeneration = authEventGate.begin();
+
                 await syncGitHubToken(nextSession, event);
+                if (!mounted || !authEventGate.isCurrent(eventGeneration)) {
+                    return;
+                }
 
                 const nextUser = nextSession?.user ?? null;
                 setSession(nextSession);
-                setUser(nextUser);
+                applySessionUser(nextUser);
                 await loadProfile(nextUser);
-                if (mounted) setIsLoading(false);
+                if (mounted && authEventGate.isCurrent(eventGeneration)) {
+                    setIsLoading(false);
+                }
             })();
         });
 
@@ -169,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             abortController.abort();
             subscription.unsubscribe();
         };
-    }, [bootAttempt, loadProfile]);
+    }, [applySessionUser, authEventGate, bootAttempt, loadProfile]);
 
     const signOut = useCallback(async () => {
         const { error } = await signOutApi();

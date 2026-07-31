@@ -1,12 +1,22 @@
 const STORAGE_KEY = "plotops_github_provider_token";
 const GITHUB_USER_URL = "https://api.github.com/user";
 
-let memoryToken: null | string = readStoredToken();
+type StoredToken = {
+    ownerUserId: string;
+    token: string;
+};
+
+let memoryToken: null | string = null;
+let memoryOwnerUserId: null | string = null;
 const listeners = new Set<() => void>();
+
+// Do not hydrate from storage at import time — only restore after
+// retainGitHubAccessTokenForUser(currentUserId) / setGitHubAccessToken.
 
 export function clearGitHubAccessToken() {
     const hadToken = memoryToken !== null || readStoredToken() !== null;
     memoryToken = null;
+    memoryOwnerUserId = null;
     writeStoredToken(null);
     if (hadToken) {
         notifyListeners();
@@ -17,13 +27,35 @@ export function getGitHubAccessToken(): null | string {
     return memoryToken;
 }
 
-export function setGitHubAccessToken(token: string) {
-    if (memoryToken === token) {
-        writeStoredToken(token);
+export function getGitHubAccessTokenOwnerId(): null | string {
+    return memoryOwnerUserId;
+}
+
+/**
+ * Keep the cached provider token only when it belongs to `userId`.
+ * Otherwise clear memory + storage (account switch / unbound legacy).
+ */
+export function retainGitHubAccessTokenForUser(userId: string): null | string {
+    if (memoryToken === null) {
+        hydrateFromStorage();
+    }
+
+    if (!memoryToken || memoryOwnerUserId !== userId) {
+        clearGitHubAccessToken();
+        return null;
+    }
+
+    return memoryToken;
+}
+
+export function setGitHubAccessToken(token: string, ownerUserId: string) {
+    if (memoryToken === token && memoryOwnerUserId === ownerUserId) {
+        writeStoredToken({ ownerUserId, token });
         return;
     }
     memoryToken = token;
-    writeStoredToken(token);
+    memoryOwnerUserId = ownerUserId;
+    writeStoredToken({ ownerUserId, token });
     notifyListeners();
 }
 
@@ -63,24 +95,58 @@ export async function validateGitHubAccessToken(
     }
 }
 
+function hydrateFromStorage() {
+    const stored = readStoredToken();
+    memoryToken = stored?.token ?? null;
+    memoryOwnerUserId = stored?.ownerUserId ?? null;
+}
+
 function notifyListeners() {
     for (const listener of listeners) {
         listener();
     }
 }
 
-function readStoredToken(): null | string {
+function readStoredToken(): null | StoredToken {
     try {
-        return globalThis.localStorage.getItem(STORAGE_KEY);
+        const raw = globalThis.localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+
+        try {
+            const parsed: unknown = JSON.parse(raw);
+            if (
+                parsed &&
+                typeof parsed === "object" &&
+                "token" in parsed &&
+                "ownerUserId" in parsed &&
+                typeof (parsed as StoredToken).token === "string" &&
+                typeof (parsed as StoredToken).ownerUserId === "string" &&
+                (parsed as StoredToken).token.length > 0 &&
+                (parsed as StoredToken).ownerUserId.length > 0
+            ) {
+                return {
+                    ownerUserId: (parsed as StoredToken).ownerUserId,
+                    token: (parsed as StoredToken).token,
+                };
+            }
+        } catch {
+            // Legacy plain-string tokens are unbound — discard.
+        }
+
+        globalThis.localStorage.removeItem(STORAGE_KEY);
+        return null;
     } catch {
         return null;
     }
 }
 
-function writeStoredToken(token: null | string) {
+function writeStoredToken(payload: null | StoredToken) {
     try {
-        if (token) {
-            globalThis.localStorage.setItem(STORAGE_KEY, token);
+        if (payload) {
+            globalThis.localStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(payload)
+            );
         } else {
             globalThis.localStorage.removeItem(STORAGE_KEY);
         }
