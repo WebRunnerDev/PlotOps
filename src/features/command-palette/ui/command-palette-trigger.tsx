@@ -19,8 +19,8 @@ export function CommandPaletteTrigger() {
             variant="outline"
         >
             <SearchIcon className="size-3.5" />
-            <span className="hidden sm:inline">{t("open")}</span>
-            <kbd className="pointer-events-none hidden h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-flex">
+            <span className="hidden xl:inline">{t("open")}</span>
+            <kbd className="pointer-events-none hidden h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground xl:inline-flex">
                 {shortcutLabel}
             </kbd>
         </Button>

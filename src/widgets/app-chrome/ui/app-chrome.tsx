@@ -25,74 +25,77 @@ export function AppChrome() {
         <header
             className={cn(
                 "sticky top-0 z-40 shrink-0 border-b border-border bg-background/95 px-4 backdrop-blur-sm",
-                "relative flex flex-col gap-1 py-1 sm:block sm:h-12 sm:py-0",
+                // Mobile: brand | actions, nav on second row.
+                // sm+: three equal columns — center scrolls instead of overlapping sides.
+                "grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-2 gap-y-1 py-1",
+                "sm:h-12 sm:grid-cols-3 sm:grid-rows-1 sm:gap-3 sm:py-0",
                 "[view-transition-name:app-chrome]"
             )}
         >
-            <div className="flex min-h-10 items-center gap-2 sm:h-12 sm:min-h-0">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Link
-                        className="shrink-0 font-mono text-sm font-semibold tracking-tight text-foreground hover:text-foreground/80 focus-visible:ring-2"
-                        to="/home"
+            <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
+                <Link
+                    className="shrink-0 font-mono text-sm font-semibold tracking-tight text-foreground hover:text-foreground/80 focus-visible:ring-2"
+                    to="/home"
+                >
+                    PlotOps
+                </Link>
+
+                {projectId ? (
+                    <nav
+                        aria-label={t("nav.breadcrumb")}
+                        className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground"
                     >
-                        PlotOps
-                    </Link>
-
-                    {projectId ? (
-                        <nav
-                            aria-label={t("nav.breadcrumb")}
-                            className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground"
+                        <ChevronRight
+                            aria-hidden
+                            className="size-3.5 shrink-0 opacity-50 max-sm:hidden"
+                        />
+                        <Link
+                            className="hidden shrink-0 hover:text-foreground focus-visible:ring-2 sm:inline"
+                            to="/home"
                         >
-                            <ChevronRight
-                                aria-hidden
-                                className="size-3.5 shrink-0 opacity-50 max-sm:hidden"
-                            />
-                            <Link
-                                className="hidden shrink-0 hover:text-foreground focus-visible:ring-2 sm:inline"
-                                to="/home"
-                            >
-                                {t("nav.projects")}
-                            </Link>
-                            {project?.name ? (
-                                <>
-                                    <ChevronRight
-                                        aria-hidden
-                                        className="hidden size-3.5 shrink-0 opacity-50 sm:block"
-                                    />
-                                    {boardId ? (
-                                        <Link
-                                            className="truncate text-foreground hover:text-foreground/80 focus-visible:ring-2"
-                                            params={{ boardId, projectId }}
-                                            to="/projects/$projectId/boards/$boardId"
-                                        >
-                                            {project.name}
-                                        </Link>
-                                    ) : (
-                                        <span className="truncate text-foreground">
-                                            {project.name}
-                                        </span>
-                                    )}
-                                </>
-                            ) : null}
-                        </nav>
-                    ) : null}
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2">
-                    <CommandPaletteTrigger />
-                    <NotificationDrawer />
-                    <UserMenu />
-                </div>
+                            {t("nav.projects")}
+                        </Link>
+                        {project?.name ? (
+                            <>
+                                <ChevronRight
+                                    aria-hidden
+                                    className="hidden size-3.5 shrink-0 opacity-50 sm:block"
+                                />
+                                {boardId ? (
+                                    <Link
+                                        className="truncate text-foreground hover:text-foreground/80 focus-visible:ring-2"
+                                        params={{ boardId, projectId }}
+                                        to="/projects/$projectId/boards/$boardId"
+                                    >
+                                        {project.name}
+                                    </Link>
+                                ) : (
+                                    <span className="truncate text-foreground">
+                                        {project.name}
+                                    </span>
+                                )}
+                            </>
+                        ) : null}
+                    </nav>
+                ) : null}
             </div>
 
             {projectId ? (
-                <div className="min-w-0 overflow-x-auto sm:absolute sm:inset-y-0 sm:left-1/2 sm:flex sm:max-w-[min(100%,28rem)] sm:-translate-x-1/2 sm:items-center sm:overflow-x-auto">
-                    <ProjectSectionNav
-                        boardId={boardId}
-                        projectId={projectId}
-                    />
+                <div className="col-span-2 row-start-2 min-w-0 overflow-x-auto overflow-y-hidden sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-self-stretch">
+                    <div className="flex min-w-0 justify-center">
+                        <ProjectSectionNav
+                            boardId={boardId}
+                            projectId={projectId}
+                        />
+                    </div>
                 </div>
             ) : null}
+
+            <div className="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-2 sm:col-start-3">
+                <CommandPaletteTrigger />
+                <NotificationDrawer />
+                <UserMenu />
+            </div>
         </header>
     );
 }

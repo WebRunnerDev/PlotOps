@@ -15,10 +15,12 @@ describe("App chrome narrow viewport seam", () => {
         const nav = readUi("project-section-nav.tsx");
 
         expect(chrome).toMatch(/overflow-x-auto/);
+        expect(chrome).toMatch(/overflow-y-hidden/);
         expect(chrome).toMatch(/max-sm:hidden|sm:inline|sm:hidden/);
-        expect(chrome).toMatch(/flex-col|sm:absolute/);
-        expect(chrome).toMatch(/focus-visible:ring-2/);
+        expect(chrome).toMatch(/sm:grid-cols-3/);
+        expect(nav).toMatch(/focus-visible:ring-inset/);
         expect(nav).toMatch(/labelShort|nav\.\w+Short/);
-        expect(nav).toMatch(/sm:hidden/);
+        expect(nav).toMatch(/xl:hidden/);
+        expect(nav).toMatch(/xl:inline/);
     });
 });
