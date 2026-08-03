@@ -304,7 +304,7 @@
 }
 
 ::view-transition-group(root),
-::view-transition-group(app-chrome),
+::view-transition-group(top-bar),
 ::view-transition-group(page-backdrop),
 ::view-transition-group(main-content) {
     /* Skip width/height morph — default group animation stretches snapshots
@@ -312,8 +312,8 @@
     animation: none;
 }
 
-::view-transition-old(app-chrome),
-::view-transition-new(app-chrome),
+::view-transition-old(top-bar),
+::view-transition-new(top-bar),
 ::view-transition-old(page-backdrop),
 ::view-transition-new(page-backdrop) {
     animation: none;

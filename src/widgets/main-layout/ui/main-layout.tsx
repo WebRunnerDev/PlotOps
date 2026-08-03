@@ -2,7 +2,7 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 
 import { CommandPalette } from "@/features/command-palette";
 import { cn } from "@/shared/lib/utils";
-import { AppChrome } from "@/widgets/app-chrome";
+import { TopBar } from "@/widgets/top-bar";
 
 export function MainLayoutWidget() {
     return <MainLayoutContent />;
@@ -36,7 +36,7 @@ function MainLayoutContent() {
                 layoutMode === "default" && "min-h-dvh"
             )}
         >
-            <AppChrome />
+            <TopBar />
             <CommandPalette />
             {layoutMode === "kanban" ? (
                 <div className="min-h-0 flex-1 overflow-hidden">

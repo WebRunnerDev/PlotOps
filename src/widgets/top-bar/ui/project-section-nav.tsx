@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useProjectBoards } from "@/features/boards";
 import { cn } from "@/shared/lib/utils";
 import { buttonVariants } from "@/shared/shadcn/ui/button";
-import { resolveSectionNavBoardId } from "@/widgets/app-chrome/model/resolve-section-nav-board-id";
+import { resolveSectionNavBoardId } from "@/widgets/top-bar/model/resolve-section-nav-board-id";
 
 type ProjectSection = "backlog" | "board" | "cicd" | "settings";
 
