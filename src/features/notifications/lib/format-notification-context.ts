@@ -22,6 +22,10 @@ export function formatNotificationContext(
 
     if (notification.kind === "assignee_change") {
         const metadata = notification.metadata as AssigneeChangeMetadata;
+        if (metadata.audience === "previous_assignee") {
+            // Recipient-facing copy — viewer is the previous Assignee.
+            return t("notifications.kinds.assigneeRemoved");
+        }
         const to = metadata.assignee?.name;
         const from = metadata.previousAssignee?.name;
         if (from && to) {

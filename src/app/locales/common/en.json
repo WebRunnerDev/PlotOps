@@ -31,6 +31,7 @@
             "assigneeChange": "Assignee changed",
             "assigneeChangeDetail": "Assignee → {{name}}",
             "assigneeChangeFromDetail": "{{from}} → {{to}}",
+            "assigneeRemoved": "You are no longer the assignee",
             "assignment": "You were assigned",
             "assignmentDetail": "Assigned to {{name}}",
             "authorChange": "Author changed",

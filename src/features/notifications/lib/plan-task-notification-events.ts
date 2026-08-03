@@ -93,21 +93,30 @@ export function planTaskNotificationEvents(
     }
 
     if (input.assignee?.to) {
+        const previousAssignee = input.assignee.from;
         const metadata = {
             assignee: input.assignee.to,
-            previousAssignee: input.assignee.from,
+            previousAssignee,
         };
-        events.push(
-            {
-                kind: "assignment",
-                metadata,
-                recipientId: input.assignee.to.id,
-            },
-            {
+        events.push({
+            kind: "assignment",
+            metadata,
+            recipientId: input.assignee.to.id,
+        });
+        if (previousAssignee && previousAssignee.id !== input.assignee.to.id) {
+            events.push({
                 kind: "assignee_change",
-                metadata,
-            }
-        );
+                metadata: {
+                    ...metadata,
+                    audience: "previous_assignee" as const,
+                },
+                recipientId: previousAssignee.id,
+            });
+        }
+        events.push({
+            kind: "assignee_change",
+            metadata,
+        });
     }
 
     if (input.author?.to) {

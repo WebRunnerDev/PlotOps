@@ -31,6 +31,7 @@
             "assigneeChange": "Исполнитель изменён",
             "assigneeChangeDetail": "Исполнитель → {{name}}",
             "assigneeChangeFromDetail": "{{from}} → {{to}}",
+            "assigneeRemoved": "Вас сняли с роли исполнителя",
             "assignment": "Вас назначили исполнителем",
             "assignmentDetail": "Назначен {{name}}",
             "authorChange": "Автор изменён",

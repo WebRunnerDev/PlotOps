@@ -9,7 +9,8 @@ type ActivityChangeLike = {
 type IdName = { id: string; name: string };
 
 /**
- * Call-site seam: Activity assignee diff → always-on assignment + Watcher
+ * Call-site seam: Activity assignee diff → always-on assignment (new Assignee),
+ * always-on `assignee_change` (previous Assignee on reassign), plus Watcher
  * `assignee_change`. Clear Assignee plans nothing. Actor exclusion and
  * always-on/Watcher dedupe happen in `create_task_notifications`.
  */
@@ -29,17 +30,31 @@ export function planAssigneeChangeNotifications(
         source: "app" as const,
     };
 
-    return [
+    const events: TaskNotificationEvent[] = [
         {
             kind: "assignment",
             metadata,
             recipientId: to.id,
         },
-        {
-            kind: "assignee_change",
-            metadata,
-        },
     ];
+
+    if (previousAssignee && previousAssignee.id !== to.id) {
+        events.push({
+            kind: "assignee_change",
+            metadata: {
+                ...metadata,
+                audience: "previous_assignee" as const,
+            },
+            recipientId: previousAssignee.id,
+        });
+    }
+
+    events.push({
+        kind: "assignee_change",
+        metadata,
+    });
+
+    return events;
 }
 
 function asIdName(value: unknown): IdName | undefined {
