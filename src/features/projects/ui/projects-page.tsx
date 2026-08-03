@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import type { Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
-import { capabilitiesForRole } from "@/features/projects/model/access";
 import {
     useDeleteProject,
     useProjects,
@@ -175,14 +174,6 @@ export function ProjectsPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     {projects.map((project) => (
                         <ProjectCard
-                            canDeleteProject={
-                                capabilitiesForRole(
-                                    user != undefined &&
-                                        project.owner_id === user.id
-                                        ? "owner"
-                                        : null
-                                ).canDeleteProject
-                            }
                             isRemoving={
                                 deleteProject.isPending &&
                                 projectToRemove?.id === project.id
