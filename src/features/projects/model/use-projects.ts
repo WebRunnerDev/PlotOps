@@ -68,7 +68,7 @@ export function useProjects() {
         queryFn: async () => {
             const { data, error } = await fetchProjects();
             if (error) throw error;
-            return data;
+            return data ?? [];
         },
         queryKey: projectKeys.list(),
     });

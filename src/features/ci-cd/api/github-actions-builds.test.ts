@@ -156,6 +156,7 @@ describe("GitHub Actions 401 clears token SoT", () => {
                 name: "Repo",
                 owner_id: "user-1",
                 slug: "repo",
+                team_id: "team-1",
                 updated_at: "2026-01-01T00:00:00.000Z",
             },
             error: null,

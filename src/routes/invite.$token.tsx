@@ -77,10 +77,7 @@ function InviteAcceptPage() {
             if (error) throw error;
             safeRemoveItem("sessionStorage", "plotops_pending_invite");
             toast.success(t("invite.acceptSuccess"));
-            void navigate({
-                params: { projectId: invite.project_id },
-                to: "/projects/$projectId",
-            });
+            void navigate({ to: "/home" });
         } catch {
             toast.error(t("invite.acceptFailed"));
         } finally {
@@ -142,7 +139,7 @@ function InviteAcceptPage() {
                 <p className="text-meta text-muted-foreground">
                     {t("invite.eyebrow")}
                 </p>
-                <h1 className="text-h1">{invite.project_name}</h1>
+                <h1 className="text-h1">{invite.team_name}</h1>
                 <p className="text-ui text-muted-foreground">
                     {t("invite.asRole", {
                         role: t(`members.roles.${invite.role}`),

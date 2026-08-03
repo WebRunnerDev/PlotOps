@@ -24,7 +24,7 @@
 | CI/CD — real GitHub Actions                            | ✅ Done (Actions REST behind `buildsProvider`; Linear-style summary/filters/runs list; jobs + logs dialog; polling while in-flight)                                                    |
 | Command palette                                        | ✅ Done (Ctrl/Cmd+K + AppChrome; rules seam; search Tasks; Create Task; Switch Project; Toggle theme — #21–#26)                                                                        |
 | GitHub webhooks + Edge Function                        | ✅ Done (`github-webhook`: PR merge → Task last column on Board Base branch; GitHub App + HMAC; does **not** feed CI/CD — see `docs/github-webhook-setup.md`)                          |
-| Team & permissions (`project_members`, roles, invites) | ✅ Done (schema+RLS+settings/invite UI; Board/Git UI gating by Role)                                                                                                                   |
+| Team & permissions (`project_members`, roles, invites) | ✅ Done (Project-boundary MVP); 🟡 Team above Project — domain locked ADR 0017; schema+RLS #155 done (local); UI/gating tickets open                                                   |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                    |
 | Sprints (Board-scoped)                                 | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5)                                                      |
 | Feature modules (ADR 0009)                             | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                       |
@@ -132,31 +132,41 @@ MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app +
 5. **Board chrome** — link to Backlog; scope toggle Active sprint | Entire board; optional sprint badge on cards.
 6. **Progress** — mark Done when the slice above ships. ✅
 
-## Team & permissions (MVP)
+## Team & permissions (MVP → Team above Project)
 
-> Domain glossary: `CONTEXT.md`. Decisions: `docs/adr/0001`–`0005`.
+> Domain glossary: `CONTEXT.md`. Decisions: `docs/adr/0001`–`0005` (Project-boundary MVP, partly superseded), **ADR 0017** (Team above Project).
 
-**Model:** Project is the collaboration boundary (no Team entity). Owner = `projects.owner_id`. Members: Admin / Manager / Contributor / Viewer. Invites are email-addressed, copy-link delivered, TTL 1/7/30/never.
+### Shipped (Project-boundary MVP)
 
-### Implementation plan
+Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Admin / Manager / Contributor / Viewer via `project_members` / `project_invites`. Invites email-addressed, copy-link, TTL 1/7/30/never. Settings + `/invite/$token` + `useProjectAccess` UI gating.
 
-1. **Schema + RLS** — `project_members`, `project_invites`, capability helpers, rewrite policies (this migration).
-2. **API + permissions hook** — TanStack Query for members/invites; `useProjectAccess` from role.
-3. **Settings UI** — members list, create invite (copy link), revoke, change role, remove, confirm mismatched redeem.
-4. **Accept route** — `/invite/$token`; email-match accept RPC; pending confirm for Owner/Admin.
-5. **UI gating** — hide create/delete/board controls by capability (RLS remains source of truth).
+### Target model (ADR 0017)
+
+**Team** is the access and ownership boundary (`teams.owner_id`, `team_members`, `team_invites`). Every Project belongs to exactly one Team; no Project membership overlay and no `projects.owner_id`. Roles unchanged — same capabilities apply to all Projects in the Team. Create Project: Owner/Admin (still by connecting a GitHub repo). Delete Project: Owner only. Delete Team: only when it has zero Projects. Team-first UX: Home = Teams; empty Team allowed; Members/Invites in Team settings; Board URLs stay `/projects/$projectId/boards/$boardId`. Data migration: **1:1** each existing Project → its own Team (members/invites lifted); unique `(team_id, github_repo_id)`.
+
+### Implementation plan (Team above Project)
+
+1. **Domain lock** — CONTEXT + ADR 0017 + this SPEC section (docs). ✅
+2. **Schema + RLS** — `teams`, `team_members`, `team_invites`, `projects.team_id`; 1:1 backfill; drop `project_members` / `project_invites` / `projects.owner_id`; capability helpers + policies on Team. ✅ (#155)
+3. **Home / Team shell** — list Teams, create Team, Team projects list.
+4. **Team settings** — members, invites, leave/remove, Owner transfer (lifted semantics).
+5. **Invite redeem** — `/invite/$token` joins a Team.
+6. **Project lifecycle** — create under Team (GH connect), delete Project (Owner), delete empty Team.
+7. **UI gating** — `useTeamAccess` for Board/Git/settings controls (RLS remains source of truth).
 
 ## Deferred / later
 
-> Captured during domain grilling (Team & Permissions). Not in current MVP scope — do not implement until explicitly pulled in.
+> Captured during domain grilling (Team & Permissions + Team above Project). Not in current scope — do not implement until explicitly pulled in.
 
 | Item                                     | Notes                                                                                                                                  |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Separate **Team** entity above Project   | MVP: Project is the collaboration boundary (`CONTEXT.md`). Org/Team layer later if needed.                                             |
-| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Project”.                                                                     |
+| Projects without GitHub                  | Schema already allows null repo fields; create stays “connect GitHub repo”. Name-only Project later.                                   |
+| Flat all-Projects home                   | Home is Teams-first; a cross-Team Projects view can wait.                                                                              |
+| Merge / move Projects between Teams      | 1:1 migration only; no Team merge or Project transfer UI in this slice.                                                                |
+| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Team”.                                                                        |
 | Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough.                                        |
 | Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                                                              |
-| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Project Role.                                                                       |
+| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Team Role.                                                                          |
 | Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                 |
 | Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                                                              |
 | Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.                                                      |

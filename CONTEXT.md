@@ -1,6 +1,6 @@
 # PlotOps
 
-Git-native project tracker (Linear/Jira-style) with GitHub integration. Collaboration and access are scoped to a Project — there is no separate Team entity in the MVP.
+Git-native project tracker (Linear/Jira-style) with GitHub integration. Collaboration and access are scoped to a Team; Projects live under a Team and hold work (Boards, Tasks, linked GitHub repo).
 
 ## Language
 
@@ -24,9 +24,13 @@ _Avoid_: surname, family name (synonyms; Last name is canonical here)
 
 ### Ownership & access
 
+**Team**:
+The unit of ownership and collaboration. Members, Roles, and Invites belong to a Team. A Team owns zero or more Projects. Access to every Project in the Team is inherited from Team membership — there is no separate Project membership.
+_Avoid_: Workspace, Organization, Project (when meaning the access boundary)
+
 **Project**:
-The unit of ownership and collaboration. Members, roles, Boards, Tasks, and a linked GitHub repository all belong to a Project.
-_Avoid_: Team, Workspace, Organization
+A unit of work inside exactly one Team: Boards, Tasks, Labels, and a linked GitHub repository. Does not own Members or Roles — those live on the Team. Created by connecting a GitHub repository (Projects without a repo are out of scope for now).
+_Avoid_: Team, Workspace, repository (the GitHub repo is linked to the Project, not the same concept)
 
 **Board**:
 A kanban workflow inside a Project: its own columns and Tasks. A Project may have several Boards (e.g. Core, Frontend). Git branch mapping for that workflow belongs to the Board. Every Project has at least one Board. A Board may be deleted only when it has no Tasks and is not the Project's last Board.
@@ -83,34 +87,34 @@ Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (
 _Avoid_: Rollover, spillover
 
 **Member**:
-A user who belongs to a Project with one Role. May leave the Project themselves. Owner/Admin may remove Manager, Contributor, or Viewer; only Owner may remove an Admin. The Owner cannot leave — they must transfer ownership first.
-_Avoid_: Collaborator, participant, teammate
+A user who belongs to a Team with one Role. May leave the Team themselves. Owner/Admin may remove Manager, Contributor, or Viewer; only Owner may remove an Admin. The Owner cannot leave — they must transfer ownership first. Membership grants the same Role capabilities on every Project in the Team.
+_Avoid_: Collaborator, participant, teammate, Project member
 
 **Role**:
-A named permission set granted to a Member on a Project. MVP member roles: Admin, Manager, Contributor, Viewer. Owner is not a Member Role — see Owner.
-_Avoid_: Permission (a Role groups permissions), access level
+A named permission set granted to a Member on a Team. Member roles: Admin, Manager, Contributor, Viewer. Owner is not a Member Role — see Owner.
+_Avoid_: Permission (a Role groups permissions), access level, Project role
 
 **Owner**:
-The user referenced by `projects.owner_id`. Full control of the Project, including deletion, ownership transfer, and granting/revoking Admin. Not stored as a `project_members` row.
-_Avoid_: Admin
+The user referenced by `teams.owner_id`. Full control of the Team, including deleting an empty Team, ownership transfer, granting/revoking Admin, and deleting any Project in the Team. Not stored as a `team_members` row.
+_Avoid_: Admin, Project owner
 
 **Admin**:
-A Role that manages Members, Invites, Project settings, and Git repo connection — but cannot delete the Project, transfer ownership, or grant/revoke the Admin Role (Owner only). May invite and assign Manager, Contributor, or Viewer. Also has Manager-level Board/Task powers.
+A Role that manages Members, Invites, Team settings, creating Projects, and Git repo connection on Projects — but cannot delete a Project, delete the Team, transfer ownership, or grant/revoke the Admin Role (Owner only). May invite and assign Manager, Contributor, or Viewer. Also has Manager-level Board/Task powers on every Project in the Team.
 
 **Manager**:
-A Role that plans work: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, or Project settings. Cannot delete a Board that still has Tasks, or the Project's last Board.
+A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
 
 **Contributor**:
-A Role that executes work on any Task in the Project (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
+A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
 _Avoid_: Developer, Member (too vague), Executor
 
 **Viewer**:
-A Role with read-only access to the Project's Boards, Tasks, and PR statuses.
-_Avoid_: Stakeholder, Guest (Guest is the demo auth mode, not a Project Role)
+A Role with read-only access to the Team's Projects' Boards, Tasks, and PR statuses.
+_Avoid_: Stakeholder, Guest (Guest is the demo auth mode, not a Team Role)
 
 **Invite**:
-A pending offer to join a Project at a chosen Role, addressed to an email. Delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Redeem requires the auth email to match, or the invitee may claim the invite (`claimed_by`) so an Owner/Admin can confirm. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
-_Avoid_: Invitation email (delivery is out-of-band), magic link (Auth magic links are a different mechanism)
+A pending offer to join a Team at a chosen Role, addressed to an email. Delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Redeem requires the auth email to match, or the invitee may claim the invite (`claimed_by`) so an Owner/Admin can confirm. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
+_Avoid_: Invitation email (delivery is out-of-band), magic link (Auth magic links are a different mechanism), Project invite
 
 ### Awareness
 
@@ -120,10 +124,10 @@ _Avoid_: reporter, creator (UI copy may say “created by”; the domain term is
 
 **Assignee**:
 The user currently responsible for executing the Task (`assignee_id`), if any. Distinct from the Contributor Role — Contributors may edit any Task; Assignee is an optional person field. Auto-enrolled as a Watcher when set; may Unwatch. Reassignment or clearing the Assignee removes that user's Watch only if they are not also the Author. Clearing the Assignee (no replacement) creates no Notification.
-_Avoid_: executor, owner (Owner is the Project Owner), responsible (too vague)
+_Avoid_: executor, owner (Owner is the Team Owner), responsible (too vague)
 
 **Watch**:
-A personal subscription by a user to a Task so they receive Notifications for a curated set of structural Task events (not every Activity — e.g. not description, Labels, Sprint membership, or git field edits). Author and Assignee are auto-enrolled; Mentionees are not. Any Project Owner or Member who can view the Task (including Viewer) may Watch or Unwatch. Only that user may add or remove their own Watch — others cannot Unwatch them. Losing both Author and Assignee roles on a Task auto-removes that user's Watch; a Watcher who was never Author or Assignee keeps their Watch until they Unwatch or leave the Project. Watch is independent of always-on person-field and Mention Notifications. Watchers on a Task may be shown as a list (e.g. avatars) for awareness. When the user leaves or is removed from the Project, their Watches on that Project's Tasks are deleted.
+A personal subscription by a user to a Task so they receive Notifications for a curated set of structural Task events (not every Activity — e.g. not description, Labels, Sprint membership, or git field edits). Author and Assignee are auto-enrolled; Mentionees are not. Any Team Owner or Member who can view the Task (including Viewer) may Watch or Unwatch. Only that user may add or remove their own Watch — others cannot Unwatch them. Losing both Author and Assignee roles on a Task auto-removes that user's Watch; a Watcher who was never Author or Assignee keeps their Watch until they Unwatch or leave the Team. Watch is independent of always-on person-field and Mention Notifications. Watchers on a Task may be shown as a list (e.g. avatars) for awareness. When the user leaves or is removed from the Team, their Watches on that Team's Projects' Tasks are deleted.
 _Avoid_: follow, subscribe, favorite, activity (Activity is the Task drawer feed from `activity_log`)
 
 **Watcher**:
@@ -131,7 +135,7 @@ A user who has a Watch on a Task.
 _Avoid_: subscriber, follower
 
 **Mention**:
-An explicit structured reference to a single Project Owner or Member (including Viewer) inside a Task Description or Comment. Only users who can already view the Task may be Mentionees — not users outside the Project. Group Mentions (`everyone`, whole Roles) are out of scope. Free-text that looks like `@Name` without a structured reference is not a Mention. Always-on awareness: creates a Notification for the Mentionee, independent of Watch. Does not auto-enroll a Watch — Mentionee stays unwatched unless they already Watch or become Author/Assignee. On create or edit, only Mentionees newly added relative to the previous body receive a Notification; Mentionees who remain unchanged across an edit are not re-notified. Removing a Mentionee and adding them again later counts as new. Multiple Mentions of the same Mentionee in one save produce one Notification. Opening a Mention Notification opens the Task; Comment Mentions also target that Comment. If a Mentionee later leaves the Project, the structured reference may remain in the body as a stale Mention (shown without resolving to a current Member) and must not trigger new Notifications until they are a Project Owner or Member again. Resolved by user id, not by a free-text handle. Not the same as commenting in general — a Comment without a Mention notifies nobody via Notification. The actor is never notified for Mentions they create (including self-Mention).
+An explicit structured reference to a single Team Owner or Member (including Viewer) inside a Task Description or Comment. Only users who can already view the Task may be Mentionees — not users outside the Team. Group Mentions (`everyone`, whole Roles) are out of scope. Free-text that looks like `@Name` without a structured reference is not a Mention. Always-on awareness: creates a Notification for the Mentionee, independent of Watch. Does not auto-enroll a Watch — Mentionee stays unwatched unless they already Watch or become Author/Assignee. On create or edit, only Mentionees newly added relative to the previous body receive a Notification; Mentionees who remain unchanged across an edit are not re-notified. Removing a Mentionee and adding them again later counts as new. Multiple Mentions of the same Mentionee in one save produce one Notification. Opening a Mention Notification opens the Task; Comment Mentions also target that Comment. If a Mentionee later leaves the Team, the structured reference may remain in the body as a stale Mention (shown without resolving to a current Member) and must not trigger new Notifications until they are a Team Owner or Member again. Resolved by user id, not by a free-text handle. Not the same as commenting in general — a Comment without a Mention notifies nobody via Notification. The actor is never notified for Mentions they create (including self-Mention).
 _Avoid_: tag, ping, @user (UI syntax only), comment notification (Comments alone are not a Notification kind), @everyone
 
 **Mentionee**:
@@ -139,5 +143,5 @@ The user targeted by a Mention.
 _Avoid_: mentioned user, tagged user
 
 **Notification**:
-An in-app inbox item addressed to one user about a Task event. Watcher kinds: status change, Board move, priority change, Assignee set/reassign, Author change. Always-on kinds (independent of Watch): assignment to the new Assignee, Author transfer to the new Author, and Mention to the Mentionee. On person-field changes, Watchers also receive the corresponding Watcher kind; a recipient who would get both always-on and Watcher delivery for the same change gets a single Notification row. A Board move that also remaps status produces one `board_move` Notification (status included in context), not a separate `status_change`. A single Task save that changes several structural fields produces one Notification per changed kind (not one summary row). Never created for the actor of the change. Clearing Assignee creates none. Watcher kinds are not created for description, title, Labels, Sprint membership, git fields, archive/restore, or Comments without Mentions. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Project does not delete existing Notification rows for that Project; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
+An in-app inbox item addressed to one user about a Task event. Watcher kinds: status change, Board move, priority change, Assignee set/reassign, Author change. Always-on kinds (independent of Watch): assignment to the new Assignee, Author transfer to the new Author, and Mention to the Mentionee. On person-field changes, Watchers also receive the corresponding Watcher kind; a recipient who would get both always-on and Watcher delivery for the same change gets a single Notification row. A Board move that also remaps status produces one `board_move` Notification (status included in context), not a separate `status_change`. A single Task save that changes several structural fields produces one Notification per changed kind (not one summary row). Never created for the actor of the change. Clearing Assignee creates none. Watcher kinds are not created for description, title, Labels, Sprint membership, git fields, archive/restore, or Comments without Mentions. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Team does not delete existing Notification rows for that Team's Projects; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
 _Avoid_: alert, toast (transient UI only), activity event
