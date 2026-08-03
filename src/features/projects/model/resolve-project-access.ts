@@ -1,8 +1,8 @@
+import type { TeamAccessState } from "@/features/teams/model/use-team-access";
+
 import {
     capabilitiesForRole,
-    type ProjectAccessRole,
     type ProjectCapabilities,
-    type ProjectMemberRole,
 } from "@/features/projects/model/access";
 
 const EMPTY: ProjectCapabilities = capabilitiesForRole(null);
@@ -15,54 +15,22 @@ export type ProjectAccessState = ProjectCapabilities & {
 };
 
 export type ResolveProjectAccessInput = {
-    membership: null | undefined | { role: ProjectMemberRole };
-    membershipError: boolean;
-    membershipLoading: boolean;
-    project: null | undefined | { owner_id: string };
+    project: null | undefined | { team_id: string };
+    projectError: boolean;
     projectLoading: boolean;
-    userId: null | string | undefined;
+    teamAccess: TeamAccessState;
 };
 
+/**
+ * Project screens resolve Team via `team_id`, then defer to Team Role caps.
+ * RLS remains the source of truth; this only gates UI.
+ */
 export function resolveProjectAccess(
     input: ResolveProjectAccessInput
 ): ProjectAccessState {
-    const {
-        membership,
-        membershipError,
-        membershipLoading,
-        project,
-        projectLoading,
-        userId,
-    } = input;
+    const { project, projectError, projectLoading, teamAccess } = input;
 
-    if (!userId || !project) {
-        return {
-            ...EMPTY,
-            isError: false,
-            isLoading: projectLoading || membershipLoading,
-            isSettled: false,
-        };
-    }
-
-    if (project.owner_id === userId) {
-        return {
-            ...capabilitiesForRole("owner"),
-            isError: false,
-            isLoading: projectLoading,
-            isSettled: !projectLoading,
-        };
-    }
-
-    if (membershipLoading || projectLoading) {
-        return {
-            ...EMPTY,
-            isError: false,
-            isLoading: true,
-            isSettled: false,
-        };
-    }
-
-    if (membershipError) {
+    if (projectError && !project) {
         return {
             ...EMPTY,
             isError: true,
@@ -71,15 +39,14 @@ export function resolveProjectAccess(
         };
     }
 
-    let role: null | ProjectAccessRole = null;
-    if (membership?.role) {
-        role = membership.role;
+    if (!project) {
+        return {
+            ...EMPTY,
+            isError: false,
+            isLoading: projectLoading || teamAccess.isLoading,
+            isSettled: false,
+        };
     }
 
-    return {
-        ...capabilitiesForRole(role),
-        isError: false,
-        isLoading: false,
-        isSettled: true,
-    };
+    return teamAccess;
 }

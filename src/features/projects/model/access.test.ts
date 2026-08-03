@@ -57,3 +57,46 @@ describe("Project Role access seam — Board affordances", () => {
         expect(caps.canView).toBe(false);
     });
 });
+
+describe("Team Role access seam — Members / Project / Team lifecycle", () => {
+    it("Viewer cannot mutate Members, Projects, or Team", () => {
+        const caps = capabilitiesForRole("viewer");
+
+        expect(caps.canManageMembers).toBe(false);
+        expect(caps.canCreateProject).toBe(false);
+        expect(caps.canDeleteProject).toBe(false);
+        expect(caps.canDeleteTeam).toBe(false);
+        expect(caps.canManageSettings).toBe(false);
+    });
+
+    it("Manager cannot manage Members or create Projects", () => {
+        const caps = capabilitiesForRole("manager");
+
+        expect(caps.canManageBoard).toBe(true);
+        expect(caps.canManageMembers).toBe(false);
+        expect(caps.canCreateProject).toBe(false);
+        expect(caps.canDeleteProject).toBe(false);
+        expect(caps.canDeleteTeam).toBe(false);
+        expect(caps.canManageSettings).toBe(false);
+    });
+
+    it("Admin can create Projects and manage Members but cannot delete Project/Team", () => {
+        const caps = capabilitiesForRole("admin");
+
+        expect(caps.canManageMembers).toBe(true);
+        expect(caps.canCreateProject).toBe(true);
+        expect(caps.canManageSettings).toBe(true);
+        expect(caps.canDeleteProject).toBe(false);
+        expect(caps.canDeleteTeam).toBe(false);
+    });
+
+    it("Owner can create Projects and delete Project/Team", () => {
+        const caps = capabilitiesForRole("owner");
+
+        expect(caps.canManageMembers).toBe(true);
+        expect(caps.canCreateProject).toBe(true);
+        expect(caps.canDeleteProject).toBe(true);
+        expect(caps.canDeleteTeam).toBe(true);
+        expect(caps.canGrantAdmin).toBe(true);
+    });
+});

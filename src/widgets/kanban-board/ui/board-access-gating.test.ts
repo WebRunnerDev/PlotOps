@@ -10,13 +10,15 @@ function readUi(name: string) {
 }
 
 describe("Board UI Role gating seam", () => {
-    it("gates Task status DnD on canEditTasks from useProjectAccess", () => {
+    it("gates Task status DnD on canEditTasks from Team-backed useProjectAccess", () => {
         const board = readUi("kanban-board.tsx");
         const column = readUi("kanban-column.tsx");
         const card = readUi("draggable-task-card.tsx");
 
+        expect(board).toMatch(/useProjectAccess/);
         expect(board).toMatch(/canEditTasks/);
         expect(board).toMatch(/moveTaskToColumn/);
+        expect(column).toMatch(/useProjectAccess/);
         expect(column).toMatch(/canEditTasks/);
         expect(card).toMatch(/disabled:\s*!canDrag|disabled:\s*!canEditTasks/);
         expect(board).toMatch(/isSettled/);

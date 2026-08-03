@@ -10,10 +10,11 @@ function readUi(name: string) {
 }
 
 describe("Git UI Role gating seam", () => {
-    it("gates Task Git writes on canEditTasks via the same access seam as Board", () => {
+    it("gates Task Git writes on canEditTasks via Team-backed Project access", () => {
         const drawer = readUi("task-drawer.tsx");
         const panel = readUi("task-github-panel.tsx");
 
+        // Project screens resolve Team Role via useProjectAccess → useTeamAccess.
         expect(drawer).toMatch(/useProjectAccess/);
         expect(drawer).toMatch(/canEditTasks/);
         expect(drawer).toMatch(/TaskGithubPanel[\s\S]*canEdit=\{canEdit\}/);
