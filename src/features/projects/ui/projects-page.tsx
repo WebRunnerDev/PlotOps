@@ -1,4 +1,4 @@
-import { FolderGit2, Plus } from "lucide-react";
+import { FolderGit2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
@@ -6,12 +6,10 @@ import { toast } from "sonner";
 
 import type { Project } from "@/features/projects/model/types";
 
-import { signInWithGitHub, useAuth } from "@/features/auth";
 import {
     useDeleteProject,
     useProjects,
 } from "@/features/projects/model/use-projects";
-import { AddProjectDialog } from "@/features/projects/ui/add-project-dialog";
 import { ProjectCard } from "@/features/projects/ui/project-card";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
@@ -24,7 +22,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/shared/shadcn/ui/alert-dialog";
-import { Button } from "@/shared/shadcn/ui/button";
 import {
     Card,
     CardContent,
@@ -35,7 +32,6 @@ import {
 } from "@/shared/shadcn/ui/card";
 import {
     Empty,
-    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -45,17 +41,14 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 const PROJECT_SKELETON_COUNT = 4;
 
+/** @deprecated Prefer Team projects list (`TeamProjectsPage`); create under a Team. */
 export function ProjectsPage() {
     const { t } = useTranslation("home");
-    const { githubAccessToken, user } = useAuth();
-    const [isAddOpen, setIsAddOpen] = useState(false);
     const [projectToRemove, setProjectToRemove] = useState<null | Project>(
         null
     );
     const { data: projects = [], error, isLoading } = useProjects();
     const deleteProject = useDeleteProject();
-
-    const canAddFromGitHub = Boolean(githubAccessToken && user);
 
     const handleConfirmRemove = async () => {
         if (!projectToRemove) return;
@@ -70,36 +63,11 @@ export function ProjectsPage() {
 
     return (
         <div className="flex flex-col gap-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div className="flex flex-col gap-1">
-                    <h1>{t("title")}</h1>
-                    <p className="text-body text-muted-foreground">
-                        {t("subtitle")}
-                    </p>
-                </div>
-
-                {canAddFromGitHub ? (
-                    <Button onClick={() => setIsAddOpen(true)} type="button">
-                        <Plus data-icon="inline-start" />
-                        {t("addProject")}
-                    </Button>
-                ) : (
-                    <div className="flex flex-col items-stretch gap-2 sm:items-end">
-                        <Alert className="max-w-md">
-                            <FolderGit2 />
-                            <AlertDescription>
-                                {t("githubRequired")}
-                            </AlertDescription>
-                        </Alert>
-                        <Button
-                            onClick={() => signInWithGitHub()}
-                            type="button"
-                            variant="outline"
-                        >
-                            {t("reconnectGitHub")}
-                        </Button>
-                    </div>
-                )}
+            <div className="flex flex-col gap-1">
+                <h1>{t("title")}</h1>
+                <p className="text-body text-muted-foreground">
+                    {t("subtitle")}
+                </p>
             </div>
 
             {isLoading && (
@@ -155,18 +123,6 @@ export function ProjectsPage() {
                             {t("emptyDescription")}
                         </EmptyDescription>
                     </EmptyHeader>
-                    {canAddFromGitHub && (
-                        <EmptyContent>
-                            <Button
-                                onClick={() => setIsAddOpen(true)}
-                                type="button"
-                                variant="outline"
-                            >
-                                <Plus data-icon="inline-start" />
-                                {t("addProject")}
-                            </Button>
-                        </EmptyContent>
-                    )}
                 </Empty>
             )}
 
@@ -224,16 +180,6 @@ export function ProjectsPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            {user && githubAccessToken && (
-                <AddProjectDialog
-                    accessToken={githubAccessToken}
-                    connectedProjects={projects}
-                    onOpenChange={setIsAddOpen}
-                    open={isAddOpen}
-                    userId={user.id}
-                />
-            )}
         </div>
     );
 }

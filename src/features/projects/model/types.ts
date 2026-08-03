@@ -7,6 +7,7 @@ export type CreateProjectInput = {
     is_private: boolean;
     name: string;
     slug: string;
+    team_id: string;
 };
 
 export type GitHubRepo = {

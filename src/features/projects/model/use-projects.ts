@@ -7,6 +7,7 @@ import {
     deleteProject,
     fetchProject,
     fetchProjects,
+    fetchProjectsByTeam,
     slugifyRepoName,
 } from "@/features/projects/api/projects-api";
 
@@ -16,7 +17,13 @@ export function useCreateProject() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (repo: GitHubRepo) => {
+        mutationFn: async ({
+            repo,
+            teamId,
+        }: {
+            repo: GitHubRepo;
+            teamId: string;
+        }) => {
             const { data, error } = await createProject({
                 description: repo.description,
                 github_default_branch: repo.default_branch,
@@ -26,6 +33,7 @@ export function useCreateProject() {
                 is_private: repo.private,
                 name: repo.name,
                 slug: slugifyRepoName(repo.full_name),
+                team_id: teamId,
             });
 
             if (error) throw error;
@@ -71,5 +79,17 @@ export function useProjects() {
             return data ?? [];
         },
         queryKey: projectKeys.list(),
+    });
+}
+
+export function useProjectsByTeam(teamId: string) {
+    return useQuery({
+        enabled: Boolean(teamId),
+        queryFn: async () => {
+            const { data, error } = await fetchProjectsByTeam(teamId);
+            if (error) throw error;
+            return data ?? [];
+        },
+        queryKey: projectKeys.listByTeam(teamId),
     });
 }

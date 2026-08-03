@@ -37,35 +37,11 @@ export async function createProject(input: CreateProjectInput) {
 
     await ensureUserProfile(user);
 
-    const { data: team, error: teamError } = await supabase
-        .from("teams")
-        .insert({
-            name: input.name,
-            owner_id: user.id,
-        })
-        .select("id")
-        .single();
-
-    if (teamError || !team) {
-        return {
-            data: null,
-            error: teamError ?? new Error("Could not create team"),
-        };
-    }
-
     const result = await supabase
         .from("projects")
-        .insert({
-            ...input,
-            team_id: team.id,
-        })
+        .insert(input)
         .select(PROJECT_SELECT)
         .single();
-
-    if (result.error) {
-        await supabase.from("teams").delete().eq("id", team.id);
-        return { data: null, error: result.error };
-    }
 
     return {
         ...result,
@@ -108,6 +84,21 @@ export async function fetchProjects() {
     const result = await supabase
         .from("projects")
         .select(PROJECT_SELECT)
+        .order("created_at", { ascending: false });
+
+    return {
+        ...result,
+        data: result.data
+            ? result.data.map((row) => mapProject(row as ProjectRow))
+            : result.data,
+    };
+}
+
+export async function fetchProjectsByTeam(teamId: string) {
+    const result = await supabase
+        .from("projects")
+        .select(PROJECT_SELECT)
+        .eq("team_id", teamId)
         .order("created_at", { ascending: false });
 
     return {
