@@ -22,6 +22,7 @@ import { Route as authSignUpRouteImport } from './../routes/(auth)/sign-up'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
 import { Route as mainProjectsProjectIdRouteRouteImport } from './../routes/(main)/projects/$projectId/route'
 import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(main)/projects/$projectId/index'
+import { Route as mainTeamsTeamIdSettingsRouteImport } from './../routes/(main)/teams/$teamId/settings'
 import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
 import { Route as mainProjectsProjectIdCiCdRouteImport } from './../routes/(main)/projects/$projectId/ci-cd'
 import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
@@ -94,6 +95,11 @@ const mainProjectsProjectIdIndexRoute =
     path: '/',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainTeamsTeamIdSettingsRoute = mainTeamsTeamIdSettingsRouteImport.update({
+  id: '/teams/$teamId/settings',
+  path: '/teams/$teamId/settings',
+  getParentRoute: () => mainRouteRoute,
+} as any)
 const mainProjectsProjectIdSettingsRoute =
   mainProjectsProjectIdSettingsRouteImport.update({
     id: '/settings',
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
+  '/teams/$teamId/settings': typeof mainTeamsTeamIdSettingsRoute
   '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
+  '/teams/$teamId/settings': typeof mainTeamsTeamIdSettingsRoute
   '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/(main)/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/(main)/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
+  '/(main)/teams/$teamId/settings': typeof mainTeamsTeamIdSettingsRoute
   '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
   '/(main)/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId'
     | '/projects/$projectId/ci-cd'
     | '/projects/$projectId/settings'
+    | '/teams/$teamId/settings'
     | '/projects/$projectId/'
     | '/projects/$projectId/boards/$boardId'
     | '/projects/$projectId/boards/$boardId/backlog'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/projects/$projectId/ci-cd'
     | '/projects/$projectId/settings'
+    | '/teams/$teamId/settings'
     | '/projects/$projectId'
     | '/projects/$projectId/boards/$boardId/backlog'
     | '/projects/$projectId/boards/$boardId'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/(main)/projects/$projectId'
     | '/(main)/projects/$projectId/ci-cd'
     | '/(main)/projects/$projectId/settings'
+    | '/(main)/teams/$teamId/settings'
     | '/(main)/projects/$projectId/'
     | '/(main)/projects/$projectId/boards/$boardId'
     | '/(main)/projects/$projectId/boards/$boardId/backlog'
@@ -343,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdIndexRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
+    '/(main)/teams/$teamId/settings': {
+      id: '/(main)/teams/$teamId/settings'
+      path: '/teams/$teamId/settings'
+      fullPath: '/teams/$teamId/settings'
+      preLoaderRoute: typeof mainTeamsTeamIdSettingsRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
     '/(main)/projects/$projectId/settings': {
       id: '/(main)/projects/$projectId/settings'
       path: '/settings'
@@ -427,6 +446,7 @@ interface mainRouteRouteChildren {
   mainNotificationsRoute: typeof mainNotificationsRoute
   mainSettingsRoute: typeof mainSettingsRoute
   mainProjectsProjectIdRouteRoute: typeof mainProjectsProjectIdRouteRouteWithChildren
+  mainTeamsTeamIdSettingsRoute: typeof mainTeamsTeamIdSettingsRoute
 }
 
 const mainRouteRouteChildren: mainRouteRouteChildren = {
@@ -436,6 +456,7 @@ const mainRouteRouteChildren: mainRouteRouteChildren = {
   mainNotificationsRoute: mainNotificationsRoute,
   mainSettingsRoute: mainSettingsRoute,
   mainProjectsProjectIdRouteRoute: mainProjectsProjectIdRouteRouteWithChildren,
+  mainTeamsTeamIdSettingsRoute: mainTeamsTeamIdSettingsRoute,
 }
 
 const mainRouteRouteWithChildren = mainRouteRoute._addFileChildren(

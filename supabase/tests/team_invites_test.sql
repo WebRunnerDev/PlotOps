@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(5);
+select plan(6);
 
 select set_config('test.owner', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true);
 select set_config('test.invitee', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', true);
@@ -97,6 +97,14 @@ select lives_ok(
     current_setting('test.claimer')::uuid
   )$$,
   'owner can confirm claimed invite'
+);
+
+select is(
+  (select role from public.team_members
+   where team_id = '11111111-1111-1111-1111-111111111111'
+     and user_id = current_setting('test.claimer')::uuid),
+  'viewer'::public.project_member_role,
+  'confirm creates team_members for claimer'
 );
 
 select * from finish();

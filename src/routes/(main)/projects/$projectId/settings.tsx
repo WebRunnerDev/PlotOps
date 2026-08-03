@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -6,13 +6,7 @@ import { useAuth } from "@/features/auth/model/use-auth";
 import { ProjectBoardsSettings, useProjectBoards } from "@/features/boards";
 import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import {
-    useProjectInvites,
-    useProjectMembers,
-    useProjectOwnerProfile,
-} from "@/features/projects/model/use-project-members";
 import { useProject } from "@/features/projects/model/use-projects";
-import { ProjectMembersSettings } from "@/features/projects/ui/project-members-settings";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -22,7 +16,7 @@ export const Route = createFileRoute("/(main)/projects/$projectId/settings")({
     component: ProjectSettingsRoute,
 });
 
-type SettingsSection = "boards" | "labels" | "members";
+type SettingsSection = "boards" | "labels";
 
 function ProjectSettingsRoute() {
     const { projectId } = Route.useParams();
@@ -42,27 +36,11 @@ function ProjectSettingsRoute() {
         isError: boardsError,
         isPending: boardsPending,
     } = useProjectBoards(projectId);
-    const { data: members = [] } = useProjectMembers(projectId);
-    const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
-    const { data: invites = [] } = useProjectInvites(
-        projectId,
-        canManageMembers
-    );
     const { labels } = useProjectLabels(projectId);
     const defaultBoardId = boards[0]?.id ?? "";
     const selectTask = useTasksUiStore((state) => state.selectTask);
 
-    const [section, setSection] = useState<SettingsSection>("members");
-
-    const membersCount = useMemo(() => {
-        const ownerCounted = project?.owner_id && ownerProfile ? 1 : 0;
-        return ownerCounted + members.length;
-    }, [members.length, ownerProfile, project?.owner_id]);
-
-    const pendingInvitesCount = useMemo(
-        () => invites.filter((invite) => invite.status === "pending").length,
-        [invites]
-    );
+    const [section, setSection] = useState<SettingsSection>("boards");
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -76,12 +54,6 @@ function ProjectSettingsRoute() {
             label: string;
             visible: boolean;
         }[] = [
-            {
-                count: membersCount,
-                id: "members",
-                label: t("settings.nav.members"),
-                visible: canManageMembers || canView,
-            },
             {
                 count: boardsPending || boardsError ? null : boards.length,
                 id: "boards",
@@ -101,10 +73,7 @@ function ProjectSettingsRoute() {
         boardsError,
         boardsPending,
         canManageBoard,
-        canManageMembers,
-        canView,
         isSettled,
-        membersCount,
         projectLabels.length,
         t,
     ]);
@@ -136,7 +105,7 @@ function ProjectSettingsRoute() {
     const activeSection =
         navItems.find((item) => item.id === section)?.id ??
         navItems[0]?.id ??
-        "members";
+        "boards";
 
     return (
         <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 overflow-y-auto px-4 py-4">
@@ -154,13 +123,30 @@ function ProjectSettingsRoute() {
                     </div>
                 </div>
 
+                {(canManageMembers || canView) && project?.team_id ? (
+                    <Alert>
+                        <AlertDescription className="flex flex-wrap items-center gap-2">
+                            <span>{t("settings.membersMoved")}</span>
+                            <Button
+                                nativeButton={false}
+                                render={
+                                    <Link
+                                        params={{ teamId: project.team_id }}
+                                        to="/teams/$teamId/settings"
+                                    />
+                                }
+                                size="sm"
+                                variant="outline"
+                            >
+                                {t("settings.openTeamSettings")}
+                            </Button>
+                        </AlertDescription>
+                    </Alert>
+                ) : undefined}
+
                 <div className="flex flex-wrap gap-1">
                     {navItems.map((item) => {
                         const active = item.id === activeSection;
-                        const showPendingBadge =
-                            item.id === "members" &&
-                            canManageMembers &&
-                            pendingInvitesCount > 0;
                         return (
                             <Button
                                 key={item.id}
@@ -175,11 +161,6 @@ function ProjectSettingsRoute() {
                                         {item.count}
                                     </span>
                                 )}
-                                {showPendingBadge ? (
-                                    <span className="rounded-sm bg-amber-500/20 px-1.5 font-mono text-[0.625rem] text-amber-400 tabular-nums">
-                                        {pendingInvitesCount}
-                                    </span>
-                                ) : undefined}
                             </Button>
                         );
                     })}
@@ -192,9 +173,6 @@ function ProjectSettingsRoute() {
                 </Alert>
             ) : (
                 <div className="mx-auto w-full max-w-3xl">
-                    {activeSection === "members" ? (
-                        <ProjectMembersSettings projectId={projectId} />
-                    ) : undefined}
                     {activeSection === "boards" &&
                     isSettled &&
                     canManageBoard ? (

@@ -5,25 +5,35 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/features/auth";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
-import { inviteUrl } from "@/features/projects/api/members-api";
 import {
     INVITE_TTL_OPTIONS,
     type InviteTtlValue,
     MEMBER_ROLES,
     type ProjectMemberRole,
 } from "@/features/projects/model/access";
-import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { inviteUrl } from "@/features/teams/api/team-members-api";
 import {
-    useConfirmProjectInvite,
-    useCreateProjectInvite,
-    useProjectInvites,
-    useProjectMembers,
-    useProjectOwnerProfile,
-    useRemoveProjectMember,
-    useRevokeProjectInvite,
-    useUpdateMemberRole,
-} from "@/features/projects/model/use-project-members";
-import { useProject } from "@/features/projects/model/use-projects";
+    actorFromAccess,
+    canConfirmClaimedInvite,
+    canEditExistingMemberRole,
+    canInviteWithRole,
+    canLeaveTeam,
+    canRemoveMember,
+    canTransferOwnership,
+} from "@/features/teams/model/member-actions";
+import { useTeamAccess } from "@/features/teams/model/use-team-access";
+import {
+    useConfirmTeamInvite,
+    useCreateTeamInvite,
+    useRemoveTeamMember,
+    useRevokeTeamInvite,
+    useTeam,
+    useTeamInvites,
+    useTeamMembers,
+    useTeamOwnerProfile,
+    useTransferTeamOwnership,
+    useUpdateTeamMemberRole,
+} from "@/features/teams/model/use-team-members";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Badge } from "@/shared/shadcn/ui/badge";
@@ -39,8 +49,8 @@ import {
 } from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
-type ProjectMembersSettingsProperties = {
-    projectId: string;
+type TeamMembersSettingsProperties = {
+    teamId: string;
 };
 
 const AVATAR_TONES = [
@@ -52,26 +62,25 @@ const AVATAR_TONES = [
     "bg-amber-600 text-black",
 ] as const;
 
-export function ProjectMembersSettings({
-    projectId,
-}: ProjectMembersSettingsProperties) {
+export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
     const { t } = useTranslation("board");
     const { user } = useAuth();
-    const access = useProjectAccess(projectId);
-    const { data: project } = useProject(projectId);
-    const { data: members, isLoading: membersLoading } =
-        useProjectMembers(projectId);
-    const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
-    const { data: invites, isLoading: invitesLoading } = useProjectInvites(
-        projectId,
+    const access = useTeamAccess(teamId);
+    const actor = actorFromAccess(access);
+    const { data: team } = useTeam(teamId);
+    const { data: members, isLoading: membersLoading } = useTeamMembers(teamId);
+    const { data: ownerProfile } = useTeamOwnerProfile(team?.owner_id);
+    const { data: invites, isLoading: invitesLoading } = useTeamInvites(
+        teamId,
         access.canManageMembers
     );
 
-    const createInvite = useCreateProjectInvite(projectId);
-    const revokeInvite = useRevokeProjectInvite(projectId);
-    const confirmInvite = useConfirmProjectInvite(projectId);
-    const updateRole = useUpdateMemberRole(projectId);
-    const removeMember = useRemoveProjectMember(projectId);
+    const createInvite = useCreateTeamInvite(teamId);
+    const revokeInvite = useRevokeTeamInvite(teamId);
+    const confirmInvite = useConfirmTeamInvite(teamId);
+    const updateRole = useUpdateTeamMemberRole(teamId);
+    const removeMember = useRemoveTeamMember(teamId);
+    const transferOwnership = useTransferTeamOwnership(teamId);
 
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<ProjectMemberRole>("contributor");
@@ -80,9 +89,9 @@ export function ProjectMembersSettings({
     const [searchQuery, setSearchQuery] = useState("");
 
     const invitableRoles = useMemo(() => {
-        if (access.canGrantAdmin) return MEMBER_ROLES;
-        return MEMBER_ROLES.filter((item) => item !== "admin");
-    }, [access.canGrantAdmin]);
+        if (!actor) return [] as ProjectMemberRole[];
+        return MEMBER_ROLES.filter((item) => canInviteWithRole(actor, item));
+    }, [actor]);
 
     const query = searchQuery.trim().toLowerCase();
 
@@ -104,7 +113,7 @@ export function ProjectMembersSettings({
     );
 
     const showOwner =
-        Boolean(project && ownerProfile) &&
+        Boolean(team && ownerProfile) &&
         (!query ||
             [
                 ownerProfile?.username,
@@ -132,8 +141,7 @@ export function ProjectMembersSettings({
         });
     }, [members, query]);
 
-    const peopleCount =
-        (project && ownerProfile ? 1 : 0) + (members?.length ?? 0);
+    const peopleCount = (team && ownerProfile ? 1 : 0) + (members?.length ?? 0);
     const visiblePeopleCount = (showOwner ? 1 : 0) + filteredMembers.length;
 
     if (access.isLoading) {
@@ -215,7 +223,7 @@ export function ProjectMembersSettings({
                     </p>
                 ) : (
                     <ul className="divide-y divide-border border border-border bg-card">
-                        {showOwner && project && ownerProfile ? (
+                        {showOwner && team && ownerProfile ? (
                             <li className="flex items-center gap-3 px-3.5 py-2">
                                 <Avatar className="size-8 rounded-md">
                                     {ownerProfile.avatar_url ? (
@@ -246,7 +254,7 @@ export function ProjectMembersSettings({
                                         {formatProfileDisplayName(
                                             ownerProfile
                                         ) || t("members.unknownUser")}
-                                        {user?.id === project.owner_id
+                                        {user?.id === team.owner_id
                                             ? ` (${t("members.you")})`
                                             : ""}
                                     </p>
@@ -260,18 +268,21 @@ export function ProjectMembersSettings({
                                     ? formatProfileDisplayName(member.profile)
                                     : "") || t("members.unknownUser");
                             const canEditRole =
-                                access.canManageMembers &&
-                                (access.canGrantAdmin ||
-                                    member.role !== "admin") &&
-                                member.user_id !== user?.id;
+                                Boolean(actor) &&
+                                member.user_id !== user?.id &&
+                                canEditExistingMemberRole(actor!, member.role);
                             const canRemove =
-                                access.canManageMembers &&
-                                (access.canGrantAdmin ||
-                                    member.role !== "admin") &&
-                                member.user_id !== user?.id;
+                                Boolean(actor) &&
+                                member.user_id !== user?.id &&
+                                canRemoveMember(actor!, member.role);
                             const canLeave =
                                 member.user_id === user?.id &&
-                                member.role !== undefined;
+                                Boolean(actor) &&
+                                canLeaveTeam(actor!);
+                            const canMakeOwner =
+                                Boolean(actor) &&
+                                canTransferOwnership(actor!) &&
+                                member.user_id !== user?.id;
 
                             return (
                                 <li
@@ -374,6 +385,35 @@ export function ProjectMembersSettings({
                                             variant="outline"
                                         >
                                             {t("members.remove")}
+                                        </Button>
+                                    ) : undefined}
+                                    {canMakeOwner ? (
+                                        <Button
+                                            disabled={
+                                                transferOwnership.isPending
+                                            }
+                                            onClick={() => {
+                                                void transferOwnership
+                                                    .mutateAsync(member.user_id)
+                                                    .then(() =>
+                                                        toast.success(
+                                                            t(
+                                                                "members.ownershipTransferred"
+                                                            )
+                                                        )
+                                                    )
+                                                    .catch(() =>
+                                                        toast.error(
+                                                            t(
+                                                                "members.transferFailed"
+                                                            )
+                                                        )
+                                                    );
+                                            }}
+                                            type="button"
+                                            variant="outline"
+                                        >
+                                            {t("members.makeOwner")}
                                         </Button>
                                     ) : undefined}
                                     {canLeave ? (
@@ -482,7 +522,12 @@ export function ProjectMembersSettings({
                                                 <Copy data-icon="inline-start" />
                                                 {t("members.copyLink")}
                                             </Button>
-                                            {invite.claimed_by ? (
+                                            {invite.claimed_by &&
+                                            actor &&
+                                            canConfirmClaimedInvite(
+                                                actor,
+                                                invite.role
+                                            ) ? (
                                                 <Button
                                                     disabled={
                                                         confirmInvite.isPending

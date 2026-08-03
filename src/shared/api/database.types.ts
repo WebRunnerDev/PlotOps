@@ -376,6 +376,22 @@ export type Database = {
         Args: { team_uuid: string }
         Returns: Database["public"]["Enums"]["project_member_role"]
       }
+      transfer_team_ownership: {
+        Args: { p_new_owner_id: string; p_team_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          isOneToOne: true
+          isSetofReturn: false
+          to: "teams"
+        }
+      }
     }
     Tables: {
       activity_log: {
