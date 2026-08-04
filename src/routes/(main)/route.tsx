@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
+import { isGuestSession, isProfileGateRequired } from "@/features/auth";
 import { MainLayoutWidget } from "@/widgets/main-layout/ui/main-layout";
 
 export const Route = createFileRoute("/(main)")({
@@ -8,7 +9,12 @@ export const Route = createFileRoute("/(main)")({
             throw redirect({ to: "/sign-in" });
         }
 
-        if (!context.auth.profileNamesComplete) {
+        if (
+            isProfileGateRequired({
+                isGuest: isGuestSession(context.auth.user),
+                profileNamesComplete: context.auth.profileNamesComplete,
+            })
+        ) {
             throw redirect({
                 search: {
                     redirect: `${location.pathname}${location.searchStr}`,

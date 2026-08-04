@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { useAuth } from "@/features/auth";
+import { guestActionPolicy, isGuestSession, useAuth } from "@/features/auth";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import {
     INVITE_TTL_OPTIONS,
@@ -67,6 +67,9 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
     const { user } = useAuth();
     const access = useTeamAccess(teamId);
     const actor = actorFromAccess(access);
+    const canCreateInvite = guestActionPolicy(
+        isGuestSession(user)
+    ).canCreateInvite;
     const { data: team } = useTeam(teamId);
     const { data: members, isLoading: membersLoading } = useTeamMembers(teamId);
     const { data: ownerProfile } = useTeamOwnerProfile(team?.owner_id);
@@ -166,6 +169,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
     };
 
     const onCreateInvite = async () => {
+        if (!canCreateInvite) return;
         const trimmed = email.trim();
         if (!trimmed) return;
         try {
@@ -595,123 +599,132 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                         )}
                     </div>
 
-                    <div className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
-                        <div className="flex items-center gap-2">
-                            <UserPlus className="size-4 text-muted-foreground" />
-                            <h3 className="text-ui font-medium">
-                                {t("members.inviteTitle")}
-                            </h3>
-                        </div>
-                        <p className="text-ui text-muted-foreground">
-                            {t("members.inviteHint")}
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="flex flex-col gap-1.5 sm:col-span-2">
-                                <Label htmlFor="invite-email">
-                                    {t("members.email")}
-                                </Label>
-                                <Input
-                                    autoComplete="email"
-                                    id="invite-email"
-                                    onChange={(event) =>
-                                        setEmail(event.target.value)
-                                    }
-                                    placeholder={t("members.emailPlaceholder")}
-                                    type="email"
-                                    value={email}
-                                />
+                    {canCreateInvite ? (
+                        <div className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
+                            <div className="flex items-center gap-2">
+                                <UserPlus className="size-4 text-muted-foreground" />
+                                <h3 className="text-ui font-medium">
+                                    {t("members.inviteTitle")}
+                                </h3>
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                                <Label>{t("members.role")}</Label>
-                                <Select
-                                    onValueChange={(value) => {
-                                        if (value)
-                                            setRole(value as ProjectMemberRole);
-                                    }}
-                                    value={role}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue>
-                                            {(value) =>
-                                                typeof value === "string"
-                                                    ? roleLabel(value, t)
-                                                    : null
-                                            }
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {invitableRoles.map((item) => (
-                                            <SelectItem key={item} value={item}>
-                                                {roleLabel(item, t)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <p className="text-ui text-muted-foreground">
+                                {t("members.inviteHint")}
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                                    <Label htmlFor="invite-email">
+                                        {t("members.email")}
+                                    </Label>
+                                    <Input
+                                        autoComplete="email"
+                                        id="invite-email"
+                                        onChange={(event) =>
+                                            setEmail(event.target.value)
+                                        }
+                                        placeholder={t(
+                                            "members.emailPlaceholder"
+                                        )}
+                                        type="email"
+                                        value={email}
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <Label>{t("members.role")}</Label>
+                                    <Select
+                                        onValueChange={(value) => {
+                                            if (value)
+                                                setRole(
+                                                    value as ProjectMemberRole
+                                                );
+                                        }}
+                                        value={role}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue>
+                                                {(value) =>
+                                                    typeof value === "string"
+                                                        ? roleLabel(value, t)
+                                                        : null
+                                                }
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {invitableRoles.map((item) => (
+                                                <SelectItem
+                                                    key={item}
+                                                    value={item}
+                                                >
+                                                    {roleLabel(item, t)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <Label>{t("members.ttl")}</Label>
+                                    <Select
+                                        onValueChange={(value) => {
+                                            if (value)
+                                                setTtl(value as InviteTtlValue);
+                                        }}
+                                        value={ttl}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue>
+                                                {(value) =>
+                                                    typeof value === "string"
+                                                        ? t(
+                                                              `members.ttlOptions.${value}`
+                                                          )
+                                                        : null
+                                                }
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {INVITE_TTL_OPTIONS.map((item) => (
+                                                <SelectItem
+                                                    key={item.value}
+                                                    value={item.value}
+                                                >
+                                                    {t(
+                                                        `members.ttlOptions.${item.value}`
+                                                    )}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="flex flex-col gap-1.5">
-                                <Label>{t("members.ttl")}</Label>
-                                <Select
-                                    onValueChange={(value) => {
-                                        if (value)
-                                            setTtl(value as InviteTtlValue);
-                                    }}
-                                    value={ttl}
-                                >
-                                    <SelectTrigger className="w-full">
-                                        <SelectValue>
-                                            {(value) =>
-                                                typeof value === "string"
-                                                    ? t(
-                                                          `members.ttlOptions.${value}`
-                                                      )
-                                                    : null
-                                            }
-                                        </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {INVITE_TTL_OPTIONS.map((item) => (
-                                            <SelectItem
-                                                key={item.value}
-                                                value={item.value}
-                                            >
-                                                {t(
-                                                    `members.ttlOptions.${item.value}`
-                                                )}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button
-                                disabled={
-                                    createInvite.isPending || !email.trim()
-                                }
-                                onClick={() => void onCreateInvite()}
-                                type="button"
-                            >
-                                {createInvite.isPending ? (
-                                    <Spinner className="size-4" />
-                                ) : (
-                                    <Link2 data-icon="inline-start" />
-                                )}
-                                {t("members.createInvite")}
-                            </Button>
-                            {lastInviteToken ? (
+                            <div className="flex flex-wrap gap-2">
                                 <Button
-                                    onClick={() =>
-                                        void copyInviteLink(lastInviteToken)
+                                    disabled={
+                                        createInvite.isPending || !email.trim()
                                     }
+                                    onClick={() => void onCreateInvite()}
                                     type="button"
-                                    variant="outline"
                                 >
-                                    <Copy data-icon="inline-start" />
-                                    {t("members.copyLink")}
+                                    {createInvite.isPending ? (
+                                        <Spinner className="size-4" />
+                                    ) : (
+                                        <Link2 data-icon="inline-start" />
+                                    )}
+                                    {t("members.createInvite")}
                                 </Button>
-                            ) : undefined}
+                                {lastInviteToken ? (
+                                    <Button
+                                        onClick={() =>
+                                            void copyInviteLink(lastInviteToken)
+                                        }
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        <Copy data-icon="inline-start" />
+                                        {t("members.copyLink")}
+                                    </Button>
+                                ) : undefined}
+                            </div>
                         </div>
-                    </div>
+                    ) : undefined}
                 </>
             ) : undefined}
         </section>

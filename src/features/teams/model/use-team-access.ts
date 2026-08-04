@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useAuth } from "@/features/auth";
+import { guestActionPolicy, isGuestSession, useAuth } from "@/features/auth";
 import {
     capabilitiesForRole,
     type ProjectAccessRole,
@@ -100,6 +100,7 @@ export function resolveTeamAccess(input: {
 
 export function useTeamAccess(teamId: string): TeamAccessState {
     const { user } = useAuth();
+    const policy = guestActionPolicy(isGuestSession(user));
 
     const teamQuery = useQuery({
         enabled: Boolean(teamId),
@@ -130,7 +131,7 @@ export function useTeamAccess(teamId: string): TeamAccessState {
         queryKey: teamKeys.myMembership(teamId, user?.id),
     });
 
-    return resolveTeamAccess({
+    const access = resolveTeamAccess({
         membership: membershipQuery.data,
         membershipError: membershipQuery.isError,
         membershipLoading: membershipQuery.isLoading,
@@ -139,4 +140,10 @@ export function useTeamAccess(teamId: string): TeamAccessState {
         teamLoading: teamQuery.isLoading,
         userId: user?.id,
     });
+
+    return {
+        ...access,
+        canDeleteProject: access.canDeleteProject && policy.canDeleteProject,
+        canDeleteTeam: access.canDeleteTeam && policy.canDeleteTeam,
+    };
 }

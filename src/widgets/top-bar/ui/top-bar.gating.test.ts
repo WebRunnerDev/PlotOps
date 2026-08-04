@@ -30,4 +30,13 @@ describe("Top bar narrow viewport seam", () => {
         expect(topBar).toMatch(/team\.name/);
         expect(topBar).not.toMatch(/nav\.projects/);
     });
+
+    it("shows Demo account badge for guest sessions", () => {
+        const topBar = readUi("top-bar.tsx");
+        expect(topBar).toMatch(/demoAccountBadgeVisible/);
+        expect(topBar).toMatch(/isGuestSession/);
+        expect(topBar).toMatch(
+            /DEMO_ACCOUNT_BADGE_I18N_KEY|guest\.demoAccount/
+        );
+    });
 });

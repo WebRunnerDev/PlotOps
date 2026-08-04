@@ -2,17 +2,26 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import {
+    DEMO_ACCOUNT_BADGE_I18N_KEY,
+    demoAccountBadgeVisible,
+    isGuestSession,
+    useAuth,
+} from "@/features/auth";
 import { CommandPaletteTrigger } from "@/features/command-palette";
 import { NotificationDrawer } from "@/features/notifications/ui/notification-drawer";
 import { useProject } from "@/features/projects/model/use-projects";
 import { useTeam } from "@/features/teams/model/use-team-members";
 import { cn } from "@/shared/lib/utils";
+import { Badge } from "@/shared/shadcn/ui/badge";
 
 import { ProjectSectionNav } from "./project-section-nav";
 import { UserMenu } from "./user-menu";
 
 export function TopBar() {
     const { t } = useTranslation("common");
+    const { user } = useAuth();
+    const showDemoBadge = demoAccountBadgeVisible(isGuestSession(user));
     const parameters = useParams({ strict: false });
     const projectId =
         typeof parameters.projectId === "string"
@@ -47,6 +56,16 @@ export function TopBar() {
                 >
                     PlotOps
                 </Link>
+
+                {showDemoBadge ? (
+                    <Badge
+                        className="shrink-0 font-mono tracking-wide uppercase"
+                        title={t("guest.demoAccountHint")}
+                        variant="outline"
+                    >
+                        {t(DEMO_ACCOUNT_BADGE_I18N_KEY)}
+                    </Badge>
+                ) : null}
 
                 {showBreadcrumb ? (
                     <nav

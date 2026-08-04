@@ -1,6 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { CompleteProfileForm } from "@/features/auth";
+import {
+    CompleteProfileForm,
+    isGuestSession,
+    isProfileGateRequired,
+} from "@/features/auth";
 
 type CompleteProfileSearch = {
     redirect?: string;
@@ -11,7 +15,12 @@ export const Route = createFileRoute("/complete-profile")({
         if (!context.auth.user) {
             throw redirect({ to: "/sign-in" });
         }
-        if (context.auth.profileNamesComplete) {
+        if (
+            !isProfileGateRequired({
+                isGuest: isGuestSession(context.auth.user),
+                profileNamesComplete: context.auth.profileNamesComplete,
+            })
+        ) {
             throw redirect({ to: "/home" });
         }
     },

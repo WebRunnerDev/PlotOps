@@ -4,6 +4,10 @@
         "cancel": "Cancel"
     },
     "en": "English",
+    "guest": {
+        "demoAccount": "Demo account",
+        "demoAccountHint": "Shared demo data — changes may be reset."
+    },
     "nav": {
         "backlog": "Backlog",
         "backlogShort": "Back",
