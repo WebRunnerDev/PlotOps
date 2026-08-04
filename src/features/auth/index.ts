@@ -1,5 +1,13 @@
 export { signInWithGitHub } from "./api/auth-api";
 export {
+    getGuestCredentials,
+    GUEST_DEMO_LOCAL_PASSWORD,
+} from "./lib/get-guest-credentials";
+export type {
+    GuestCredentialEnvironment,
+    GuestCredentials,
+} from "./lib/get-guest-credentials";
+export {
     GUEST_DEMO_EMAIL,
     GUEST_DEMO_USER_ID,
     isGuestSession,

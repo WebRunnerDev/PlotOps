@@ -7,6 +7,10 @@ import {
     signInWithGitHub,
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
+import {
+    getGuestCredentials,
+    type GuestCredentials,
+} from "@/features/auth/lib/get-guest-credentials";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
@@ -33,43 +37,55 @@ export function LoginForm() {
     const [error, setError] = useState<null | string>(null);
     const [isGitHubLoading, setIsGitHubLoading] = useState(false);
     const [isEmailLoading, setIsEmailLoading] = useState(false);
+    const [isGuestLoading, setIsGuestLoading] = useState(false);
     // Wait for AuthProvider + router context before navigating — otherwise
     // /home beforeLoad still sees user=null and bounces back to /sign-in.
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
+    /** Guest demo must land on /home even if a pending invite token is left over. */
+    const [skipPendingInvite, setSkipPendingInvite] = useState(false);
+
+    const isBusy = isGitHubLoading || isEmailLoading || isGuestLoading;
+
+    const clearAuthLoading = () => {
+        setIsEmailLoading(false);
+        setIsGuestLoading(false);
+    };
 
     useEffect(() => {
         if (!awaitingRedirect || !user) return;
 
-        const pendingInvite = safeGetItem(
-            "sessionStorage",
-            "plotops_pending_invite"
-        );
-        if (pendingInvite) {
-            safeRemoveItem("sessionStorage", "plotops_pending_invite");
-            void navigate({
-                params: { token: pendingInvite },
-                to: "/invite/$token",
-            }).catch(() => {
-                setAwaitingRedirect(false);
-                setIsEmailLoading(false);
-                setError(t("errors.generic"));
-            });
-            return;
+        if (!skipPendingInvite) {
+            const pendingInvite = safeGetItem(
+                "sessionStorage",
+                "plotops_pending_invite"
+            );
+            if (pendingInvite) {
+                safeRemoveItem("sessionStorage", "plotops_pending_invite");
+                void navigate({
+                    params: { token: pendingInvite },
+                    to: "/invite/$token",
+                }).catch(() => {
+                    setAwaitingRedirect(false);
+                    clearAuthLoading();
+                    setError(t("errors.generic"));
+                });
+                return;
+            }
         }
 
         void navigate({ to: "/home" }).catch(() => {
             setAwaitingRedirect(false);
-            setIsEmailLoading(false);
+            clearAuthLoading();
             setError(t("errors.generic"));
         });
-    }, [awaitingRedirect, navigate, t, user]);
+    }, [awaitingRedirect, navigate, skipPendingInvite, t, user]);
 
     useEffect(() => {
         if (!awaitingRedirect || user) return;
 
         const timer = globalThis.setTimeout(() => {
             setAwaitingRedirect(false);
-            setIsEmailLoading(false);
+            clearAuthLoading();
             setError(t("errors.sessionTimeout"));
         }, REDIRECT_TIMEOUT_MS);
 
@@ -90,30 +106,54 @@ export function LoginForm() {
         }
     };
 
+    const completePasswordSignIn = async (credentials: GuestCredentials) => {
+        const { error: authError } = await signInWithPassword(credentials);
+
+        if (authError) {
+            setError(t(getAuthErrorKey(authError)));
+            return false;
+        }
+
+        setAwaitingRedirect(true);
+        return true;
+    };
+
     const handleEmailLogin = async (event: FormEvent) => {
         event.preventDefault();
         setError(null);
+        setSkipPendingInvite(false);
         setIsEmailLoading(true);
 
         let keepLoadingForRedirect = false;
         try {
-            const { error: authError } = await signInWithPassword({
+            keepLoadingForRedirect = await completePasswordSignIn({
                 email,
                 password,
             });
-
-            if (authError) {
-                setError(t(getAuthErrorKey(authError)));
-                return;
-            }
-
-            keepLoadingForRedirect = true;
-            setAwaitingRedirect(true);
         } catch {
             setError(t("errors.generic"));
         } finally {
             if (!keepLoadingForRedirect) {
                 setIsEmailLoading(false);
+            }
+        }
+    };
+
+    const handleGuestLogin = async () => {
+        setError(null);
+        setSkipPendingInvite(true);
+        setIsGuestLoading(true);
+
+        let keepLoadingForRedirect = false;
+        try {
+            keepLoadingForRedirect = await completePasswordSignIn(
+                getGuestCredentials()
+            );
+        } catch {
+            setError(t("errors.generic"));
+        } finally {
+            if (!keepLoadingForRedirect) {
+                setIsGuestLoading(false);
             }
         }
     };
@@ -132,17 +172,29 @@ export function LoginForm() {
                     </Alert>
                 ) : undefined}
 
-                <Button
-                    className="w-full"
-                    disabled={isGitHubLoading || isEmailLoading}
-                    onClick={handleGitHubLogin}
-                    type="button"
-                    variant="outline"
-                >
-                    {isGitHubLoading
-                        ? t("githubRedirecting")
-                        : t("githubSignIn")}
-                </Button>
+                <div className="flex flex-col gap-3">
+                    <Button
+                        className="w-full"
+                        disabled={isBusy}
+                        onClick={handleGitHubLogin}
+                        type="button"
+                        variant="outline"
+                    >
+                        {isGitHubLoading
+                            ? t("githubRedirecting")
+                            : t("githubSignIn")}
+                    </Button>
+
+                    <Button
+                        className="w-full"
+                        disabled={isBusy}
+                        onClick={handleGuestLogin}
+                        type="button"
+                        variant="secondary"
+                    >
+                        {isGuestLoading ? t("tryDemoLoading") : t("tryDemo")}
+                    </Button>
+                </div>
 
                 <div className="flex items-center gap-3">
                     <Separator className="flex-1" />
@@ -184,11 +236,7 @@ export function LoginForm() {
                         />
                     </div>
 
-                    <Button
-                        className="w-full"
-                        disabled={isGitHubLoading || isEmailLoading}
-                        type="submit"
-                    >
+                    <Button className="w-full" disabled={isBusy} type="submit">
                         {isEmailLoading ? t("signInLoading") : t("signIn")}
                     </Button>
                 </form>
