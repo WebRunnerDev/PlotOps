@@ -30,7 +30,7 @@ After adding a migration:
 ```bash
 npm run db:new -- <name>  # or: npx supabase migration new <name>
 # edit supabase/migrations/<timestamp>_<name>.sql
-npm run db:reset          # wipe local DB, re-run all migrations + seed.sql
+npm run db:reset          # wipe local DB, re-run all migrations + [db.seed] sql_paths
 ```
 
 Keep remote credentials in `.env`. Use `.env.local` only while developing against Docker (both are gitignored). Delete or rename `.env.local` to point the app back at remote.
@@ -138,15 +138,32 @@ Local (`supabase/config.toml`): `auth.email.enable_confirmations = true`, `site_
 
 Without Confirm email ON remotely, `signUp` returns a session immediately and the check-email UI never appears.
 
-## Guest Mode demo identity (local seed)
+## Guest Mode (local seed)
 
-`supabase/seed.sql` creates one shared demo auth user + `profiles` row on every `npm run db:reset`. Concurrent guests share the same account (portfolio trade-off).
+On every `npm run db:reset`, `[db.seed]` runs:
+
+1. `supabase/seed.sql` — shared demo auth user + `profiles` row
+2. `supabase/seed-guest-dataset.sql` — Team, Projects, boards/columns, ~15 tasks, sprints, activity, comments, watchers, notifications
+
+Concurrent guests share the same account and rows (portfolio trade-off). Mutated demo data: `npm run db:reset` locally.
 
 | Field    | Value                                                                |
 | -------- | -------------------------------------------------------------------- |
 | User id  | `a0000000-0000-4000-8000-000000000001` (`GUEST_DEMO_USER_ID` in app) |
 | Email    | `demo@plotops.app`                                                   |
 | Password | `plotops-demo-local` (**local-only** — documented, not a secret)     |
+| Team id  | `b0000000-0000-4000-8000-000000000001` (PlotOps Demo Team)           |
+
+**Dataset shape (fixed UUIDs in `seed-guest-dataset.sql`):**
+
+| Entity   | Count / notes                                                     |
+| -------- | ----------------------------------------------------------------- |
+| Team     | 1 — guest is `owner_id` (no `team_members` row required)          |
+| Projects | 2 — `PlotOps Demo` (fake `github_*`) + `Marketing Site` (no repo) |
+| Boards   | 1 Main per project (project insert trigger) + default columns     |
+| Tasks    | 15 — labels, priority, assignee, branch/PR where useful           |
+| Sprints  | active “Sprint 14 — Demo Launch” + draft “Sprint 15 — Polish”     |
+| Extras   | activity_log, comments, watchers, a few inbox notifications       |
 
 Optional Vite vars for the future “Try demo” CTA (do not commit real remote passwords):
 
@@ -157,7 +174,14 @@ VITE_GUEST_PASSWORD=plotops-demo-local
 
 Detection helper: `isGuestSession` / `GUEST_DEMO_*` in `src/features/auth/lib/is-guest-session.ts`.
 
-**Remote:** CI must **not** wipe production via seed. Create the same email user once (Dashboard → Authentication → Users, or Admin API) with a password stored only in private env / secrets manager, then seed app tables (teams/tasks) in a one-off SQL Editor run when the Guest dataset slice lands. Keep `VITE_GUEST_*` out of the public Cloudflare build if you do not want the password in the client bundle until the sign-in CTA ships.
+### Remote one-time seed (not CI)
+
+CI / `supabase db push` must **never** run seed against production.
+
+1. **Auth user (once):** Dashboard → Authentication → Users → Add user, or Admin API. Prefer the same UUID as local (`a0000000-0000-4000-8000-000000000001`) so `GUEST_DEMO_USER_ID` matches; otherwise create with email `demo@plotops.app` and rely on email detection. Store a strong remote password only in secrets manager / private env — not in git, not in the public Cloudflare bundle unless the sign-in CTA needs `VITE_GUEST_*`.
+2. **Profile:** ensure `public.profiles` has a complete row for that user (trigger on signup usually does; otherwise upsert username/first/last like `seed.sql`).
+3. **App tables:** SQL Editor → paste and run all of [`supabase/seed-guest-dataset.sql`](../supabase/seed-guest-dataset.sql). It is idempotent on the fixed team id (skips if already present). Do **not** paste `seed.sql` auth inserts into remote unless you know you need them — prefer Dashboard/Admin for `auth.users`.
+4. **Reseed:** delete the demo team (`b0000000-0000-4000-8000-000000000001`) or wipe only guest rows, then re-run `seed-guest-dataset.sql`. Never `db reset` remote.
 
 ## Migrations
 

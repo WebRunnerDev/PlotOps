@@ -28,6 +28,7 @@ jobs:
                         - 'supabase/migrations/**'
                         - 'supabase/config.toml'
                         - 'supabase/seed.sql'
+                        - 'supabase/seed-guest-dataset.sql'
 
             - name: Setup Supabase CLI
               if: steps.filter.outputs.supabase == 'true'

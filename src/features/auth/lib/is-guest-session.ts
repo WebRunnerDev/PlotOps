@@ -13,9 +13,7 @@ export type GuestSessionUser = {
 };
 
 /** True when the signed-in user is the shared demo guest account. */
-export function isGuestSession(
-    user: GuestSessionUser | null | undefined
-): boolean {
+export function isGuestSession(user?: GuestSessionUser | null): boolean {
     if (!user) {
         return false;
     }

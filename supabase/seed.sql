@@ -1,5 +1,6 @@
 -- Local Guest Mode demo identity.
--- Applied on `supabase db reset` (see config.toml [db.seed]).
+-- Applied on `supabase db reset` together with `seed-guest-dataset.sql`
+-- (see config.toml [db.seed] sql_paths).
 --
 -- Credentials (local-only; safe to share in docs — never reuse for remote prod):
 --   email:    demo@plotops.app
@@ -11,9 +12,9 @@
 --   VITE_GUEST_EMAIL=demo@plotops.app
 --   VITE_GUEST_PASSWORD=plotops-demo-local
 --
--- Dataset rows (teams/projects/tasks) land in a later Guest Mode slice.
--- Remote PlotOps: create this user once in Dashboard (or Admin API), then
--- seed app tables separately — never wipe prod via CI seed.
+-- Dataset: supabase/seed-guest-dataset.sql
+-- Remote PlotOps: create the auth user once, then run that file in SQL Editor —
+-- never wipe prod via CI. Procedure: docs/SUPABASE.md → Guest Mode.
 
 -- Fixed UUID must match GUEST_DEMO_USER_ID in the frontend helper.
 -- Hash via pgcrypto in the extensions schema (local Supabase default).
