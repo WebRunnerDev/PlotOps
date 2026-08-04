@@ -1,4 +1,10 @@
 export { signInWithGitHub } from "./api/auth-api";
+export {
+    GUEST_DEMO_EMAIL,
+    GUEST_DEMO_USER_ID,
+    isGuestSession,
+} from "./lib/is-guest-session";
+export type { GuestSessionUser } from "./lib/is-guest-session";
 export { AuthProvider } from "./model/auth-provider";
 export type { AuthContextValue } from "./model/types";
 export { useAuth } from "./model/use-auth";

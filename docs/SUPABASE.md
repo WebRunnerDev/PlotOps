@@ -138,6 +138,27 @@ Local (`supabase/config.toml`): `auth.email.enable_confirmations = true`, `site_
 
 Without Confirm email ON remotely, `signUp` returns a session immediately and the check-email UI never appears.
 
+## Guest Mode demo identity (local seed)
+
+`supabase/seed.sql` creates one shared demo auth user + `profiles` row on every `npm run db:reset`. Concurrent guests share the same account (portfolio trade-off).
+
+| Field    | Value                                                                |
+| -------- | -------------------------------------------------------------------- |
+| User id  | `a0000000-0000-4000-8000-000000000001` (`GUEST_DEMO_USER_ID` in app) |
+| Email    | `demo@plotops.app`                                                   |
+| Password | `plotops-demo-local` (**local-only** — documented, not a secret)     |
+
+Optional Vite vars for the future “Try demo” CTA (do not commit real remote passwords):
+
+```env
+VITE_GUEST_EMAIL=demo@plotops.app
+VITE_GUEST_PASSWORD=plotops-demo-local
+```
+
+Detection helper: `isGuestSession` / `GUEST_DEMO_*` in `src/features/auth/lib/is-guest-session.ts`.
+
+**Remote:** CI must **not** wipe production via seed. Create the same email user once (Dashboard → Authentication → Users, or Admin API) with a password stored only in private env / secrets manager, then seed app tables (teams/tasks) in a one-off SQL Editor run when the Guest dataset slice lands. Keep `VITE_GUEST_*` out of the public Cloudflare build if you do not want the password in the client bundle until the sign-in CTA ships.
+
 ## Migrations
 
 - `supabase/migrations/20260710120000_create_projects.sql` — `projects` table, RLS, GitHub fields (idempotent)
