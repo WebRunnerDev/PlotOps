@@ -130,7 +130,8 @@ export async function createTaskRecord(
     boardId: string,
     status: TaskStatus,
     title: string,
-    taskType: TaskType = "task"
+    taskType: TaskType = "task",
+    sprintId?: string
 ) {
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
@@ -145,6 +146,20 @@ export async function createTaskRecord(
 
     const position = (existing?.[0]?.position ?? -1) + 1;
 
+    let sprintPosition: number | undefined;
+    if (sprintId) {
+        const { data: sprintExisting, error: sprintPosError } = await supabase
+            .from("tasks")
+            .select("sprint_position")
+            .eq("sprint_id", sprintId)
+            .is("archived_at", null)
+            .order("sprint_position", { ascending: false })
+            .limit(1);
+
+        if (sprintPosError) throw sprintPosError;
+        sprintPosition = (sprintExisting?.[0]?.sprint_position ?? -1) + 1;
+    }
+
     const {
         data: { user },
     } = await supabase.auth.getUser();
@@ -158,6 +173,9 @@ export async function createTaskRecord(
             position,
             priority: DEFAULT_TASK_PRIORITY,
             project_id: projectId,
+            ...(sprintId
+                ? { sprint_id: sprintId, sprint_position: sprintPosition }
+                : {}),
             status,
             task_type: taskType,
             title: normalizeTaskTitle(title),

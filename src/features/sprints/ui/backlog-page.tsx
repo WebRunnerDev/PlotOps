@@ -107,8 +107,8 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const canManage = isSettled && canManageBoard;
     const { data: project } = useProject(projectId);
     const {
-        data: boards = [],
-        isError: boardsError,
+        data: boards,
+        error: boardsQueryError,
         isPending: boardsLoading,
         refetch: refetchBoards,
     } = useProjectBoards(projectId);
@@ -119,12 +119,20 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const { columns } = columnsApi;
     const { tasks } = tasksApi;
     const {
-        data: sprints = [],
-        error: sprintsError,
+        data: sprintsData,
+        error: sprintsQueryError,
         isLoading: sprintsLoading,
         refetch: refetchSprints,
     } = useBoardSprints(boardId);
-    const error = columnsApi.error ?? tasksApi.error ?? sprintsError;
+    const boardsList = boards ?? [];
+    const sprints = sprintsData ?? [];
+    // Refetch failures keep prior cache — don't replace the page with "no access".
+    const sprintsError =
+        Boolean(sprintsQueryError) && sprintsData === undefined;
+    const boardsError = Boolean(boardsQueryError) && boards === undefined;
+    const error =
+        (Boolean(columnsApi.error) && !columnsApi.columnsReady) ||
+        (Boolean(tasksApi.error) && !tasksApi.tasksReady);
     const isLoading = columnsApi.isLoading || tasksApi.isLoading;
     const { createDraft, moveTasks } = useSprintMutations(projectId, boardId);
     const [newName, setNewName] = useState("");
@@ -327,25 +335,31 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         setFilters(EMPTY_BOARD_FILTERS);
     };
 
-    if (error) {
+    if (sprintsError) {
         return (
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">
                     <AlertDescription>
-                        {sprintsError
-                            ? t("sprints.loadFailed")
-                            : t("projectError")}
+                        {t("sprints.loadFailed")}
                     </AlertDescription>
                 </Alert>
-                {sprintsError ? (
-                    <Button
-                        onClick={() => void refetchSprints()}
-                        type="button"
-                        variant="outline"
-                    >
-                        {t("sprints.retry")}
-                    </Button>
-                ) : null}
+                <Button
+                    onClick={() => void refetchSprints()}
+                    type="button"
+                    variant="outline"
+                >
+                    {t("sprints.retry")}
+                </Button>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("boardLoadFailed")}</AlertDescription>
+                </Alert>
             </div>
         );
     }
@@ -367,7 +381,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         );
     }
 
-    if (!boardsLoading && !boards.some((board) => board.id === boardId)) {
+    if (!boardsLoading && !boardsList.some((board) => board.id === boardId)) {
         return (
             <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">

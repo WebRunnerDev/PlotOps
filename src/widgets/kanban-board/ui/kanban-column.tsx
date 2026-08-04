@@ -42,6 +42,7 @@ import { KanbanAddTask } from "./kanban-add-task";
 
 type KanbanColumnProperties = {
     boardId: string;
+    createSprintId?: string;
     labelsByTaskId: Map<string, ProjectLabel[]>;
     name: string;
     projectId: string;
@@ -52,6 +53,7 @@ type KanbanColumnProperties = {
 
 export function KanbanColumn({
     boardId,
+    createSprintId,
     labelsByTaskId,
     name,
     projectId,
@@ -294,6 +296,7 @@ export function KanbanColumn({
                     </SortableContext>
                     <KanbanAddTask
                         boardId={boardId}
+                        createSprintId={createSprintId}
                         projectId={projectId}
                         status={status}
                     />

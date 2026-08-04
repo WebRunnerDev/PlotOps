@@ -47,7 +47,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
         boardsError,
         boardsLoading,
         project,
-        projectError: Boolean(error),
+        projectError: Boolean(error) && !project,
         projectLoading,
     });
 

@@ -35,3 +35,12 @@ describe("Command palette create-task columnsReady seam", () => {
         expect(source).toMatch(/command:columnsLoadFailed/);
     });
 });
+
+describe("Command palette active sprint create seam", () => {
+    it("passes resolveCreateTaskSprintId into createTask", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/resolveCreateTaskSprintId/);
+        expect(source).toMatch(/sprintId:\s*createSprintId/);
+    });
+});

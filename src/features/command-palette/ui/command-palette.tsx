@@ -26,6 +26,11 @@ import {
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
 import { useProjectAccess, useProjects } from "@/features/projects";
 import {
+    resolveCreateTaskSprintId,
+    useBoardSprints,
+    useSprintsUiStore,
+} from "@/features/sprints";
+import {
     useBoardTasks,
     useProjectTasks,
     useTasksUiStore,
@@ -58,6 +63,14 @@ export function CommandPalette() {
         boardId ?? ""
     );
     const { createTask } = useBoardTasks(projectId ?? "", boardId ?? "");
+    const { data: sprints = [] } = useBoardSprints(boardId ?? "");
+    const boardSprintScope = useSprintsUiStore(
+        (state) => state.boardSprintScope
+    );
+    const createSprintId = resolveCreateTaskSprintId({
+        activeSprintId: sprints.find((sprint) => sprint.state === "active")?.id,
+        boardSprintScope,
+    });
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
         Boolean(projectId)
@@ -218,7 +231,8 @@ export function CommandPalette() {
                                         setIsCreating(true);
                                         void createTask(
                                             firstColumn.id,
-                                            createIntent.title
+                                            createIntent.title,
+                                            { sprintId: createSprintId }
                                         )
                                             .then((task) => {
                                                 if (

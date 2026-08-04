@@ -361,14 +361,24 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
     const createTaskMutation = useMutation({
         mutationFn: ({
+            sprintId,
             status,
             taskType,
             title,
         }: {
+            sprintId?: string;
             status: TaskStatus;
             taskType?: TaskType;
             title: string;
-        }) => createTaskRecord(projectId, boardId, status, title, taskType),
+        }) =>
+            createTaskRecord(
+                projectId,
+                boardId,
+                status,
+                title,
+                taskType,
+                sprintId
+            ),
         onSuccess: (task) => {
             setTasksCache(queryClient, projectId, boardId, (current) => ({
                 taskPositions: new Map([
@@ -538,8 +548,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 updates,
             });
         },
-        createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
-            createTaskMutation.mutateAsync({ status, taskType, title }),
+        createTask: (
+            status: TaskStatus,
+            title: string,
+            options?: { sprintId?: string; taskType?: TaskType }
+        ) =>
+            createTaskMutation.mutateAsync({
+                sprintId: options?.sprintId,
+                status,
+                taskType: options?.taskType,
+                title,
+            }),
         deleteTask: async (taskId: string) => {
             setTasksCache(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
@@ -723,6 +742,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
         },
         tasks,
+        /** True once board tasks have been fetched (including an empty list). */
+        tasksReady: tasksQuery.data !== undefined,
         updateTaskDetails: (id: string, details: TaskDetailsUpdate) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             const previousCache = queryClient.getQueryData<BoardTasksCache>(

@@ -23,10 +23,13 @@ export function BoardSprintControls({
     const canManage = isSettled && canManageBoard;
     const { tasks } = useBoardTasks(projectId, boardId);
     const {
-        data: sprints = [],
-        isError: sprintsError,
+        data: sprintsData,
+        error: sprintsQueryError,
         refetch: refetchSprints,
     } = useBoardSprints(boardId);
+    const sprints = sprintsData ?? [];
+    const sprintsError =
+        Boolean(sprintsQueryError) && sprintsData === undefined;
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );

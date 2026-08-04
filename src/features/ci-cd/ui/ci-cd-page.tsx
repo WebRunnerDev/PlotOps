@@ -36,12 +36,12 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         isGuest,
         projectId,
     });
-    const { canView, isLoading: accessLoading } = useProjectAccess(projectId);
     const {
-        data: project,
-        error: projectError,
-        isLoading: projectLoading,
-    } = useProject(projectId);
+        canView,
+        isLoading: accessLoading,
+        isSettled,
+    } = useProjectAccess(projectId);
+    const { data: project, isLoading: projectLoading } = useProject(projectId);
     const {
         data: builds = [],
         error: buildsError,
@@ -88,7 +88,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         );
     }
 
-    if (projectError || !project || !canView) {
+    if (!project || (isSettled && !canView)) {
         return (
             <div className="flex flex-col gap-4 p-4">
                 <Alert variant="destructive">

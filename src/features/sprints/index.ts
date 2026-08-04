@@ -16,6 +16,7 @@ export {
 } from "./api/sprints-api";
 export { invalidateSprintBoardCaches } from "./model/invalidate-sprint-board";
 export { sprintKeys } from "./model/query-keys";
+export { resolveCreateTaskSprintId } from "./model/resolve-create-task-sprint-id";
 export type {
     BoardSprintScope,
     Sprint,

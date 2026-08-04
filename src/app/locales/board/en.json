@@ -4,6 +4,7 @@
     "loadingBoardEmpty": "This project has no boards yet.",
     "boardNotFound": "Board not found. It may have been deleted or you don't have access.",
     "boardsLoadFailed": "Could not load boards for this project.",
+    "boardLoadFailed": "Could not load this board.",
     "projectError": "Project not found or you don't have access.",
     "accessLoadFailed": "Could not load your project permissions. Editing may be limited until this recovers.",
     "columns": {
