@@ -12,6 +12,8 @@ export type CommandPaletteProject = {
 export type CommandPaletteRouteContext = {
     boardId: null | string;
     canCreateTasks: boolean;
+    /** Shared demo guest — keeps Search / Switch / Theme / Create under normal gates. */
+    isGuest: boolean;
     projectId: null | string;
 };
 
@@ -31,6 +33,12 @@ export type CommandPaletteVisibility = {
 };
 
 const MAX_TASK_HITS = 20;
+
+/**
+ * Wave 0 §6 product decision: guests may Create Task in the palette
+ * (shared demo rows may be mutated; remind via shouldRemindGuestCreateTask).
+ */
+export const GUEST_PALETTE_ALLOWS_CREATE_TASK = true;
 
 export function createTaskIntent(
     boardId: string,
@@ -99,7 +107,7 @@ export function resolveCommandPaletteVisibility(
     projects: readonly CommandPaletteProject[]
 ): CommandPaletteVisibility {
     return {
-        createTask: Boolean(context.boardId) && context.canCreateTasks,
+        createTask: canOfferCreateTask(context),
         switchProject: projects.length > 0,
         tasks: Boolean(context.projectId),
         toggleTheme: true,
@@ -114,7 +122,7 @@ export function resolveCreateTaskIntent(
     context: CommandPaletteRouteContext,
     query: string
 ): Extract<CommandPaletteIntent, { type: "create-task" }> | null {
-    if (!context.boardId || !context.canCreateTasks) {
+    if (!canOfferCreateTask(context) || !context.boardId) {
         return null;
     }
     const title = query.trim();
@@ -134,6 +142,14 @@ export function selectTaskIntent(
     };
 }
 
+/**
+ * Guest Create Task writes to the shared demo account (not ephemeral storage).
+ * Callers should remind that a reseed / demo reset can drop those mutations.
+ */
+export function shouldRemindGuestCreateTask(isGuest: boolean): boolean {
+    return isGuest;
+}
+
 export function switchProjectIntent(
     projectId: string
 ): Extract<CommandPaletteIntent, { type: "switch-project" }> {
@@ -145,4 +161,14 @@ export function switchProjectIntent(
 
 export function toggleThemeIntent(): CommandPaletteIntent {
     return { type: "toggle-theme" };
+}
+
+function canOfferCreateTask(context: CommandPaletteRouteContext): boolean {
+    if (!context.boardId || !context.canCreateTasks) {
+        return false;
+    }
+    if (context.isGuest && !GUEST_PALETTE_ALLOWS_CREATE_TASK) {
+        return false;
+    }
+    return true;
 }

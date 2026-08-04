@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
+import { isGuestSession, useAuth } from "@/features/auth";
 import { useBoardColumns } from "@/features/boards";
 import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
 import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
@@ -19,6 +20,7 @@ import {
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
     selectTaskIntent,
+    shouldRemindGuestCreateTask,
     switchProjectIntent,
 } from "@/features/command-palette/model/rules";
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
@@ -42,6 +44,8 @@ export function CommandPalette() {
     const { t } = useTranslation(["command", "common"]);
     const navigate = useNavigate();
     const parameters = useParams({ strict: false });
+    const { user } = useAuth();
+    const isGuest = isGuestSession(user);
     const projectId =
         typeof parameters.projectId === "string" ? parameters.projectId : null;
     const boardId =
@@ -72,6 +76,7 @@ export function CommandPalette() {
     const routeContext = {
         boardId,
         canCreateTasks: isSettled && canCreateTasks,
+        isGuest,
         projectId,
     };
     const paletteProjects = projects.map((project) => ({
@@ -216,6 +221,17 @@ export function CommandPalette() {
                                             createIntent.title
                                         )
                                             .then((task) => {
+                                                if (
+                                                    shouldRemindGuestCreateTask(
+                                                        isGuest
+                                                    )
+                                                ) {
+                                                    toast.message(
+                                                        t(
+                                                            "command:guestCreateReminder"
+                                                        )
+                                                    );
+                                                }
                                                 selectTask(task.id);
                                                 close();
                                             })

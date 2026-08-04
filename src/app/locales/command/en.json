@@ -6,6 +6,7 @@
     "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
     "empty": "No results found.",
+    "guestCreateReminder": "Demo account — changes may be reset on the shared demo.",
     "open": "Open command palette",
     "placeholder": "Type a command or search…",
     "projects": "Projects",
