@@ -76,7 +76,7 @@ export function resolveTeamAccess(input: {
         };
     }
 
-    if (membershipError) {
+    if (membershipError && !membership) {
         return {
             ...EMPTY,
             isError: true,
