@@ -30,6 +30,7 @@ import {
     subscribeGitHubAccessToken,
     validateGitHubAccessToken,
 } from "@/features/auth/model/github-token";
+import { validatePersistedSession } from "@/features/auth/model/validate-persisted-session";
 import { supabase } from "@/shared/api/supabase";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -141,9 +142,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (!mounted) return;
 
                 try {
-                    const validated =
-                        await validatePersistedSession(nextSession);
-                    if (!mounted) return;
+                    const validated = await validatePersistedSession(
+                        nextSession,
+                        { signal: abortController.signal }
+                    );
+                    if (!mounted || abortController.signal.aborted) return;
 
                     await syncGitHubToken(validated);
 
@@ -253,24 +256,4 @@ async function syncUserProfile(user: null | User) {
     } catch {
         // Profile sync is best-effort on session load; createProject retries upsert.
     }
-}
-
-/**
- * `getSession()` reads local storage and can return a JWT after `db reset`
- * (or any server-side auth wipe). Confirm with the Auth API before treating
- * the user as signed in.
- */
-async function validatePersistedSession(
-    session: null | Session
-): Promise<null | Session> {
-    if (!session) return null;
-
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-        await supabase.auth.signOut({ scope: "local" });
-        clearGitHubAccessToken();
-        return null;
-    }
-
-    return { ...session, user: data.user };
 }
