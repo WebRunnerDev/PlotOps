@@ -18,7 +18,8 @@ export type GuestCredentials = {
  * documented local seed identity when unset or blank.
  */
 export function getGuestCredentials(
-    environment: GuestCredentialEnvironment = import.meta.env
+    environment: GuestCredentialEnvironment = import.meta
+        .env as GuestCredentialEnvironment
 ): GuestCredentials {
     const email = environment.VITE_GUEST_EMAIL?.trim() || GUEST_DEMO_EMAIL;
     const password =

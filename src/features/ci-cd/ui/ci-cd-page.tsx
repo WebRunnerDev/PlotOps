@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 
 import type { BuildStatus, ProjectBuild } from "@/features/ci-cd/model/types";
 
-import { useAuth } from "@/features/auth";
+import { isGuestSession, useAuth } from "@/features/auth";
 import {
     CiCdMissingTokenError,
     CiCdUnauthorizedError,
 } from "@/features/ci-cd/api/github-actions-builds";
+import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-builds";
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
@@ -28,7 +29,13 @@ type RunFilter = "all" | "failure" | "running";
 
 export function CiCdPage({ projectId }: CiCdPageProperties) {
     const { i18n, t } = useTranslation("board");
-    const { githubAccessToken } = useAuth();
+    const { githubAccessToken, user } = useAuth();
+    const isGuest = isGuestSession(user);
+    const canFetchBuilds = canFetchProjectBuilds({
+        githubAccessToken,
+        isGuest,
+        projectId,
+    });
     const { canView, isLoading: accessLoading } = useProjectAccess(projectId);
     const {
         data: project,
@@ -71,7 +78,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
     }, [builds, filter]);
 
     const isBootstrapping = projectLoading || accessLoading;
-    const isBuildsPending = Boolean(githubAccessToken) && buildsLoading;
+    const isBuildsPending = canFetchBuilds && buildsLoading;
 
     if (isBootstrapping || isBuildsPending) {
         return (
@@ -91,10 +98,11 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         );
     }
 
-    const missingToken = !githubAccessToken;
+    const needsGitHubToken = !canFetchBuilds;
     const tokenError =
-        buildsError instanceof CiCdMissingTokenError ||
-        buildsError instanceof CiCdUnauthorizedError;
+        !isGuest &&
+        (buildsError instanceof CiCdMissingTokenError ||
+            buildsError instanceof CiCdUnauthorizedError);
 
     return (
         <div className="scrollbar-board mx-auto flex h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-4">
@@ -117,19 +125,19 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                 </p>
             </header>
 
-            {missingToken || tokenError ? (
+            {needsGitHubToken || tokenError ? (
                 <Alert>
                     <AlertDescription>{t("cicd.needsToken")}</AlertDescription>
                 </Alert>
             ) : undefined}
 
-            {!missingToken && buildsError && !tokenError ? (
+            {canFetchBuilds && buildsError && !tokenError ? (
                 <Alert variant="destructive">
                     <AlertDescription>{t("cicd.loadFailed")}</AlertDescription>
                 </Alert>
             ) : undefined}
 
-            {!missingToken && !buildsError ? (
+            {canFetchBuilds && !buildsError ? (
                 <>
                     <section
                         aria-label={t("cicd.summary.label")}

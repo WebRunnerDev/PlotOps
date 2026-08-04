@@ -5,6 +5,8 @@ export {
     githubActionsBuilds,
 } from "./api/github-actions-builds";
 export { mockBuildsForProject } from "./api/mock-builds";
+export { resolveBuildsProvider } from "./api/resolve-builds-provider";
+export { canFetchProjectBuilds } from "./lib/can-fetch-project-builds";
 export { buildStatusAccentClass } from "./model/build-status";
 export { mapActionsStatus } from "./model/map-actions-status";
 export { ciKeys } from "./model/query-keys";

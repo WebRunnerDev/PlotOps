@@ -1,11 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useAuth } from "@/features/auth";
+import { isGuestSession, useAuth } from "@/features/auth";
+import {
+    fetchFixtureBranchCommits,
+    fetchFixtureBranchPullRequests,
+    fetchFixturePullRequestFiles,
+} from "@/features/git-integration/api/fixture-git-api";
 import {
     fetchBranchCommits,
     fetchBranchPullRequests,
     fetchPullRequestFiles,
 } from "@/features/git-integration/api/github-git-api";
+import {
+    canFetchGitData,
+    canFetchPullRequestFiles,
+} from "@/features/git-integration/lib/can-fetch-git-data";
 
 import { gitAuthFingerprint, gitKeys } from "./query-keys";
 
@@ -21,11 +30,20 @@ export function useBranchCommits({
     token,
 }: GitQueryOptions) {
     const { user } = useAuth();
+    const isGuest = isGuestSession(user);
     const authFingerprint = gitAuthFingerprint(user?.id);
 
     return useQuery({
-        enabled: Boolean(token && repoFullName && branchName),
-        queryFn: () => fetchBranchCommits(repoFullName!, branchName!, token!),
+        enabled: canFetchGitData({
+            branchName,
+            isGuest,
+            repoFullName,
+            token,
+        }),
+        queryFn: () =>
+            isGuest
+                ? fetchFixtureBranchCommits(repoFullName!, branchName!)
+                : fetchBranchCommits(repoFullName!, branchName!, token!),
         queryKey: gitKeys.commits(
             authFingerprint,
             repoFullName ?? "",
@@ -41,12 +59,20 @@ export function useBranchPullRequests({
     token,
 }: GitQueryOptions) {
     const { user } = useAuth();
+    const isGuest = isGuestSession(user);
     const authFingerprint = gitAuthFingerprint(user?.id);
 
     return useQuery({
-        enabled: Boolean(token && repoFullName && branchName),
+        enabled: canFetchGitData({
+            branchName,
+            isGuest,
+            repoFullName,
+            token,
+        }),
         queryFn: () =>
-            fetchBranchPullRequests(repoFullName!, branchName!, token!),
+            isGuest
+                ? fetchFixtureBranchPullRequests(repoFullName!, branchName!)
+                : fetchBranchPullRequests(repoFullName!, branchName!, token!),
         queryKey: gitKeys.pullRequests(
             authFingerprint,
             repoFullName ?? "",
@@ -62,11 +88,20 @@ export function usePullRequestFiles(
     token: null | string
 ) {
     const { user } = useAuth();
+    const isGuest = isGuestSession(user);
     const authFingerprint = gitAuthFingerprint(user?.id);
 
     return useQuery({
-        enabled: Boolean(token && repoFullName && prNumber != undefined),
-        queryFn: () => fetchPullRequestFiles(repoFullName!, prNumber!, token!),
+        enabled: canFetchPullRequestFiles({
+            isGuest,
+            prNumber,
+            repoFullName,
+            token,
+        }),
+        queryFn: () =>
+            isGuest
+                ? fetchFixturePullRequestFiles(repoFullName!, prNumber!)
+                : fetchPullRequestFiles(repoFullName!, prNumber!, token!),
         queryKey: gitKeys.prFiles(
             authFingerprint,
             repoFullName ?? "",

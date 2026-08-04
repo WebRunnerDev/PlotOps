@@ -5,9 +5,9 @@ import type {
 } from "@/features/ci-cd/model/types";
 
 /**
- * Deterministic mock builds for unit tests.
+ * Deterministic mock builds for unit tests and Guest Mode.
  * Spec example: main passed, feature/analytics failed on tests.
- * Not used as the product default provider.
+ * Selected via `resolveBuildsProvider(true)` when the session is guest.
  */
 const MOCK_BUILDS: ProjectBuild[] = [
     {

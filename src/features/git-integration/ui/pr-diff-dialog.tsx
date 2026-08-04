@@ -47,7 +47,8 @@ type PrDiffDialogProperties = {
     prNumber: number;
     prTitle: string;
     repoFullName: string;
-    token: string;
+    /** Null for guest demos (fixtures load when session is guest). */
+    token: null | string;
 };
 
 function useDocumentTheme(): DiffTheme {

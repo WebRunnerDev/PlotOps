@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useAuth } from "@/features/auth";
-import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
+import { isGuestSession, useAuth } from "@/features/auth";
 import {
     CiCdMissingTokenError,
     CiCdUnauthorizedError,
 } from "@/features/ci-cd/api/github-actions-builds";
+import { resolveBuildsProvider } from "@/features/ci-cd/api/resolve-builds-provider";
+import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-builds";
 import { ciKeys } from "@/features/ci-cd/model/query-keys";
 
 export function useBuildJobs(
@@ -13,11 +14,20 @@ export function useBuildJobs(
     buildId: string | undefined,
     enabled: boolean
 ) {
-    const { githubAccessToken } = useAuth();
+    const { githubAccessToken, user } = useAuth();
+    const isGuest = isGuestSession(user);
+    const provider = resolveBuildsProvider(isGuest);
 
     return useQuery({
-        enabled: Boolean(enabled && projectId && buildId && githubAccessToken),
-        queryFn: () => buildsProvider.listBuildJobs(projectId, buildId!),
+        enabled:
+            enabled &&
+            Boolean(buildId) &&
+            canFetchProjectBuilds({
+                githubAccessToken,
+                isGuest,
+                projectId,
+            }),
+        queryFn: () => provider.listBuildJobs(projectId, buildId!),
         queryKey: ciKeys.jobs(projectId, buildId ?? ""),
         retry: (failureCount, error) => {
             if (error instanceof CiCdMissingTokenError) return false;
