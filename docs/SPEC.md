@@ -13,7 +13,7 @@
 | Routing (TanStack Router)                              | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | i18n (i18next)                                         | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | Auth (Supabase, GitHub OAuth + email signup/confirm)   | ✅ Done                                                                                                                                                                                                                                                                                                                             |
-| Guest mode                                             | ⬜ Not started                                                                                                                                                                                                                                                                                                                      |
+| Guest mode                                             | ⬜ Not started — plan: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md)                                                                                                                                                                                                                                        |
 | Database schema + RLS (`projects`)                     | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | GitHub project import (home page)                      | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | Kanban board                                           | ✅ Done (custom columns, labels/priority/deadline; board filters; comments; soft-archive + board archive dialog; Make skin pass on board/cards/drawer — ADR 0007; DnD polish deferred)                                                                                                                                              |
@@ -157,37 +157,32 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 ## Deferred / later
 
 > Captured during domain grilling (Team & Permissions + Team above Project). Not in current scope — do not implement until explicitly pulled in.
+>
+> **Roadmap (order, size, nested plans):** [`docs/deferred/`](deferred/README.md) — Wave 0 Guest Mode → Wave 1 UX → Wave 2 invites → Wave 3 sprints → Waves 4+ on explicit pull only.
 
-| Item                                     | Notes                                                                                                                                  |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Projects without GitHub                  | Schema already allows null repo fields; create stays “connect GitHub repo”. Name-only Project later.                                   |
-| Flat all-Projects home                   | Home is Teams-first; a cross-Team Projects view can wait.                                                                              |
-| Merge / move Projects between Teams      | 1:1 migration only; no Team merge or Project transfer UI in this slice.                                                                |
-| GitHub collaborator auto-suggest         | On repo connect, list GH collaborators and offer “Add to Team”.                                                                        |
-| Custom SMTP / real invite emails         | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough.                                        |
-| Open invite link (no email binding)      | Role + TTL link anyone can redeem — separate from email-targeted Invites.                                                              |
-| Board-level permission overrides         | Notion `view` / `edit` / `manage` per board beyond Team Role.                                                                          |
-| Assigned-only Contributor edits          | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                 |
-| Granular permission flags per Member     | Roles only for MVP; no custom `tasks:create`-style flags.                                                                              |
-| Jira-style description diffs in activity | Rejected for MVP (free-tier DB risk); log field changes without description body.                                                      |
-| Realtime on `activity_log`               | Rejected for MVP; TanStack Query + invalidate is enough.                                                                               |
-| Activity retention cron / per-task cap   | Rejected for MVP; store all rows, UI shows last 50–100.                                                                                |
-| Archive auto-purge (TTL)                 | Rejected for MVP on free tier; manual Delete from archive only.                                                                        |
-| Sprint history auto-purge (TTL)          | Rejected for MVP; Manager+ can manually delete closed/canceled sprints (+ cascaded events).                                            |
-| Story points / estimates on Tasks        | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                                                                 |
-| Sprint burndown chart                    | Optional in Notion; defer until points or richer time series exist.                                                                    |
-| Column `is_done` flag                    | Close recommends last column only; revisit if Done columns move left often.                                                            |
-| Per-task carryover targets on Close      | MVP: one target for all incomplete (Backlog or chosen Draft).                                                                          |
-| Contributor propose / self-add to Sprint | Membership is Manager+ only.                                                                                                           |
-| Sprint KPI / velocity dashboards         | Corporate metrics deferred with points.                                                                                                |
-| In-app PR merge / approve / open PR      | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
-| Group Mentions (`@everyone` / Roles)     | Mentions MVP is single-user only (ADR 0014).                                                                                           |
-| Auto-Watch on Mention                    | Rejected in grilling — Mentionee is not auto-enrolled (ADR 0014).                                                                      |
-| Comment events without Mention           | Plain Comments stay out of Notifications; only Mentions fan out.                                                                       |
+| Item                                 | Notes                                                                                                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Projects without GitHub              | Schema already allows null repo fields; create stays “connect GitHub repo”. Name-only Project later.                                   |
+| Flat all-Projects home               | Home is Teams-first; a cross-Team Projects view can wait.                                                                              |
+| Merge / move Projects between Teams  | 1:1 migration only; no Team merge or Project transfer UI in this slice.                                                                |
+| GitHub collaborator auto-suggest     | On repo connect, list GH collaborators and offer “Add to Team”.                                                                        |
+| Custom SMTP / real invite emails     | Invite model stays email-addressed; wire Resend (or similar) when free-tier mail is not enough.                                        |
+| Open invite link (no email binding)  | Role + TTL link anyone can redeem — separate from email-targeted Invites.                                                              |
+| Board-level permission overrides     | Notion `view` / `edit` / `manage` per board beyond Team Role.                                                                          |
+| Assigned-only Contributor edits      | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                 |
+| Granular permission flags per Member | Roles only for MVP; no custom `tasks:create`-style flags.                                                                              |
+| Story points / estimates on Tasks    | Sprint metrics are count-based for MVP (`CONTEXT.md`).                                                                                 |
+| Sprint burndown chart                | Optional in Notion; defer until points or richer time series exist.                                                                    |
+| Column `is_done` flag                | Close recommends last column only; revisit if Done columns move left often.                                                            |
+| Per-task carryover targets on Close  | MVP: one target for all incomplete (Backlog or chosen Draft).                                                                          |
+| Sprint KPI / velocity dashboards     | Corporate metrics deferred with points.                                                                                                |
+| In-app PR merge / approve / open PR  | Merge (and other write PR actions) stay on GitHub; PlotOps views + webhook sync only. Revisit later if product wants GitHub write API. |
+| Group Mentions (`@everyone` / Roles) | Mentions MVP is single-user only (ADR 0014).                                                                                           |
+| Comment events without Mention       | Plain Comments stay out of Notifications; only Mentions fan out.                                                                       |
 
 ### Ideas to revisit (Command Palette)
 
-> Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set.
+> Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set. Checklists: [`docs/deferred/wave-1-ux-checklist.md`](deferred/wave-1-ux-checklist.md) (Guest palette: Wave 0 / [`wave-4-plus-later.md`](deferred/wave-4-plus-later.md)).
 
 | Idea                                                 | Notes                                                                           |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -201,7 +196,7 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 
 ## Deferred from Figma Make
 
-> Visual redesign source: Dark-themed CRM Interface Design. Policy: ADR 0007 — skin only; keep existing feature structure. Rows below are Make UI/ideas with **no** matching PlotOps feature yet — do not implement in the redesign pass.
+> Visual redesign source: Dark-themed CRM Interface Design. Policy: ADR 0007 — skin only; keep existing feature structure. Rows below are Make UI/ideas with **no** matching PlotOps feature yet — do not implement in the redesign pass. Parked chrome ideas: [`docs/deferred/wave-4-plus-later.md`](deferred/wave-4-plus-later.md) § Parked. Board **+ New Task** CTA checklist: [`wave-1-ux-checklist.md`](deferred/wave-1-ux-checklist.md).
 
 | Item                                                                                 | Notes                                                                                                                                          |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -427,7 +422,7 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 
 - Vite + React repo with FSD layout (`src/app`, `src/routes`, `src/features`, `src/shared`).
 - Supabase Auth + GitHub provider.
-- Demo user in DB; login page with guest button (email/password sign-in for demo account).
+- Demo user in DB; login page with guest button (email/password sign-in for demo account). Implementation plan when pulled: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md).
 - `seed.sql`: 2 projects, ~15 tasks with descriptions, tags, activity history.
 
 ### Stage 3: Kanban Core (Week 2)

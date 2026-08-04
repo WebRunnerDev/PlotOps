@@ -23,3 +23,7 @@ Canonical roles map 1:1 to tracker labels (`needs-triage`, `needs-info`, `ready-
 ### Domain docs
 
 Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+
+### Deferred roadmap
+
+Ordered waves + nested implementation plans for SPEC Deferred items: `docs/deferred/` (index `docs/deferred/README.md`). Do not implement a wave until explicitly pulled.
