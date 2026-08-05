@@ -1,8 +1,9 @@
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { updateProfileNames } from "@/features/auth/api/profile-api";
+import { mergeCompleteProfilePrefill } from "@/features/auth/lib/complete-profile-prefill";
 import { splitFullName } from "@/features/auth/lib/user-display";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
@@ -57,6 +58,23 @@ export function CompleteProfileForm({
     const [formError, setFormError] = useState<null | string>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSigningOut, setIsSigningOut] = useState(false);
+
+    useEffect(() => {
+        setFirstName(
+            (current) =>
+                mergeCompleteProfilePrefill(
+                    { firstName: current, lastName: "" },
+                    prefill
+                ).firstName
+        );
+        setLastName(
+            (current) =>
+                mergeCompleteProfilePrefill(
+                    { firstName: "", lastName: current },
+                    prefill
+                ).lastName
+        );
+    }, [prefill]);
 
     const handleSignOut = async () => {
         setFormError(null);

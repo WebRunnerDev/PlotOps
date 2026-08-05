@@ -5,8 +5,7 @@ export type ProfileGateInput = {
 
 /**
  * Whether authenticated users must finish `/complete-profile` (ADR 0015).
- * Guests skip the gate — the seed profile may regenerate incompletely after
- * auth edge cases, and the demo must reach the Board without friction.
+ * Guest Sessions have no Supabase user, so the gate does not apply (ADR 0018).
  */
 export function isProfileGateRequired({
     isGuest,
