@@ -1,16 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { guestActionPolicy, isGuestSession, useAuth } from "@/features/auth";
+import { isGuest } from "@/features/guest-mode";
 import {
     capabilitiesForRole,
     type ProjectAccessRole,
     type ProjectCapabilities,
     type ProjectMemberRole,
 } from "@/features/projects/model/access";
-import {
-    fetchMyTeamMembership,
-    fetchTeam,
-} from "@/features/teams/api/team-members-api";
+import { resolveTeamsProvider } from "@/features/teams/api/resolve-teams-provider";
+import { fetchMyTeamMembership } from "@/features/teams/api/team-members-api";
 import { teamKeys } from "@/features/teams/model/query-keys";
 
 const EMPTY: ProjectCapabilities = capabilitiesForRole(null);
@@ -100,12 +99,14 @@ export function resolveTeamAccess(input: {
 
 export function useTeamAccess(teamId: string): TeamAccessState {
     const { user } = useAuth();
-    const policy = guestActionPolicy(isGuestSession(user));
+    const guest = isGuest();
+    const policy = guestActionPolicy(guest || isGuestSession(user));
+    const teamsProvider = resolveTeamsProvider(guest);
 
     const teamQuery = useQuery({
         enabled: Boolean(teamId),
         queryFn: async () => {
-            const { data, error } = await fetchTeam(teamId);
+            const { data, error } = await teamsProvider.fetchTeam(teamId);
             if (error) throw error;
             return data;
         },
@@ -114,6 +115,7 @@ export function useTeamAccess(teamId: string): TeamAccessState {
 
     const membershipQuery = useQuery({
         enabled: Boolean(
+            !guest &&
             teamId &&
             user?.id &&
             teamQuery.data &&
@@ -130,6 +132,35 @@ export function useTeamAccess(teamId: string): TeamAccessState {
         },
         queryKey: teamKeys.myMembership(teamId, user?.id),
     });
+
+    // Guest owns the sandbox Team — grant happy-path caps without Supabase membership.
+    if (guest) {
+        if (teamQuery.isError && !teamQuery.data) {
+            return {
+                ...EMPTY,
+                isError: true,
+                isLoading: false,
+                isSettled: true,
+            };
+        }
+        if (!teamQuery.data) {
+            return {
+                ...EMPTY,
+                isError: false,
+                isLoading: teamQuery.isLoading,
+                isSettled: false,
+            };
+        }
+        const caps = capabilitiesForRole("owner");
+        return {
+            ...caps,
+            canDeleteProject: caps.canDeleteProject && policy.canDeleteProject,
+            canDeleteTeam: caps.canDeleteTeam && policy.canDeleteTeam,
+            isError: false,
+            isLoading: false,
+            isSettled: true,
+        };
+    }
 
     const access = resolveTeamAccess({
         membership: membershipQuery.data,

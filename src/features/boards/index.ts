@@ -21,6 +21,8 @@ export {
     fetchProjectBoards,
     updateBoard,
 } from "./api/boards-api";
+export type { BoardsProvider } from "./api/boards-provider";
+export { resolveBoardsProvider } from "./api/resolve-boards-provider";
 export {
     matchesAllowedHeadPatterns,
     parseAllowedHeadPatterns,

@@ -1,3 +1,5 @@
+export type { ProjectsProvider } from "./api/projects-provider";
+export { resolveProjectsProvider } from "./api/resolve-projects-provider";
 export type {
     ProjectAccessRole,
     ProjectCapabilities,

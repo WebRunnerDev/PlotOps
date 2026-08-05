@@ -1,4 +1,4 @@
-export { cloneGuestDemoSeed } from "./lib/guest-demo-seed";
+export { cloneGuestDemoSeed, GUEST_SEED_ACTOR_ID } from "./lib/guest-demo-seed";
 export {
     getGuestDisplayIdentity,
     getGuestSandbox,
@@ -6,6 +6,7 @@ export {
     leaveGuestSession,
     resetGuestSession,
     startGuestSession,
+    updateGuestSandbox,
     writeGuestSandbox,
 } from "./lib/guest-session";
 export type { GuestDisplayIdentity } from "./lib/guest-session";

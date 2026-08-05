@@ -4,14 +4,16 @@ import { toast } from "sonner";
 import {
     createBoard,
     deleteBoard,
-    fetchProjectBoards,
     updateBoard,
 } from "@/features/boards/api/boards-api";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateProjectBoards } from "@/features/boards/model/invalidate-boards";
 import { boardKeys } from "@/features/boards/model/query-keys";
+import { isGuest } from "@/features/guest-mode";
 
 export function useBoardMutations(projectId: string) {
     const queryClient = useQueryClient();
+    const guest = isGuest();
 
     const invalidate = () => {
         invalidateProjectBoards(queryClient, projectId);
@@ -24,7 +26,14 @@ export function useBoardMutations(projectId: string) {
         }: {
             baseBranch: string;
             name: string;
-        }) => createBoard(projectId, name, baseBranch),
+        }) => {
+            if (guest) {
+                throw new Error(
+                    "Creating boards is not available in Guest Mode"
+                );
+            }
+            return createBoard(projectId, name, baseBranch);
+        },
         onError: () => {
             toast.error("Could not create board");
         },
@@ -44,7 +53,14 @@ export function useBoardMutations(projectId: string) {
                 base_branch?: string;
                 name?: string;
             };
-        }) => updateBoard(boardId, patch),
+        }) => {
+            if (guest) {
+                throw new Error(
+                    "Updating boards is not available in Guest Mode"
+                );
+            }
+            return updateBoard(boardId, patch);
+        },
         onError: () => {
             toast.error("Could not update board");
         },
@@ -54,7 +70,14 @@ export function useBoardMutations(projectId: string) {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (boardId: string) => deleteBoard(boardId),
+        mutationFn: (boardId: string) => {
+            if (guest) {
+                throw new Error(
+                    "Deleting boards is not available in Guest Mode"
+                );
+            }
+            return deleteBoard(boardId);
+        },
         onSuccess: () => {
             invalidate();
         },
@@ -79,9 +102,11 @@ export function useBoardMutations(projectId: string) {
 }
 
 export function useProjectBoards(projectId: string) {
+    const provider = resolveBoardsProvider(isGuest());
+
     return useQuery({
         enabled: Boolean(projectId),
-        queryFn: () => fetchProjectBoards(projectId),
+        queryFn: () => provider.fetchProjectBoards(projectId),
         queryKey: boardKeys.list(projectId),
     });
 }

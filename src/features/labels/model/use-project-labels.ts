@@ -5,13 +5,14 @@ import { useEffect } from "react";
 
 import type { LabelColor, ProjectLabel } from "@/features/labels/model/types";
 
+import { isGuest } from "@/features/guest-mode";
 import {
     createProjectLabel,
     deleteProjectLabel,
-    fetchProjectLabels,
     moveProjectLabel,
     updateProjectLabel,
 } from "@/features/labels/api/labels-api";
+import { resolveLabelsProvider } from "@/features/labels/api/resolve-labels-provider";
 import { isUniqueViolation } from "@/features/labels/lib/is-unique-violation";
 import { LABEL_COLORS } from "@/features/labels/model/constants";
 import {
@@ -29,20 +30,22 @@ const labelChannels = new Map<
 
 export function useProjectLabels(projectId: string) {
     const queryClient = useQueryClient();
+    const guest = isGuest();
+    const labelsProvider = resolveLabelsProvider(guest);
 
     const labelsQuery = useQuery({
         enabled: Boolean(projectId),
-        queryFn: () => fetchProjectLabels(projectId),
+        queryFn: () => labelsProvider.fetchProjectLabels(projectId),
         queryKey: labelKeys.project(projectId),
     });
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || guest) return;
 
         return subscribeLabelsChannel(projectId, () => {
             invalidateProjectLabels(queryClient, projectId);
         });
-    }, [projectId, queryClient]);
+    }, [guest, projectId, queryClient]);
 
     const addLabelMutation = useMutation({
         mutationFn: ({
@@ -54,6 +57,11 @@ export function useProjectLabels(projectId: string) {
             customColor?: string;
             name: string;
         }) => {
+            if (guest) {
+                throw new Error(
+                    "Creating labels is not available in Guest Mode"
+                );
+            }
             const projectLabels = labelsQuery.data ?? [];
             const nextColor =
                 color ??

@@ -9,13 +9,14 @@ import type { BoardColumn } from "@/features/boards/model/types";
 import {
     createBoardColumn,
     deleteBoardColumn,
-    fetchBoardColumns,
     renameBoardColumn,
     reorderBoardColumns,
 } from "@/features/boards/api/board-columns-api";
 import { orderColumnsByIds } from "@/features/boards/api/board-mappers";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateBoardColumns } from "@/features/boards/model/invalidate-boards";
 import { boardKeys } from "@/features/boards/model/query-keys";
+import { isGuest } from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
 
 /** Ref-count Realtime channels so multiple mounts share one `board_columns` subscription. */
@@ -27,24 +28,32 @@ const columnChannels = new Map<
 export function useBoardColumns(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
     const dragGestureColumnsReference = useRef<BoardColumn[] | null>(null);
+    const guest = isGuest();
+    const boardsProvider = resolveBoardsProvider(guest);
 
     const columnsQuery = useQuery({
         enabled: Boolean(projectId && boardId),
-        queryFn: () => fetchBoardColumns(projectId, boardId),
+        queryFn: () => boardsProvider.fetchBoardColumns(projectId, boardId),
         queryKey: boardKeys.columns(projectId, boardId),
     });
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || guest) return;
 
         return subscribeBoardColumnsChannel(projectId, () => {
             invalidateBoardColumns(queryClient, projectId);
         });
-    }, [projectId, queryClient]);
+    }, [guest, projectId, queryClient]);
 
     const addColumnMutation = useMutation({
-        mutationFn: (name: string) =>
-            createBoardColumn(projectId, boardId, name),
+        mutationFn: (name: string) => {
+            if (guest) {
+                throw new Error(
+                    "Adding columns is not available in Guest Mode"
+                );
+            }
+            return createBoardColumn(projectId, boardId, name);
+        },
         onError: () => {
             toast.error("Failed to add column");
         },
@@ -54,8 +63,20 @@ export function useBoardColumns(projectId: string, boardId: string) {
     });
 
     const renameColumnMutation = useMutation({
-        mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
-            renameBoardColumn(boardId, columnId, name),
+        mutationFn: ({
+            columnId,
+            name,
+        }: {
+            columnId: string;
+            name: string;
+        }) => {
+            if (guest) {
+                throw new Error(
+                    "Renaming columns is not available in Guest Mode"
+                );
+            }
+            return renameBoardColumn(boardId, columnId, name);
+        },
         onError: () => {
             toast.error("Failed to rename column");
         },
@@ -71,7 +92,14 @@ export function useBoardColumns(projectId: string, boardId: string) {
         }: {
             columnId: string;
             moveTasksTo?: string;
-        }) => deleteBoardColumn(boardId, columnId, moveTasksTo),
+        }) => {
+            if (guest) {
+                throw new Error(
+                    "Deleting columns is not available in Guest Mode"
+                );
+            }
+            return deleteBoardColumn(boardId, columnId, moveTasksTo);
+        },
         onError: () => {
             toast.error("Failed to delete column");
         },
@@ -81,8 +109,14 @@ export function useBoardColumns(projectId: string, boardId: string) {
     });
 
     const reorderColumnsMutation = useMutation({
-        mutationFn: (columnIds: string[]) =>
-            reorderBoardColumns(boardId, columnIds),
+        mutationFn: (columnIds: string[]) => {
+            if (guest) {
+                throw new Error(
+                    "Reordering columns is not available in Guest Mode"
+                );
+            }
+            return reorderBoardColumns(boardId, columnIds);
+        },
         onError: () => {
             toast.error("Failed to reorder columns");
         },

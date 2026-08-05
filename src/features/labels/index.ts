@@ -6,6 +6,8 @@ export {
     fetchProjectLabelTaggedTasks,
     updateProjectLabel,
 } from "./api/labels-api";
+export type { LabelsProvider } from "./api/labels-provider";
+export { resolveLabelsProvider } from "./api/resolve-labels-provider";
 export {
     getLabelChipProperties,
     getLabelDotProperties,

@@ -20,6 +20,7 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { boardKeys } from "@/features/boards";
+import { isGuest } from "@/features/guest-mode";
 import { resolveLabelNames } from "@/features/labels";
 import {
     createNotificationsForStatusChange,
@@ -32,18 +33,14 @@ import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
 import { planDeadlineWatcherNotification } from "@/features/notifications/lib/plan-deadline-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
+import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
     archiveTaskRecord,
     type BoardTasksCache,
-    createTaskRecord,
     deleteTaskRecord,
-    fetchBoardTasks,
-    moveTaskToBoard,
-    persistTaskMoves,
     restoreTaskRecord,
-    updateTaskDetails,
-    updateTaskRecord,
+    type TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
 import {
     applyDetailsToSnapshot,
@@ -120,20 +117,22 @@ type TaskMoveUpdate = {
 export function useBoardTasks(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
     const dragGestureCacheReference = useRef<BoardTasksCache | null>(null);
+    const guest = isGuest();
+    const tasksProvider = resolveTasksProvider(guest);
 
     const tasksQuery = useQuery({
         enabled: Boolean(projectId && boardId),
-        queryFn: () => fetchBoardTasks(boardId),
+        queryFn: () => tasksProvider.fetchBoardTasks(boardId),
         queryKey: taskKeys.board(projectId, boardId),
     });
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || guest) return;
 
         return subscribeTasksChannel(projectId, () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         });
-    }, [projectId, queryClient]);
+    }, [guest, projectId, queryClient]);
 
     const moveTaskMutation = useMutation({
         mutationFn: async ({
@@ -147,8 +146,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             previousCache?: BoardTasksCache;
             updates: TaskMoveUpdate[];
         }) => {
-            await persistTaskMoves(boardId, updates);
-            if (activity) {
+            await tasksProvider.persistTaskMoves(boardId, updates);
+            if (activity && !guest) {
                 await notifyStatusChangeBestEffort({
                     activityChanges: activity.changes,
                     projectId,
@@ -192,7 +191,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             previousCache?: BoardTasksCache;
             previousDescription?: string;
         }) => {
-            const patch: Parameters<typeof updateTaskRecord>[1] = {};
+            const patch: TaskRecordPatch = {};
             if (details.title !== undefined) patch.title = details.title;
             if (details.description !== undefined) {
                 patch.description = details.description ?? null;
@@ -227,13 +226,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 patch.author_id = details.author?.id ?? null;
             }
 
-            await updateTaskDetails(
+            await tasksProvider.updateTaskDetails(
                 id,
                 patch,
                 details.labelIds === undefined
                     ? undefined
                     : (details.labelIds ?? [])
             );
+
+            if (guest) {
+                return;
+            }
 
             if (details.description !== undefined) {
                 await notifyNewMentionsBestEffort({
@@ -295,7 +298,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
             previousCache?: BoardTasksCache;
             status: TaskStatus;
         }) => {
-            await updateTaskRecord(id, { status });
+            await tasksProvider.updateTaskRecord(id, { status });
+
+            if (guest) {
+                return;
+            }
 
             await notifyStatusChangeBestEffort({
                 activityChanges,
@@ -336,7 +343,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
             targetStatus: TaskStatus;
             taskId: string;
         }) => {
-            await moveTaskToBoard(taskId, targetBoardId, targetStatus);
+            await tasksProvider.moveTaskToBoard(
+                taskId,
+                targetBoardId,
+                targetStatus
+            );
+
+            if (guest) {
+                return;
+            }
 
             await notifyBoardMoveBestEffort({
                 activityChanges,
@@ -371,7 +386,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             taskType?: TaskType;
             title: string;
         }) =>
-            createTaskRecord(
+            tasksProvider.createTaskRecord(
                 projectId,
                 boardId,
                 status,

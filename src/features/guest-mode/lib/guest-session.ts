@@ -70,6 +70,22 @@ export function startGuestSession(): GuestDisplayIdentity {
 }
 
 /**
+ * Read–mutate–write the active Guest sandbox.
+ * Throws when no Guest Session is active (fail-closed).
+ */
+export function updateGuestSandbox(
+    mutator: (sandbox: GuestSandbox) => void
+): GuestSandbox {
+    const sandbox = getGuestSandbox();
+    if (!sandbox) {
+        throw new Error("No Guest Session");
+    }
+    mutator(sandbox);
+    writeGuestSandbox(sandbox);
+    return sandbox;
+}
+
+/**
  * Replace the sandbox for the active Guest Session (deep-cloned on write).
  * No-op when no Guest Session is active — fail-closed for non-Guest callers.
  */
