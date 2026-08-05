@@ -4,12 +4,28 @@ import type {
 } from "@/features/boards/model/types";
 
 /**
- * Narrow Boards (+ columns) data seam for Guest vs Supabase resolution.
- * Happy-path board navigation + column reads for kanban; settings mutations
- * stay on call sites that are inert/hidden in Guest Mode.
+ * Boards (+ columns) data seam for Guest vs Supabase resolution.
+ * Happy-path reads and settings mutations that run against the local sandbox
+ * in Guest Mode.
  */
 export type BoardsProvider = {
     boardHasTasks(boardId: string): Promise<boolean>;
+    createBoard(
+        projectId: string,
+        name: string,
+        baseBranch: string
+    ): Promise<ProjectBoardRecord>;
+    createBoardColumn(
+        projectId: string,
+        boardId: string,
+        name: string
+    ): Promise<string>;
+    deleteBoard(boardId: string): Promise<void>;
+    deleteBoardColumn(
+        boardId: string,
+        columnId: string,
+        moveTasksTo?: string
+    ): Promise<void>;
     fetchBoard(boardId: string): Promise<ProjectBoardRecord>;
     fetchBoardColumnIds(boardId: string): Promise<string[]>;
     fetchBoardColumns(
@@ -18,4 +34,19 @@ export type BoardsProvider = {
     ): Promise<BoardColumn[]>;
     fetchBoardColumnSummaries(boardId: string): Promise<BoardColumn[]>;
     fetchProjectBoards(projectId: string): Promise<ProjectBoardRecord[]>;
+    renameBoardColumn(
+        boardId: string,
+        columnId: string,
+        name: string
+    ): Promise<void>;
+    reorderBoardColumns(boardId: string, columnIds: string[]): Promise<void>;
+    updateBoard(
+        boardId: string,
+        patch: {
+            allowed_head_patterns?: string[];
+            base_branch?: string;
+            name?: string;
+            position?: number;
+        }
+    ): Promise<ProjectBoardRecord>;
 };

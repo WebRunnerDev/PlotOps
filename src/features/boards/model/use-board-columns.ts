@@ -6,12 +6,6 @@ import { toast } from "sonner";
 
 import type { BoardColumn } from "@/features/boards/model/types";
 
-import {
-    createBoardColumn,
-    deleteBoardColumn,
-    renameBoardColumn,
-    reorderBoardColumns,
-} from "@/features/boards/api/board-columns-api";
 import { orderColumnsByIds } from "@/features/boards/api/board-mappers";
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateBoardColumns } from "@/features/boards/model/invalidate-boards";
@@ -46,14 +40,8 @@ export function useBoardColumns(projectId: string, boardId: string) {
     }, [guest, projectId, queryClient]);
 
     const addColumnMutation = useMutation({
-        mutationFn: (name: string) => {
-            if (guest) {
-                throw new Error(
-                    "Adding columns is not available in Guest Mode"
-                );
-            }
-            return createBoardColumn(projectId, boardId, name);
-        },
+        mutationFn: (name: string) =>
+            boardsProvider.createBoardColumn(projectId, boardId, name),
         onError: () => {
             toast.error("Failed to add column");
         },
@@ -63,20 +51,8 @@ export function useBoardColumns(projectId: string, boardId: string) {
     });
 
     const renameColumnMutation = useMutation({
-        mutationFn: ({
-            columnId,
-            name,
-        }: {
-            columnId: string;
-            name: string;
-        }) => {
-            if (guest) {
-                throw new Error(
-                    "Renaming columns is not available in Guest Mode"
-                );
-            }
-            return renameBoardColumn(boardId, columnId, name);
-        },
+        mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
+            boardsProvider.renameBoardColumn(boardId, columnId, name),
         onError: () => {
             toast.error("Failed to rename column");
         },
@@ -92,14 +68,7 @@ export function useBoardColumns(projectId: string, boardId: string) {
         }: {
             columnId: string;
             moveTasksTo?: string;
-        }) => {
-            if (guest) {
-                throw new Error(
-                    "Deleting columns is not available in Guest Mode"
-                );
-            }
-            return deleteBoardColumn(boardId, columnId, moveTasksTo);
-        },
+        }) => boardsProvider.deleteBoardColumn(boardId, columnId, moveTasksTo),
         onError: () => {
             toast.error("Failed to delete column");
         },
@@ -109,14 +78,8 @@ export function useBoardColumns(projectId: string, boardId: string) {
     });
 
     const reorderColumnsMutation = useMutation({
-        mutationFn: (columnIds: string[]) => {
-            if (guest) {
-                throw new Error(
-                    "Reordering columns is not available in Guest Mode"
-                );
-            }
-            return reorderBoardColumns(boardId, columnIds);
-        },
+        mutationFn: (columnIds: string[]) =>
+            boardsProvider.reorderBoardColumns(boardId, columnIds),
         onError: () => {
             toast.error("Failed to reorder columns");
         },
