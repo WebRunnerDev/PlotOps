@@ -104,17 +104,15 @@ export async function fetchFixturePullRequestFiles(
             status: "modified",
         },
         {
-            additions: 8,
+            additions: 6,
             blob_url:
-                "https://github.com/demo/plotops/blob/demo/is-guest-session.ts",
+                "https://github.com/demo/plotops/blob/demo/guest-session.ts",
             deletions: 0,
-            filename: "src/features/auth/lib/is-guest-session.ts",
+            filename: "src/features/guest-mode/lib/guest-session.ts",
             patch: [
-                "@@ -0,0 +1,8 @@",
-                "+export const GUEST_DEMO_EMAIL = 'demo@plotops.app';",
-                "+",
-                "+export function isGuestSession(user) {",
-                "+  return user?.email === GUEST_DEMO_EMAIL;",
+                "@@ -0,0 +1,6 @@",
+                "+export function isGuest() {",
+                "+  return sessionStorage.getItem('plotops-guest') === '1';",
                 "+}",
             ].join("\n"),
             previous_filename: undefined,

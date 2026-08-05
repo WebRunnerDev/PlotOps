@@ -1,4 +1,4 @@
--- Local Guest Mode demo identity.
+-- Optional local Docker seed identity for RLS / full-stack experiments.
 -- Applied on `supabase db reset` together with `seed-guest-dataset.sql`
 -- (see config.toml [db.seed] sql_paths).
 --
@@ -6,17 +6,11 @@
 --   email:    demo@plotops.app
 --   password: plotops-demo-local
 --
--- Frontend mirror: GUEST_DEMO_USER_ID / GUEST_DEMO_EMAIL in
---   src/features/auth/lib/is-guest-session.ts
--- App env (optional for sign-in CTA in later slice):
---   VITE_GUEST_EMAIL=demo@plotops.app
---   VITE_GUEST_PASSWORD=plotops-demo-local
---
+-- Product "Try demo" does NOT use this account (ADR 0018 / features/guest-mode).
 -- Dataset: supabase/seed-guest-dataset.sql
--- Remote PlotOps: create the auth user once, then run that file in SQL Editor —
--- never wipe prod via CI. Procedure: docs/SUPABASE.md → Guest Mode.
+-- Docs: docs/SUPABASE.md → Guest Mode (product vs local Docker).
 
--- Fixed UUID must match GUEST_DEMO_USER_ID in the frontend helper.
+-- Fixed UUID kept stable for local seed rewrites / FK references below.
 -- Hash via pgcrypto in the extensions schema (local Supabase default).
 insert into auth.users (
   instance_id,
