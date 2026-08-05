@@ -35,8 +35,20 @@ export type GuestBoardColumn = {
     position: number;
 };
 
+export type GuestComment = {
+    author?: GuestPerson;
+    body: string;
+    createdAt: string;
+    id: string;
+    projectId: string;
+    taskId: string;
+    updatedAt: string;
+};
+
 export type GuestLabel = {
     color: string;
+    /** Custom hex (`#rrggbb`); overrides the preset when set. */
+    customColor?: string;
     id: string;
     name: string;
     projectId: string;
@@ -85,6 +97,7 @@ export type GuestPullRequest = {
 export type GuestSandbox = {
     activity: GuestActivityEvent[];
     boards: GuestBoard[];
+    comments: GuestComment[];
     labels: GuestLabel[];
     notifications: GuestNotification[];
     projects: GuestProject[];
@@ -95,6 +108,8 @@ export type GuestSandbox = {
 
 export type GuestSprint = {
     boardId: string;
+    canceledAt?: string;
+    closedAt?: string;
     committedTaskIds: string[];
     completedTaskIds: string[];
     createdAt: string;
@@ -109,6 +124,8 @@ export type GuestSprint = {
 };
 
 export type GuestTask = {
+    /** ISO timestamp when archived; absent ⇒ active on the Board. */
+    archivedAt?: string;
     assignee?: GuestPerson;
     author?: GuestPerson;
     boardId: string;

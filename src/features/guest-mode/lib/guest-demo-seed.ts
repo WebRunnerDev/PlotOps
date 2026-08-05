@@ -10,9 +10,15 @@ const ACTOR: GuestPerson = {
 };
 
 const TEAM_ID = "b0000000-0000-4000-8000-000000000001";
-const PROJ_GIT_ID = "b0000000-0000-4000-8000-000000000010";
+/** Seeded Git-linked Project — Try demo lands on this Board. */
+export const GUEST_DEMO_PROJECT_ID =
+    "b0000000-0000-4000-8000-000000000010" as const;
+/** Seeded Board for the Git-linked demo Project. */
+export const GUEST_DEMO_BOARD_ID =
+    "b0000000-0000-4000-8000-000000000012" as const;
+const PROJ_GIT_ID = GUEST_DEMO_PROJECT_ID;
 const PROJ_PLAIN_ID = "b0000000-0000-4000-8000-000000000011";
-const BOARD_GIT_ID = "b0000000-0000-4000-8000-000000000012";
+const BOARD_GIT_ID = GUEST_DEMO_BOARD_ID;
 const BOARD_PLAIN_ID = "b0000000-0000-4000-8000-000000000013";
 const SPRINT_ACTIVE_ID = "b0000000-0000-4000-8000-000000000020";
 const SPRINT_DRAFT_ID = "b0000000-0000-4000-8000-000000000021";
@@ -173,6 +179,35 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             name: "Board",
             position: 0,
             projectId: PROJ_PLAIN_ID,
+        },
+    ],
+    comments: [
+        {
+            author: ACTOR,
+            body: "<p>Landing the CTA on the existing sign-in secondary slot — no OAuth needed.</p>",
+            createdAt: "2026-08-03T11:30:00.000Z",
+            id: "e0000000-0000-4000-8000-000000000401",
+            projectId: PROJ_GIT_ID,
+            taskId: T01,
+            updatedAt: "2026-08-03T11:30:00.000Z",
+        },
+        {
+            author: ACTOR,
+            body: "<p>Fixtures look good on the CI tab — retry once to see the stream animation.</p>",
+            createdAt: "2026-08-04T12:00:00.000Z",
+            id: "e0000000-0000-4000-8000-000000000402",
+            projectId: PROJ_GIT_ID,
+            taskId: T02,
+            updatedAt: "2026-08-04T12:00:00.000Z",
+        },
+        {
+            author: ACTOR,
+            body: "<p>Seed cards cover To Do → Done so the board looks populated on first open.</p>",
+            createdAt: "2026-08-04T15:00:00.000Z",
+            id: "e0000000-0000-4000-8000-000000000403",
+            projectId: PROJ_GIT_ID,
+            taskId: T03,
+            updatedAt: "2026-08-04T15:00:00.000Z",
         },
     ],
     labels: [

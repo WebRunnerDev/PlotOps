@@ -41,6 +41,7 @@ describe("Guest sandbox seed store", () => {
         expect(sandbox!.tasks.length).toBeGreaterThan(0);
         expect(sandbox!.sprints.length).toBeGreaterThan(0);
         expect(sandbox!.activity.length).toBeGreaterThan(0);
+        expect(sandbox!.comments.length).toBeGreaterThan(0);
         expect(sandbox!.notifications.length).toBeGreaterThan(0);
     });
 
@@ -148,6 +149,7 @@ describe("Guest sandbox seed store", () => {
         writeGuestSandbox({
             activity: [],
             boards: [],
+            comments: [],
             labels: [],
             notifications: [],
             projects: [],

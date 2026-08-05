@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 import {
     safeGetItem,
     safeRemoveItem,
@@ -27,6 +29,8 @@ const SYNTHETIC_GUEST_IDENTITY: GuestDisplayIdentity = {
     username: "guest",
 };
 
+const guestSessionListeners = new Set<() => void>();
+
 type StoredGuestSession = {
     identity: GuestDisplayIdentity;
     sandbox: GuestSandbox;
@@ -42,7 +46,11 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!session) {
         return null;
     }
-    return structuredClone(session.sandbox);
+    const sandbox = structuredClone(session.sandbox);
+    if (!Array.isArray(sandbox.comments)) {
+        sandbox.comments = [];
+    }
+    return sandbox;
 }
 
 /** True when a Guest Session is active in this browser session. */
@@ -52,6 +60,7 @@ export function isGuest(): boolean {
 
 export function leaveGuestSession(): void {
     safeRemoveItem("sessionStorage", GUEST_SESSION_STORAGE_KEY);
+    notifyGuestSessionListeners();
 }
 
 /**
@@ -69,6 +78,14 @@ export function startGuestSession(): GuestDisplayIdentity {
     return persistSession(SYNTHETIC_GUEST_IDENTITY, cloneGuestDemoSeed());
 }
 
+/** Subscribe to Guest Session start / leave / reset / sandbox writes. */
+export function subscribeGuestSession(listener: () => void): () => void {
+    guestSessionListeners.add(listener);
+    return () => {
+        guestSessionListeners.delete(listener);
+    };
+}
+
 /**
  * Read–mutate–write the active Guest sandbox.
  * Throws when no Guest Session is active (fail-closed).
@@ -83,6 +100,11 @@ export function updateGuestSandbox(
     mutator(sandbox);
     writeGuestSandbox(sandbox);
     return sandbox;
+}
+
+/** React hook — tracks {@link isGuest} across lifecycle mutations. */
+export function useIsGuest(): boolean {
+    return useSyncExternalStore(subscribeGuestSession, isGuest, () => false);
 }
 
 /**
@@ -102,7 +124,11 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
         return false;
     }
     const record = value as Record<string, unknown>;
+    // Older sessions omit `comments` — treat as empty (migrate on read).
+    const commentsOk =
+        record.comments === undefined || Array.isArray(record.comments);
     return (
+        commentsOk &&
         Array.isArray(record.teams) &&
         Array.isArray(record.projects) &&
         Array.isArray(record.boards) &&
@@ -134,6 +160,12 @@ function isStoredGuestSession(value: unknown): value is StoredGuestSession {
     return isGuestSandbox(record.sandbox);
 }
 
+function notifyGuestSessionListeners(): void {
+    for (const listener of guestSessionListeners) {
+        listener();
+    }
+}
+
 function persistSession(
     identity: GuestDisplayIdentity,
     sandbox: GuestSandbox
@@ -147,6 +179,7 @@ function persistSession(
         GUEST_SESSION_STORAGE_KEY,
         JSON.stringify(session)
     );
+    notifyGuestSessionListeners();
     return session.identity;
 }
 
