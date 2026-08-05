@@ -13,7 +13,7 @@
 | Routing (TanStack Router)                              | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | i18n (i18next)                                         | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | Auth (Supabase, GitHub OAuth + email signup/confirm)   | ✅ Done                                                                                                                                                                                                                                                                                                                             |
-| Guest mode                                             | 🟡 In progress — local Guest Mode (ADR 0018 / #161); remote shared demo login retired (#167) — plan: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md)                                                                                                                                                          |
+| Guest mode                                             | 🟡 In progress — local Guest Mode (ADR 0018 / #161); remote shared demo login retired (#167); glossary + Wave 0 / SPEC docs (#168) — plan: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md)                                                                                                                    |
 | Database schema + RLS (`projects`)                     | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | GitHub project import (home page)                      | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | Kanban board                                           | ✅ Done (custom columns, labels/priority/deadline; board filters; comments; soft-archive + board archive dialog; Make skin pass on board/cards/drawer — ADR 0007; DnD polish deferred)                                                                                                                                              |
@@ -184,15 +184,15 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 
 > Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set. Checklists: [`docs/deferred/wave-1-ux-checklist.md`](deferred/wave-1-ux-checklist.md) (Guest palette: Wave 0 / [`wave-4-plus-later.md`](deferred/wave-4-plus-later.md)).
 
-| Idea                                                 | Notes                                                                           |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                     |
-| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer          |
-| Search Members                                       | Cross-cutting; not in MVP                                                       |
-| Search Task description / Labels                     | MVP is key + title only                                                         |
-| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                             |
-| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                               |
-| Guest-specific palette behaviour                     | Guest mode not started; palette rides authenticated MainLayout when Guest ships |
+| Idea                                                 | Notes                                                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                                |
+| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer                     |
+| Search Members                                       | Cross-cutting; not in MVP                                                                  |
+| Search Task description / Labels                     | MVP is key + title only                                                                    |
+| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                                        |
+| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                                          |
+| Guest-specific palette behaviour                     | Local Guest Mode in progress (ADR 0018 / Wave 0 §6); narrow palette for demo write surface |
 
 ## Deferred from Figma Make
 
@@ -422,8 +422,8 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 
 - Vite + React repo with FSD layout (`src/app`, `src/routes`, `src/features`, `src/shared`).
 - Supabase Auth + GitHub provider.
-- Demo user in DB; login page with guest button (email/password sign-in for demo account). Implementation plan when pulled: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md).
-- `seed.sql`: 2 projects, ~15 tasks with descriptions, tags, activity history.
+- “Try demo” starts a client-side Guest Session (local sandbox in `sessionStorage`; zero Supabase on the product path) — ADR 0018 / [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md). Shared remote `demo@` login is abandoned as the product Guest path.
+- Product demo seed: TypeScript/JSON under `features/guest-mode`. Optional Docker SQL seed (`supabase/seed.sql` + `seed-guest-dataset.sql`) is for local RLS experiments only — see [`docs/SUPABASE.md`](SUPABASE.md).
 
 ### Stage 3: Kanban Core (Week 2)
 

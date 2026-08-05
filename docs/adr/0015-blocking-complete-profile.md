@@ -4,4 +4,4 @@ OAuth (and incomplete email profiles) land in the app before First name / Last n
 
 ## Guest Mode exception
 
-The shared demo Guest (`demo@plotops.app`, Wave 0) skips this gate. Seeded First name / Last name are normally already complete; if they are missing after a bad reset or edge-case auth restore, Guest still reaches the Board so the portfolio demo stays frictionless. Real (non-guest) accounts keep the blocking redirect.
+Guest Mode (ADR 0018) uses a client-side Guest Session with no Supabase user, so the complete-profile gate does not apply. Real accounts keep the blocking redirect. (Supersedes the earlier Wave 0 exception for a shared `demo@plotops.app` Auth user.)

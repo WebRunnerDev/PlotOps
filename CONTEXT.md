@@ -22,6 +22,14 @@ _Avoid_: display name (prefer First name + Last name), given name (synonym; Firs
 The user's family name, collected at registration alongside First name. Distinct from Username.
 _Avoid_: surname, family name (synonyms; Last name is canonical here)
 
+**Guest Mode**:
+An application mode in which the visitor explores a local demo sandbox (pre-seeded Teams, Projects, Boards, Tasks, and related demo surfaces) without a Supabase-backed account. Not a Team Role.
+_Avoid_: Demo Mode, demo auth mode, guest role, anonymous user (Auth sense)
+
+**Guest Session**:
+The active client-side stay in Guest Mode: the mode flag plus the sandboxed demo data for that browser session. Cleared when the visitor leaves Guest Mode, resets the demo, or ends the browser session.
+_Avoid_: Auth session, demo login, anonymous session
+
 ### Ownership & access
 
 **Team**:
@@ -110,7 +118,7 @@ _Avoid_: Developer, Member (too vague), Executor
 
 **Viewer**:
 A Role with read-only access to the Team's Projects' Boards, Tasks, and PR statuses.
-_Avoid_: Stakeholder, Guest (Guest is the demo auth mode, not a Team Role)
+_Avoid_: Stakeholder, Guest (Guest Mode / Guest Session — not a Team Role)
 
 **Invite**:
 A pending offer to join a Team at a chosen Role, addressed to an email. Delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Redeem requires the auth email to match, or the invitee may claim the invite (`claimed_by`) so an Owner/Admin can confirm. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.

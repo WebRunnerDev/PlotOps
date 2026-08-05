@@ -4,13 +4,13 @@ Ordered pull guide for items listed under **Deferred** in [`docs/SPEC.md`](../SP
 
 **Sizing:** XS (hours) · S (1–2d) · M (3–5d) · L (1–2w) · XL (multi-week). M+ usually needs its own focused plan before coding.
 
-| Wave | Theme                                                         | Plans                                                                             |
-| ---- | ------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| 0    | Guest Mode (prerequisite)                                     | [wave-0-guest-mode.md](./wave-0-guest-mode.md) — **L–XL**                         |
-| 1    | UX quick wins (palette, CTA, home, no-GH projects)            | [wave-1-ux-checklist.md](./wave-1-ux-checklist.md) — mostly **XS–S**; no-GH **M** |
-| 2    | Team invites & email                                          | [wave-2-team-invites.md](./wave-2-team-invites.md) — **M** × 3                    |
-| 3    | Sprint richness (linear chain)                                | [wave-3-sprint-richness.md](./wave-3-sprint-richness.md) — **S→XL**               |
-| 4+   | Awareness, org moves, permissions, GitHub writes, parked Make | [wave-4-plus-later.md](./wave-4-plus-later.md) — pull only with pain              |
+| Wave | Theme                                                                                                     | Plans                                                                             |
+| ---- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 0    | Guest Mode (prerequisite; product path = local Guest Session per ADR 0018 — shared remote demo abandoned) | [wave-0-guest-mode.md](./wave-0-guest-mode.md) — **L–XL**                         |
+| 1    | UX quick wins (palette, CTA, home, no-GH projects)                                                        | [wave-1-ux-checklist.md](./wave-1-ux-checklist.md) — mostly **XS–S**; no-GH **M** |
+| 2    | Team invites & email                                                                                      | [wave-2-team-invites.md](./wave-2-team-invites.md) — **M** × 3                    |
+| 3    | Sprint richness (linear chain)                                                                            | [wave-3-sprint-richness.md](./wave-3-sprint-richness.md) — **S→XL**               |
+| 4+   | Awareness, org moves, permissions, GitHub writes, parked Make                                             | [wave-4-plus-later.md](./wave-4-plus-later.md) — pull only with pain              |
 
 ```mermaid
 flowchart TD
