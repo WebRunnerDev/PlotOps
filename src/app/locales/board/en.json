@@ -302,6 +302,8 @@
         "roleUpdateFailed": "Could not update role",
         "inviteTitle": "Invite member",
         "inviteHint": "Invites are email-addressed and delivered as a copy-link. Members register with the invited email to accept.",
+        "guestDemoNotice": "This demo team has only Demo Guest.",
+        "guestInviteUnavailable": "Inviting others is not available in demo.",
         "email": "Email address",
         "emailPlaceholder": "dev@example.com",
         "role": "Role",

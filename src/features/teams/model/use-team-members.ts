@@ -6,11 +6,12 @@ import type {
 } from "@/features/projects/model/access";
 
 import { useAuth } from "@/features/auth";
+import { getGuestDisplayIdentity, isGuest } from "@/features/guest-mode";
 import { projectKeys } from "@/features/projects/model/query-keys";
+import { resolveTeamsProvider } from "@/features/teams/api/resolve-teams-provider";
 import {
     confirmTeamInvite,
     createTeamInvite,
-    fetchTeam,
     fetchTeamInvites,
     fetchTeamMembers,
     removeTeamMember,
@@ -121,10 +122,12 @@ export function useRevokeTeamInvite(teamId: string) {
 }
 
 export function useTeam(teamId: string) {
+    const provider = resolveTeamsProvider(isGuest());
+
     return useQuery({
         enabled: Boolean(teamId),
         queryFn: async () => {
-            const { data, error } = await fetchTeam(teamId);
+            const { data, error } = await provider.fetchTeam(teamId);
             if (error) throw error;
             return data;
         },
@@ -133,8 +136,10 @@ export function useTeam(teamId: string) {
 }
 
 export function useTeamInvites(teamId: string, enabled = true) {
+    const guest = isGuest();
+
     return useQuery({
-        enabled: Boolean(teamId) && enabled,
+        enabled: Boolean(teamId) && enabled && !guest,
         queryFn: async () => {
             const { data, error } = await fetchTeamInvites(teamId);
             if (error) throw error;
@@ -145,9 +150,14 @@ export function useTeamInvites(teamId: string, enabled = true) {
 }
 
 export function useTeamMembers(teamId: string) {
+    const guest = isGuest();
+
     return useQuery({
         enabled: Boolean(teamId),
         queryFn: async () => {
+            if (guest) {
+                return [];
+            }
             const { data, error } = await fetchTeamMembers(teamId);
             if (error) throw error;
             return data ?? [];
@@ -157,9 +167,25 @@ export function useTeamMembers(teamId: string) {
 }
 
 export function useTeamOwnerProfile(ownerId: string | undefined) {
+    const guest = isGuest();
+
     return useQuery({
         enabled: Boolean(ownerId),
         queryFn: async () => {
+            if (guest) {
+                const identity = getGuestDisplayIdentity();
+                if (!identity || !ownerId) {
+                    throw new Error("No Guest Session");
+                }
+                return {
+                    avatar_url: null as null | string,
+                    first_name: identity.firstName,
+                    id: ownerId,
+                    last_name: identity.lastName,
+                    username: identity.username,
+                };
+            }
+
             const { data, error } = await supabase
                 .from("profiles")
                 .select("id, username, avatar_url, first_name, last_name")
@@ -168,7 +194,7 @@ export function useTeamOwnerProfile(ownerId: string | undefined) {
             if (error) throw error;
             return data;
         },
-        queryKey: ["profiles", ownerId],
+        queryKey: ["profiles", ownerId, guest ? "guest" : "auth"],
     });
 }
 

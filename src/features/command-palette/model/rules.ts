@@ -12,7 +12,7 @@ export type CommandPaletteProject = {
 export type CommandPaletteRouteContext = {
     boardId: null | string;
     canCreateTasks: boolean;
-    /** Shared demo guest — keeps Search / Switch / Theme / Create under normal gates. */
+    /** Guest Session — Create Task allowed against the local sandbox. */
     isGuest: boolean;
     projectId: null | string;
 };
@@ -35,8 +35,8 @@ export type CommandPaletteVisibility = {
 const MAX_TASK_HITS = 20;
 
 /**
- * Wave 0 §6 product decision: guests may Create Task in the palette
- * (shared demo rows may be mutated; remind via shouldRemindGuestCreateTask).
+ * Guests may Create Task in the palette against the local sandbox
+ * (remind via shouldRemindGuestCreateTask that Reset clears mutations).
  */
 export const GUEST_PALETTE_ALLOWS_CREATE_TASK = true;
 
@@ -143,8 +143,8 @@ export function selectTaskIntent(
 }
 
 /**
- * Guest Create Task writes to the shared demo account (not ephemeral storage).
- * Callers should remind that a reseed / demo reset can drop those mutations.
+ * Guest Create Task writes to the local sandbox (cleared on Leave / Reset).
+ * Callers should remind that Reset demo can drop those mutations.
  */
 export function shouldRemindGuestCreateTask(isGuest: boolean): boolean {
     return isGuest;

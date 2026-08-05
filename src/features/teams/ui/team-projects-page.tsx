@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import type { Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
+import { isGuest } from "@/features/guest-mode";
 import {
     useDeleteProject,
     useProjectsByTeam,
@@ -55,6 +56,7 @@ type TeamProjectsPageProperties = {
 export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
     const { t } = useTranslation("home");
     const { githubAccessToken, user } = useAuth();
+    const guest = isGuest();
     const {
         data: team,
         error: teamError,
@@ -79,9 +81,9 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
 
     const isLoading = teamLoading || accessLoading || projectsLoading;
     const canAddFromGitHub = Boolean(
-        canCreateProject && githubAccessToken && user
+        !guest && canCreateProject && githubAccessToken && user
     );
-    const showGitHubReconnect = canCreateProject && !canAddFromGitHub;
+    const showGitHubReconnect = !guest && canCreateProject && !canAddFromGitHub;
 
     const handleConfirmRemove = async () => {
         if (!projectToRemove) return;

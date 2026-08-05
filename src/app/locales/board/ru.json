@@ -302,6 +302,8 @@
         "roleUpdateFailed": "Не удалось обновить роль",
         "inviteTitle": "Пригласить участника",
         "inviteHint": "Приглашения привязаны к email и выдаются как copy-link. Участник регистрируется с приглашённым email, чтобы принять.",
+        "guestDemoNotice": "В этой демо-команде только Demo Guest.",
+        "guestInviteUnavailable": "Приглашения в демо недоступны.",
         "email": "Email",
         "emailPlaceholder": "dev@example.com",
         "role": "Роль",

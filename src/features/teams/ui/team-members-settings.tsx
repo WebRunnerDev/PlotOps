@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { guestActionPolicy, isGuestSession, useAuth } from "@/features/auth";
+import { guestActionPolicy, useAuth } from "@/features/auth";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
+import { isGuest } from "@/features/guest-mode";
 import {
     INVITE_TTL_OPTIONS,
     type InviteTtlValue,
@@ -67,15 +68,14 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
     const { user } = useAuth();
     const access = useTeamAccess(teamId);
     const actor = actorFromAccess(access);
-    const canCreateInvite = guestActionPolicy(
-        isGuestSession(user)
-    ).canCreateInvite;
+    const guest = isGuest();
+    const canCreateInvite = guestActionPolicy(guest).canCreateInvite;
     const { data: team } = useTeam(teamId);
     const { data: members, isLoading: membersLoading } = useTeamMembers(teamId);
     const { data: ownerProfile } = useTeamOwnerProfile(team?.owner_id);
     const { data: invites, isLoading: invitesLoading } = useTeamInvites(
         teamId,
-        access.canManageMembers
+        access.canManageMembers && !guest
     );
 
     const createInvite = useCreateTeamInvite(teamId);
@@ -195,6 +195,11 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                 <p className="text-ui text-muted-foreground">
                     {t("members.description")}
                 </p>
+                {guest ? (
+                    <p className="text-ui text-muted-foreground">
+                        {t("members.guestDemoNotice")}
+                    </p>
+                ) : undefined}
             </div>
 
             <div className="relative max-w-sm">
@@ -258,7 +263,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                         {formatProfileDisplayName(
                                             ownerProfile
                                         ) || t("members.unknownUser")}
-                                        {user?.id === team.owner_id
+                                        {user?.id === team.owner_id || guest
                                             ? ` (${t("members.you")})`
                                             : ""}
                                     </p>
@@ -453,151 +458,155 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
 
             {access.canManageMembers ? (
                 <>
-                    <div className="flex flex-col gap-3">
-                        <h3 className="text-meta tracking-wide text-muted-foreground uppercase">
-                            {query
-                                ? t("members.pendingInvitesFilteredCount", {
-                                      count: pendingInvites.length,
-                                      total: pendingInvitesTotal,
-                                  })
-                                : t("members.pendingInvitesCount", {
-                                      count: pendingInvitesTotal,
-                                  })}
-                        </h3>
-                        {invitesLoading ? (
-                            <Spinner className="size-5 text-primary" />
-                        ) : pendingInvitesTotal === 0 ? (
-                            <p className="text-ui text-muted-foreground">
-                                {t("members.noPending")}
-                            </p>
-                        ) : pendingInvites.length === 0 ? (
-                            <p className="text-ui text-muted-foreground">
-                                {t("members.noSearchMatches")}
-                            </p>
-                        ) : (
-                            <ul className="divide-y divide-border border border-border bg-card">
-                                {pendingInvites.map((invite) => (
-                                    <li
-                                        className="flex flex-col gap-2 px-3.5 py-2 sm:flex-row sm:items-center"
-                                        key={invite.id}
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-ui">
-                                                {invite.email}
-                                            </p>
-                                            <p className="text-meta text-muted-foreground">
-                                                {invite.role}
-                                                {" · "}
-                                                {formatExpiresAt(
-                                                    invite.expires_at,
-                                                    t
-                                                )}
-                                                {invite.claimed_profile ? (
-                                                    <span className="text-amber-500">
-                                                        {" · "}
-                                                        {t(
-                                                            "members.claimedBy",
-                                                            {
-                                                                name:
-                                                                    (invite.claimed_profile
-                                                                        ? formatProfileDisplayName(
-                                                                              invite.claimed_profile
-                                                                          )
-                                                                        : "") ||
-                                                                    t(
-                                                                        "members.unknownUser"
-                                                                    ),
-                                                            }
-                                                        )}
-                                                    </span>
-                                                ) : undefined}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button
-                                                onClick={() =>
-                                                    void copyInviteLink(
-                                                        invite.token
-                                                    )
-                                                }
-                                                type="button"
-                                                variant="outline"
-                                            >
-                                                <Copy data-icon="inline-start" />
-                                                {t("members.copyLink")}
-                                            </Button>
-                                            {invite.claimed_by &&
-                                            actor &&
-                                            canConfirmClaimedInvite(
-                                                actor,
-                                                invite.role
-                                            ) ? (
+                    {guest ? undefined : (
+                        <div className="flex flex-col gap-3">
+                            <h3 className="text-meta tracking-wide text-muted-foreground uppercase">
+                                {query
+                                    ? t("members.pendingInvitesFilteredCount", {
+                                          count: pendingInvites.length,
+                                          total: pendingInvitesTotal,
+                                      })
+                                    : t("members.pendingInvitesCount", {
+                                          count: pendingInvitesTotal,
+                                      })}
+                            </h3>
+                            {invitesLoading ? (
+                                <Spinner className="size-5 text-primary" />
+                            ) : pendingInvitesTotal === 0 ? (
+                                <p className="text-ui text-muted-foreground">
+                                    {t("members.noPending")}
+                                </p>
+                            ) : pendingInvites.length === 0 ? (
+                                <p className="text-ui text-muted-foreground">
+                                    {t("members.noSearchMatches")}
+                                </p>
+                            ) : (
+                                <ul className="divide-y divide-border border border-border bg-card">
+                                    {pendingInvites.map((invite) => (
+                                        <li
+                                            className="flex flex-col gap-2 px-3.5 py-2 sm:flex-row sm:items-center"
+                                            key={invite.id}
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-ui">
+                                                    {invite.email}
+                                                </p>
+                                                <p className="text-meta text-muted-foreground">
+                                                    {invite.role}
+                                                    {" · "}
+                                                    {formatExpiresAt(
+                                                        invite.expires_at,
+                                                        t
+                                                    )}
+                                                    {invite.claimed_profile ? (
+                                                        <span className="text-amber-500">
+                                                            {" · "}
+                                                            {t(
+                                                                "members.claimedBy",
+                                                                {
+                                                                    name:
+                                                                        (invite.claimed_profile
+                                                                            ? formatProfileDisplayName(
+                                                                                  invite.claimed_profile
+                                                                              )
+                                                                            : "") ||
+                                                                        t(
+                                                                            "members.unknownUser"
+                                                                        ),
+                                                                }
+                                                            )}
+                                                        </span>
+                                                    ) : undefined}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
                                                 <Button
+                                                    onClick={() =>
+                                                        void copyInviteLink(
+                                                            invite.token
+                                                        )
+                                                    }
+                                                    type="button"
+                                                    variant="outline"
+                                                >
+                                                    <Copy data-icon="inline-start" />
+                                                    {t("members.copyLink")}
+                                                </Button>
+                                                {invite.claimed_by &&
+                                                actor &&
+                                                canConfirmClaimedInvite(
+                                                    actor,
+                                                    invite.role
+                                                ) ? (
+                                                    <Button
+                                                        disabled={
+                                                            confirmInvite.isPending
+                                                        }
+                                                        onClick={() => {
+                                                            void confirmInvite
+                                                                .mutateAsync({
+                                                                    inviteId:
+                                                                        invite.id,
+                                                                    userId: invite.claimed_by!,
+                                                                })
+                                                                .then(() =>
+                                                                    toast.success(
+                                                                        t(
+                                                                            "members.confirmed"
+                                                                        )
+                                                                    )
+                                                                )
+                                                                .catch(() =>
+                                                                    toast.error(
+                                                                        t(
+                                                                            "members.confirmFailed"
+                                                                        )
+                                                                    )
+                                                                );
+                                                        }}
+                                                        size="sm"
+                                                        type="button"
+                                                    >
+                                                        {t("members.confirm")}
+                                                    </Button>
+                                                ) : undefined}
+                                                <Button
+                                                    className="text-muted-foreground hover:text-destructive"
                                                     disabled={
-                                                        confirmInvite.isPending
+                                                        revokeInvite.isPending
                                                     }
                                                     onClick={() => {
-                                                        void confirmInvite
-                                                            .mutateAsync({
-                                                                inviteId:
-                                                                    invite.id,
-                                                                userId: invite.claimed_by!,
-                                                            })
+                                                        void revokeInvite
+                                                            .mutateAsync(
+                                                                invite.id
+                                                            )
                                                             .then(() =>
                                                                 toast.success(
                                                                     t(
-                                                                        "members.confirmed"
+                                                                        "members.revoked"
                                                                     )
                                                                 )
                                                             )
                                                             .catch(() =>
                                                                 toast.error(
                                                                     t(
-                                                                        "members.confirmFailed"
+                                                                        "members.revokeFailed"
                                                                     )
                                                                 )
                                                             );
                                                     }}
-                                                    size="sm"
                                                     type="button"
+                                                    variant="ghost"
                                                 >
-                                                    {t("members.confirm")}
+                                                    {t("members.revoke")}
                                                 </Button>
-                                            ) : undefined}
-                                            <Button
-                                                className="text-muted-foreground hover:text-destructive"
-                                                disabled={
-                                                    revokeInvite.isPending
-                                                }
-                                                onClick={() => {
-                                                    void revokeInvite
-                                                        .mutateAsync(invite.id)
-                                                        .then(() =>
-                                                            toast.success(
-                                                                t(
-                                                                    "members.revoked"
-                                                                )
-                                                            )
-                                                        )
-                                                        .catch(() =>
-                                                            toast.error(
-                                                                t(
-                                                                    "members.revokeFailed"
-                                                                )
-                                                            )
-                                                        );
-                                                }}
-                                                type="button"
-                                                variant="ghost"
-                                            >
-                                                {t("members.revoke")}
-                                            </Button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
 
                     {canCreateInvite ? (
                         <div className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
@@ -723,6 +732,18 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                     </Button>
                                 ) : undefined}
                             </div>
+                        </div>
+                    ) : guest ? (
+                        <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-4">
+                            <div className="flex items-center gap-2">
+                                <UserPlus className="size-4 text-muted-foreground" />
+                                <h3 className="text-ui font-medium">
+                                    {t("members.inviteTitle")}
+                                </h3>
+                            </div>
+                            <p className="text-ui text-muted-foreground">
+                                {t("members.guestInviteUnavailable")}
+                            </p>
                         </div>
                     ) : undefined}
                 </>

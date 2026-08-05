@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { guestActionPolicy, isGuestSession, useAuth } from "@/features/auth";
+import { guestActionPolicy, useAuth } from "@/features/auth";
 import { isGuest } from "@/features/guest-mode";
 import {
     capabilitiesForRole,
@@ -100,7 +100,7 @@ export function resolveTeamAccess(input: {
 export function useTeamAccess(teamId: string): TeamAccessState {
     const { user } = useAuth();
     const guest = isGuest();
-    const policy = guestActionPolicy(guest || isGuestSession(user));
+    const policy = guestActionPolicy(guest);
     const teamsProvider = resolveTeamsProvider(guest);
 
     const teamQuery = useQuery({
