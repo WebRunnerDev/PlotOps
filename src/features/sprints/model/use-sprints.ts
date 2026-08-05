@@ -1,42 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-    assignTasksToSprint,
-    assignTaskToSprint,
-    cancelSprint,
-    closeSprint,
-    createDraftSprint,
-    deleteEmptyDraftSprint,
-    deletePastSprint,
-    fetchBoardSprints,
-    fetchSprintEvents,
-    startSprint,
-    updateDraftSprint,
-} from "@/features/sprints/api/sprints-api";
+import { isGuest } from "@/features/guest-mode";
+import { resolveSprintsProvider } from "@/features/sprints/api/resolve-sprints-provider";
 import { invalidateSprintBoardCaches } from "@/features/sprints/model/invalidate-sprint-board";
 import { sprintKeys } from "@/features/sprints/model/query-keys";
 
 export function useBoardSprints(boardId: string) {
+    const provider = resolveSprintsProvider(isGuest());
+
     return useQuery({
-        queryFn: () => fetchBoardSprints(boardId),
+        queryFn: () => provider.fetchBoardSprints(boardId),
         queryKey: sprintKeys.board(boardId),
     });
 }
 
 export function useSprintEvents(sprintId: string | undefined) {
+    const provider = resolveSprintsProvider(isGuest());
+
     return useQuery({
         enabled: Boolean(sprintId),
-        queryFn: () => fetchSprintEvents(sprintId!),
+        queryFn: () => provider.fetchSprintEvents(sprintId!),
         queryKey: sprintKeys.events(sprintId ?? ""),
     });
 }
 
 export function useSprintMutations(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
+    const provider = resolveSprintsProvider(isGuest());
 
     const createDraft = useMutation({
         mutationFn: ({ goal, name }: { goal?: string; name: string }) =>
-            createDraftSprint(boardId, projectId, name, goal),
+            provider.createDraftSprint(boardId, projectId, name, goal),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
@@ -50,19 +44,20 @@ export function useSprintMutations(projectId: string, boardId: string) {
             goal?: null | string;
             name?: string;
             sprintId: string;
-        }) => updateDraftSprint(sprintId, { goal, name }),
+        }) => provider.updateDraftSprint(sprintId, { goal, name }),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
 
     const removeDraft = useMutation({
-        mutationFn: (sprintId: string) => deleteEmptyDraftSprint(sprintId),
+        mutationFn: (sprintId: string) =>
+            provider.deleteEmptyDraftSprint(sprintId),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
 
     const removePast = useMutation({
-        mutationFn: (sprintId: string) => deletePastSprint(sprintId),
+        mutationFn: (sprintId: string) => provider.deletePastSprint(sprintId),
         onSuccess: (_data, sprintId) => {
             invalidateSprintBoardCaches(queryClient, projectId, boardId);
             queryClient.removeQueries({
@@ -80,7 +75,7 @@ export function useSprintMutations(projectId: string, boardId: string) {
             sprintId: null | string;
             sprintPosition: null | number;
             taskId: string;
-        }) => assignTaskToSprint(taskId, sprintId, sprintPosition),
+        }) => provider.assignTaskToSprint(taskId, sprintId, sprintPosition),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
@@ -92,7 +87,7 @@ export function useSprintMutations(projectId: string, boardId: string) {
                 sprintPosition: null | number;
                 taskId: string;
             }>
-        ) => assignTasksToSprint(updates),
+        ) => provider.assignTasksToSprint(updates),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
@@ -106,7 +101,7 @@ export function useSprintMutations(projectId: string, boardId: string) {
             endsOn: string;
             sprintId: string;
             startsOn: string;
-        }) => startSprint(sprintId, startsOn, endsOn),
+        }) => provider.startSprint(sprintId, startsOn, endsOn),
         onSuccess: () =>
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
@@ -120,7 +115,8 @@ export function useSprintMutations(projectId: string, boardId: string) {
             carryoverSprintId: null | string;
             completedTaskIds: string[];
             sprintId: string;
-        }) => closeSprint(sprintId, completedTaskIds, carryoverSprintId),
+        }) =>
+            provider.closeSprint(sprintId, completedTaskIds, carryoverSprintId),
         onSuccess: (_data, variables) => {
             invalidateSprintBoardCaches(queryClient, projectId, boardId);
             void queryClient.invalidateQueries({
@@ -130,7 +126,7 @@ export function useSprintMutations(projectId: string, boardId: string) {
     });
 
     const cancel = useMutation({
-        mutationFn: (sprintId: string) => cancelSprint(sprintId),
+        mutationFn: (sprintId: string) => provider.cancelSprint(sprintId),
         onSuccess: (_data, sprintId) => {
             invalidateSprintBoardCaches(queryClient, projectId, boardId);
             void queryClient.invalidateQueries({
