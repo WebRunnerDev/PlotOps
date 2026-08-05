@@ -72,20 +72,30 @@ describe("Guest Session lifecycle facade", () => {
         expect(getGuestDisplayIdentity()).toBeNull();
     });
 
-    it("reset keeps Guest Mode while reseating the empty sandbox", async () => {
+    it("reset keeps Guest Mode while recloning the seed sandbox", async () => {
         const {
             getGuestDisplayIdentity,
+            getGuestSandbox,
             isGuest,
             resetGuestSession,
             startGuestSession,
+            writeGuestSandbox,
         } = await import("@/features/guest-mode");
 
         const first = startGuestSession();
+        const polluted = structuredClone(getGuestSandbox()!);
+        polluted.teams[0] = {
+            ...polluted.teams[0]!,
+            name: "Polluted",
+        };
+        writeGuestSandbox(polluted);
+
         const afterReset = resetGuestSession();
 
         expect(isGuest()).toBe(true);
         expect(afterReset).toEqual(getGuestDisplayIdentity());
         expect(afterReset).toEqual(first);
+        expect(getGuestSandbox()?.teams[0]?.name).not.toBe("Polluted");
     });
 
     it("reset is a no-op when no Guest Session is active", async () => {

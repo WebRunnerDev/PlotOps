@@ -4,6 +4,10 @@ import {
     safeSetItem,
 } from "@/shared/lib/safe-storage";
 
+import type { GuestSandbox } from "../model/types";
+
+import { cloneGuestDemoSeed } from "./guest-demo-seed";
+
 /** Synthetic chrome identity for a Guest Session — not a Supabase user. */
 export type GuestDisplayIdentity = {
     firstName: string;
@@ -12,7 +16,7 @@ export type GuestDisplayIdentity = {
 };
 
 /**
- * Internal sessionStorage key for the Guest Session signal.
+ * Internal sessionStorage key for the Guest Session signal + sandbox.
  * Not part of the public guest-mode contract — do not assert in callers/tests.
  */
 const GUEST_SESSION_STORAGE_KEY = "plotops_guest_session";
@@ -25,12 +29,20 @@ const SYNTHETIC_GUEST_IDENTITY: GuestDisplayIdentity = {
 
 type StoredGuestSession = {
     identity: GuestDisplayIdentity;
-    /** Reserved for the local sandbox; empty / no-op in this ticket. */
-    sandbox: Record<string, never>;
+    sandbox: GuestSandbox;
 };
 
 export function getGuestDisplayIdentity(): GuestDisplayIdentity | null {
     return readSession()?.identity ?? null;
+}
+
+/** Deep-cloned sandbox for the active Guest Session, or null when not Guest. */
+export function getGuestSandbox(): GuestSandbox | null {
+    const session = readSession();
+    if (!session) {
+        return null;
+    }
+    return structuredClone(session.sandbox);
 }
 
 /** True when a Guest Session is active in this browser session. */
@@ -43,18 +55,47 @@ export function leaveGuestSession(): void {
 }
 
 /**
- * Restore a clean (empty) sandbox while staying in Guest Mode.
+ * Reclone the clean seed while staying in Guest Mode.
  * No-op when no Guest Session is active.
  */
 export function resetGuestSession(): GuestDisplayIdentity | null {
     if (!isGuest()) {
         return null;
     }
-    return persistSession(SYNTHETIC_GUEST_IDENTITY);
+    return persistSession(SYNTHETIC_GUEST_IDENTITY, cloneGuestDemoSeed());
 }
 
 export function startGuestSession(): GuestDisplayIdentity {
-    return persistSession(SYNTHETIC_GUEST_IDENTITY);
+    return persistSession(SYNTHETIC_GUEST_IDENTITY, cloneGuestDemoSeed());
+}
+
+/**
+ * Replace the sandbox for the active Guest Session (deep-cloned on write).
+ * No-op when no Guest Session is active — fail-closed for non-Guest callers.
+ */
+export function writeGuestSandbox(sandbox: GuestSandbox): void {
+    const session = readSession();
+    if (!session) {
+        return;
+    }
+    persistSession(session.identity, structuredClone(sandbox));
+}
+
+function isGuestSandbox(value: unknown): value is GuestSandbox {
+    if (!value || typeof value !== "object") {
+        return false;
+    }
+    const record = value as Record<string, unknown>;
+    return (
+        Array.isArray(record.teams) &&
+        Array.isArray(record.projects) &&
+        Array.isArray(record.boards) &&
+        Array.isArray(record.tasks) &&
+        Array.isArray(record.sprints) &&
+        Array.isArray(record.activity) &&
+        Array.isArray(record.notifications) &&
+        Array.isArray(record.labels)
+    );
 }
 
 function isStoredGuestSession(value: unknown): value is StoredGuestSession {
@@ -67,17 +108,23 @@ function isStoredGuestSession(value: unknown): value is StoredGuestSession {
         return false;
     }
     const id = identity as Record<string, unknown>;
-    return (
-        typeof id.firstName === "string" &&
-        typeof id.lastName === "string" &&
-        typeof id.username === "string"
-    );
+    if (
+        typeof id.firstName !== "string" ||
+        typeof id.lastName !== "string" ||
+        typeof id.username !== "string"
+    ) {
+        return false;
+    }
+    return isGuestSandbox(record.sandbox);
 }
 
-function persistSession(identity: GuestDisplayIdentity): GuestDisplayIdentity {
+function persistSession(
+    identity: GuestDisplayIdentity,
+    sandbox: GuestSandbox
+): GuestDisplayIdentity {
     const session: StoredGuestSession = {
         identity: { ...identity },
-        sandbox: {},
+        sandbox: structuredClone(sandbox),
     };
     safeSetItem(
         "sessionStorage",
