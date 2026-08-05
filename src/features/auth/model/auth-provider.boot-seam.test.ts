@@ -6,13 +6,14 @@ import { describe, expect, it } from "vitest";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("AuthProvider boot validate seam", () => {
-    it("passes the boot AbortSignal into validatePersistedSession", () => {
+    it("validates INITIAL_SESSION through validatePersistedSession with AbortSignal", () => {
         const source = fs.readFileSync(
             path.join(dirname, "auth-provider.tsx"),
             "utf8"
         );
 
         expect(source).toMatch(/validatePersistedSession/);
+        expect(source).toMatch(/event === "INITIAL_SESSION"/);
         expect(source).toMatch(
             /validatePersistedSession\(\s*nextSession,\s*\{\s*signal:\s*abortController\.signal\s*\}\s*\)/
         );
