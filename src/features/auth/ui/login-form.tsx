@@ -7,11 +7,13 @@ import {
     signInWithGitHub,
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
-import {
-    getGuestCredentials,
-    type GuestCredentials,
-} from "@/features/auth/lib/get-guest-credentials";
 import { useAuth } from "@/features/auth/model/use-auth";
+import {
+    GUEST_DEMO_BOARD_ID,
+    GUEST_DEMO_PROJECT_ID,
+    leaveGuestSession,
+    startGuestSession,
+} from "@/features/guest-mode";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -41,8 +43,6 @@ export function LoginForm() {
     // Wait for AuthProvider + router context before navigating — otherwise
     // /home beforeLoad still sees user=null and bounces back to /sign-in.
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
-    /** Guest demo must land on /home even if a pending invite token is left over. */
-    const [skipPendingInvite, setSkipPendingInvite] = useState(false);
 
     const isBusy = isGitHubLoading || isEmailLoading || isGuestLoading;
 
@@ -54,23 +54,21 @@ export function LoginForm() {
     useEffect(() => {
         if (!awaitingRedirect || !user) return;
 
-        if (!skipPendingInvite) {
-            const pendingInvite = safeGetItem(
-                "sessionStorage",
-                "plotops_pending_invite"
-            );
-            if (pendingInvite) {
-                safeRemoveItem("sessionStorage", "plotops_pending_invite");
-                void navigate({
-                    params: { token: pendingInvite },
-                    to: "/invite/$token",
-                }).catch(() => {
-                    setAwaitingRedirect(false);
-                    clearAuthLoading();
-                    setError(t("errors.generic"));
-                });
-                return;
-            }
+        const pendingInvite = safeGetItem(
+            "sessionStorage",
+            "plotops_pending_invite"
+        );
+        if (pendingInvite) {
+            safeRemoveItem("sessionStorage", "plotops_pending_invite");
+            void navigate({
+                params: { token: pendingInvite },
+                to: "/invite/$token",
+            }).catch(() => {
+                setAwaitingRedirect(false);
+                clearAuthLoading();
+                setError(t("errors.generic"));
+            });
+            return;
         }
 
         void navigate({ to: "/home" }).catch(() => {
@@ -78,7 +76,7 @@ export function LoginForm() {
             clearAuthLoading();
             setError(t("errors.generic"));
         });
-    }, [awaitingRedirect, navigate, skipPendingInvite, t, user]);
+    }, [awaitingRedirect, navigate, t, user]);
 
     useEffect(() => {
         if (!awaitingRedirect || user) return;
@@ -96,6 +94,7 @@ export function LoginForm() {
 
     const handleGitHubLogin = async () => {
         setError(null);
+        leaveGuestSession();
         setIsGitHubLoading(true);
 
         try {
@@ -106,7 +105,11 @@ export function LoginForm() {
         }
     };
 
-    const completePasswordSignIn = async (credentials: GuestCredentials) => {
+    const completePasswordSignIn = async (credentials: {
+        email: string;
+        password: string;
+    }) => {
+        leaveGuestSession();
         const { error: authError } = await signInWithPassword(credentials);
 
         if (authError) {
@@ -121,7 +124,6 @@ export function LoginForm() {
     const handleEmailLogin = async (event: FormEvent) => {
         event.preventDefault();
         setError(null);
-        setSkipPendingInvite(false);
         setIsEmailLoading(true);
 
         let keepLoadingForRedirect = false;
@@ -139,22 +141,26 @@ export function LoginForm() {
         }
     };
 
-    const handleGuestLogin = async () => {
+    const handleGuestLogin = () => {
         setError(null);
-        setSkipPendingInvite(true);
         setIsGuestLoading(true);
 
-        let keepLoadingForRedirect = false;
         try {
-            keepLoadingForRedirect = await completePasswordSignIn(
-                getGuestCredentials()
-            );
-        } catch {
-            setError(t("errors.generic"));
-        } finally {
-            if (!keepLoadingForRedirect) {
+            startGuestSession();
+            safeRemoveItem("sessionStorage", "plotops_pending_invite");
+            void navigate({
+                params: {
+                    boardId: GUEST_DEMO_BOARD_ID,
+                    projectId: GUEST_DEMO_PROJECT_ID,
+                },
+                to: "/projects/$projectId/boards/$boardId",
+            }).catch(() => {
                 setIsGuestLoading(false);
-            }
+                setError(t("errors.generic"));
+            });
+        } catch {
+            setIsGuestLoading(false);
+            setError(t("errors.generic"));
         }
     };
 

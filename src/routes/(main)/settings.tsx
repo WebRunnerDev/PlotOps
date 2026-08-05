@@ -4,10 +4,9 @@ import { useTranslation } from "react-i18next";
 import {
     DEMO_ACCOUNT_BADGE_I18N_KEY,
     demoAccountBadgeVisible,
-    isGuestSession,
     ProfileSettingsForm,
-    useAuth,
 } from "@/features/auth";
+import { useIsGuest } from "@/features/guest-mode";
 import { Badge } from "@/shared/shadcn/ui/badge";
 
 export const Route = createFileRoute("/(main)/settings")({
@@ -16,8 +15,8 @@ export const Route = createFileRoute("/(main)/settings")({
 
 function SettingsPage() {
     const { t } = useTranslation("common");
-    const { user } = useAuth();
-    const showDemoBadge = demoAccountBadgeVisible(isGuestSession(user));
+    const guest = useIsGuest();
+    const showDemoBadge = demoAccountBadgeVisible(guest);
 
     return (
         <div className="flex flex-col gap-6 py-8">
@@ -35,15 +34,12 @@ function SettingsPage() {
                     ) : null}
                 </div>
                 <p className="text-body text-muted-foreground">
-                    {t("settingsDescription")}
+                    {guest
+                        ? t("guest.demoAccountHint")
+                        : t("settingsDescription")}
                 </p>
-                {showDemoBadge ? (
-                    <p className="text-ui text-muted-foreground">
-                        {t("guest.demoAccountHint")}
-                    </p>
-                ) : null}
             </div>
-            <ProfileSettingsForm />
+            {guest ? null : <ProfileSettingsForm />}
         </div>
     );
 }

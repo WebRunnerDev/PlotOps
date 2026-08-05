@@ -5,8 +5,13 @@
     },
     "en": "English",
     "guest": {
-        "demoAccount": "Demo account",
-        "demoAccountHint": "Shared demo data — changes may be reset."
+        "demoAccount": "Demo",
+        "demoAccountHint": "Local demo sandbox — changes stay on this device until you leave or reset.",
+        "leaveDemo": "Leave demo",
+        "leaveDemoDescription": "End the demo and return to sign-in. Your sandbox is cleared.",
+        "leaveDemoTitle": "Leave demo?",
+        "resetDemo": "Reset demo",
+        "resetDemoDone": "Demo reset to the clean seed."
     },
     "nav": {
         "backlog": "Backlog",

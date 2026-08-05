@@ -5,10 +5,9 @@ import { useTranslation } from "react-i18next";
 import {
     DEMO_ACCOUNT_BADGE_I18N_KEY,
     demoAccountBadgeVisible,
-    isGuestSession,
-    useAuth,
 } from "@/features/auth";
 import { CommandPaletteTrigger } from "@/features/command-palette";
+import { useIsGuest } from "@/features/guest-mode";
 import { NotificationDrawer } from "@/features/notifications/ui/notification-drawer";
 import { useProject } from "@/features/projects/model/use-projects";
 import { useTeam } from "@/features/teams/model/use-team-members";
@@ -20,8 +19,7 @@ import { UserMenu } from "./user-menu";
 
 export function TopBar() {
     const { t } = useTranslation("common");
-    const { user } = useAuth();
-    const showDemoBadge = demoAccountBadgeVisible(isGuestSession(user));
+    const showDemoBadge = demoAccountBadgeVisible(useIsGuest());
     const parameters = useParams({ strict: false });
     const projectId =
         typeof parameters.projectId === "string"

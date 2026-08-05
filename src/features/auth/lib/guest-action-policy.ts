@@ -5,7 +5,7 @@ export type GuestActionPolicy = {
 };
 
 /**
- * Destructive / multiplayer guest actions on the shared demo account.
+ * Destructive / multiplayer actions blocked in Guest Mode (local sandbox).
  * `true` means the policy does not block — role caps still apply.
  */
 export function guestActionPolicy(isGuest: boolean): GuestActionPolicy {
