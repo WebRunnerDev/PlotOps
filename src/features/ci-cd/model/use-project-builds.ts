@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { isGuestSession, useAuth } from "@/features/auth";
+import { useAuth } from "@/features/auth";
 import {
     CiCdMissingTokenError,
     CiCdUnauthorizedError,
@@ -8,18 +8,19 @@ import {
 import { resolveBuildsProvider } from "@/features/ci-cd/api/resolve-builds-provider";
 import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-builds";
 import { ciKeys } from "@/features/ci-cd/model/query-keys";
+import { isGuest } from "@/features/guest-mode";
 
 const POLL_MS = 10_000;
 
 export function useProjectBuilds(projectId: string) {
-    const { githubAccessToken, user } = useAuth();
-    const isGuest = isGuestSession(user);
-    const provider = resolveBuildsProvider(isGuest);
+    const { githubAccessToken } = useAuth();
+    const guest = isGuest();
+    const provider = resolveBuildsProvider(guest);
 
     return useQuery({
         enabled: canFetchProjectBuilds({
             githubAccessToken,
-            isGuest,
+            isGuest: guest,
             projectId,
         }),
         queryFn: () => provider.listBuilds(projectId),

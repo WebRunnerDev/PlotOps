@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 import type { BuildLogLine, BuildStatus } from "@/features/ci-cd/model/types";
 
-import { isGuestSession, useAuth } from "@/features/auth";
 import { resolveBuildsProvider } from "@/features/ci-cd/api/resolve-builds-provider";
+import { isGuest } from "@/features/guest-mode";
 
 const IN_FLIGHT_POLL_MS = 5000;
 
@@ -19,9 +19,8 @@ export function useBuildLogStream(
     buildId: string | undefined,
     buildStatus?: BuildStatus
 ): { isStreaming: boolean; lines: BuildLogLine[] } {
-    const { user } = useAuth();
-    const isGuest = isGuestSession(user);
-    const provider = resolveBuildsProvider(isGuest);
+    const guest = isGuest();
+    const provider = resolveBuildsProvider(guest);
     const [lines, setLines] = useState<BuildLogLine[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { isGuestSession, useAuth } from "@/features/auth";
+import { useAuth } from "@/features/auth";
 import {
     fetchFixtureBranchCommits,
     fetchFixtureBranchPullRequests,
@@ -15,6 +15,7 @@ import {
     canFetchGitData,
     canFetchPullRequestFiles,
 } from "@/features/git-integration/lib/can-fetch-git-data";
+import { isGuest } from "@/features/guest-mode";
 
 import { gitAuthFingerprint, gitKeys } from "./query-keys";
 
@@ -30,18 +31,18 @@ export function useBranchCommits({
     token,
 }: GitQueryOptions) {
     const { user } = useAuth();
-    const isGuest = isGuestSession(user);
+    const guest = isGuest();
     const authFingerprint = gitAuthFingerprint(user?.id);
 
     return useQuery({
         enabled: canFetchGitData({
             branchName,
-            isGuest,
+            isGuest: guest,
             repoFullName,
             token,
         }),
         queryFn: () =>
-            isGuest
+            guest
                 ? fetchFixtureBranchCommits(repoFullName!, branchName!)
                 : fetchBranchCommits(repoFullName!, branchName!, token!),
         queryKey: gitKeys.commits(
@@ -59,18 +60,18 @@ export function useBranchPullRequests({
     token,
 }: GitQueryOptions) {
     const { user } = useAuth();
-    const isGuest = isGuestSession(user);
+    const guest = isGuest();
     const authFingerprint = gitAuthFingerprint(user?.id);
 
     return useQuery({
         enabled: canFetchGitData({
             branchName,
-            isGuest,
+            isGuest: guest,
             repoFullName,
             token,
         }),
         queryFn: () =>
-            isGuest
+            guest
                 ? fetchFixtureBranchPullRequests(repoFullName!, branchName!)
                 : fetchBranchPullRequests(repoFullName!, branchName!, token!),
         queryKey: gitKeys.pullRequests(
@@ -88,18 +89,18 @@ export function usePullRequestFiles(
     token: null | string
 ) {
     const { user } = useAuth();
-    const isGuest = isGuestSession(user);
+    const guest = isGuest();
     const authFingerprint = gitAuthFingerprint(user?.id);
 
     return useQuery({
         enabled: canFetchPullRequestFiles({
-            isGuest,
+            isGuest: guest,
             prNumber,
             repoFullName,
             token,
         }),
         queryFn: () =>
-            isGuest
+            guest
                 ? fetchFixturePullRequestFiles(repoFullName!, prNumber!)
                 : fetchPullRequestFiles(repoFullName!, prNumber!, token!),
         queryKey: gitKeys.prFiles(

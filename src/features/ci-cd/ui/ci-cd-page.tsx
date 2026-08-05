@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { BuildStatus, ProjectBuild } from "@/features/ci-cd/model/types";
 
-import { isGuestSession, useAuth } from "@/features/auth";
+import { useAuth } from "@/features/auth";
 import {
     CiCdMissingTokenError,
     CiCdUnauthorizedError,
@@ -13,6 +13,7 @@ import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-bu
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
+import { isGuest } from "@/features/guest-mode";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
@@ -29,11 +30,11 @@ type RunFilter = "all" | "failure" | "running";
 
 export function CiCdPage({ projectId }: CiCdPageProperties) {
     const { i18n, t } = useTranslation("board");
-    const { githubAccessToken, user } = useAuth();
-    const isGuest = isGuestSession(user);
+    const { githubAccessToken } = useAuth();
+    const guest = isGuest();
     const canFetchBuilds = canFetchProjectBuilds({
         githubAccessToken,
-        isGuest,
+        isGuest: guest,
         projectId,
     });
     const {
@@ -100,7 +101,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
 
     const needsGitHubToken = !canFetchBuilds;
     const tokenError =
-        !isGuest &&
+        !guest &&
         (buildsError instanceof CiCdMissingTokenError ||
             buildsError instanceof CiCdUnauthorizedError);
 
