@@ -1,16 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchArchivedTasks } from "@/features/tasks/api/tasks-api";
+import { isGuest } from "@/features/guest-mode";
+import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { taskKeys } from "@/features/tasks/model/query-keys";
 
 export function useArchivedTasks(
     projectId: string,
     boardId: string,
-    enabled = true,
+    enabled = true
 ) {
+    const provider = resolveTasksProvider(isGuest());
+
     return useQuery({
         enabled: Boolean(projectId && boardId) && enabled,
-        queryFn: () => fetchArchivedTasks(boardId),
+        queryFn: () => provider.fetchArchivedTasks(boardId),
         queryKey: taskKeys.archived(projectId, boardId),
     });
 }

@@ -91,4 +91,88 @@ describe("guest tasks provider happy path", () => {
             )
         ).toBe(true);
     });
+
+    it("archive / delete persisted archived task without Supabase", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const boardId = board.id;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const created = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Archived then deleted"
+        );
+        await provider.archiveTaskRecord(created.id);
+        await provider.deleteTaskRecord(created.id);
+
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === created.id)
+        ).toBe(false);
+        const archived = await provider.fetchArchivedTasks(boardId);
+        expect(archived.some((task) => task.id === created.id)).toBe(false);
+    });
+
+    it("archive / list archived / restore persist across refresh", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const boardId = board.id;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const created = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Task to archive"
+        );
+
+        await provider.archiveTaskRecord(created.id);
+
+        const boardAfterArchive = await provider.fetchBoardTasks(boardId);
+        expect(
+            boardAfterArchive.tasks.some((task) => task.id === created.id)
+        ).toBe(false);
+
+        const archived = await provider.fetchArchivedTasks(boardId);
+        expect(archived).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    archivedAt: expect.any(String),
+                    id: created.id,
+                    title: "Task to archive",
+                }),
+            ])
+        );
+
+        await provider.restoreTaskRecord(created.id, boardId);
+
+        vi.resetModules();
+        const refreshed = await import("@/features/guest-mode");
+        const { resolveTasksProvider: resolveAgain } =
+            await import("@/features/tasks/api/resolve-tasks-provider");
+        const after = refreshed.getGuestSandbox()!;
+        const task = after.tasks.find((item) => item.id === created.id);
+        expect(task?.archivedAt).toBeUndefined();
+
+        const boardCache = await resolveAgain(true).fetchBoardTasks(boardId);
+        expect(boardCache.tasks.some((item) => item.id === created.id)).toBe(
+            true
+        );
+        const stillArchived =
+            await resolveAgain(true).fetchArchivedTasks(boardId);
+        expect(stillArchived.some((item) => item.id === created.id)).toBe(
+            false
+        );
+    });
 });

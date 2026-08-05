@@ -160,9 +160,6 @@ export function KanbanBoard({
         return filterTasks(scoped, filters);
     }, [activeSprint, boardSprintScope, filters, tasks]);
 
-    /** Same-column reorder is unsafe when filters/sprint hide cards in a column. */
-    const boardHidesTasks = filteredTasks.length !== tasks.length;
-
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
         for (const task of filteredTasks) {
@@ -274,21 +271,8 @@ export function KanbanBoard({
         }
 
         const overType = over.data.current?.type as DragType | undefined;
-        const activeTask = tasks.find((task) => task.id === String(active.id));
-        const overTask =
-            overType === "task"
-                ? tasks.find((task) => task.id === String(over.id))
-                : undefined;
-        const sameColumn =
-            activeTask && overTask && activeTask.status === overTask.status;
 
         if (overType === "task") {
-            if (sameColumn && boardHidesTasks) {
-                // Filtered same-column reorder would rewrite positions vs hidden siblings.
-                commitTaskDragGesture(String(active.id));
-                return;
-            }
-
             reorderTaskWithin(String(active.id), String(over.id), {
                 persist: false,
             });

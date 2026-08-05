@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { TaskComment } from "@/features/tasks/model/types";
 
 import { useAuth } from "@/features/auth";
+import { GUEST_SEED_ACTOR_ID, isGuest } from "@/features/guest-mode";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
@@ -58,6 +59,8 @@ export function TaskCommentsSection({
 }: TaskCommentsSectionProperties) {
     const { i18n, t } = useTranslation("board");
     const { user } = useAuth();
+    const guest = isGuest();
+    const currentUserId = guest ? GUEST_SEED_ACTOR_ID : user?.id;
     const access = useProjectAccess(projectId);
     const people = useProjectPeople(projectId);
     const mentionCandidates = useMemo<MentionCandidate[]>(
@@ -183,7 +186,7 @@ export function TaskCommentsSection({
             ) : (
                 <ul className="flex flex-col gap-3">
                     {comments.map((comment) => {
-                        const isAuthor = comment.author?.id === user?.id;
+                        const isAuthor = comment.author?.id === currentUserId;
                         const canEdit =
                             access.isSettled &&
                             isAuthor &&

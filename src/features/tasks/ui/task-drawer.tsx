@@ -12,7 +12,6 @@ import type {
 } from "@/features/tasks/model/types";
 import type { MentionCandidate } from "@/shared/ui/rich-text-editor";
 
-import { isGuestSession, useAuth } from "@/features/auth";
 import {
     type BoardColumn,
     fetchBoardColumns,
@@ -21,6 +20,7 @@ import {
 } from "@/features/boards";
 import { canFetchGitData } from "@/features/git-integration/lib/can-fetch-git-data";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
+import { isGuest } from "@/features/guest-mode";
 import { TaskLabelsField, useProjectLabels } from "@/features/labels";
 import { TaskWatchersList } from "@/features/notifications/ui/task-watchers-list";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
@@ -117,8 +117,7 @@ export function TaskDrawer({
     repoFullName,
 }: TaskDrawerProperties) {
     const { t } = useTranslation("board");
-    const { user } = useAuth();
-    const isGuest = isGuestSession(user);
+    const isGuestSessionActive = isGuest();
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const { columns } = useBoardColumns(projectId, boardId);
     const { labels } = useProjectLabels(projectId);
@@ -857,7 +856,7 @@ export function TaskDrawer({
                                     repoFullName &&
                                     canFetchGitData({
                                         branchName: task.branchName,
-                                        isGuest,
+                                        isGuest: isGuestSessionActive,
                                         repoFullName,
                                         token: githubToken,
                                     }) ? (

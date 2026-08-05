@@ -17,6 +17,7 @@ import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
 } from "@/features/tasks/model/constants";
+import { resolveRestoreTaskStatus } from "@/features/tasks/model/resolve-restore-task-status";
 
 const ACTOR: GuestPerson = {
     id: GUEST_SEED_ACTOR_ID,
@@ -100,8 +101,13 @@ function findTaskOrThrow(tasks: GuestTask[], taskId: string): GuestTask {
     return task;
 }
 
+function isActiveTask(task: GuestTask): boolean {
+    return task.archivedAt == undefined;
+}
+
 function mapGuestTask(task: GuestTask): Task {
     return {
+        archivedAt: task.archivedAt,
         assignee: task.assignee,
         author: task.author,
         boardId: task.boardId,
@@ -172,6 +178,16 @@ function normalizeTaskTitle(title: string): string {
 
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */
 export const guestTasksProvider: TasksProvider = {
+    async archiveTaskRecord(taskId) {
+        updateGuestSandbox((sandbox) => {
+            const task = findTaskOrThrow(sandbox.tasks, taskId);
+            if (task.archivedAt) {
+                return;
+            }
+            task.archivedAt = new Date().toISOString();
+        });
+    },
+
     async createTaskRecord(
         projectId,
         boardId,
@@ -185,14 +201,17 @@ export const guestTasksProvider: TasksProvider = {
 
         updateGuestSandbox((sandbox) => {
             const columnTasks = sandbox.tasks.filter(
-                (task) => task.boardId === boardId && task.status === status
+                (task) =>
+                    task.boardId === boardId &&
+                    task.status === status &&
+                    isActiveTask(task)
             );
             const maxPosition = maxPositionAmong(columnTasks);
 
             let sprintPosition: number | undefined;
             if (sprintId) {
                 const sprintTasks = sandbox.tasks.filter(
-                    (task) => task.sprintId === sprintId
+                    (task) => task.sprintId === sprintId && isActiveTask(task)
                 );
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
@@ -219,13 +238,52 @@ export const guestTasksProvider: TasksProvider = {
         return mapGuestTask(created);
     },
 
+    async deleteTaskRecord(taskId) {
+        updateGuestSandbox((sandbox) => {
+            findTaskOrThrow(sandbox.tasks, taskId);
+            sandbox.tasks = sandbox.tasks.filter((task) => task.id !== taskId);
+            sandbox.comments = sandbox.comments.filter(
+                (comment) => comment.taskId !== taskId
+            );
+            sandbox.activity = sandbox.activity.filter(
+                (event) => event.taskId !== taskId
+            );
+            sandbox.notifications = sandbox.notifications.filter(
+                (row) => row.taskId !== taskId
+            );
+            for (const sprint of sandbox.sprints) {
+                sprint.committedTaskIds = sprint.committedTaskIds.filter(
+                    (id) => id !== taskId
+                );
+                sprint.completedTaskIds = sprint.completedTaskIds.filter(
+                    (id) => id !== taskId
+                );
+            }
+        });
+    },
+
+    async fetchArchivedTasks(boardId) {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            throw new Error("No Guest Session");
+        }
+        return sandbox.tasks
+            .filter((task) => task.boardId === boardId && !isActiveTask(task))
+            .toSorted((a, b) => {
+                const aTime = Date.parse(a.archivedAt!);
+                const bTime = Date.parse(b.archivedAt!);
+                return bTime - aTime;
+            })
+            .map((task) => mapGuestTask(task));
+    },
+
     async fetchBoardTasks(boardId) {
         const sandbox = getGuestSandbox();
         if (!sandbox) {
             throw new Error("No Guest Session");
         }
         const boardTasks = sandbox.tasks.filter(
-            (task) => task.boardId === boardId
+            (task) => task.boardId === boardId && isActiveTask(task)
         );
         const tasks = boardTasks.map((task) => mapGuestTask(task));
         const taskPositions = new Map(
@@ -243,7 +301,9 @@ export const guestTasksProvider: TasksProvider = {
             throw new Error("No Guest Session");
         }
         return sandbox.tasks
-            .filter((task) => task.projectId === projectId)
+            .filter(
+                (task) => task.projectId === projectId && isActiveTask(task)
+            )
             .map((task) => mapGuestTask(task));
     },
 
@@ -266,7 +326,8 @@ export const guestTasksProvider: TasksProvider = {
                 (item) =>
                     item.boardId === targetBoardId &&
                     item.status === targetStatus &&
-                    item.id !== taskId
+                    item.id !== taskId &&
+                    isActiveTask(item)
             );
 
             task.boardId = targetBoardId;
@@ -289,6 +350,33 @@ export const guestTasksProvider: TasksProvider = {
                 task.status = update.status;
                 task.position = update.position;
             }
+        });
+    },
+
+    async restoreTaskRecord(taskId, boardId) {
+        updateGuestSandbox((sandbox) => {
+            const board = sandbox.boards.find((item) => item.id === boardId);
+            if (!board) {
+                throw new Error("Board not found");
+            }
+            const task = findTaskOrThrow(sandbox.tasks, taskId);
+            if (!task.archivedAt) {
+                return;
+            }
+
+            const columnIds = board.columns.map((column) => column.id);
+            const status = resolveRestoreTaskStatus(task.status, columnIds);
+            const columnTasks = sandbox.tasks.filter(
+                (item) =>
+                    item.boardId === boardId &&
+                    item.status === status &&
+                    item.id !== taskId &&
+                    isActiveTask(item)
+            );
+
+            task.status = status;
+            task.position = maxPositionAmong(columnTasks) + 1;
+            delete task.archivedAt;
         });
     },
 
