@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import type { Notification } from "@/features/notifications/model/types";
 
+import { getGuestSandbox, isGuest } from "@/features/guest-mode";
 import { fetchTaskNavigation } from "@/features/notifications/api/notifications-api";
 import { focusCommentIdFromNotification } from "@/features/notifications/lib/focus-comment-from-notification";
 import { useMarkNotificationRead } from "@/features/notifications/model/use-notifications";
@@ -26,9 +27,11 @@ export function useOpenNotification() {
         }
     ) {
         try {
-            const nav = await fetchTaskNavigation({
-                taskId: notification.taskId,
-            });
+            const nav = isGuest()
+                ? resolveGuestTaskNavigation(notification.taskId)
+                : await fetchTaskNavigation({
+                      taskId: notification.taskId,
+                  });
             options?.onNavigate?.();
             await navigate({
                 params: {
@@ -56,4 +59,16 @@ export function useOpenNotification() {
             }
         }
     };
+}
+
+function resolveGuestTaskNavigation(taskId: string): {
+    boardId: string;
+    projectId: string;
+} {
+    const sandbox = getGuestSandbox();
+    const task = sandbox?.tasks.find((entry) => entry.id === taskId);
+    if (!task) {
+        throw new Error("Guest task not found");
+    }
+    return { boardId: task.boardId, projectId: task.projectId };
 }

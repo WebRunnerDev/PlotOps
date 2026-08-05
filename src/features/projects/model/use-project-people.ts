@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
+import { isGuest } from "@/features/guest-mode";
+import { listGuestProjectPeople } from "@/features/projects/api/guest-project-people";
 import {
     useProjectMembers,
     useProjectOwnerProfile,
@@ -17,11 +19,23 @@ export type ProjectPerson = {
 /** Current Project Owner + Members (including Viewer) for Mention picker. */
 export function useProjectPeople(projectId: string): ProjectPerson[] {
     const { t } = useTranslation("board");
+    const guest = isGuest();
     const { data: project } = useProject(projectId);
     const { data: members = [] } = useProjectMembers(projectId);
-    const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
+    const { data: ownerProfile } = useProjectOwnerProfile(
+        guest ? undefined : project?.owner_id
+    );
+
+    const guestPeople = useMemo(
+        () => (guest ? listGuestProjectPeople(projectId) : []),
+        [guest, projectId]
+    );
 
     return useMemo(() => {
+        if (guest) {
+            return guestPeople;
+        }
+
         const byId = new Map<string, ProjectPerson>();
 
         if (ownerProfile) {
@@ -48,5 +62,5 @@ export function useProjectPeople(projectId: string): ProjectPerson[] {
         return [...byId.values()].toSorted((left, right) =>
             left.name.localeCompare(right.name)
         );
-    }, [members, ownerProfile, t]);
+    }, [guest, guestPeople, members, ownerProfile, t]);
 }

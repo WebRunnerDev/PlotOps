@@ -6,6 +6,7 @@ import type {
 } from "@/features/projects/model/access";
 
 import { useAuth } from "@/features/auth";
+import { isGuest } from "@/features/guest-mode";
 import {
     confirmProjectInvite,
     createProjectInvite,
@@ -80,8 +81,10 @@ export function useProjectInvites(projectId: string, enabled = true) {
 }
 
 export function useProjectMembers(projectId: string) {
+    const guest = isGuest();
+
     return useQuery({
-        enabled: Boolean(projectId),
+        enabled: Boolean(projectId) && !guest,
         queryFn: async () => {
             const { data, error } = await fetchProjectMembers(projectId);
             if (error) throw error;
@@ -92,8 +95,10 @@ export function useProjectMembers(projectId: string) {
 }
 
 export function useProjectOwnerProfile(ownerId: string | undefined) {
+    const guest = isGuest();
+
     return useQuery({
-        enabled: Boolean(ownerId),
+        enabled: Boolean(ownerId) && !guest,
         queryFn: async () => {
             const { data, error } = await supabase
                 .from("profiles")
