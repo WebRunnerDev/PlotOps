@@ -846,6 +846,7 @@ export function TaskDrawer({
                                                     pr,
                                                 });
                                             }}
+                                            projectId={projectId}
                                             repoFullName={repoFullName}
                                             task={task}
                                         />

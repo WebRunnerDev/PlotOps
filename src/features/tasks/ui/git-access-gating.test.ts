@@ -18,7 +18,10 @@ describe("Git UI Role gating seam", () => {
         expect(drawer).toMatch(/useProjectAccess/);
         expect(drawer).toMatch(/canEditTasks/);
         expect(drawer).toMatch(/TaskGithubPanel[\s\S]*canEdit=\{canEdit\}/);
+        expect(drawer).toMatch(/projectId=\{projectId\}/);
         expect(panel).toMatch(/canEdit/);
+        expect(panel).toMatch(/githubPanelNeedsRepo/);
+        expect(panel).toMatch(/github\.connectRepo/);
         expect(panel).toMatch(/github\.unlinkBranch|unlinkBranch/);
         expect(panel).toMatch(/github\.generateBranch|generateBranch/);
         expect(panel).toMatch(/github\.linkBranch|linkBranch/);

@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { CircleCheck, CircleX, LoaderCircle, Timer } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +15,10 @@ import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
 import { isGuest } from "@/features/guest-mode";
+import {
+    projectHasGithubRepo,
+    resolveProjectConnectHash,
+} from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
@@ -32,23 +37,25 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
     const { i18n, t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
     const guest = isGuest();
-    const canFetchBuilds = canFetchProjectBuilds({
-        githubAccessToken,
-        isGuest: guest,
-        projectId,
-    });
     const {
         canView,
         isLoading: accessLoading,
         isSettled,
     } = useProjectAccess(projectId);
     const { data: project, isLoading: projectLoading } = useProject(projectId);
+    const hasGithubRepo = projectHasGithubRepo(project?.github_repo_id);
+    const canFetchBuilds = canFetchProjectBuilds({
+        githubAccessToken,
+        githubRepoId: project?.github_repo_id,
+        isGuest: guest,
+        projectId,
+    });
     const {
         data: builds = [],
         error: buildsError,
         isFetching: buildsFetching,
         isLoading: buildsLoading,
-    } = useProjectBuilds(projectId);
+    } = useProjectBuilds(projectId, project?.github_repo_id);
     const [selectedBuild, setSelectedBuild] = useState<
         ProjectBuild | undefined
     >();
@@ -99,7 +106,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         );
     }
 
-    const needsGitHubToken = !canFetchBuilds;
+    const needsGitHubToken = hasGithubRepo && !canFetchBuilds;
     const tokenError =
         !guest &&
         (buildsError instanceof CiCdMissingTokenError ||
@@ -126,7 +133,30 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                 </p>
             </header>
 
-            {needsGitHubToken || tokenError ? (
+            {hasGithubRepo ? undefined : (
+                <Alert>
+                    <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="min-w-0">{t("cicd.connectRepo")}</span>
+                        <Button
+                            className="shrink-0 self-start sm:self-auto"
+                            nativeButton={false}
+                            render={
+                                <Link
+                                    hash={resolveProjectConnectHash()}
+                                    params={{ projectId }}
+                                    to="/projects/$projectId/settings"
+                                />
+                            }
+                            size="sm"
+                            variant="outline"
+                        >
+                            {t("cicd.connectRepoAction")}
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {hasGithubRepo && (needsGitHubToken || tokenError) ? (
                 <Alert>
                     <AlertDescription>{t("cicd.needsToken")}</AlertDescription>
                 </Alert>
@@ -291,6 +321,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
 
             <BuildLogDialog
                 build={selectedBuild}
+                githubRepoId={project.github_repo_id}
                 onClose={() => {
                     setSelectedBuild(undefined);
                 }}

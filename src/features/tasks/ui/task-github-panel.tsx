@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
     Check,
     Copy,
@@ -21,6 +22,10 @@ import {
     isGitHubApiError,
 } from "@/features/git-integration/api/github-git-api";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
+import {
+    githubPanelNeedsRepo,
+    resolveProjectConnectHash,
+} from "@/features/projects/model/project-github-gate";
 import {
     generateBranchName,
     isSharedBranch,
@@ -56,6 +61,8 @@ type TaskGithubPanelProperties = {
     githubToken: null | string;
     onBranchChange: (branchName: null | string) => void;
     onPrChange: (pr: null | TaskPullRequest) => void;
+    /** Project id for connect deep-link when repo is missing. */
+    projectId: string;
     repoFullName: string | undefined;
     task: Task;
 };
@@ -67,6 +74,7 @@ export function TaskGithubPanel({
     githubToken,
     onBranchChange,
     onPrChange,
+    projectId,
     repoFullName,
     task,
 }: TaskGithubPanelProperties) {
@@ -101,6 +109,49 @@ export function TaskGithubPanel({
         ? `git checkout ${branchName}`
         : undefined;
     const canFetchGithub = Boolean(githubToken && repoFullName);
+
+    if (githubPanelNeedsRepo(repoFullName)) {
+        return (
+            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-meta text-muted-foreground">
+                        {t("github.title")}
+                    </p>
+                    <p className="text-ui text-muted-foreground">
+                        {t("github.connectRepo")}
+                    </p>
+                </div>
+                {branchName ? (
+                    <p className="min-w-0 truncate font-mono text-code text-muted-foreground">
+                        {branchName}
+                    </p>
+                ) : undefined}
+                {task.pr ? (
+                    <p className="min-w-0 truncate text-ui text-muted-foreground">
+                        {t("github.prLink", {
+                            number: task.pr.number,
+                            state: t(`prState.${task.pr.state}`),
+                        })}
+                    </p>
+                ) : undefined}
+                <Button
+                    className="self-start"
+                    nativeButton={false}
+                    render={
+                        <Link
+                            hash={resolveProjectConnectHash()}
+                            params={{ projectId }}
+                            to="/projects/$projectId/settings"
+                        />
+                    }
+                    size="xs"
+                    variant="outline"
+                >
+                    {t("github.connectRepoAction")}
+                </Button>
+            </div>
+        );
+    }
 
     const handleCopyCheckout = async () => {
         if (!checkoutCommand) return;

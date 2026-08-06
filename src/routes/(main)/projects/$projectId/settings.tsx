@@ -5,6 +5,10 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { ProjectBoardsSettings, useProjectBoards } from "@/features/boards";
 import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
+import {
+    projectHasGithubRepo,
+    resolveProjectConnectHash,
+} from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
@@ -172,7 +176,31 @@ function ProjectSettingsRoute() {
                     <AlertDescription>{t("projectError")}</AlertDescription>
                 </Alert>
             ) : (
-                <div className="mx-auto w-full max-w-3xl">
+                <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+                    <section
+                        className="scroll-mt-4 rounded-xl border border-border p-4"
+                        id={resolveProjectConnectHash()}
+                    >
+                        <h2 className="text-ui font-medium">
+                            {t("settings.repository.title")}
+                        </h2>
+                        {projectHasGithubRepo(project.github_repo_id) ? (
+                            <p className="mt-2 min-w-0 truncate font-mono text-code text-muted-foreground">
+                                {project.github_full_name ??
+                                    t("settings.repository.linked")}
+                            </p>
+                        ) : (
+                            <div className="mt-2 flex flex-col gap-3">
+                                <p className="text-ui text-muted-foreground">
+                                    {t("settings.repository.connect")}
+                                </p>
+                                <p className="text-meta text-muted-foreground">
+                                    {t("settings.repository.connectHint")}
+                                </p>
+                            </div>
+                        )}
+                    </section>
+
                     {activeSection === "boards" &&
                     isSettled &&
                     canManageBoard ? (

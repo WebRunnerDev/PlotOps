@@ -181,6 +181,8 @@
         "description": "GitHub Actions runs for this project’s linked repository. Select a run to inspect jobs and logs.",
         "refreshing": "Refreshing…",
         "needsToken": "Sign in with GitHub (repo scope) to load Actions runs for this project.",
+        "connectRepo": "Connect a repository to see GitHub Actions runs for this project.",
+        "connectRepoAction": "Connect a repository",
         "empty": "No workflow runs yet. Push a commit or add a workflow under .github/workflows.",
         "emptyFilter": "No runs match this filter.",
         "loadFailed": "Could not load workflow runs from GitHub.",
@@ -227,6 +229,12 @@
         "backToBoard": "Back to board",
         "membersMoved": "Members and invites are managed on the Team.",
         "openTeamSettings": "Open Team settings",
+        "repository": {
+            "title": "Repository",
+            "linked": "Repository linked",
+            "connect": "Connect a repository to enable Git and CI/CD for this project.",
+            "connectHint": "Attaching a GitHub repository to this Project will be available soon. Until then, create a connected Project from Team projects."
+        },
         "nav": {
             "projectSettings": "Project settings",
             "project": "Project",
@@ -434,6 +442,8 @@
     },
     "github": {
         "title": "GitHub",
+        "connectRepo": "Connect a repository to link branches and pull requests.",
+        "connectRepoAction": "Connect a repository",
         "checkout": "Checkout",
         "copy": "Copy checkout command",
         "noBranch": "No branch linked — generate one, link an existing branch, or skip if you work on a shared branch.",

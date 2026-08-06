@@ -108,16 +108,16 @@ Create name-only Project under Team without connecting a GitHub repo. Schema alr
 ### Slices
 
 1. **Create UX** — extend Team projects flow / dialog: branch “Connect GitHub” vs “Name only” (Owner/Admin). Validate name/slug; `createProject` with null repo fields. ✅ (#175)
-2. **Gate Git/CI** — TopBar tabs Git surfaces + CI/CD: empty state “Connect a repository” + deep-link to settings/connect; hide live Actions calls when no `github_repo_id`. (#176)
-3. **Board/Kanban** — unaffected; branch/PR fields on tasks show soft empty states. (default board trigger covers Board/Backlog/Sprints; soft empties with #176)
+2. **Gate Git/CI** — TopBar tabs Git surfaces + CI/CD: empty state “Connect a repository” + deep-link to settings/connect; hide live Actions calls when no `github_repo_id`. ✅ (#176)
+3. **Board/Kanban** — unaffected; branch/PR fields on tasks show soft empty states. (default board trigger covers Board/Backlog/Sprints; soft empties with #176) ✅
 4. **Connect later** — optional follow-up: attach repo to existing Project (unique `(team_id, github_repo_id)`); can be same PR or fast-follow. (#177)
 
 ### Acceptance
 
 - [x] Can create and use Board/Backlog/Sprints without GitHub. (#175 — create + default board trigger; Git/CI surfaces gated in #176)
-- [ ] No spurious GitHub API errors on CI/Git routes. (#176)
+- [x] No spurious GitHub API errors on CI/Git routes. (#176)
 - [x] Duplicate-repo constraints unchanged for connected Projects.
-- [ ] SPEC Deferred row cleared. (after #176 + #177)
+- [ ] SPEC Deferred row cleared. (after #177)
 
 ### Key files
 

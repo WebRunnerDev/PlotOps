@@ -26,6 +26,7 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type BuildLogDialogProperties = {
     build: ProjectBuild | undefined;
+    githubRepoId: null | number | undefined;
     onClose: () => void;
     open: boolean;
     projectId: string;
@@ -33,6 +34,7 @@ type BuildLogDialogProperties = {
 
 export function BuildLogDialog({
     build,
+    githubRepoId,
     onClose,
     open,
     projectId,
@@ -48,7 +50,12 @@ export function BuildLogDialog({
         isError: jobsError,
         isLoading: jobsLoading,
         refetch: refetchJobs,
-    } = useBuildJobs(projectId, build?.id, open && Boolean(build));
+    } = useBuildJobs(
+        projectId,
+        build?.id,
+        open && Boolean(build),
+        githubRepoId
+    );
 
     return (
         <Dialog

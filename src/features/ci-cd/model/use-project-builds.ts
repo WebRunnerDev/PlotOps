@@ -12,7 +12,10 @@ import { isGuest } from "@/features/guest-mode";
 
 const POLL_MS = 10_000;
 
-export function useProjectBuilds(projectId: string) {
+export function useProjectBuilds(
+    projectId: string,
+    githubRepoId: null | number | undefined
+) {
     const { githubAccessToken } = useAuth();
     const guest = isGuest();
     const provider = resolveBuildsProvider(guest);
@@ -20,6 +23,7 @@ export function useProjectBuilds(projectId: string) {
     return useQuery({
         enabled: canFetchProjectBuilds({
             githubAccessToken,
+            githubRepoId,
             isGuest: guest,
             projectId,
         }),
