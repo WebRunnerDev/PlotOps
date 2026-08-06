@@ -1,4 +1,7 @@
-import type { CreateProjectInput } from "@/features/projects/model/types";
+import type {
+    ConnectProjectGithubPatch,
+    CreateProjectInput,
+} from "@/features/projects/model/types";
 
 import { ensureUserProfile } from "@/features/auth/api/profile-api";
 import { supabase } from "@/shared/api/supabase";
@@ -25,6 +28,31 @@ const PROJECT_SELECT = `
     owner_id
   )
 `;
+
+/** Attach a GitHub repo to a name-only Project (`github_repo_id` currently null). */
+export async function connectProjectGithub(
+    projectId: string,
+    patch: ConnectProjectGithubPatch
+) {
+    const { data, error } = await supabase
+        .from("projects")
+        .update(patch)
+        .eq("id", projectId)
+        .is("github_repo_id", null)
+        .select(PROJECT_SELECT)
+        .maybeSingle();
+
+    if (error) return { data: null, error };
+    if (!data) {
+        return {
+            data: null,
+            error: new Error(
+                "Project not found, already connected, or update not permitted"
+            ),
+        };
+    }
+    return { data: mapProject(data as ProjectRow), error: null };
+}
 
 export async function createProject(input: CreateProjectInput) {
     const {

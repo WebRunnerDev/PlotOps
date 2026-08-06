@@ -13,7 +13,7 @@ describe("createProject under Team seam", () => {
         );
         const function_ = source.slice(
             source.indexOf("export async function createProject"),
-            source.indexOf("export async function deleteProject")
+            source.indexOf("export async function connectProjectGithub")
         );
 
         expect(function_).toMatch(/\.from\(\s*["']projects["']\s*\)/);

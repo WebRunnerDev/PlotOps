@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GitHubRepo } from "@/features/projects/model/types";
 
 import {
+    buildConnectProjectGithubPatch,
     buildGitHubCreateProjectInput,
     buildNameOnlyCreateProjectInput,
     isValidProjectName,
@@ -56,6 +57,23 @@ describe("buildGitHubCreateProjectInput", () => {
             slug: "acme-widgets",
             team_id: "team-1",
         });
+    });
+});
+
+describe("buildConnectProjectGithubPatch", () => {
+    it("maps github_* + is_private without renaming the Project", () => {
+        expect(buildConnectProjectGithubPatch(repo)).toEqual({
+            github_default_branch: "main",
+            github_full_name: "acme/widgets",
+            github_html_url: "https://github.com/acme/widgets",
+            github_repo_id: 42,
+            is_private: true,
+        });
+        expect(buildConnectProjectGithubPatch(repo)).not.toHaveProperty("name");
+        expect(buildConnectProjectGithubPatch(repo)).not.toHaveProperty("slug");
+        expect(buildConnectProjectGithubPatch(repo)).not.toHaveProperty(
+            "team_id"
+        );
     });
 });
 

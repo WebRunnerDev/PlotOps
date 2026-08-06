@@ -1,3 +1,11 @@
+export type ConnectProjectGithubPatch = {
+    github_default_branch: string;
+    github_full_name: string;
+    github_html_url: string;
+    github_repo_id: number;
+    is_private: boolean;
+};
+
 export type CreateProjectInput = {
     description: null | string;
     github_default_branch: null | string;

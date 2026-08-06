@@ -7,6 +7,7 @@ import type { GitHubRepo, Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub } from "@/features/auth";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
+import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import {
     isValidProjectName,
     isValidProjectSlug,
@@ -375,13 +376,4 @@ export function AddProjectDialog({
 
 async function handleReconnectGitHub() {
     await signInWithGitHub();
-}
-
-function isUniqueViolation(error: unknown): boolean {
-    return (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        (error as { code?: unknown }).code === "23505"
-    );
 }

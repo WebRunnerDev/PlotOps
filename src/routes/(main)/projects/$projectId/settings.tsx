@@ -11,6 +11,7 @@ import {
 } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
+import { ConnectProjectRepository } from "@/features/projects/ui/connect-project-repository";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -30,6 +31,7 @@ function ProjectSettingsRoute() {
     const {
         canManageBoard,
         canManageMembers,
+        canManageSettings,
         canView,
         isError: accessError,
         isLoading: accessLoading,
@@ -189,15 +191,15 @@ function ProjectSettingsRoute() {
                                 {project.github_full_name ??
                                     t("settings.repository.linked")}
                             </p>
+                        ) : canManageSettings ? (
+                            <ConnectProjectRepository
+                                projectId={projectId}
+                                teamId={project.team_id}
+                            />
                         ) : (
-                            <div className="mt-2 flex flex-col gap-3">
-                                <p className="text-ui text-muted-foreground">
-                                    {t("settings.repository.connect")}
-                                </p>
-                                <p className="text-meta text-muted-foreground">
-                                    {t("settings.repository.connectHint")}
-                                </p>
-                            </div>
+                            <p className="mt-2 text-ui text-muted-foreground">
+                                {t("settings.repository.connect")}
+                            </p>
                         )}
                     </section>
 

@@ -233,7 +233,16 @@
             "title": "Repository",
             "linked": "Repository linked",
             "connect": "Connect a repository to enable Git and CI/CD for this project.",
-            "connectHint": "Attaching a GitHub repository to this Project will be available soon. Until then, create a connected Project from Team projects."
+            "connectSuccess": "Repository connected",
+            "connectFailed": "Could not connect repository. Try again.",
+            "connectDuplicate": "This repository is already connected to another Project in this Team.",
+            "githubRequired": "Sign in with GitHub to connect a repository.",
+            "reconnectGitHub": "Reconnect GitHub",
+            "searchRepos": "Search repositories…",
+            "loadingRepos": "Loading repositories from GitHub…",
+            "reposError": "Failed to load repositories. Try signing out and back in with GitHub.",
+            "reposScopeError": "GitHub access is missing the repo scope required for private repositories. Reconnect GitHub and approve access to your repositories.",
+            "noReposFound": "No repositories found"
         },
         "nav": {
             "projectSettings": "Project settings",

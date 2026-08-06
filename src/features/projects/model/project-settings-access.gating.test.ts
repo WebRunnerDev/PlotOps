@@ -20,6 +20,7 @@ describe("Project settings Team Role gating seam", () => {
 
         expect(route).toMatch(/useProjectAccess/);
         expect(route).toMatch(/canManageBoard/);
+        expect(route).toMatch(/canManageSettings/);
         expect(route).toMatch(/isSettled/);
         expect(route).not.toMatch(/fetchMyProjectMembership/);
         expect(route).not.toMatch(/project_members/);

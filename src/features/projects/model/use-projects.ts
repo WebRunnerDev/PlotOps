@@ -5,6 +5,7 @@ import type { GitHubRepo } from "@/features/projects/model/types";
 import { isGuest } from "@/features/guest-mode";
 import { resolveProjectsProvider } from "@/features/projects/api/resolve-projects-provider";
 import {
+    buildConnectProjectGithubPatch,
     buildGitHubCreateProjectInput,
     buildNameOnlyCreateProjectInput,
 } from "@/features/projects/model/build-create-project-input";
@@ -23,6 +24,25 @@ export type CreateProjectMutationInput =
           slug: string;
           teamId: string;
       };
+
+export function useConnectProjectGithub(projectId: string) {
+    const queryClient = useQueryClient();
+    const provider = resolveProjectsProvider(isGuest());
+
+    return useMutation({
+        mutationFn: async (repo: GitHubRepo) => {
+            const { data, error } = await provider.connectProjectGithub(
+                projectId,
+                buildConnectProjectGithubPatch(repo)
+            );
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: projectKeys.all });
+        },
+    });
+}
 
 export function useCreateProject() {
     const queryClient = useQueryClient();

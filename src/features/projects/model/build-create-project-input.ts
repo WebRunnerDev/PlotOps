@@ -1,4 +1,5 @@
 import type {
+    ConnectProjectGithubPatch,
     CreateProjectInput,
     GitHubRepo,
 } from "@/features/projects/model/types";
@@ -6,6 +7,18 @@ import type {
 import { slugifyRepoName } from "@/features/projects/api/projects-api";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function buildConnectProjectGithubPatch(
+    repo: GitHubRepo
+): ConnectProjectGithubPatch {
+    return {
+        github_default_branch: repo.default_branch,
+        github_full_name: repo.full_name,
+        github_html_url: repo.html_url,
+        github_repo_id: repo.id,
+        is_private: repo.private,
+    };
+}
 
 export function buildGitHubCreateProjectInput(
     repo: GitHubRepo,
