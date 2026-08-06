@@ -86,3 +86,17 @@ describe("Command palette include-archived search seam", () => {
         );
     });
 });
+
+describe("Command palette Search Members seam", () => {
+    it("queries Team membership and navigates to Team member settings", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/useTeamMembers/);
+        expect(source).toMatch(/useTeamOwnerProfile/);
+        expect(source).toMatch(/resolveCommandPaletteMemberHits/);
+        expect(source).toMatch(/openMemberSettingsIntent/);
+        expect(source).toMatch(/to:\s*"\/teams\/\$teamId\/settings"/);
+        expect(source).toMatch(/command:members/);
+        expect(source).toMatch(/visibility\.searchMembers/);
+    });
+});

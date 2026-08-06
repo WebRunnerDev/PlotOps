@@ -65,10 +65,12 @@ Shipped: #171.
 
 Checklist:
 
-- [ ] Query Team members for current Team/Project context (`team_members` / existing teams hooks).
-- [ ] Match display name / username; select → Member settings or profile affordance already in app.
-- [ ] Hidden without Team context; capability: all roles that can see members.
-- [ ] i18n + tests.
+- [x] Query Team members for current Team/Project context (`team_members` / existing teams hooks).
+- [x] Match display name / username; select → Member settings or profile affordance already in app.
+- [x] Hidden without Team context; capability: all roles that can see members.
+- [x] i18n + tests.
+
+Shipped: #172.
 
 ---
 

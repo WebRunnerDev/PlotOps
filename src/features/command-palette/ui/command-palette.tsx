@@ -10,6 +10,7 @@ import {
     SparklesIcon,
     SquareCheckBigIcon,
     SunIcon,
+    UsersIcon,
     WorkflowIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -17,13 +18,17 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { useBoardColumns } from "@/features/boards";
 import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
 import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
 import {
     type CommandPaletteIntent,
+    type CommandPaletteMember,
     type CommandPaletteNavigateSection,
     type CommandPaletteTaskType,
+    openMemberSettingsIntent,
+    resolveCommandPaletteMemberHits,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
@@ -34,7 +39,7 @@ import {
 } from "@/features/command-palette/model/rules";
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
 import { isGuest } from "@/features/guest-mode";
-import { useProjectAccess, useProjects } from "@/features/projects";
+import { useProject, useProjectAccess, useProjects } from "@/features/projects";
 import {
     resolveCreateTaskSprintId,
     useBoardSprints,
@@ -45,6 +50,12 @@ import {
     useProjectTasks,
     useTasksUiStore,
 } from "@/features/tasks";
+import { useTeamAccess } from "@/features/teams";
+import {
+    useTeam,
+    useTeamMembers,
+    useTeamOwnerProfile,
+} from "@/features/teams/model/use-team-members";
 import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Command,
@@ -75,9 +86,17 @@ export function CommandPalette() {
         typeof parameters.projectId === "string" ? parameters.projectId : null;
     const boardId =
         typeof parameters.boardId === "string" ? parameters.boardId : null;
+    const teamIdFromRoute =
+        typeof parameters.teamId === "string" ? parameters.teamId : null;
     const { theme, toggleTheme } = useTheme();
     const { data: projects = [] } = useProjects();
+    const { data: project } = useProject(projectId ?? "");
+    const teamId = teamIdFromRoute ?? project?.team_id ?? null;
     const { canCreateTasks, isSettled } = useProjectAccess(projectId ?? "");
+    const teamAccess = useTeamAccess(teamId ?? "");
+    const { data: team } = useTeam(teamId ?? "");
+    const { data: teamMembers = [] } = useTeamMembers(teamId ?? "");
+    const { data: ownerProfile } = useTeamOwnerProfile(team?.owner_id);
     const { columns, columnsError, columnsReady } = useBoardColumns(
         projectId ?? "",
         boardId ?? ""
@@ -111,12 +130,14 @@ export function CommandPalette() {
     const routeContext = {
         boardId,
         canCreateTasks: isSettled && canCreateTasks,
+        canViewMembers: teamAccess.isSettled && teamAccess.canView,
         isGuest: guest,
         projectId,
+        teamId,
     };
-    const paletteProjects = projects.map((project) => ({
-        id: project.id,
-        name: project.name,
+    const paletteProjects = projects.map((projectItem) => ({
+        id: projectItem.id,
+        name: projectItem.name,
     }));
     const visibility = resolveCommandPaletteVisibility(
         routeContext,
@@ -150,6 +171,16 @@ export function CommandPalette() {
         paletteTasks,
         query,
         { includeArchived }
+    );
+    const paletteMembers = buildPaletteMembers(
+        ownerProfile,
+        teamMembers,
+        t("command:unknownMember")
+    );
+    const memberHits = resolveCommandPaletteMemberHits(
+        routeContext,
+        paletteMembers,
+        query
     );
     const showTheme =
         normalizedQuery.length === 0 ||
@@ -416,14 +447,46 @@ export function CommandPalette() {
                             ))}
                         </CommandGroup>
                     ) : null}
+                    {visibility.searchMembers && memberHits.length > 0 ? (
+                        <CommandGroup heading={t("command:members")}>
+                            {memberHits.map((member) => (
+                                <CommandItem
+                                    key={member.userId}
+                                    onSelect={() => {
+                                        if (!teamId) return;
+                                        const intent = openMemberSettingsIntent(
+                                            teamId,
+                                            member.userId
+                                        );
+                                        void navigate({
+                                            params: { teamId: intent.teamId },
+                                            to: "/teams/$teamId/settings",
+                                        });
+                                        close();
+                                    }}
+                                    value={`member-${member.userId}`}
+                                >
+                                    <UsersIcon />
+                                    <span className="min-w-0 truncate">
+                                        {member.displayName}
+                                    </span>
+                                    {member.username ? (
+                                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                                            @{member.username}
+                                        </span>
+                                    ) : null}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    ) : null}
                     {visibility.switchProject && projectHits.length > 0 ? (
                         <CommandGroup heading={t("command:projects")}>
-                            {projectHits.map((project) => (
+                            {projectHits.map((projectItem) => (
                                 <CommandItem
-                                    key={project.id}
+                                    key={projectItem.id}
                                     onSelect={() => {
                                         const intent = switchProjectIntent(
-                                            project.id
+                                            projectItem.id
                                         );
                                         void navigate({
                                             params: {
@@ -433,10 +496,10 @@ export function CommandPalette() {
                                         });
                                         close();
                                     }}
-                                    value={`project-${project.id}`}
+                                    value={`project-${projectItem.id}`}
                                 >
                                     <FolderIcon />
-                                    <span>{project.name}</span>
+                                    <span>{projectItem.name}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
@@ -445,6 +508,49 @@ export function CommandPalette() {
             </Command>
         </CommandDialog>
     );
+}
+
+function buildPaletteMembers(
+    ownerProfile:
+        | null
+        | undefined
+        | {
+              first_name: null | string;
+              id: string;
+              last_name: null | string;
+              username: null | string;
+          },
+    teamMembers: readonly {
+        profile: null | {
+            first_name: null | string;
+            last_name: null | string;
+            username: null | string;
+        };
+        user_id: string;
+    }[],
+    unknownLabel: string
+): CommandPaletteMember[] {
+    const byId = new Map<string, CommandPaletteMember>();
+
+    if (ownerProfile) {
+        byId.set(ownerProfile.id, {
+            displayName: formatProfileDisplayName(ownerProfile) || unknownLabel,
+            userId: ownerProfile.id,
+            username: ownerProfile.username,
+        });
+    }
+
+    for (const member of teamMembers) {
+        if (!member.profile) continue;
+        byId.set(member.user_id, {
+            displayName:
+                formatProfileDisplayName(member.profile) || unknownLabel,
+            userId: member.user_id,
+            username: member.profile.username,
+        });
+    }
+
+    return [...byId.values()];
 }
 
 function createTaskLabelKey(

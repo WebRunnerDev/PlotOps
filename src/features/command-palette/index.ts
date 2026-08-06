@@ -1,7 +1,10 @@
 export {
     createTaskIntent,
     GUEST_PALETTE_ALLOWS_CREATE_TASK,
+    matchCommandPaletteMembers,
     matchCommandPaletteTasks,
+    openMemberSettingsIntent,
+    resolveCommandPaletteMemberHits,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
@@ -13,6 +16,7 @@ export {
 } from "./model/rules";
 export type {
     CommandPaletteIntent,
+    CommandPaletteMember,
     CommandPaletteNavigateSection,
     CommandPaletteProject,
     CommandPaletteRouteContext,

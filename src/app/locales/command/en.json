@@ -11,6 +11,7 @@
     "empty": "No results found.",
     "guestCreateReminder": "Demo account — changes may be reset on the shared demo.",
     "includeArchived": "Include archived",
+    "members": "Members",
     "navigate": {
         "backlog": "Go to Backlog",
         "board": "Go to Board",
@@ -23,5 +24,6 @@
     "shortcut": "Ctrl K",
     "shortcutMac": "⌘K",
     "tasks": "Tasks",
-    "title": "Command palette"
+    "title": "Command palette",
+    "unknownMember": "Unknown user"
 }

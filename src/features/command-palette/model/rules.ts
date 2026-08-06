@@ -13,7 +13,14 @@ export type CommandPaletteIntent =
           type: "navigate";
       }
     | { projectId: string; type: "switch-project" }
+    | { teamId: string; type: "open-member-settings"; userId: string }
     | { type: "toggle-theme" };
+
+export type CommandPaletteMember = {
+    displayName: string;
+    userId: string;
+    username: null | string;
+};
 
 export type CommandPaletteNavigateSection =
     "backlog" | "board" | "cicd" | "settings";
@@ -26,9 +33,12 @@ export type CommandPaletteProject = {
 export type CommandPaletteRouteContext = {
     boardId: null | string;
     canCreateTasks: boolean;
+    /** Role that may view Team members (same surface as Team settings). */
+    canViewMembers: boolean;
     /** Guest Session — Create Task allowed against the local sandbox. */
     isGuest: boolean;
     projectId: null | string;
+    teamId: null | string;
 };
 
 export type CommandPaletteTask = {
@@ -47,11 +57,13 @@ export type CommandPaletteVisibility = {
     navigateBoard: boolean;
     navigateCicd: boolean;
     navigateSettings: boolean;
+    searchMembers: boolean;
     switchProject: boolean;
     tasks: boolean;
     toggleTheme: boolean;
 };
 
+const MAX_MEMBER_HITS = 20;
 const MAX_TASK_HITS = 20;
 
 /**
@@ -71,6 +83,31 @@ export function createTaskIntent(
         title,
         type: "create-task",
     };
+}
+
+export function matchCommandPaletteMembers(
+    members: readonly CommandPaletteMember[],
+    query: string
+): CommandPaletteMember[] {
+    const normalized = query.trim().toLowerCase();
+    if (normalized.length === 0) {
+        return [];
+    }
+
+    const hits: CommandPaletteMember[] = [];
+
+    for (const member of members) {
+        const displayName = member.displayName.toLowerCase();
+        const username = member.username?.toLowerCase() ?? "";
+        if (
+            displayName.includes(normalized) ||
+            (username.length > 0 && username.includes(normalized))
+        ) {
+            hits.push(member);
+        }
+    }
+
+    return hits.slice(0, MAX_MEMBER_HITS);
 }
 
 export function matchCommandPaletteTasks(
@@ -114,6 +151,29 @@ export function matchCommandPaletteTasks(
     return [...exactKey, ...titleHits, ...partialKey].slice(0, MAX_TASK_HITS);
 }
 
+export function openMemberSettingsIntent(
+    teamId: string,
+    userId: string
+): Extract<CommandPaletteIntent, { type: "open-member-settings" }> {
+    return {
+        teamId,
+        type: "open-member-settings",
+        userId,
+    };
+}
+
+/** Member hits — empty without Team context or view-members capability. */
+export function resolveCommandPaletteMemberHits(
+    context: CommandPaletteRouteContext,
+    members: readonly CommandPaletteMember[],
+    query: string
+): CommandPaletteMember[] {
+    if (!(context.teamId && context.canViewMembers)) {
+        return [];
+    }
+    return matchCommandPaletteMembers(members, query);
+}
+
 /** Task hits for the palette — empty without Project context; otherwise rules matching. */
 export function resolveCommandPaletteTaskHits(
     context: CommandPaletteRouteContext,
@@ -140,6 +200,7 @@ export function resolveCommandPaletteVisibility(
         navigateBoard: hasProject && hasBoard,
         navigateCicd: hasProject,
         navigateSettings: hasProject,
+        searchMembers: Boolean(context.teamId) && context.canViewMembers,
         switchProject: projects.length > 0,
         tasks: hasProject,
         toggleTheme: true,

@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    type CommandPaletteMember,
     type CommandPaletteProject,
     type CommandPaletteRouteContext,
     type CommandPaletteTask,
     createTaskIntent,
+    matchCommandPaletteMembers,
     matchCommandPaletteTasks,
+    openMemberSettingsIntent,
+    resolveCommandPaletteMemberHits,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
@@ -21,8 +25,10 @@ const baseContext = (
 ): CommandPaletteRouteContext => ({
     boardId: null,
     canCreateTasks: false,
+    canViewMembers: false,
     isGuest: false,
     projectId: null,
+    teamId: null,
     ...overrides,
 });
 
@@ -117,11 +123,43 @@ describe("Command Palette rules seam — visibility", () => {
             navigateBoard: true,
             navigateCicd: true,
             navigateSettings: true,
+            searchMembers: false,
             switchProject: true,
             tasks: true,
             toggleTheme: true,
         });
     });
+
+    it.each([
+        {
+            canViewMembers: true,
+            expected: false,
+            label: "hidden without teamId even when canViewMembers",
+            teamId: null as null | string,
+        },
+        {
+            canViewMembers: false,
+            expected: false,
+            label: "hidden with teamId when cannot view members",
+            teamId: "team-1",
+        },
+        {
+            canViewMembers: true,
+            expected: true,
+            label: "shown with teamId and canViewMembers",
+            teamId: "team-1",
+        },
+    ] as const)(
+        "Search Members: $label",
+        ({ canViewMembers, expected, teamId }) => {
+            const visibility = resolveCommandPaletteVisibility(
+                baseContext({ canViewMembers, teamId }),
+                []
+            );
+
+            expect(visibility.searchMembers).toBe(expected);
+        }
+    );
 
     it.each([
         {
@@ -352,12 +390,100 @@ describe("Command Palette rules seam — Task search", () => {
     });
 });
 
+describe("Command Palette rules seam — Member search", () => {
+    const members: CommandPaletteMember[] = [
+        {
+            displayName: "Ada Lovelace",
+            userId: "u1",
+            username: "ada",
+        },
+        {
+            displayName: "Grace Hopper",
+            userId: "u2",
+            username: "ghopper",
+        },
+        {
+            displayName: "Unknown user",
+            userId: "u3",
+            username: null,
+        },
+    ];
+
+    it("returns no hits when query length is less than 1", () => {
+        expect(matchCommandPaletteMembers(members, "")).toEqual([]);
+        expect(matchCommandPaletteMembers(members, "   ")).toEqual([]);
+    });
+
+    it("matches display name and username", () => {
+        expect(
+            matchCommandPaletteMembers(members, "lovelace").map(
+                (member) => member.userId
+            )
+        ).toEqual(["u1"]);
+
+        expect(
+            matchCommandPaletteMembers(members, "ghopper").map(
+                (member) => member.userId
+            )
+        ).toEqual(["u2"]);
+    });
+
+    it("caps results at 20", () => {
+        const many: CommandPaletteMember[] = Array.from(
+            { length: 25 },
+            (_, index) => ({
+                displayName: `Person ${index}`,
+                userId: `id-${index}`,
+                username: `user${index}`,
+            })
+        );
+
+        expect(matchCommandPaletteMembers(many, "person")).toHaveLength(20);
+    });
+
+    it("returns no Member hits without Team context or view capability", () => {
+        expect(
+            resolveCommandPaletteMemberHits(
+                baseContext({ canViewMembers: true, teamId: null }),
+                members,
+                "ada"
+            )
+        ).toEqual([]);
+
+        expect(
+            resolveCommandPaletteMemberHits(
+                baseContext({ canViewMembers: false, teamId: "team-1" }),
+                members,
+                "ada"
+            )
+        ).toEqual([]);
+    });
+
+    it("returns Member hits when Team context and view capability are present", () => {
+        expect(
+            resolveCommandPaletteMemberHits(
+                baseContext({ canViewMembers: true, teamId: "team-1" }),
+                members,
+                "ada"
+            ).map((member) => member.userId)
+        ).toEqual(["u1"]);
+    });
+});
+
 describe("Command Palette rules seam — intents", () => {
     it("select Task declares navigate intent with boardId and taskId", () => {
         expect(selectTaskIntent({ boardId: "board-9", id: "task-9" })).toEqual({
             boardId: "board-9",
             taskId: "task-9",
             type: "select-task",
+        });
+    });
+
+    it("open Member settings declares intent with teamId and userId", () => {
+        expect(openMemberSettingsIntent("team-1", "user-9")).toEqual({
+            teamId: "team-1",
+            type: "open-member-settings",
+            userId: "user-9",
         });
     });
 
