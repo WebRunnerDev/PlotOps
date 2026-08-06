@@ -72,6 +72,7 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         author: toTaskPerson(author),
         boardId: row.board_id,
         branchName: row.branch_name ?? undefined,
+        createdAt: row.created_at,
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
         id: row.id,

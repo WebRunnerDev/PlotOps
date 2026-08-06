@@ -36,6 +36,7 @@ const labels: ProjectLabel[] = [
 const tasks: Task[] = [
     {
         boardId,
+        createdAt: "2026-01-01T00:00:00.000Z",
         id: "task_1",
         key: "TASK-1",
         labelIds: ["label_1"],

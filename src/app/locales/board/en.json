@@ -173,6 +173,8 @@
         "priorityDesc": "Priority ↓",
         "deadlineAsc": "Deadline ↑",
         "deadlineDesc": "Deadline ↓",
+        "createdAsc": "Created ↑",
+        "createdDesc": "Created ↓",
         "titleAsc": "Title ↑",
         "titleDesc": "Title ↓"
     },

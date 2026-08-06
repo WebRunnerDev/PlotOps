@@ -28,7 +28,12 @@ type BoardSortControlProperties = {
 type SortRadioValue =
     "manual" | `${BoardSortField}:asc` | `${BoardSortField}:desc`;
 
-const FIELD_OPTIONS: BoardSortField[] = ["priority", "deadline", "title"];
+const FIELD_OPTIONS: BoardSortField[] = [
+    "priority",
+    "deadline",
+    "created",
+    "title",
+];
 
 export function BoardSortControl({
     onChange,

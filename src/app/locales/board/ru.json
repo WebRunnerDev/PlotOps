@@ -173,6 +173,8 @@
         "priorityDesc": "Приоритет ↓",
         "deadlineAsc": "Дедлайн ↑",
         "deadlineDesc": "Дедлайн ↓",
+        "createdAsc": "Создано ↑",
+        "createdDesc": "Создано ↓",
         "titleAsc": "Название ↑",
         "titleDesc": "Название ↓"
     },

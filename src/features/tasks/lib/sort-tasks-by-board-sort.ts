@@ -4,7 +4,7 @@ import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
 
 export type BoardSortDirection = "asc" | "desc";
 
-export type BoardSortField = "deadline" | "priority" | "title";
+export type BoardSortField = "created" | "deadline" | "priority" | "title";
 
 /** Per-viewer Board sort preference (field + direction, or Manual). */
 export type BoardSortPreference =
@@ -58,6 +58,9 @@ function compareField(
     direction: number
 ): number {
     switch (field) {
+        case "created": {
+            return left.createdAt.localeCompare(right.createdAt) * direction;
+        }
         case "deadline": {
             return compareNullableOrdered(
                 left.deadline,

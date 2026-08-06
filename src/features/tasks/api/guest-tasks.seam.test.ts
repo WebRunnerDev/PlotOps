@@ -175,4 +175,23 @@ describe("guest tasks provider happy path", () => {
             false
         );
     });
+
+    it("exposes createdAt on Board fetches for Created Board sort", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const boardId = getGuestSandbox()!.boards[0]!.id;
+        const { tasks } =
+            await resolveTasksProvider(true).fetchBoardTasks(boardId);
+
+        expect(tasks.length).toBeGreaterThan(0);
+        expect(
+            tasks.every(
+                (task) =>
+                    typeof task.createdAt === "string" &&
+                    task.createdAt.length > 0
+            )
+        ).toBe(true);
+    });
 });

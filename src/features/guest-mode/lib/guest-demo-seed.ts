@@ -346,6 +346,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/TASK-1-guest-signin-cta",
+            createdAt: "2026-07-20T10:00:00.000Z",
             deadline: "2026-08-07",
             description:
                 "<p>Primary secondary button on sign-in that starts a Guest Session.</p>",
@@ -371,6 +372,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/FEAT-2-guest-ci-mock",
+            createdAt: "2026-07-21T11:00:00.000Z",
             deadline: "2026-08-06",
             description:
                 "<p>Route guest sessions through the canned builds provider — no GitHub token.</p>",
@@ -396,6 +398,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/TASK-3-guest-seed-dataset",
+            createdAt: "2026-07-22T09:00:00.000Z",
             deadline: "2026-08-05",
             description:
                 "<p>Populate the Guest Mode seed with a Team, two Projects, and about 15 colourful tasks.</p>",
@@ -421,6 +424,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/TASK-4-is-guest-session",
+            createdAt: "2026-07-23T14:00:00.000Z",
             deadline: "2026-08-01",
             description:
                 "<p>Guest detection is a Guest Session client flag — not a demo email/UUID.</p>",
@@ -446,6 +450,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "docs/TASK-5-guest-creds-docs",
+            createdAt: "2026-07-24T08:00:00.000Z",
             deadline: "2026-07-31",
             description:
                 "<p>Document Local Guest Mode and that Docker SQL seed is for RLS experiments only.</p>",
@@ -470,6 +475,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-25T16:00:00.000Z",
             deadline: "2026-08-10",
             description:
                 "<p>Show a Demo chip so reviewers know they are in Guest Mode.</p>",
@@ -487,6 +493,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-26T10:00:00.000Z",
             description:
                 "<p>Keep Search / Switch Project / Theme; Create Task stays local-only.</p>",
             id: T07,
@@ -503,6 +510,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-27T12:00:00.000Z",
             description:
                 "<p>Hide or no-op dangerous mutations that do not apply locally.</p>",
             id: T08,
@@ -521,6 +529,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/FEAT-9-git-fixtures",
+            createdAt: "2026-07-28T09:30:00.000Z",
             deadline: "2026-08-12",
             description:
                 "<p>Git tab should return canned commits/PRs when Guest has no provider token.</p>",
@@ -537,6 +546,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-29T15:00:00.000Z",
             description:
                 "<p>Replay canned CI log lines so the CI tab looks alive without Actions.</p>",
             id: T10,
@@ -554,6 +564,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "fix/BUG-11-realtime-reconnect",
+            createdAt: "2026-07-30T11:00:00.000Z",
             deadline: "2026-08-08",
             description:
                 "<p>Reproduce drop under slow 3G and harden the subscription bounce.</p>",
@@ -576,6 +587,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-31T13:00:00.000Z",
             deadline: "2026-07-28",
             description:
                 "<p>Short paragraph pointing employers at Guest Mode from the README.</p>",
@@ -593,6 +605,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-01T10:00:00.000Z",
             deadline: "2026-08-14",
             description:
                 "<p>Sharper headline for the marketing site without binding a GitHub repo.</p>",
@@ -610,6 +623,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-02T09:00:00.000Z",
             description:
                 "<p>Collect logos and screenshots for outbound press notes.</p>",
             id: T14,
@@ -625,6 +639,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-03T14:00:00.000Z",
             deadline: "2026-08-06",
             description:
                 "<p>Accordion fails to expand below the sm breakpoint.</p>",

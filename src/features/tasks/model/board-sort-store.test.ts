@@ -83,7 +83,7 @@ describe("board sort store", () => {
         const first = createTestStore(storage);
         first.getState().setBoardSort("board-a", {
             direction: "asc",
-            field: "deadline",
+            field: "created",
         });
 
         await first.persist.rehydrate();
@@ -93,11 +93,11 @@ describe("board sort store", () => {
 
         expect(second.getState().getBoardSort("board-a")).toEqual({
             direction: "asc",
-            field: "deadline",
+            field: "created",
         });
         expect(second.getState().byBoardId["board-a"]).toEqual({
             direction: "asc",
-            field: "deadline",
+            field: "created",
         });
         expect(
             JSON.stringify(storage.getItem("plotops:board-sort-test"))

@@ -112,6 +112,7 @@ function mapGuestTask(task: GuestTask): Task {
         author: task.author,
         boardId: task.boardId,
         branchName: task.branchName,
+        createdAt: task.createdAt,
         deadline: task.deadline,
         description: task.description,
         id: task.id,
@@ -219,6 +220,7 @@ export const guestTasksProvider: TasksProvider = {
             created = {
                 author: ACTOR,
                 boardId,
+                createdAt: new Date().toISOString(),
                 id: crypto.randomUUID(),
                 key: nextTaskKey(sandbox.tasks, taskType),
                 position: maxPosition + 1,

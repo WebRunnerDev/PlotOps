@@ -10,6 +10,7 @@ import {
 function task(id: string, overrides: Partial<Task> = {}): Task {
     return {
         boardId: "board",
+        createdAt: "2026-01-01T00:00:00.000Z",
         id,
         key: id,
         status: "todo",
@@ -234,5 +235,81 @@ describe("sortTasksByBoardSort", () => {
                 field: "title",
             }).map((item) => item.id)
         ).toEqual(["second", "first", "third"]);
+    });
+
+    it("sorts Created ascending (oldest → newest)", () => {
+        const tasks = [
+            task("new", {
+                createdAt: "2026-08-04T12:00:00.000Z",
+                title: "New",
+            }),
+            task("old", {
+                createdAt: "2026-07-01T12:00:00.000Z",
+                title: "Old",
+            }),
+            task("mid", {
+                createdAt: "2026-07-15T12:00:00.000Z",
+                title: "Mid",
+            }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "created",
+            }).map((item) => item.id)
+        ).toEqual(["old", "mid", "new"]);
+    });
+
+    it("sorts Created descending (newest → oldest)", () => {
+        const tasks = [
+            task("old", {
+                createdAt: "2026-07-01T12:00:00.000Z",
+                title: "Old",
+            }),
+            task("new", {
+                createdAt: "2026-08-04T12:00:00.000Z",
+                title: "New",
+            }),
+            task("mid", {
+                createdAt: "2026-07-15T12:00:00.000Z",
+                title: "Mid",
+            }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "desc",
+                field: "created",
+            }).map((item) => item.id)
+        ).toEqual(["new", "mid", "old"]);
+    });
+
+    it("breaks Created ties by Title A→Z then Manual order", () => {
+        const tasks = [
+            task("zebra-second", {
+                createdAt: "2026-07-15T12:00:00.000Z",
+                title: "Zebra",
+            }),
+            task("alpha", {
+                createdAt: "2026-07-15T12:00:00.000Z",
+                title: "Alpha",
+            }),
+            task("zebra-first", {
+                createdAt: "2026-07-15T12:00:00.000Z",
+                title: "Zebra",
+            }),
+            task("beta", {
+                createdAt: "2026-07-15T12:00:00.000Z",
+                title: "Beta",
+            }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "created",
+            }).map((item) => item.id)
+        ).toEqual(["alpha", "beta", "zebra-second", "zebra-first"]);
     });
 });

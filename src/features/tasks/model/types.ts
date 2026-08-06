@@ -5,6 +5,8 @@ export type Task = {
     author?: TaskAssignee;
     boardId: string;
     branchName?: string;
+    /** ISO timestamp when the Task was created. */
+    createdAt: string;
     /** ISO calendar date `YYYY-MM-DD`. */
     deadline?: string;
     description?: string;

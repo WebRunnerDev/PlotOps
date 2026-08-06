@@ -22,11 +22,17 @@ describe("isWithinColumnDragEnabled", () => {
         ).toBe(false);
     });
 
-    it("disables within-column drag when Deadline or Title Board sort is active", () => {
+    it("disables within-column drag when Deadline, Created, or Title Board sort is active", () => {
         expect(
             isWithinColumnDragEnabled({
                 direction: "asc",
                 field: "deadline",
+            })
+        ).toBe(false);
+        expect(
+            isWithinColumnDragEnabled({
+                direction: "desc",
+                field: "created",
             })
         ).toBe(false);
         expect(
