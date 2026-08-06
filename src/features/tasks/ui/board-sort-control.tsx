@@ -63,13 +63,13 @@ export function BoardSortControl({
                     </span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-44">
-                    <DropdownMenuLabel>{t("sort.label")}</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
                         onValueChange={(next) => {
                             onChange(fromRadioValue(next as SortRadioValue));
                         }}
                         value={radioValue}
                     >
+                        <DropdownMenuLabel>{t("sort.label")}</DropdownMenuLabel>
                         <DropdownMenuRadioItem value="manual">
                             {t("sort.manual")}
                         </DropdownMenuRadioItem>
