@@ -1,4 +1,5 @@
-import { GitBranch } from "lucide-react";
+import { GitBranch, Plus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -9,6 +10,8 @@ import { useProject } from "@/features/projects/model/use-projects";
 import { BoardSprintControls } from "@/features/sprints";
 import { BoardArchiveDialog } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
+import { Button } from "@/shared/shadcn/ui/button";
+import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
 import { resolveBoardPagePresence } from "@/widgets/kanban-board/model/resolve-board-page-presence";
 
 import { BoardLoading } from "./board-loading";
@@ -33,10 +36,16 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
         isPending: boardsLoading,
     } = useProjectBoards(projectId);
     const {
+        canCreateTasks,
         canManageBoard,
         isError: accessError,
         isSettled,
     } = useProjectAccess(projectId);
+    const [openCreateTaskRequestKey, setOpenCreateTaskRequestKey] = useState(0);
+    const showNewTaskCta = resolveBoardNewTaskCtaVisible({
+        canCreateTasks,
+        isSettled,
+    });
 
     const presence = resolveBoardPagePresence({
         boardId,
@@ -114,10 +123,10 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
         <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
             <div className="flex h-full w-max min-w-full flex-col gap-3 pt-2">
                 <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-12 py-2 backdrop-blur-sm">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {branchUrl ? (
                             <a
-                                className="inline-flex items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
+                                className="inline-flex min-w-0 items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
                                 href={branchUrl}
                                 rel="noreferrer noopener"
                                 target="_blank"
@@ -125,7 +134,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                                 {branchLabel}
                             </a>
                         ) : (
-                            <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
+                            <span className="inline-flex min-w-0 items-center gap-1.5 text-code text-muted-foreground">
                                 {branchLabel}
                             </span>
                         )}
@@ -145,6 +154,23 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                             boardId={boardId}
                             projectId={projectId}
                         />
+                        {showNewTaskCta ? (
+                            <Button
+                                className="ml-auto min-w-0 shrink gap-1.5 focus-visible:ring-2"
+                                onClick={() =>
+                                    setOpenCreateTaskRequestKey(
+                                        (key) => key + 1
+                                    )
+                                }
+                                size="sm"
+                                type="button"
+                            >
+                                <Plus aria-hidden className="size-4 shrink-0" />
+                                <span className="truncate">
+                                    {t("tasks.newTask")}
+                                </span>
+                            </Button>
+                        ) : undefined}
                     </div>
                     {accessError ? (
                         <Alert className="mt-2" variant="destructive">
@@ -159,6 +185,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                     <KanbanBoard
                         boardId={currentBoard.id}
                         githubToken={githubAccessToken}
+                        openCreateTaskRequestKey={openCreateTaskRequestKey}
                         projectId={projectId}
                         repoFullName={project.github_full_name ?? undefined}
                     />

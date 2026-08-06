@@ -32,6 +32,7 @@
     },
     "tasks": {
         "add": "Add task",
+        "newTask": "New Task",
         "addPlaceholder": "Task title…",
         "createFailed": "Could not create task",
         "delete": "Delete task",

@@ -68,9 +68,11 @@ Checklist:
 
 Checklist:
 
-- [ ] Board chrome button (Manager+/canCreateTasks) opening create-on-first-column (reuse column create path).
-- [ ] Do **not** adopt Make dock IA (ADR 0007 / SPEC Make deferred).
-- [ ] i18n; focus ring; mobile `min-w-0` / truncate.
+- [x] Board chrome button (Manager+/canCreateTasks) opening create-on-first-column (reuse column create path).
+- [x] Do **not** adopt Make dock IA (ADR 0007 / SPEC Make deferred).
+- [x] i18n; focus ring; mobile `min-w-0` / truncate.
+
+Shipped: #173.
 
 ---
 

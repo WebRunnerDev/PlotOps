@@ -12,12 +12,15 @@ import {
 } from "@/features/tasks";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
+import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
 
 type KanbanAddTaskProperties = {
     boardId: string;
     /** Sprint to join on create when board is scoped to Active Sprint. */
     createSprintId?: string;
     projectId: string;
+    /** Open the inline composer (e.g. board chrome + New Task). */
+    startOpen?: boolean;
     status: TaskStatus;
 };
 
@@ -25,18 +28,31 @@ export function KanbanAddTask({
     boardId,
     createSprintId,
     projectId,
+    startOpen = false,
     status,
 }: KanbanAddTaskProperties) {
     const { t } = useTranslation("board");
     const { createTask } = useBoardTasks(projectId, boardId);
     const { canCreateTasks, isSettled } = useProjectAccess(projectId);
-    const canCreate = isSettled && canCreateTasks;
+    const canCreate = resolveBoardNewTaskCtaVisible({
+        canCreateTasks,
+        isSettled,
+    });
     const selectTask = useTasksUiStore((state) => state.selectTask);
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(startOpen);
     const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurSubmit = useRef(false);
+
+    useEffect(() => {
+        if (!startOpen) return;
+        setOpen(true);
+        // Re-focus even when the composer was already open.
+        queueMicrotask(() => {
+            inputReference.current?.focus();
+        });
+    }, [startOpen]);
 
     useEffect(() => {
         if (!open) return;

@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type BoardColumn, useBoardColumns } from "@/features/boards";
@@ -77,6 +77,8 @@ const collisionDetection: CollisionDetection = (arguments_) => {
 type KanbanBoardProperties = {
     boardId: string;
     githubToken: null | string;
+    /** Increments when Board chrome + New Task should open create on the first column. */
+    openCreateTaskRequestKey?: number;
     projectId: string;
     repoFullName: string | undefined;
 };
@@ -84,6 +86,7 @@ type KanbanBoardProperties = {
 export function KanbanBoard({
     boardId,
     githubToken,
+    openCreateTaskRequestKey = 0,
     projectId,
     repoFullName,
 }: KanbanBoardProperties) {
@@ -105,6 +108,10 @@ export function KanbanBoard({
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
+    const [focusAddTaskColumnId, setFocusAddTaskColumnId] = useState<
+        string | undefined
+    >();
+    const lastCreateTaskRequestKey = useRef(0);
     const [filters, setFilters] =
         useState<BoardTaskFilters>(EMPTY_BOARD_FILTERS);
 
@@ -185,6 +192,39 @@ export function KanbanBoard({
         }, 0);
         return () => globalThis.clearTimeout(timer);
     }, [focusColumnId]);
+
+    useEffect(() => {
+        if (!focusAddTaskColumnId) return;
+        const timer = globalThis.setTimeout(() => {
+            setFocusAddTaskColumnId(undefined);
+        }, 0);
+        return () => globalThis.clearTimeout(timer);
+    }, [focusAddTaskColumnId]);
+
+    useEffect(() => {
+        if (
+            !openCreateTaskRequestKey ||
+            openCreateTaskRequestKey === lastCreateTaskRequestKey.current
+        ) {
+            return;
+        }
+        const firstColumnId = columns[0]?.id;
+        if (!firstColumnId) return;
+
+        lastCreateTaskRequestKey.current = openCreateTaskRequestKey;
+        setFocusAddTaskColumnId(firstColumnId);
+
+        globalThis.requestAnimationFrame(() => {
+            const node = document.querySelector(
+                `[data-column-id="${firstColumnId}"]`
+            );
+            node?.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+                inline: "start",
+            });
+        });
+    }, [columns, openCreateTaskRequestKey]);
 
     const clearActiveDrag = () => {
         setActiveTask(undefined);
@@ -345,6 +385,9 @@ export function KanbanBoard({
                                 labelsByTaskId={labelsByTaskId}
                                 name={column.name}
                                 projectId={projectId}
+                                startAddingTask={
+                                    focusAddTaskColumnId === column.id
+                                }
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
                                 tasks={filteredTasks.filter(

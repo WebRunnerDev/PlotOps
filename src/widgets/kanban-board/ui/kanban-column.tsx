@@ -46,6 +46,7 @@ type KanbanColumnProperties = {
     labelsByTaskId: Map<string, ProjectLabel[]>;
     name: string;
     projectId: string;
+    startAddingTask?: boolean;
     startEditing?: boolean;
     status: TaskStatus;
     tasks: Task[];
@@ -57,6 +58,7 @@ export function KanbanColumn({
     labelsByTaskId,
     name,
     projectId,
+    startAddingTask = false,
     startEditing = false,
     status,
     tasks,
@@ -298,6 +300,7 @@ export function KanbanColumn({
                         boardId={boardId}
                         createSprintId={createSprintId}
                         projectId={projectId}
+                        startOpen={startAddingTask}
                         status={status}
                     />
                 </div>
