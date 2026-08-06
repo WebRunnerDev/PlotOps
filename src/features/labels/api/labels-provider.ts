@@ -1,4 +1,3 @@
-import type { LabelsProvider } from "@/features/labels/api/labels-provider";
 import type {
     LabelColor,
     LabelTaggedTask,
