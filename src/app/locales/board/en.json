@@ -237,7 +237,17 @@
     "teamSettings": {
         "title": "Team settings",
         "loadFailed": "Could not load this Team.",
-        "noAccess": "You do not have access to this Team."
+        "noAccess": "You do not have access to this Team.",
+        "dangerTitle": "Danger zone",
+        "dangerDescription": "Permanently delete this Team. Only empty Teams can be deleted.",
+        "delete": "Delete team",
+        "deleteTitle": "Delete this Team?",
+        "deleteDescription": "“{{name}}” will be permanently deleted. This cannot be undone.",
+        "deleteConfirm": "Delete",
+        "deleteCancel": "Cancel",
+        "deleteSuccess": "Team deleted",
+        "deleteFailed": "Could not delete Team. Only the owner can delete an empty Team.",
+        "deleteBlocked": "Remove all projects from this Team before deleting it."
     },
     "boards": {
         "loading": "Board…",

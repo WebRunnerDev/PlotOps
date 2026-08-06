@@ -3,6 +3,19 @@
 > Git-native project tracker (Linear/Jira-style) with GitHub integration.
 > Source of truth: this file + [Notion page](https://app.notion.com/p/39773411f401806b85b3d072b7bff6d9).
 
+## At a glance
+
+**PlotOps** (in development, open pet project) — a Jira/Linear-style task tracker built around GitHub.
+
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Shipped**     | Auth (GitHub OAuth + email); local Guest Mode (“Try demo” → client sandbox, ADR 0018 — no shared remote demo); Team → Project with roles and invites; multi-board + branch mapping; Kanban (filters, comments, soft-archive, activity feed, rich text + media); board-scoped sprints and backlog; notifications (Watch + structural kinds) and `@` mentions; command palette; CI/CD dashboard on GitHub Actions; PR-merge → Task column sync via `github-webhook`; branch/PR link and in-app code diff. |
+| **In progress** | Deeper Git integration (commits/PR/diff polish); remaining Team lifecycle (delete empty Team).                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Deferred**    | Palette/invite expansions, in-app PR write actions, sprint KPIs/points, and other parked items — see [Deferred / later](#deferred--later) and [`docs/deferred/`](deferred/README.md).                                                                                                                                                                                                                                                                                                                   |
+| **Stack**       | Vite + React 19 + TypeScript; TanStack Router + TanStack Query; Zustand (UI); Tailwind CSS 4 + shadcn/ui + lucide-react; i18next; TipTap; dnd-kit; Motion. Backend — Supabase (PostgreSQL, Auth, RLS, Realtime, Storage, Edge Functions) + GitHub API / Actions / App webhooks.                                                                                                                                                                                                                         |
+
+Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** below when features land or move to Deferred.
+
 ## Progress
 
 > **Maintainers:** update this section when a roadmap item or stage is done. Agents: update after completing a feature in the same change set.
@@ -13,7 +26,7 @@
 | Routing (TanStack Router)                              | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | i18n (i18next)                                         | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | Auth (Supabase, GitHub OAuth + email signup/confirm)   | ✅ Done                                                                                                                                                                                                                                                                                                                             |
-| Guest mode                                             | 🟡 In progress — local Guest Mode (ADR 0018 / #161); remote shared demo login retired (#167); glossary + Wave 0 / SPEC docs (#168) — plan: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md)                                                                                                                    |
+| Guest mode                                             | ✅ Done (local Guest Session, ADR 0018 / #161–#168; “Try demo” → `sessionStorage` sandbox + providers; remote shared demo login retired; plan archive: [`docs/deferred/wave-0-guest-mode.md`](deferred/wave-0-guest-mode.md))                                                                                                       |
 | Database schema + RLS (`projects`)                     | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | GitHub project import (home page)                      | ✅ Done                                                                                                                                                                                                                                                                                                                             |
 | Kanban board                                           | ✅ Done (custom columns, labels/priority/deadline; board filters; comments; soft-archive + board archive dialog; Make skin pass on board/cards/drawer — ADR 0007; DnD polish deferred)                                                                                                                                              |
@@ -184,15 +197,15 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 
 > Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set. Checklists: [`docs/deferred/wave-1-ux-checklist.md`](deferred/wave-1-ux-checklist.md) (Guest palette: Wave 0 / [`wave-4-plus-later.md`](deferred/wave-4-plus-later.md)).
 
-| Idea                                                 | Notes                                                                                      |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                                |
-| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer                     |
-| Search Members                                       | Cross-cutting; not in MVP                                                                  |
-| Search Task description / Labels                     | MVP is key + title only                                                                    |
-| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                                        |
-| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                                          |
-| Guest-specific palette behaviour                     | Local Guest Mode in progress (ADR 0018 / Wave 0 §6); narrow palette for demo write surface |
+| Idea                                                 | Notes                                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                           |
+| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer                |
+| Search Members                                       | Cross-cutting; not in MVP                                                             |
+| Search Task description / Labels                     | MVP is key + title only                                                               |
+| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                                   |
+| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                                     |
+| Guest-specific palette behaviour                     | Shipped with Guest Mode (#166 / Wave 0 §6): same MVP commands under guest write gates |
 
 ## Deferred from Figma Make
 

@@ -9,6 +9,10 @@ export type TeamsProvider = {
         data: null | TeamRow;
         error: Error | null;
     }>;
+    deleteTeam(teamId: string): Promise<{
+        data: null | { id: string };
+        error: Error | null;
+    }>;
     fetchTeam(teamId: string): Promise<{
         data: null | TeamRow;
         error: Error | null;

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useTeamAccess } from "@/features/teams/model/use-team-access";
 import { useTeam } from "@/features/teams/model/use-team-members";
+import { TeamDangerZone } from "@/features/teams/ui/team-danger-zone";
 import { TeamMembersSettings } from "@/features/teams/ui/team-members-settings";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -68,8 +69,9 @@ function TeamSettingsRoute() {
                     {team.name}
                 </p>
             </header>
-            <div className="mx-auto w-full max-w-3xl">
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
                 <TeamMembersSettings teamId={teamId} />
+                <TeamDangerZone teamId={teamId} />
             </div>
         </div>
     );

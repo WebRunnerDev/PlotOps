@@ -31,6 +31,24 @@ export async function createTeam(name: string) {
     };
 }
 
+export async function deleteTeam(teamId: string) {
+    const { data, error } = await supabase
+        .from("teams")
+        .delete()
+        .eq("id", teamId)
+        .select("id")
+        .maybeSingle();
+
+    if (error) return { data: null, error };
+    if (!data) {
+        return {
+            data: null,
+            error: new Error("Team not found or delete not permitted"),
+        };
+    }
+    return { data, error: null };
+}
+
 export async function fetchTeams() {
     const result = await supabase
         .from("teams")
