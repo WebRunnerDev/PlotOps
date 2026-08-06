@@ -34,6 +34,20 @@ describe("resolveBoardPagePresence", () => {
         ).toEqual({ kind: "project-error" });
     });
 
+    it("keeps the board when a project refetch fails but cache remains", () => {
+        expect(
+            resolveBoardPagePresence({
+                boardId: "board-1",
+                boards: [board],
+                boardsError: false,
+                boardsLoading: false,
+                project,
+                projectError: true,
+                projectLoading: false,
+            })
+        ).toEqual({ currentBoard: board, kind: "ready" });
+    });
+
     it("keeps boards loading instead of mounting an unverified board", () => {
         expect(
             resolveBoardPagePresence({
@@ -62,6 +76,19 @@ describe("resolveBoardPagePresence", () => {
         ).toEqual({ kind: "boards-error" });
     });
 
+    it("keeps the board when a boards refetch fails but cache remains", () => {
+        expect(
+            resolveBoardPagePresence({
+                boardId: "board-1",
+                boards: [board],
+                boardsError: true,
+                boardsLoading: false,
+                project,
+                projectError: false,
+                projectLoading: false,
+            })
+        ).toEqual({ currentBoard: board, kind: "ready" });
+    });
     it("reports board-not-found when the id is missing after settle", () => {
         expect(
             resolveBoardPagePresence({

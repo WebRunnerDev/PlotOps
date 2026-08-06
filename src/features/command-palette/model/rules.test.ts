@@ -10,6 +10,7 @@ import {
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
     selectTaskIntent,
+    shouldRemindGuestCreateTask,
     switchProjectIntent,
     toggleThemeIntent,
 } from "./rules";
@@ -19,6 +20,7 @@ const baseContext = (
 ): CommandPaletteRouteContext => ({
     boardId: null,
     canCreateTasks: false,
+    isGuest: false,
     projectId: null,
     ...overrides,
 });
@@ -96,6 +98,59 @@ describe("Command Palette rules seam — visibility", () => {
 
         expect(visibility.switchProject).toBe(expected);
     });
+
+    it("guest keeps Create Task, Search Tasks, Switch Project, and Toggle theme under normal gates", () => {
+        const visibility = resolveCommandPaletteVisibility(
+            baseContext({
+                boardId: "board-1",
+                canCreateTasks: true,
+                isGuest: true,
+                projectId: "project-1",
+            }),
+            [{ id: "project-1", name: "Demo Board" }]
+        );
+
+        expect(visibility).toEqual({
+            createTask: true,
+            switchProject: true,
+            tasks: true,
+            toggleTheme: true,
+        });
+    });
+
+    it("guest still hides Create Task when board or create capability is missing", () => {
+        expect(
+            resolveCommandPaletteVisibility(
+                baseContext({
+                    boardId: null,
+                    canCreateTasks: true,
+                    isGuest: true,
+                }),
+                []
+            ).createTask
+        ).toBe(false);
+
+        expect(
+            resolveCommandPaletteVisibility(
+                baseContext({
+                    boardId: "board-1",
+                    canCreateTasks: false,
+                    isGuest: true,
+                }),
+                []
+            ).createTask
+        ).toBe(false);
+    });
+
+    it.each([
+        { expected: true, isGuest: true, label: "guest sessions" },
+        { expected: false, isGuest: false, label: "non-guest sessions" },
+    ] as const)(
+        "shouldRemindGuestCreateTask: $label",
+        ({ expected, isGuest }) => {
+            expect(shouldRemindGuestCreateTask(isGuest)).toBe(expected);
+        }
+    );
 });
 
 describe("Command Palette rules seam — Task search", () => {
@@ -266,6 +321,23 @@ describe("Command Palette rules seam — intents", () => {
             ).toEqual(expected);
         }
     );
+
+    it("resolveCreateTaskIntent still offers Create Task for guests when gates pass", () => {
+        expect(
+            resolveCreateTaskIntent(
+                baseContext({
+                    boardId: "board-1",
+                    canCreateTasks: true,
+                    isGuest: true,
+                }),
+                "Demo card"
+            )
+        ).toEqual({
+            boardId: "board-1",
+            title: "Demo card",
+            type: "create-task",
+        });
+    });
 
     it("Switch Project declares switch intent with projectId", () => {
         expect(switchProjectIntent("project-7")).toEqual({

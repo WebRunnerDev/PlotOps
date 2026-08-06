@@ -21,7 +21,11 @@ import { useTranslation } from "react-i18next";
 import { type BoardColumn, useBoardColumns } from "@/features/boards";
 import { type ProjectLabel, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import { useBoardSprints, useSprintsUiStore } from "@/features/sprints";
+import {
+    resolveCreateTaskSprintId,
+    useBoardSprints,
+    useSprintsUiStore,
+} from "@/features/sprints";
 import {
     type BoardTaskFilters,
     BoardTaskFiltersBar,
@@ -89,12 +93,15 @@ export function KanbanBoard({
     const tasksApi = useBoardTasks(projectId, boardId);
     const { canEditTasks, canManageBoard, isSettled } =
         useProjectAccess(projectId);
-    const { data: sprints = [], error: sprintsQueryError } =
-        useBoardSprints(boardId);
+    const { data: sprints = [] } = useBoardSprints(boardId);
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );
     const activeSprint = sprints.find((sprint) => sprint.state === "active");
+    const createSprintId = resolveCreateTaskSprintId({
+        activeSprintId: activeSprint?.id,
+        boardSprintScope,
+    });
     const [activeTask, setActiveTask] = useState<Task | undefined>();
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
@@ -122,11 +129,15 @@ export function KanbanBoard({
 
     const isLoading =
         columnsApi.isLoading || labelsApi.isLoading || tasksApi.isLoading;
-    const error =
-        columnsApi.error ??
-        labelsApi.error ??
-        tasksApi.error ??
-        sprintsQueryError;
+    // Labels/sprints soft-fail: board is still usable. Refetch errors must not
+    // unmount columns while TanStack Query still has cached workspace data.
+    const blockingError =
+        (Boolean(columnsApi.error) && !columnsApi.columnsReady
+            ? columnsApi.error
+            : null) ??
+        (Boolean(tasksApi.error) && !tasksApi.tasksReady
+            ? tasksApi.error
+            : null);
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -148,9 +159,6 @@ export function KanbanBoard({
                 : tasks;
         return filterTasks(scoped, filters);
     }, [activeSprint, boardSprintScope, filters, tasks]);
-
-    /** Same-column reorder is unsafe when filters/sprint hide cards in a column. */
-    const boardHidesTasks = filteredTasks.length !== tasks.length;
 
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
@@ -263,21 +271,8 @@ export function KanbanBoard({
         }
 
         const overType = over.data.current?.type as DragType | undefined;
-        const activeTask = tasks.find((task) => task.id === String(active.id));
-        const overTask =
-            overType === "task"
-                ? tasks.find((task) => task.id === String(over.id))
-                : undefined;
-        const sameColumn =
-            activeTask && overTask && activeTask.status === overTask.status;
 
         if (overType === "task") {
-            if (sameColumn && boardHidesTasks) {
-                // Filtered same-column reorder would rewrite positions vs hidden siblings.
-                commitTaskDragGesture(String(active.id));
-                return;
-            }
-
             reorderTaskWithin(String(active.id), String(over.id), {
                 persist: false,
             });
@@ -311,10 +306,10 @@ export function KanbanBoard({
         return <BoardLoading variant="columns" />;
     }
 
-    if (error) {
+    if (blockingError) {
         return (
             <Alert variant="destructive">
-                <AlertDescription>{t("projectError")}</AlertDescription>
+                <AlertDescription>{t("boardLoadFailed")}</AlertDescription>
             </Alert>
         );
     }
@@ -345,6 +340,7 @@ export function KanbanBoard({
                         {columns.map((column) => (
                             <KanbanColumn
                                 boardId={boardId}
+                                createSprintId={createSprintId}
                                 key={column.id}
                                 labelsByTaskId={labelsByTaskId}
                                 name={column.name}

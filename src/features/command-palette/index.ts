@@ -1,10 +1,12 @@
 export {
     createTaskIntent,
+    GUEST_PALETTE_ALLOWS_CREATE_TASK,
     matchCommandPaletteTasks,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
     selectTaskIntent,
+    shouldRemindGuestCreateTask,
     switchProjectIntent,
     toggleThemeIntent,
 } from "./model/rules";

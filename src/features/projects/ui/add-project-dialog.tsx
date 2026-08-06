@@ -26,6 +26,7 @@ type AddProjectDialogProperties = {
     connectedProjects: Project[];
     onOpenChange: (open: boolean) => void;
     open: boolean;
+    teamId: string;
     userId: string;
 };
 
@@ -34,6 +35,7 @@ export function AddProjectDialog({
     connectedProjects,
     onOpenChange,
     open,
+    teamId,
     userId,
 }: AddProjectDialogProperties) {
     const { t } = useTranslation("home");
@@ -71,7 +73,7 @@ export function AddProjectDialog({
 
     const handleConnect = async (repo: GitHubRepo) => {
         try {
-            await createProject.mutateAsync(repo);
+            await createProject.mutateAsync({ repo, teamId });
             onOpenChange(false);
         } catch (error) {
             toast.error(

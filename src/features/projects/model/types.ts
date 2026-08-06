@@ -7,6 +7,7 @@ export type CreateProjectInput = {
     is_private: boolean;
     name: string;
     slug: string;
+    team_id: string;
 };
 
 export type GitHubRepo = {
@@ -33,7 +34,9 @@ export type Project = {
     id: string;
     is_private: boolean;
     name: string;
+    /** Team Owner id (joined from teams.owner_id; not a projects column). */
     owner_id: string;
     slug: string;
+    team_id: string;
     updated_at: string;
 };

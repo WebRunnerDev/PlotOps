@@ -1,3 +1,5 @@
+export { resolveTasksProvider } from "./api/resolve-tasks-provider";
+export type { TasksProvider } from "./api/tasks-provider";
 export {
     DEADLINE_FILTER_VALUES,
     EMPTY_BOARD_FILTERS,

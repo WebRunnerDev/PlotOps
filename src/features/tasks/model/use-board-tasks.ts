@@ -20,6 +20,7 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { boardKeys } from "@/features/boards";
+import { isGuest } from "@/features/guest-mode";
 import { resolveLabelNames } from "@/features/labels";
 import {
     createNotificationsForStatusChange,
@@ -32,24 +33,21 @@ import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
 import { planDeadlineWatcherNotification } from "@/features/notifications/lib/plan-deadline-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
+import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
-    archiveTaskRecord,
     type BoardTasksCache,
-    createTaskRecord,
-    deleteTaskRecord,
-    fetchBoardTasks,
-    moveTaskToBoard,
-    persistTaskMoves,
-    restoreTaskRecord,
-    updateTaskDetails,
-    updateTaskRecord,
+    type TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
 import {
     applyDetailsToSnapshot,
     buildTaskActivityChanges,
     toTaskActivitySnapshot,
 } from "@/features/tasks/lib/build-task-activity-changes";
+import {
+    reorderTasksInMemory,
+    type TaskMoveUpdate,
+} from "@/features/tasks/lib/reorder-tasks-in-memory";
 import {
     getBoardSnapshot,
     invalidateBoardWorkspace,
@@ -107,12 +105,6 @@ type TaskDetailsUpdate = {
     >
 >;
 
-type TaskMoveUpdate = {
-    id: string;
-    position: number;
-    status: TaskStatus;
-};
-
 /**
  * Board Tasks only — columns and Labels come from `@/features/boards` /
  * `@/features/labels`. Composition lives in the board page / kanban widget.
@@ -120,20 +112,22 @@ type TaskMoveUpdate = {
 export function useBoardTasks(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
     const dragGestureCacheReference = useRef<BoardTasksCache | null>(null);
+    const guest = isGuest();
+    const tasksProvider = resolveTasksProvider(guest);
 
     const tasksQuery = useQuery({
         enabled: Boolean(projectId && boardId),
-        queryFn: () => fetchBoardTasks(boardId),
+        queryFn: () => tasksProvider.fetchBoardTasks(boardId),
         queryKey: taskKeys.board(projectId, boardId),
     });
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || guest) return;
 
         return subscribeTasksChannel(projectId, () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         });
-    }, [projectId, queryClient]);
+    }, [guest, projectId, queryClient]);
 
     const moveTaskMutation = useMutation({
         mutationFn: async ({
@@ -147,8 +141,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             previousCache?: BoardTasksCache;
             updates: TaskMoveUpdate[];
         }) => {
-            await persistTaskMoves(boardId, updates);
-            if (activity) {
+            await tasksProvider.persistTaskMoves(boardId, updates);
+            if (activity && !guest) {
                 await notifyStatusChangeBestEffort({
                     activityChanges: activity.changes,
                     projectId,
@@ -192,7 +186,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             previousCache?: BoardTasksCache;
             previousDescription?: string;
         }) => {
-            const patch: Parameters<typeof updateTaskRecord>[1] = {};
+            const patch: TaskRecordPatch = {};
             if (details.title !== undefined) patch.title = details.title;
             if (details.description !== undefined) {
                 patch.description = details.description ?? null;
@@ -227,13 +221,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 patch.author_id = details.author?.id ?? null;
             }
 
-            await updateTaskDetails(
+            await tasksProvider.updateTaskDetails(
                 id,
                 patch,
                 details.labelIds === undefined
                     ? undefined
                     : (details.labelIds ?? [])
             );
+
+            if (guest) {
+                return;
+            }
 
             if (details.description !== undefined) {
                 await notifyNewMentionsBestEffort({
@@ -295,7 +293,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
             previousCache?: BoardTasksCache;
             status: TaskStatus;
         }) => {
-            await updateTaskRecord(id, { status });
+            await tasksProvider.updateTaskRecord(id, { status });
+
+            if (guest) {
+                return;
+            }
 
             await notifyStatusChangeBestEffort({
                 activityChanges,
@@ -336,7 +338,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
             targetStatus: TaskStatus;
             taskId: string;
         }) => {
-            await moveTaskToBoard(taskId, targetBoardId, targetStatus);
+            await tasksProvider.moveTaskToBoard(
+                taskId,
+                targetBoardId,
+                targetStatus
+            );
+
+            if (guest) {
+                return;
+            }
 
             await notifyBoardMoveBestEffort({
                 activityChanges,
@@ -361,14 +371,24 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
     const createTaskMutation = useMutation({
         mutationFn: ({
+            sprintId,
             status,
             taskType,
             title,
         }: {
+            sprintId?: string;
             status: TaskStatus;
             taskType?: TaskType;
             title: string;
-        }) => createTaskRecord(projectId, boardId, status, title, taskType),
+        }) =>
+            tasksProvider.createTaskRecord(
+                projectId,
+                boardId,
+                status,
+                title,
+                taskType,
+                sprintId
+            ),
         onSuccess: (task) => {
             setTasksCache(queryClient, projectId, boardId, (current) => ({
                 taskPositions: new Map([
@@ -382,7 +402,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
     });
 
     const deleteTaskMutation = useMutation({
-        mutationFn: (taskId: string) => deleteTaskRecord(taskId),
+        mutationFn: (taskId: string) => tasksProvider.deleteTaskRecord(taskId),
         onError: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
@@ -399,7 +419,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
     const archiveTaskMutation = useMutation({
         mutationFn: async (taskId: string) => {
-            await archiveTaskRecord(taskId);
+            await tasksProvider.archiveTaskRecord(taskId);
+            if (guest) {
+                return;
+            }
             const { error } = await insertTaskActivityEvent({
                 action: "updated",
                 changes: [{ field: "archived", from: false, to: true }],
@@ -427,7 +450,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
     const restoreTaskMutation = useMutation({
         mutationFn: async (taskId: string) => {
-            await restoreTaskRecord(taskId, boardId);
+            await tasksProvider.restoreTaskRecord(taskId, boardId);
+            if (guest) {
+                return;
+            }
             const { error } = await insertTaskActivityEvent({
                 action: "updated",
                 changes: [{ field: "archived", from: true, to: false }],
@@ -538,8 +564,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 updates,
             });
         },
-        createTask: (status: TaskStatus, title: string, taskType?: TaskType) =>
-            createTaskMutation.mutateAsync({ status, taskType, title }),
+        createTask: (
+            status: TaskStatus,
+            title: string,
+            options?: { sprintId?: string; taskType?: TaskType }
+        ) =>
+            createTaskMutation.mutateAsync({
+                sprintId: options?.sprintId,
+                status,
+                taskType: options?.taskType,
+                title,
+            }),
         deleteTask: async (taskId: string) => {
             setTasksCache(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
@@ -723,6 +758,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
         },
         tasks,
+        /** True once board tasks have been fetched (including an empty list). */
+        tasksReady: tasksQuery.data !== undefined,
         updateTaskDetails: (id: string, details: TaskDetailsUpdate) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             const previousCache = queryClient.getQueryData<BoardTasksCache>(
@@ -1148,33 +1185,6 @@ function releaseTasksChannel(projectId: string) {
 
     taskChannels.delete(projectId);
     void supabase.removeChannel(entry.channel);
-}
-
-function reorderTasksInMemory(
-    tasks: Task[],
-    activeId: string,
-    overId: string
-): undefined | { tasks: Task[]; updates: TaskMoveUpdate[] } {
-    const activeIndex = tasks.findIndex((task) => task.id === activeId);
-    const overIndex = tasks.findIndex((task) => task.id === overId);
-    if (activeIndex === -1 || overIndex === -1 || activeIndex === overIndex) {
-        return undefined;
-    }
-
-    const next = [...tasks];
-    const [moved] = next.splice(activeIndex, 1);
-    if (!moved) return undefined;
-    next.splice(overIndex, 0, moved);
-
-    const status = moved.status;
-    const columnTasks = next.filter((task) => task.status === status);
-    const updates = columnTasks.map((task, position) => ({
-        id: task.id,
-        position,
-        status,
-    }));
-
-    return { tasks: next, updates };
 }
 
 function resolveBoardName(

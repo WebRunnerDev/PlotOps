@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Project } from "@/features/projects/model/types";
 
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
     Card,
@@ -16,20 +17,20 @@ import {
 } from "@/shared/shadcn/ui/card";
 
 type ProjectCardProperties = {
-    canDeleteProject?: boolean;
     isRemoving?: boolean;
     onRemove: (project: Project) => void;
     project: Project;
 };
 
 export function ProjectCard({
-    canDeleteProject = false,
     isRemoving = false,
     onRemove,
     project,
 }: ProjectCardProperties) {
     const { t } = useTranslation("home");
     const navigate = useNavigate();
+    const { canDeleteProject, isSettled } = useProjectAccess(project.id);
+    const canDelete = isSettled && canDeleteProject;
     const defaultBranch = project.github_default_branch ?? "main";
 
     return (
@@ -68,7 +69,7 @@ export function ProjectCard({
                         {project.github_full_name}
                     </CardDescription>
                 ) : undefined}
-                {canDeleteProject ? (
+                {canDelete ? (
                     <CardAction>
                         <Button
                             aria-label={t("removeProject")}

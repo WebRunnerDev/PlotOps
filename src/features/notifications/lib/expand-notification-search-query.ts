@@ -8,6 +8,7 @@ const KIND_PHRASE_KEYS = {
         "assigneeChange",
         "assigneeChangeDetail",
         "assigneeChangeFromDetail",
+        "assigneeRemoved",
     ],
     assignment: ["assignment", "assignmentDetail"],
     author_change: [

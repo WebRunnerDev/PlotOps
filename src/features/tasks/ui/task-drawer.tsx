@@ -18,7 +18,9 @@ import {
     useBoardColumns,
     useProjectBoards,
 } from "@/features/boards";
+import { canFetchGitData } from "@/features/git-integration/lib/can-fetch-git-data";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
+import { isGuest } from "@/features/guest-mode";
 import { TaskLabelsField, useProjectLabels } from "@/features/labels";
 import { TaskWatchersList } from "@/features/notifications/ui/task-watchers-list";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
@@ -115,6 +117,7 @@ export function TaskDrawer({
     repoFullName,
 }: TaskDrawerProperties) {
     const { t } = useTranslation("board");
+    const isGuestSessionActive = isGuest();
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const { columns } = useBoardColumns(projectId, boardId);
     const { labels } = useProjectLabels(projectId);
@@ -848,19 +851,24 @@ export function TaskDrawer({
                                         />
                                     )}
 
-                                    {/* Live Git data — only when branch is set and token available */}
+                                    {/* Live / fixture Git data — token or guest session */}
                                     {task.branchName &&
-                                        githubToken &&
-                                        repoFullName && (
-                                            <TaskGitTab
-                                                branchName={task.branchName}
-                                                isShared={isSharedBranch(
-                                                    task.branchName
-                                                )}
-                                                repoFullName={repoFullName}
-                                                token={githubToken}
-                                            />
-                                        )}
+                                    repoFullName &&
+                                    canFetchGitData({
+                                        branchName: task.branchName,
+                                        isGuest: isGuestSessionActive,
+                                        repoFullName,
+                                        token: githubToken,
+                                    }) ? (
+                                        <TaskGitTab
+                                            branchName={task.branchName}
+                                            isShared={isSharedBranch(
+                                                task.branchName
+                                            )}
+                                            repoFullName={repoFullName}
+                                            token={githubToken}
+                                        />
+                                    ) : undefined}
 
                                     <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
                                         {canDelete && !isArchived ? (

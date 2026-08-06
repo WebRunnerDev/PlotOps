@@ -9,6 +9,7 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.assigneeChange": "Assignee changed",
         "notifications.kinds.assigneeChangeDetail": `Assignee → ${options?.name ?? ""}`,
         "notifications.kinds.assigneeChangeFromDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
+        "notifications.kinds.assigneeRemoved": "You are no longer the assignee",
         "notifications.kinds.assignment": "You were assigned",
         "notifications.kinds.assignmentDetail": `Assigned to ${options?.name ?? ""}`,
         "notifications.kinds.authorChange": "Author changed",
@@ -82,6 +83,22 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Alex → Jordan");
+    });
+
+    it("shows always-on previous-Assignee assignee_change as You are no longer the assignee", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: { id: "u4", name: "Jordan" },
+                        audience: "previous_assignee",
+                        previousAssignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("You are no longer the assignee");
     });
 
     it("shows Watcher assignee_change set with new Assignee name only", () => {

@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { isGuest } from "@/features/guest-mode";
+import { fetchGuestTaskActivity } from "@/features/tasks/api/guest-task-activity";
 import { fetchTaskActivity } from "@/features/tasks/api/task-activity-api";
 import { taskKeys } from "@/features/tasks/model/query-keys";
 
@@ -16,9 +18,14 @@ export function useInvalidateTaskActivity() {
 }
 
 export function useTaskActivity(taskId: string | undefined, enabled: boolean) {
+    const guest = isGuest();
+
     return useQuery({
         enabled: Boolean(taskId) && enabled,
         queryFn: async () => {
+            if (guest) {
+                return fetchGuestTaskActivity(taskId!);
+            }
             const { data, error } = await fetchTaskActivity(taskId!);
             if (error) throw error;
             return data ?? [];

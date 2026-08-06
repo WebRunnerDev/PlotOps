@@ -1,21 +1,29 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/features/auth";
-import { buildsProvider } from "@/features/ci-cd/api/builds-provider";
 import {
     CiCdMissingTokenError,
     CiCdUnauthorizedError,
 } from "@/features/ci-cd/api/github-actions-builds";
+import { resolveBuildsProvider } from "@/features/ci-cd/api/resolve-builds-provider";
+import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-builds";
 import { ciKeys } from "@/features/ci-cd/model/query-keys";
+import { isGuest } from "@/features/guest-mode";
 
 const POLL_MS = 10_000;
 
 export function useProjectBuilds(projectId: string) {
     const { githubAccessToken } = useAuth();
+    const guest = isGuest();
+    const provider = resolveBuildsProvider(guest);
 
     return useQuery({
-        enabled: Boolean(projectId && githubAccessToken),
-        queryFn: () => buildsProvider.listBuilds(projectId),
+        enabled: canFetchProjectBuilds({
+            githubAccessToken,
+            isGuest: guest,
+            projectId,
+        }),
+        queryFn: () => provider.listBuilds(projectId),
         queryKey: ciKeys.builds(projectId),
         refetchInterval: (query) =>
             hasInFlightBuilds(query.state.data) ? POLL_MS : false,

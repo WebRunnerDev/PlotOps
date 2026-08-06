@@ -4,6 +4,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import { useAuth } from "@/features/auth";
+import { isGuest } from "@/features/guest-mode";
+import {
+    countGuestUnreadNotifications,
+    listGuestNotifications,
+    markAllGuestNotificationsRead,
+    markGuestNotificationsRead,
+} from "@/features/notifications/api/guest-notifications";
 import {
     cleanupNotificationsForUser,
     fetchNotificationsList,
@@ -22,8 +29,12 @@ const notificationChannels = new Map<
 
 export function useCleanupNotificationsForUser() {
     const queryClient = useQueryClient();
+    const guest = isGuest();
     return useMutation({
-        mutationFn: () => cleanupNotificationsForUser(),
+        mutationFn: async () => {
+            if (guest) return;
+            await cleanupNotificationsForUser();
+        },
         onSuccess: () => {
             void queryClient.invalidateQueries({
                 queryKey: notificationsKeys.all,
@@ -34,9 +45,15 @@ export function useCleanupNotificationsForUser() {
 
 export function useMarkAllNotificationsRead() {
     const queryClient = useQueryClient();
+    const guest = isGuest();
     return useMutation({
-        mutationFn: (input: { projectId?: string }) =>
-            markAllNotificationsRead(input),
+        mutationFn: async (input: { projectId?: string }) => {
+            if (guest) {
+                markAllGuestNotificationsRead(input.projectId);
+                return;
+            }
+            await markAllNotificationsRead(input);
+        },
         onSuccess: () => {
             void queryClient.invalidateQueries({
                 queryKey: notificationsKeys.all,
@@ -47,9 +64,15 @@ export function useMarkAllNotificationsRead() {
 
 export function useMarkNotificationRead() {
     const queryClient = useQueryClient();
+    const guest = isGuest();
     return useMutation({
-        mutationFn: (notificationIds: string[]) =>
-            markNotificationsRead(notificationIds),
+        mutationFn: async (notificationIds: string[]) => {
+            if (guest) {
+                markGuestNotificationsRead(notificationIds);
+                return;
+            }
+            await markNotificationsRead(notificationIds);
+        },
         onSuccess: () => {
             void queryClient.invalidateQueries({
                 queryKey: notificationsKeys.all,
@@ -69,11 +92,20 @@ export function useNotificationsList(input: {
     const limit = input.limit ?? 20;
     const offset = input.offset ?? 0;
     const cleanupFirst = input.cleanupFirst ?? false;
+    const guest = isGuest();
 
     return useQuery({
         enabled: input.enabled ?? true,
         gcTime: 5 * 60 * 1000,
         queryFn: async () => {
+            if (guest) {
+                return listGuestNotifications({
+                    limit,
+                    offset,
+                    projectId: input.projectId,
+                    q: input.q,
+                });
+            }
             if (cleanupFirst) {
                 try {
                     await cleanupNotificationsForUser();
@@ -103,9 +135,10 @@ export function useNotificationsList(input: {
 export function useNotificationsRealtime() {
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const guest = isGuest();
 
     useEffect(() => {
-        if (!user) return;
+        if (guest || !user) return;
 
         const recipientId = user.id;
         const existing = notificationChannels.get(recipientId);
@@ -136,16 +169,22 @@ export function useNotificationsRealtime() {
         notificationChannels.set(recipientId, { channel, subscribers: 1 });
 
         return () => releaseNotificationChannel(recipientId);
-    }, [queryClient, user]);
+    }, [guest, queryClient, user]);
 }
 
 export function useUnreadNotificationsCount(input?: { projectId?: string }) {
+    const guest = isGuest();
+
     return useQuery({
         gcTime: 5 * 60 * 1000,
-        queryFn: () =>
-            fetchUnreadNotificationsCount({
+        queryFn: async () => {
+            if (guest) {
+                return countGuestUnreadNotifications(input?.projectId);
+            }
+            return fetchUnreadNotificationsCount({
                 projectId: input?.projectId,
-            }),
+            });
+        },
         queryKey: notificationsKeys.unreadCount(input?.projectId),
         staleTime: 5000,
     });

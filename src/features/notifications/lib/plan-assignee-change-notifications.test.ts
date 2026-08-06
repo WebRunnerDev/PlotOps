@@ -33,7 +33,7 @@ describe("planAssigneeChangeNotifications", () => {
         ]);
     });
 
-    it("plans both kinds when Assignee is reassigned", () => {
+    it("plans always-on assignment, always-on previous assignee_change, and Watcher fan-out on reassign", () => {
         expect(
             planAssigneeChangeNotifications([
                 {
@@ -51,6 +51,16 @@ describe("planAssigneeChangeNotifications", () => {
                     source: "app",
                 },
                 recipientId: "u4",
+            },
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: { id: "u4", name: "Jordan" },
+                    audience: "previous_assignee",
+                    previousAssignee: { id: "u2", name: "Alex" },
+                    source: "app",
+                },
+                recipientId: "u2",
             },
             {
                 kind: "assignee_change",

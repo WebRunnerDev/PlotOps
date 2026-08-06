@@ -15,12 +15,15 @@ import { Input } from "@/shared/shadcn/ui/input";
 
 type KanbanAddTaskProperties = {
     boardId: string;
+    /** Sprint to join on create when board is scoped to Active Sprint. */
+    createSprintId?: string;
     projectId: string;
     status: TaskStatus;
 };
 
 export function KanbanAddTask({
     boardId,
+    createSprintId,
     projectId,
     status,
 }: KanbanAddTaskProperties) {
@@ -55,7 +58,9 @@ export function KanbanAddTask({
 
         setIsSubmitting(true);
         try {
-            const task = await createTask(status, trimmed);
+            const task = await createTask(status, trimmed, {
+                sprintId: createSprintId,
+            });
             selectTask(task.id);
             reset();
         } catch {

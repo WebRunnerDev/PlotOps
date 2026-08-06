@@ -1,3 +1,5 @@
+export type { ProjectsProvider } from "./api/projects-provider";
+export { resolveProjectsProvider } from "./api/resolve-projects-provider";
 export type {
     ProjectAccessRole,
     ProjectCapabilities,
@@ -7,5 +9,4 @@ export type { ProjectAccessState } from "./model/resolve-project-access";
 export type { Project } from "./model/types";
 export { useProjectAccess } from "./model/use-project-access";
 export { useProject, useProjects } from "./model/use-projects";
-export { ProjectMembersSettings } from "./ui/project-members-settings";
 export { ProjectsPage } from "./ui/projects-page";

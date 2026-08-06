@@ -18,6 +18,6 @@ describe("kanban board DnD persist seams", () => {
         expect(source).toMatch(/commitTaskDragGesture/);
         expect(source).toMatch(/rollbackColumnDragGesture/);
         expect(source).toMatch(/rollbackTaskDragGesture/);
-        expect(source).toMatch(/boardHidesTasks/);
+        expect(source).toMatch(/reorderTaskWithin/);
     });
 });

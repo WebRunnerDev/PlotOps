@@ -1,15 +1,11 @@
-export type ProjectMemberRole =
-    | "admin"
-    | "contributor"
-    | "manager"
-    | "viewer";
-
 export type ProjectAccessRole = "owner" | ProjectMemberRole;
 
 export type ProjectCapabilities = {
+    canCreateProject: boolean;
     canCreateTasks: boolean;
     canDeleteProject: boolean;
     canDeleteTasks: boolean;
+    canDeleteTeam: boolean;
     canEditTasks: boolean;
     canGrantAdmin: boolean;
     canManageBoard: boolean;
@@ -19,8 +15,10 @@ export type ProjectCapabilities = {
     role: null | ProjectAccessRole;
 };
 
+export type ProjectMemberRole = "admin" | "contributor" | "manager" | "viewer";
+
 export function capabilitiesForRole(
-    role: null | ProjectAccessRole,
+    role: null | ProjectAccessRole
 ): ProjectCapabilities {
     const isOwner = role === "owner";
     const isAdmin = role === "admin";
@@ -33,9 +31,11 @@ export function capabilitiesForRole(
     const canManageMembers = isOwner || isAdmin;
 
     return {
+        canCreateProject: canManageMembers,
         canCreateTasks: canManageBoard,
         canDeleteProject: isOwner,
         canDeleteTasks: canManageBoard,
+        canDeleteTeam: isOwner,
         canEditTasks,
         canGrantAdmin: isOwner,
         canManageBoard,

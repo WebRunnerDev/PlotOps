@@ -4,6 +4,15 @@
         "cancel": "Отмена"
     },
     "en": "Английский",
+    "guest": {
+        "demoAccount": "Демо",
+        "demoAccountHint": "Локальная демо-песочница — изменения остаются на этом устройстве, пока вы не выйдете или не сбросите демо.",
+        "leaveDemo": "Выйти из демо",
+        "leaveDemoDescription": "Завершить демо и вернуться к входу. Песочница будет очищена.",
+        "leaveDemoTitle": "Выйти из демо?",
+        "resetDemo": "Сбросить демо",
+        "resetDemoDone": "Демо сброшено к чистому сиду."
+    },
     "nav": {
         "backlog": "Бэклог",
         "backlogShort": "Бэк",
@@ -31,6 +40,7 @@
             "assigneeChange": "Исполнитель изменён",
             "assigneeChangeDetail": "Исполнитель → {{name}}",
             "assigneeChangeFromDetail": "{{from}} → {{to}}",
+            "assigneeRemoved": "Вас сняли с роли исполнителя",
             "assignment": "Вас назначили исполнителем",
             "assignmentDetail": "Назначен {{name}}",
             "authorChange": "Автор изменён",

@@ -25,7 +25,8 @@ type TaskGitTabProperties = {
     /** Shared/base branch — hide noisy commit/PR lists. */
     isShared?: boolean;
     repoFullName: string;
-    token: string;
+    /** Null for guest demos (fixtures load when session is guest). */
+    token: null | string;
 };
 
 const PR_STATE_CLASS: Record<"merged" | GitPR["state"], string> = {

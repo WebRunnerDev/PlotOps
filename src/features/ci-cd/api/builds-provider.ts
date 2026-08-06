@@ -4,7 +4,8 @@ import { githubActionsBuilds } from "@/features/ci-cd/api/github-actions-builds"
 
 /**
  * Default CI provider for the Project — GitHub Actions.
- * Shared by list + log stream hooks so there is one injection point.
- * Mock lives in `mock-builds.ts` for unit tests only.
+ * Prefer `resolveBuildsProvider(isGuest)` at call sites so guest sessions
+ * use the canned mock without a GitHub token.
+ * Mock lives in `mock-builds.ts` (tests + guest mode).
  */
 export const buildsProvider: BuildsForProject = githubActionsBuilds;

@@ -8,6 +8,7 @@ import {
     signUpWithPassword,
 } from "@/features/auth/api/auth-api";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { leaveGuestSession } from "@/features/guest-mode";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -105,6 +106,8 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
         }
 
         setIsLoading(true);
+
+        leaveGuestSession();
 
         let keepLoadingForRedirect = false;
         try {

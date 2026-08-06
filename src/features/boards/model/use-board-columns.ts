@@ -6,16 +6,11 @@ import { toast } from "sonner";
 
 import type { BoardColumn } from "@/features/boards/model/types";
 
-import {
-    createBoardColumn,
-    deleteBoardColumn,
-    fetchBoardColumns,
-    renameBoardColumn,
-    reorderBoardColumns,
-} from "@/features/boards/api/board-columns-api";
 import { orderColumnsByIds } from "@/features/boards/api/board-mappers";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateBoardColumns } from "@/features/boards/model/invalidate-boards";
 import { boardKeys } from "@/features/boards/model/query-keys";
+import { isGuest } from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
 
 /** Ref-count Realtime channels so multiple mounts share one `board_columns` subscription. */
@@ -27,24 +22,26 @@ const columnChannels = new Map<
 export function useBoardColumns(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
     const dragGestureColumnsReference = useRef<BoardColumn[] | null>(null);
+    const guest = isGuest();
+    const boardsProvider = resolveBoardsProvider(guest);
 
     const columnsQuery = useQuery({
         enabled: Boolean(projectId && boardId),
-        queryFn: () => fetchBoardColumns(projectId, boardId),
+        queryFn: () => boardsProvider.fetchBoardColumns(projectId, boardId),
         queryKey: boardKeys.columns(projectId, boardId),
     });
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || guest) return;
 
         return subscribeBoardColumnsChannel(projectId, () => {
             invalidateBoardColumns(queryClient, projectId);
         });
-    }, [projectId, queryClient]);
+    }, [guest, projectId, queryClient]);
 
     const addColumnMutation = useMutation({
         mutationFn: (name: string) =>
-            createBoardColumn(projectId, boardId, name),
+            boardsProvider.createBoardColumn(projectId, boardId, name),
         onError: () => {
             toast.error("Failed to add column");
         },
@@ -55,7 +52,7 @@ export function useBoardColumns(projectId: string, boardId: string) {
 
     const renameColumnMutation = useMutation({
         mutationFn: ({ columnId, name }: { columnId: string; name: string }) =>
-            renameBoardColumn(boardId, columnId, name),
+            boardsProvider.renameBoardColumn(boardId, columnId, name),
         onError: () => {
             toast.error("Failed to rename column");
         },
@@ -71,7 +68,7 @@ export function useBoardColumns(projectId: string, boardId: string) {
         }: {
             columnId: string;
             moveTasksTo?: string;
-        }) => deleteBoardColumn(boardId, columnId, moveTasksTo),
+        }) => boardsProvider.deleteBoardColumn(boardId, columnId, moveTasksTo),
         onError: () => {
             toast.error("Failed to delete column");
         },
@@ -82,7 +79,7 @@ export function useBoardColumns(projectId: string, boardId: string) {
 
     const reorderColumnsMutation = useMutation({
         mutationFn: (columnIds: string[]) =>
-            reorderBoardColumns(boardId, columnIds),
+            boardsProvider.reorderBoardColumns(boardId, columnIds),
         onError: () => {
             toast.error("Failed to reorder columns");
         },

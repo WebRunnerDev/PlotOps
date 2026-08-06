@@ -1,17 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import {
-    createBoard,
-    deleteBoard,
-    fetchProjectBoards,
-    updateBoard,
-} from "@/features/boards/api/boards-api";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateProjectBoards } from "@/features/boards/model/invalidate-boards";
 import { boardKeys } from "@/features/boards/model/query-keys";
+import { isGuest } from "@/features/guest-mode";
 
 export function useBoardMutations(projectId: string) {
     const queryClient = useQueryClient();
+    const boardsProvider = resolveBoardsProvider(isGuest());
 
     const invalidate = () => {
         invalidateProjectBoards(queryClient, projectId);
@@ -24,7 +21,7 @@ export function useBoardMutations(projectId: string) {
         }: {
             baseBranch: string;
             name: string;
-        }) => createBoard(projectId, name, baseBranch),
+        }) => boardsProvider.createBoard(projectId, name, baseBranch),
         onError: () => {
             toast.error("Could not create board");
         },
@@ -44,7 +41,7 @@ export function useBoardMutations(projectId: string) {
                 base_branch?: string;
                 name?: string;
             };
-        }) => updateBoard(boardId, patch),
+        }) => boardsProvider.updateBoard(boardId, patch),
         onError: () => {
             toast.error("Could not update board");
         },
@@ -54,7 +51,7 @@ export function useBoardMutations(projectId: string) {
     });
 
     const deleteMutation = useMutation({
-        mutationFn: (boardId: string) => deleteBoard(boardId),
+        mutationFn: (boardId: string) => boardsProvider.deleteBoard(boardId),
         onSuccess: () => {
             invalidate();
         },
@@ -79,9 +76,11 @@ export function useBoardMutations(projectId: string) {
 }
 
 export function useProjectBoards(projectId: string) {
+    const provider = resolveBoardsProvider(isGuest());
+
     return useQuery({
         enabled: Boolean(projectId),
-        queryFn: () => fetchProjectBoards(projectId),
+        queryFn: () => provider.fetchProjectBoards(projectId),
         queryKey: boardKeys.list(projectId),
     });
 }

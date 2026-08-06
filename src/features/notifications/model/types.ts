@@ -1,5 +1,8 @@
-/** Watcher kind metadata — same shape as always-on assignment. */
-export type AssigneeChangeMetadata = AssignmentMetadata;
+/** Watcher / always-on previous-Assignee metadata. */
+export type AssigneeChangeMetadata = AssignmentMetadata & {
+    /** Always-on row for the previous Assignee (not Watcher fan-out). */
+    audience?: "previous_assignee";
+};
 
 export type AssignmentMetadata = {
     assignee: { id: string; name: string };

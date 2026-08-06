@@ -1,12 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { ProjectsPage } from "@/features/projects";
+import { hasMainAppAccess } from "@/features/guest-mode";
+import { TeamsPage } from "@/features/teams";
 
 export const Route = createFileRoute("/(main)/home")({
     beforeLoad: ({ context }) => {
-        if (!context.auth.user) {
+        if (!hasMainAppAccess(Boolean(context.auth.user))) {
             throw redirect({ to: "/sign-in" });
         }
     },
-    component: ProjectsPage,
+    component: TeamsPage,
 });

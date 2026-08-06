@@ -19,10 +19,17 @@ import {
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
     selectTaskIntent,
+    shouldRemindGuestCreateTask,
     switchProjectIntent,
 } from "@/features/command-palette/model/rules";
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
+import { isGuest } from "@/features/guest-mode";
 import { useProjectAccess, useProjects } from "@/features/projects";
+import {
+    resolveCreateTaskSprintId,
+    useBoardSprints,
+    useSprintsUiStore,
+} from "@/features/sprints";
 import {
     useBoardTasks,
     useProjectTasks,
@@ -42,6 +49,7 @@ export function CommandPalette() {
     const { t } = useTranslation(["command", "common"]);
     const navigate = useNavigate();
     const parameters = useParams({ strict: false });
+    const guest = isGuest();
     const projectId =
         typeof parameters.projectId === "string" ? parameters.projectId : null;
     const boardId =
@@ -54,6 +62,14 @@ export function CommandPalette() {
         boardId ?? ""
     );
     const { createTask } = useBoardTasks(projectId ?? "", boardId ?? "");
+    const { data: sprints = [] } = useBoardSprints(boardId ?? "");
+    const boardSprintScope = useSprintsUiStore(
+        (state) => state.boardSprintScope
+    );
+    const createSprintId = resolveCreateTaskSprintId({
+        activeSprintId: sprints.find((sprint) => sprint.state === "active")?.id,
+        boardSprintScope,
+    });
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
         Boolean(projectId)
@@ -72,6 +88,7 @@ export function CommandPalette() {
     const routeContext = {
         boardId,
         canCreateTasks: isSettled && canCreateTasks,
+        isGuest: guest,
         projectId,
     };
     const paletteProjects = projects.map((project) => ({
@@ -213,9 +230,21 @@ export function CommandPalette() {
                                         setIsCreating(true);
                                         void createTask(
                                             firstColumn.id,
-                                            createIntent.title
+                                            createIntent.title,
+                                            { sprintId: createSprintId }
                                         )
                                             .then((task) => {
+                                                if (
+                                                    shouldRemindGuestCreateTask(
+                                                        guest
+                                                    )
+                                                ) {
+                                                    toast.message(
+                                                        t(
+                                                            "command:guestCreateReminder"
+                                                        )
+                                                    );
+                                                }
                                                 selectTask(task.id);
                                                 close();
                                             })

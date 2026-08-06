@@ -140,6 +140,42 @@ describe("planTaskNotificationEvents", () => {
         ]);
     });
 
+    it("emits always-on previous assignee_change on reassign", () => {
+        expect(
+            planTaskNotificationEvents({
+                assignee: {
+                    from: { id: "u2", name: "Alex" },
+                    to: { id: "u4", name: "Jordan" },
+                },
+            })
+        ).toEqual([
+            {
+                kind: "assignment",
+                metadata: {
+                    assignee: { id: "u4", name: "Jordan" },
+                    previousAssignee: { id: "u2", name: "Alex" },
+                },
+                recipientId: "u4",
+            },
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: { id: "u4", name: "Jordan" },
+                    audience: "previous_assignee",
+                    previousAssignee: { id: "u2", name: "Alex" },
+                },
+                recipientId: "u2",
+            },
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: { id: "u4", name: "Jordan" },
+                    previousAssignee: { id: "u2", name: "Alex" },
+                },
+            },
+        ]);
+    });
+
     it("emits one event per changed kind on a multi-field save", () => {
         const events = planTaskNotificationEvents({
             assignee: {
@@ -163,6 +199,7 @@ describe("planTaskNotificationEvents", () => {
             "priority_change",
             "deadline_change",
             "assignment",
+            "assignee_change",
             "assignee_change",
             "author_change",
             "author_change",

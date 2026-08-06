@@ -5,13 +5,8 @@ import { useEffect } from "react";
 
 import type { LabelColor, ProjectLabel } from "@/features/labels/model/types";
 
-import {
-    createProjectLabel,
-    deleteProjectLabel,
-    fetchProjectLabels,
-    moveProjectLabel,
-    updateProjectLabel,
-} from "@/features/labels/api/labels-api";
+import { isGuest } from "@/features/guest-mode";
+import { resolveLabelsProvider } from "@/features/labels/api/resolve-labels-provider";
 import { isUniqueViolation } from "@/features/labels/lib/is-unique-violation";
 import { LABEL_COLORS } from "@/features/labels/model/constants";
 import {
@@ -29,20 +24,22 @@ const labelChannels = new Map<
 
 export function useProjectLabels(projectId: string) {
     const queryClient = useQueryClient();
+    const guest = isGuest();
+    const labelsProvider = resolveLabelsProvider(guest);
 
     const labelsQuery = useQuery({
         enabled: Boolean(projectId),
-        queryFn: () => fetchProjectLabels(projectId),
+        queryFn: () => labelsProvider.fetchProjectLabels(projectId),
         queryKey: labelKeys.project(projectId),
     });
 
     useEffect(() => {
-        if (!projectId) return;
+        if (!projectId || guest) return;
 
         return subscribeLabelsChannel(projectId, () => {
             invalidateProjectLabels(queryClient, projectId);
         });
-    }, [projectId, queryClient]);
+    }, [guest, projectId, queryClient]);
 
     const addLabelMutation = useMutation({
         mutationFn: ({
@@ -58,7 +55,12 @@ export function useProjectLabels(projectId: string) {
             const nextColor =
                 color ??
                 LABEL_COLORS[projectLabels.length % LABEL_COLORS.length]!;
-            return createProjectLabel(projectId, name, nextColor, customColor);
+            return labelsProvider.createProjectLabel(
+                projectId,
+                name,
+                nextColor,
+                customColor
+            );
         },
         onSuccess: (label) => {
             queryClient.setQueryData<ProjectLabel[]>(
@@ -77,7 +79,7 @@ export function useProjectLabels(projectId: string) {
 
     const renameLabelMutation = useMutation({
         mutationFn: ({ labelId, name }: { labelId: string; name: string }) =>
-            updateProjectLabel(labelId, { name }),
+            labelsProvider.updateProjectLabel(labelId, { name }),
         onSuccess: () => {
             invalidateProjectLabels(queryClient, projectId);
         },
@@ -90,7 +92,11 @@ export function useProjectLabels(projectId: string) {
         }: {
             color: LabelColor;
             labelId: string;
-        }) => updateProjectLabel(labelId, { color, custom_color: null }),
+        }) =>
+            labelsProvider.updateProjectLabel(labelId, {
+                color,
+                custom_color: null,
+            }),
         onSuccess: () => {
             invalidateProjectLabels(queryClient, projectId);
         },
@@ -98,14 +104,15 @@ export function useProjectLabels(projectId: string) {
 
     const setLabelCustomColorMutation = useMutation({
         mutationFn: ({ hex, labelId }: { hex: string; labelId: string }) =>
-            updateProjectLabel(labelId, { custom_color: hex }),
+            labelsProvider.updateProjectLabel(labelId, { custom_color: hex }),
         onSuccess: () => {
             invalidateProjectLabels(queryClient, projectId);
         },
     });
 
     const deleteLabelMutation = useMutation({
-        mutationFn: (labelId: string) => deleteProjectLabel(labelId),
+        mutationFn: (labelId: string) =>
+            labelsProvider.deleteProjectLabel(labelId),
         onSuccess: (_data, labelId) => {
             stripLabelIdFromTaskCaches(queryClient, projectId, labelId);
             invalidateProjectLabels(queryClient, projectId);
@@ -123,7 +130,7 @@ export function useProjectLabels(projectId: string) {
             label: ProjectLabel;
             targetProjectId: string;
         }) =>
-            createProjectLabel(
+            labelsProvider.createProjectLabel(
                 targetProjectId,
                 label.name,
                 label.color,
@@ -143,7 +150,7 @@ export function useProjectLabels(projectId: string) {
             label: ProjectLabel;
             targetProjectId: string;
         }) => {
-            await moveProjectLabel(label.id, targetProjectId);
+            await labelsProvider.moveProjectLabel(label.id, targetProjectId);
         },
         onSuccess: (_data, variables) => {
             stripLabelIdFromTaskCaches(

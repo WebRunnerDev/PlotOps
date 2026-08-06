@@ -51,12 +51,12 @@ export type Database = {
       task_type: "bug" | "feature" | "task"
     }
     Functions: {
-      accept_project_invite: {
+      accept_team_invite: {
         Args: { p_token: string }
         Returns: {
           created_at: string
-          project_id: string
           role: Database["public"]["Enums"]["project_member_role"]
+          team_id: string
           updated_at: string
           user_id: string
         }
@@ -64,15 +64,18 @@ export type Database = {
           from: "*"
           isOneToOne: true
           isSetofReturn: false
-          to: "project_members"
+          to: "team_members"
         }
       }
       assert_task_not_archived: {
         Args: { task_uuid: string }
         Returns: undefined
       }
+      assign_tasks_to_sprint: { Args: { p_updates: Json }; Returns: undefined }
+      can_create_project: { Args: { team_uuid: string }; Returns: boolean }
       can_create_tasks: { Args: { project_uuid: string }; Returns: boolean }
       can_delete_tasks: { Args: { project_uuid: string }; Returns: boolean }
+      can_delete_team: { Args: { team_uuid: string }; Returns: boolean }
       can_edit_tasks: { Args: { project_uuid: string }; Returns: boolean }
       can_manage_board: { Args: { project_uuid: string }; Returns: boolean }
       can_manage_members: { Args: { project_uuid: string }; Returns: boolean }
@@ -80,6 +83,7 @@ export type Database = {
         Args: { project_uuid: string }
         Returns: boolean
       }
+      can_manage_team_members: { Args: { team_uuid: string }; Returns: boolean }
       can_view_project: { Args: { project_uuid: string }; Returns: boolean }
       cancel_sprint: {
         Args: { p_sprint_id: string }
@@ -107,7 +111,7 @@ export type Database = {
           to: "sprints"
         }
       }
-      claim_project_invite: {
+      claim_team_invite: {
         Args: { p_token: string }
         Returns: {
           accepted_by: null | string
@@ -117,9 +121,9 @@ export type Database = {
           expires_at: null | string
           id: string
           invited_by: string
-          project_id: string
           role: Database["public"]["Enums"]["project_member_role"]
           status: Database["public"]["Enums"]["project_invite_status"]
+          team_id: string
           token: string
           updated_at: string
         }
@@ -127,7 +131,7 @@ export type Database = {
           from: "*"
           isOneToOne: true
           isSetofReturn: false
-          to: "project_invites"
+          to: "team_invites"
         }
       }
       cleanup_notifications_for_user: { Args: never; Returns: undefined }
@@ -161,12 +165,12 @@ export type Database = {
           to: "sprints"
         }
       }
-      confirm_project_invite: {
+      confirm_team_invite: {
         Args: { p_invite_id: string; p_user_id: string }
         Returns: {
           created_at: string
-          project_id: string
           role: Database["public"]["Enums"]["project_member_role"]
+          team_id: string
           updated_at: string
           user_id: string
         }
@@ -174,7 +178,7 @@ export type Database = {
           from: "*"
           isOneToOne: true
           isSetofReturn: false
-          to: "project_members"
+          to: "team_members"
         }
       }
       create_board_with_columns: {
@@ -241,16 +245,18 @@ export type Database = {
         Args: { p_events: Json; p_project_id: string; p_task_id: string }
         Returns: undefined
       }
-      get_project_invite_by_token: {
+      get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
-          email: string
+          claimed_by_me: boolean
+          email_matches: boolean
           expires_at: string
           id: string
-          project_id: string
-          project_name: string
+          is_claimed: boolean
           role: Database["public"]["Enums"]["project_member_role"]
           status: Database["public"]["Enums"]["project_invite_status"]
+          team_id: string
+          team_name: string
         }[]
       }
       has_project_role: {
@@ -260,12 +266,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_team_role: {
+        Args: {
+          allowed: Database["public"]["Enums"]["project_member_role"][]
+          team_uuid: string
+        }
+        Returns: boolean
+      }
       is_project_member: { Args: { project_uuid: string }; Returns: boolean }
       is_project_owner: { Args: { project_uuid: string }; Returns: boolean }
       is_project_participant: {
         Args: { p_project_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_team_member: { Args: { team_uuid: string }; Returns: boolean }
+      is_team_owner: { Args: { team_uuid: string }; Returns: boolean }
       list_notifications_for_recipient: {
         Args: {
           p_extra_patterns?: string[]
@@ -322,6 +337,7 @@ export type Database = {
         Args: { project_uuid: string }
         Returns: Database["public"]["Enums"]["project_member_role"]
       }
+      project_team_id: { Args: { project_uuid: string }; Returns: string }
       reorder_board_columns: {
         Args: { p_board_id: string; p_column_ids: string[] }
         Returns: undefined
@@ -357,6 +373,26 @@ export type Database = {
         }
       }
       task_is_archived: { Args: { task_uuid: string }; Returns: boolean }
+      team_member_role_of: {
+        Args: { team_uuid: string }
+        Returns: Database["public"]["Enums"]["project_member_role"]
+      }
+      transfer_team_ownership: {
+        Args: { p_new_owner_id: string; p_team_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          isOneToOne: true
+          isSetofReturn: false
+          to: "teams"
+        }
+      }
     }
     Tables: {
       activity_log: {
@@ -617,119 +653,6 @@ export type Database = {
           username?: null | string
         }
       }
-      project_invites: {
-        Insert: {
-          accepted_by?: null | string
-          claimed_by?: null | string
-          created_at?: string
-          email: string
-          expires_at?: null | string
-          id?: string
-          invited_by: string
-          project_id: string
-          role: Database["public"]["Enums"]["project_member_role"]
-          status?: Database["public"]["Enums"]["project_invite_status"]
-          token?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            columns: ["accepted_by"]
-            foreignKeyName: "project_invites_accepted_by_fkey"
-            isOneToOne: false
-            referencedColumns: ["id"]
-            referencedRelation: "profiles"
-          },
-          {
-            columns: ["claimed_by"]
-            foreignKeyName: "project_invites_claimed_by_fkey"
-            isOneToOne: false
-            referencedColumns: ["id"]
-            referencedRelation: "profiles"
-          },
-          {
-            columns: ["invited_by"]
-            foreignKeyName: "project_invites_invited_by_fkey"
-            isOneToOne: false
-            referencedColumns: ["id"]
-            referencedRelation: "profiles"
-          },
-          {
-            columns: ["project_id"]
-            foreignKeyName: "project_invites_project_id_fkey"
-            isOneToOne: false
-            referencedColumns: ["id"]
-            referencedRelation: "projects"
-          },
-        ]
-        Row: {
-          accepted_by: null | string
-          claimed_by: null | string
-          created_at: string
-          email: string
-          expires_at: null | string
-          id: string
-          invited_by: string
-          project_id: string
-          role: Database["public"]["Enums"]["project_member_role"]
-          status: Database["public"]["Enums"]["project_invite_status"]
-          token: string
-          updated_at: string
-        }
-        Update: {
-          accepted_by?: null | string
-          claimed_by?: null | string
-          created_at?: string
-          email?: string
-          expires_at?: null | string
-          id?: string
-          invited_by?: string
-          project_id?: string
-          role?: Database["public"]["Enums"]["project_member_role"]
-          status?: Database["public"]["Enums"]["project_invite_status"]
-          token?: string
-          updated_at?: string
-        }
-      }
-      project_members: {
-        Insert: {
-          created_at?: string
-          project_id: string
-          role: Database["public"]["Enums"]["project_member_role"]
-          updated_at?: string
-          user_id: string
-        }
-        Relationships: [
-          {
-            columns: ["project_id"]
-            foreignKeyName: "project_members_project_id_fkey"
-            isOneToOne: false
-            referencedColumns: ["id"]
-            referencedRelation: "projects"
-          },
-          {
-            columns: ["user_id"]
-            foreignKeyName: "project_members_user_id_fkey"
-            isOneToOne: false
-            referencedColumns: ["id"]
-            referencedRelation: "profiles"
-          },
-        ]
-        Row: {
-          created_at: string
-          project_id: string
-          role: Database["public"]["Enums"]["project_member_role"]
-          updated_at: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          project_id?: string
-          role?: Database["public"]["Enums"]["project_member_role"]
-          updated_at?: string
-          user_id?: string
-        }
-      }
       project_task_sequences: {
         Insert: {
           next_val?: number
@@ -764,11 +687,19 @@ export type Database = {
           id?: string
           is_private?: boolean
           name: string
-          owner_id: string
           slug: string
+          team_id: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            columns: ["team_id"]
+            foreignKeyName: "projects_team_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "teams"
+          },
+        ]
         Row: {
           created_at: string
           description: null | string
@@ -779,8 +710,8 @@ export type Database = {
           id: string
           is_private: boolean
           name: string
-          owner_id: string
           slug: string
+          team_id: string
           updated_at: string
         }
         Update: {
@@ -793,8 +724,8 @@ export type Database = {
           id?: string
           is_private?: boolean
           name?: string
-          owner_id?: string
           slug?: string
+          team_id?: string
           updated_at?: string
         }
       }
@@ -1184,6 +1115,143 @@ export type Database = {
           task_key?: string
           task_type?: Database["public"]["Enums"]["task_type"]
           title?: string
+        }
+      }
+      team_invites: {
+        Insert: {
+          accepted_by?: null | string
+          claimed_by?: null | string
+          created_at?: string
+          email: string
+          expires_at?: null | string
+          id?: string
+          invited_by: string
+          role: Database["public"]["Enums"]["project_member_role"]
+          status?: Database["public"]["Enums"]["project_invite_status"]
+          team_id: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            columns: ["accepted_by"]
+            foreignKeyName: "team_invites_accepted_by_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+          },
+          {
+            columns: ["claimed_by"]
+            foreignKeyName: "team_invites_claimed_by_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+          },
+          {
+            columns: ["invited_by"]
+            foreignKeyName: "team_invites_invited_by_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+          },
+          {
+            columns: ["team_id"]
+            foreignKeyName: "team_invites_team_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "teams"
+          },
+        ]
+        Row: {
+          accepted_by: null | string
+          claimed_by: null | string
+          created_at: string
+          email: string
+          expires_at: null | string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["project_member_role"]
+          status: Database["public"]["Enums"]["project_invite_status"]
+          team_id: string
+          token: string
+          updated_at: string
+        }
+        Update: {
+          accepted_by?: null | string
+          claimed_by?: null | string
+          created_at?: string
+          email?: string
+          expires_at?: null | string
+          id?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["project_member_role"]
+          status?: Database["public"]["Enums"]["project_invite_status"]
+          team_id?: string
+          token?: string
+          updated_at?: string
+        }
+      }
+      team_members: {
+        Insert: {
+          created_at?: string
+          role: Database["public"]["Enums"]["project_member_role"]
+          team_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Relationships: [
+          {
+            columns: ["team_id"]
+            foreignKeyName: "team_members_team_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "teams"
+          },
+          {
+            columns: ["user_id"]
+            foreignKeyName: "team_members_user_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+          },
+        ]
+        Row: {
+          created_at: string
+          role: Database["public"]["Enums"]["project_member_role"]
+          team_id: string
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["project_member_role"]
+          team_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+      }
+      teams: {
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Relationships: []
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
         }
       }
     }

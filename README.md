@@ -2,7 +2,7 @@
 
 Git-native project tracker (Linear/Jira-style) with GitHub integration.
 
-Collaboration and access are scoped to a **Project** — there is no separate Team entity in the MVP. Full product/tech spec: [`docs/SPEC.md`](docs/SPEC.md). Domain glossary: [`CONTEXT.md`](CONTEXT.md).
+Collaboration and access are scoped to a **Team**; Projects live under a Team (ADR 0017 — in progress). Full product/tech spec: [`docs/SPEC.md`](docs/SPEC.md). Domain glossary: [`CONTEXT.md`](CONTEXT.md).
 
 ## Features
 
@@ -15,7 +15,7 @@ Collaboration and access are scoped to a **Project** — there is no separate Te
 | Sprints (Board-scoped backlog, start/close/cancel, report)                          | Done        |
 | Task rich text + media (TipTap, Storage)                                            | Done        |
 | Task activity feed                                                                  | Done        |
-| Team & permissions (`project_members`, roles, invites)                              | Done        |
+| Team & permissions (Team above Project — ADR 0017)                                  | In progress |
 | Notifications (Watch + assignment + structural kinds)                               | Done        |
 | Mentions (`@` in description/comments → always-on inbox)                            | Done        |
 | App chrome (top bar, project tabs, breadcrumbs)                                     | Done        |

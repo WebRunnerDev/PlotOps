@@ -10,12 +10,12 @@ function readUi(name: string) {
 }
 
 describe("ProjectCard delete gating seam", () => {
-    it("gates remove control on canDeleteProject", () => {
+    it("gates remove control on Team-backed canDeleteProject", () => {
         const card = readUi("project-card.tsx");
 
+        expect(card).toMatch(/useProjectAccess/);
         expect(card).toMatch(/canDeleteProject/);
-        expect(card).toMatch(
-            /canDeleteProject\s*\?|canDeleteProject\s*&&|\{canDeleteProject/
-        );
+        expect(card).toMatch(/isSettled/);
+        expect(card).toMatch(/canDelete\s*\?|canDelete\s*&&|\{canDelete\b/);
     });
 });

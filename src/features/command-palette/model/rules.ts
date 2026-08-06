@@ -12,6 +12,8 @@ export type CommandPaletteProject = {
 export type CommandPaletteRouteContext = {
     boardId: null | string;
     canCreateTasks: boolean;
+    /** Guest Session — Create Task allowed against the local sandbox. */
+    isGuest: boolean;
     projectId: null | string;
 };
 
@@ -31,6 +33,12 @@ export type CommandPaletteVisibility = {
 };
 
 const MAX_TASK_HITS = 20;
+
+/**
+ * Guests may Create Task in the palette against the local sandbox
+ * (remind via shouldRemindGuestCreateTask that Reset clears mutations).
+ */
+export const GUEST_PALETTE_ALLOWS_CREATE_TASK = true;
 
 export function createTaskIntent(
     boardId: string,
@@ -99,7 +107,7 @@ export function resolveCommandPaletteVisibility(
     projects: readonly CommandPaletteProject[]
 ): CommandPaletteVisibility {
     return {
-        createTask: Boolean(context.boardId) && context.canCreateTasks,
+        createTask: canOfferCreateTask(context),
         switchProject: projects.length > 0,
         tasks: Boolean(context.projectId),
         toggleTheme: true,
@@ -114,7 +122,7 @@ export function resolveCreateTaskIntent(
     context: CommandPaletteRouteContext,
     query: string
 ): Extract<CommandPaletteIntent, { type: "create-task" }> | null {
-    if (!context.boardId || !context.canCreateTasks) {
+    if (!canOfferCreateTask(context) || !context.boardId) {
         return null;
     }
     const title = query.trim();
@@ -134,6 +142,14 @@ export function selectTaskIntent(
     };
 }
 
+/**
+ * Guest Create Task writes to the local sandbox (cleared on Leave / Reset).
+ * Callers should remind that Reset demo can drop those mutations.
+ */
+export function shouldRemindGuestCreateTask(isGuest: boolean): boolean {
+    return isGuest;
+}
+
 export function switchProjectIntent(
     projectId: string
 ): Extract<CommandPaletteIntent, { type: "switch-project" }> {
@@ -145,4 +161,14 @@ export function switchProjectIntent(
 
 export function toggleThemeIntent(): CommandPaletteIntent {
     return { type: "toggle-theme" };
+}
+
+function canOfferCreateTask(context: CommandPaletteRouteContext): boolean {
+    if (!context.boardId || !context.canCreateTasks) {
+        return false;
+    }
+    if (context.isGuest && !GUEST_PALETTE_ALLOWS_CREATE_TASK) {
+        return false;
+    }
+    return true;
 }

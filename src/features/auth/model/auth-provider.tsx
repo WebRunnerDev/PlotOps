@@ -19,6 +19,10 @@ import {
     fetchOwnProfile,
     type UserProfile,
 } from "@/features/auth/api/profile-api";
+import {
+    isOAuthCallbackLocation,
+    shouldFinishAuthBoot,
+} from "@/features/auth/lib/oauth-callback-url";
 import { isProfileNamesComplete } from "@/features/auth/lib/user-display";
 import { createAsyncGenerationGate } from "@/features/auth/model/async-generation-gate";
 import { AuthContext } from "@/features/auth/model/auth-context";
@@ -30,7 +34,11 @@ import {
     subscribeGitHubAccessToken,
     validateGitHubAccessToken,
 } from "@/features/auth/model/github-token";
+import { validatePersistedSession } from "@/features/auth/model/validate-persisted-session";
+import { leaveGuestSession } from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
+
+const OAUTH_CALLBACK_BOOT_TIMEOUT_MS = 15_000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<null | Session>(null);
@@ -50,6 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const applySessionUser = useCallback((nextUser: null | User) => {
         sessionUserIdReference.current = nextUser?.id ?? null;
+        // Real Auth and Guest Session are mutually exclusive (ADR 0018).
+        if (nextUser) {
+            leaveGuestSession();
+        }
         setUser(nextUser);
     }, []);
 
@@ -103,6 +115,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         let mounted = true;
         const abortController = new AbortController();
+        const isOAuthCallback = isOAuthCallbackLocation(globalThis.location);
+        let bootFinished = false;
+
+        function finishBoot(options?: { error?: boolean }) {
+            if (!mounted || bootFinished) return;
+            bootFinished = true;
+            setBootError(Boolean(options?.error));
+            setIsLoading(false);
+        }
 
         async function syncGitHubToken(
             nextSession: null | Session,
@@ -135,54 +156,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setBootError(false);
 
-        supabase.auth
-            .getSession()
-            .then(async ({ data: { session: nextSession } }) => {
-                if (!mounted) return;
+        const oauthWaitTimeout = isOAuthCallback
+            ? globalThis.setTimeout(() => {
+                  finishBoot({ error: true });
+              }, OAUTH_CALLBACK_BOOT_TIMEOUT_MS)
+            : undefined;
 
-                try {
-                    const validated =
-                        await validatePersistedSession(nextSession);
-                    if (!mounted) return;
-
-                    await syncGitHubToken(validated);
-
-                    const nextUser = validated?.user ?? null;
-                    setSession(validated);
-                    applySessionUser(nextUser);
-                    await loadProfile(nextUser);
-                    if (mounted) {
-                        setBootError(false);
-                        setIsLoading(false);
-                    }
-                } catch {
-                    if (!mounted) return;
-                    clearGitHubAccessToken();
-                    setSession(null);
-                    applySessionUser(null);
-                    setProfile(null);
-                    setBootError(true);
-                    setIsLoading(false);
-                }
-            })
-            .catch(() => {
-                if (!mounted) return;
-                clearGitHubAccessToken();
-                setSession(null);
-                applySessionUser(null);
-                setProfile(null);
-                setBootError(true);
-                setIsLoading(false);
-            });
-
+        // Subscribe before any await so PKCE SIGNED_IN is not missed while
+        // getSession() still returns null during the code exchange.
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, nextSession) => {
             void (async () => {
-                // INITIAL_SESSION already handled via getSession + validate.
-                if (event === "INITIAL_SESSION") return;
-
                 const eventGeneration = authEventGate.begin();
+
+                if (event === "INITIAL_SESSION") {
+                    if (
+                        !shouldFinishAuthBoot({
+                            isOAuthCallback,
+                            session: nextSession,
+                        })
+                    ) {
+                        return;
+                    }
+
+                    try {
+                        const validated = await validatePersistedSession(
+                            nextSession,
+                            { signal: abortController.signal }
+                        );
+                        if (!mounted || abortController.signal.aborted) return;
+                        if (!authEventGate.isCurrent(eventGeneration)) return;
+
+                        await syncGitHubToken(validated);
+
+                        const nextUser = validated?.user ?? null;
+                        setSession(validated);
+                        applySessionUser(nextUser);
+                        await loadProfile(nextUser);
+                        if (
+                            mounted &&
+                            authEventGate.isCurrent(eventGeneration)
+                        ) {
+                            finishBoot();
+                        }
+                    } catch {
+                        if (!mounted) return;
+                        if (!authEventGate.isCurrent(eventGeneration)) return;
+                        clearGitHubAccessToken();
+                        setSession(null);
+                        applySessionUser(null);
+                        setProfile(null);
+                        finishBoot({ error: true });
+                    }
+                    return;
+                }
 
                 await syncGitHubToken(nextSession, event);
                 if (!mounted || !authEventGate.isCurrent(eventGeneration)) {
@@ -194,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 applySessionUser(nextUser);
                 await loadProfile(nextUser);
                 if (mounted && authEventGate.isCurrent(eventGeneration)) {
-                    setIsLoading(false);
+                    finishBoot();
                 }
             })();
         });
@@ -202,6 +230,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => {
             mounted = false;
             abortController.abort();
+            if (oauthWaitTimeout !== undefined) {
+                globalThis.clearTimeout(oauthWaitTimeout);
+            }
             subscription.unsubscribe();
         };
     }, [applySessionUser, authEventGate, bootAttempt, loadProfile]);
@@ -253,24 +284,4 @@ async function syncUserProfile(user: null | User) {
     } catch {
         // Profile sync is best-effort on session load; createProject retries upsert.
     }
-}
-
-/**
- * `getSession()` reads local storage and can return a JWT after `db reset`
- * (or any server-side auth wipe). Confirm with the Auth API before treating
- * the user as signed in.
- */
-async function validatePersistedSession(
-    session: null | Session
-): Promise<null | Session> {
-    if (!session) return null;
-
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-        await supabase.auth.signOut({ scope: "local" });
-        clearGitHubAccessToken();
-        return null;
-    }
-
-    return { ...session, user: data.user };
 }

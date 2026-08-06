@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { boardHasTasks } from "@/features/boards/api/boards-api";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { parseAllowedHeadPatterns } from "@/features/boards/lib/allowed-head-patterns";
 import {
     useBoardMutations,
     useProjectBoards,
 } from "@/features/boards/model/use-project-boards";
+import { isGuest } from "@/features/guest-mode";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
@@ -76,7 +77,8 @@ export function ProjectBoardsSettings({
 
     const { data: hasTasks, isLoading: isCheckingTasks } = useQuery({
         enabled: Boolean(deleteId),
-        queryFn: () => boardHasTasks(deleteId!),
+        queryFn: () =>
+            resolveBoardsProvider(isGuest()).boardHasTasks(deleteId!),
         queryKey: ["board-has-tasks", deleteId],
     });
 

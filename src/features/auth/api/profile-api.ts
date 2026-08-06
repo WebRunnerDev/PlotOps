@@ -100,11 +100,8 @@ export async function updateProfileNames(input: {
 
     await ensureUserProfile(authData.user);
 
-    const { error: metaError } = await supabase.auth.updateUser({
-        data: { first_name, last_name },
-    });
-    if (metaError) throw metaError;
-
+    // Persist to profiles first so USER_UPDATED → loadProfile cannot race
+    // ahead of the table write and wipe AuthProvider profile state to null names.
     const { data, error } = await supabase
         .from("profiles")
         .update({ first_name, last_name } satisfies ProfileUpdate)
@@ -113,6 +110,12 @@ export async function updateProfileNames(input: {
         .single();
 
     if (error) throw error;
+
+    const { error: metaError } = await supabase.auth.updateUser({
+        data: { first_name, last_name },
+    });
+    if (metaError) throw metaError;
+
     return parseUserProfile(data);
 }
 
