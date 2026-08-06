@@ -1,9 +1,9 @@
 export type CreateProjectInput = {
     description: null | string;
-    github_default_branch: string;
-    github_full_name: string;
-    github_html_url: string;
-    github_repo_id: number;
+    github_default_branch: null | string;
+    github_full_name: null | string;
+    github_html_url: null | string;
+    github_repo_id: null | number;
     is_private: boolean;
     name: string;
     slug: string;

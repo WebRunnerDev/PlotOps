@@ -107,10 +107,16 @@ export function ProjectCard({
             )}
 
             <CardFooter className="justify-between border-0 bg-transparent">
-                <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
-                    <GitBranch />
-                    {defaultBranch}
-                </span>
+                {project.github_repo_id == undefined ? (
+                    <span className="text-meta text-muted-foreground">
+                        {t("projectNoGitHub")}
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
+                        <GitBranch />
+                        {defaultBranch}
+                    </span>
+                )}
 
                 {project.github_html_url ? (
                     <Button

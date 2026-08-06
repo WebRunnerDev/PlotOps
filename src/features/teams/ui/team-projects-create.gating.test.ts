@@ -13,11 +13,18 @@ function read(relativePath: string) {
 }
 
 describe("Team projects create affordance seam", () => {
-    it("Team projects page can open AddProjectDialog for managers with GitHub", () => {
+    it("opens AddProjectDialog for Owner/Admin without requiring GitHub token", () => {
         const page = read("src/features/teams/ui/team-projects-page.tsx");
         expect(page).toMatch(/AddProjectDialog/);
         expect(page).toMatch(/canCreateProject/);
+        expect(page).toMatch(/canAddProject/);
         expect(page).toMatch(/teamId=\{teamId\}/);
         expect(page).toMatch(/addProject/);
+        expect(page).toMatch(
+            /user\s*&&\s*canCreateProject\s*\?\s*\(\s*<AddProjectDialog/
+        );
+        expect(page).not.toMatch(
+            /user\s*&&\s*githubAccessToken\s*&&\s*canCreateProject/
+        );
     });
 });

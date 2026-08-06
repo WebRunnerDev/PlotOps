@@ -3,34 +3,43 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { GitHubRepo } from "@/features/projects/model/types";
 
 import { isGuest } from "@/features/guest-mode";
-import { slugifyRepoName } from "@/features/projects/api/projects-api";
 import { resolveProjectsProvider } from "@/features/projects/api/resolve-projects-provider";
+import {
+    buildGitHubCreateProjectInput,
+    buildNameOnlyCreateProjectInput,
+} from "@/features/projects/model/build-create-project-input";
 
 import { projectKeys } from "./query-keys";
+
+export type CreateProjectMutationInput =
+    | {
+          mode: "github";
+          repo: GitHubRepo;
+          teamId: string;
+      }
+    | {
+          mode: "name-only";
+          name: string;
+          slug: string;
+          teamId: string;
+      };
 
 export function useCreateProject() {
     const queryClient = useQueryClient();
     const provider = resolveProjectsProvider(isGuest());
 
     return useMutation({
-        mutationFn: async ({
-            repo,
-            teamId,
-        }: {
-            repo: GitHubRepo;
-            teamId: string;
-        }) => {
-            const { data, error } = await provider.createProject({
-                description: repo.description,
-                github_default_branch: repo.default_branch,
-                github_full_name: repo.full_name,
-                github_html_url: repo.html_url,
-                github_repo_id: repo.id,
-                is_private: repo.private,
-                name: repo.name,
-                slug: slugifyRepoName(repo.full_name),
-                team_id: teamId,
-            });
+        mutationFn: async (input: CreateProjectMutationInput) => {
+            const payload =
+                input.mode === "github"
+                    ? buildGitHubCreateProjectInput(input.repo, input.teamId)
+                    : buildNameOnlyCreateProjectInput({
+                          name: input.name,
+                          slug: input.slug,
+                          teamId: input.teamId,
+                      });
+
+            const { data, error } = await provider.createProject(payload);
 
             if (error) throw error;
             return data;
