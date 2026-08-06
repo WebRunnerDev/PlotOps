@@ -248,10 +248,11 @@ export type Database = {
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
-          claimed_by: string
-          email: string
+          claimed_by_me: boolean
+          email_matches: boolean
           expires_at: string
           id: string
+          is_claimed: boolean
           role: Database["public"]["Enums"]["project_member_role"]
           status: Database["public"]["Enums"]["project_invite_status"]
           team_id: string

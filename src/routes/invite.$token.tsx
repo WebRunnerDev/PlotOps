@@ -27,10 +27,18 @@ function InviteAcceptPage() {
 
     const [invite, setInvite] = useState<InvitePreview | null>(null);
     const [loadError, setLoadError] = useState(false);
-    const [isLoadingInvite, setIsLoadingInvite] = useState(true);
+    const [isLoadingInvite, setIsLoadingInvite] = useState(false);
     const [isActing, setIsActing] = useState(false);
 
     useEffect(() => {
+        if (authLoading) return;
+        if (!user) {
+            setInvite(null);
+            setLoadError(false);
+            setIsLoadingInvite(false);
+            return;
+        }
+
         let cancelled = false;
         setIsLoadingInvite(true);
         void getInviteByToken(token)
@@ -41,13 +49,7 @@ function InviteAcceptPage() {
                     setLoadError(true);
                     setInvite(null);
                 } else {
-                    const preview = row as InvitePreview;
-                    setInvite({
-                        ...preview,
-                        claimed_by:
-                            (preview as { claimed_by?: null | string })
-                                .claimed_by ?? null,
-                    });
+                    setInvite(row as InvitePreview);
                     setLoadError(false);
                 }
             })
@@ -62,12 +64,7 @@ function InviteAcceptPage() {
         return () => {
             cancelled = true;
         };
-    }, [token]);
-
-    const emailMatches =
-        Boolean(user?.email) &&
-        Boolean(invite?.email) &&
-        user!.email!.toLowerCase() === invite!.email.toLowerCase();
+    }, [authLoading, token, user]);
 
     const onAccept = async () => {
         if (!invite || isActing) return;
@@ -112,10 +109,43 @@ function InviteAcceptPage() {
         safeSetItem("sessionStorage", "plotops_pending_invite", token);
     };
 
-    if (authLoading || isLoadingInvite) {
+    if (authLoading || (user && isLoadingInvite)) {
         return (
             <div className="flex min-h-[50vh] items-center justify-center">
                 <Spinner className="size-8 text-primary" />
+            </div>
+        );
+    }
+
+    if (!user) {
+        return (
+            <div className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-16">
+                <header className="flex flex-col gap-1">
+                    <p className="text-meta text-muted-foreground">
+                        {t("invite.eyebrow")}
+                    </p>
+                    <h1 className="text-h1">{t("invite.signInTitle")}</h1>
+                    <p className="text-ui text-muted-foreground">
+                        {t("invite.createAccountFirst")}
+                    </p>
+                </header>
+                <div className="flex flex-col gap-3">
+                    <Button
+                        nativeButton={false}
+                        onClick={goSignUp}
+                        render={<Link to="/sign-up" />}
+                    >
+                        {t("invite.createAccount")}
+                    </Button>
+                    <Button
+                        nativeButton={false}
+                        onClick={goSignIn}
+                        render={<Link to="/sign-in" />}
+                        variant="outline"
+                    >
+                        {t("invite.signIn")}
+                    </Button>
+                </div>
             </div>
         );
     }
@@ -148,7 +178,13 @@ function InviteAcceptPage() {
             </header>
 
             <div className="border border-border p-4 text-ui">
-                <p>{t("invite.forEmail", { email: invite.email })}</p>
+                <p>
+                    {invite.email_matches
+                        ? t("invite.forYourEmail", {
+                              email: user.email ?? t("members.unknownUser"),
+                          })
+                        : t("invite.forOtherEmail")}
+                </p>
                 {invite.expires_at ? (
                     <p className="mt-1 text-muted-foreground">
                         {t("invite.expires", {
@@ -170,82 +206,54 @@ function InviteAcceptPage() {
                 </Alert>
             )}
 
-            {user ? (
-                invite.status === "pending" ? (
-                    <div className="flex flex-col gap-3">
-                        <p className="text-ui text-muted-foreground">
-                            {t("invite.signedInAs", {
-                                email: user.email ?? t("members.unknownUser"),
-                            })}
-                        </p>
-                        {emailMatches ? (
+            {invite.status === "pending" ? (
+                <div className="flex flex-col gap-3">
+                    <p className="text-ui text-muted-foreground">
+                        {t("invite.signedInAs", {
+                            email: user.email ?? t("members.unknownUser"),
+                        })}
+                    </p>
+                    {invite.email_matches ? (
+                        <Button
+                            disabled={isActing}
+                            onClick={() => void onAccept()}
+                            type="button"
+                        >
+                            {isActing ? (
+                                <Spinner className="size-4" />
+                            ) : undefined}
+                            {t("invite.accept")}
+                        </Button>
+                    ) : invite.is_claimed ? (
+                        <Alert>
+                            <AlertDescription>
+                                {invite.claimed_by_me
+                                    ? t("invite.claimWaitingSelf")
+                                    : t("invite.claimWaitingOther")}
+                            </AlertDescription>
+                        </Alert>
+                    ) : (
+                        <>
+                            <Alert>
+                                <AlertDescription>
+                                    {t("invite.emailMismatch")}
+                                </AlertDescription>
+                            </Alert>
                             <Button
                                 disabled={isActing}
-                                onClick={() => void onAccept()}
+                                onClick={() => void onClaim()}
                                 type="button"
+                                variant="outline"
                             >
                                 {isActing ? (
                                     <Spinner className="size-4" />
                                 ) : undefined}
-                                {t("invite.accept")}
+                                {t("invite.claim")}
                             </Button>
-                        ) : invite.claimed_by ? (
-                            <Alert>
-                                <AlertDescription>
-                                    {invite.claimed_by === user.id
-                                        ? t("invite.claimWaitingSelf")
-                                        : t("invite.claimWaitingOther")}
-                                </AlertDescription>
-                            </Alert>
-                        ) : (
-                            <>
-                                <Alert>
-                                    <AlertDescription>
-                                        {t("invite.emailMismatch")}
-                                    </AlertDescription>
-                                </Alert>
-                                <Button
-                                    disabled={isActing}
-                                    onClick={() => void onClaim()}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    {isActing ? (
-                                        <Spinner className="size-4" />
-                                    ) : undefined}
-                                    {t("invite.claim")}
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                ) : undefined
-            ) : (
-                <div className="flex flex-col gap-3">
-                    <p className="text-ui text-muted-foreground">
-                        {t("invite.createAccountFirst")}
-                    </p>
-                    <Button
-                        nativeButton={false}
-                        onClick={goSignUp}
-                        render={
-                            <Link
-                                search={{ email: invite.email }}
-                                to="/sign-up"
-                            />
-                        }
-                    >
-                        {t("invite.createAccount")}
-                    </Button>
-                    <Button
-                        nativeButton={false}
-                        onClick={goSignIn}
-                        render={<Link to="/sign-in" />}
-                        variant="outline"
-                    >
-                        {t("invite.signIn")}
-                    </Button>
+                        </>
+                    )}
                 </div>
-            )}
+            ) : undefined}
         </div>
     );
 }

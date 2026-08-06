@@ -2,11 +2,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(6);
+select plan(13);
 
 select set_config('test.owner', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true);
 select set_config('test.invitee', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', true);
 select set_config('test.claimer', 'cccccccc-cccc-cccc-cccc-cccccccccccc', true);
+select set_config('test.hijacker', 'dddddddd-dddd-dddd-dddd-dddddddddddd', true);
 
 set local role postgres;
 
@@ -14,14 +15,16 @@ insert into auth.users (id, aud, role, email, encrypted_password, email_confirme
 values
   (current_setting('test.owner')::uuid, 'authenticated', 'authenticated', 'owner@test.com', crypt('x', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
   (current_setting('test.invitee')::uuid, 'authenticated', 'authenticated', 'invitee@test.com', crypt('x', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
-  (current_setting('test.claimer')::uuid, 'authenticated', 'authenticated', 'other@test.com', crypt('x', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now())
+  (current_setting('test.claimer')::uuid, 'authenticated', 'authenticated', 'other@test.com', crypt('x', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now()),
+  (current_setting('test.hijacker')::uuid, 'authenticated', 'authenticated', 'hijacker@test.com', crypt('x', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now())
 on conflict (id) do nothing;
 
 insert into public.profiles (id, username)
 values
   (current_setting('test.owner')::uuid, 'owner'),
   (current_setting('test.invitee')::uuid, 'invitee'),
-  (current_setting('test.claimer')::uuid, 'claimer')
+  (current_setting('test.claimer')::uuid, 'claimer'),
+  (current_setting('test.hijacker')::uuid, 'hijacker')
 on conflict (id) do nothing;
 
 insert into public.teams (id, owner_id, name)
@@ -60,11 +63,27 @@ begin
 end;
 $$;
 
--- Preview by token (anon-capable function)
+-- Preview by token requires auth; returns flags instead of email/claimed_by
+select throws_ok(
+  $$select public.get_team_invite_by_token('token-match-email')$$,
+  'P0001',
+  'Not authenticated',
+  'get_team_invite_by_token rejects unauthenticated callers'
+);
+
+select pg_temp.as_user(current_setting('test.invitee')::uuid);
 select ok(
   (select team_id from public.get_team_invite_by_token('token-match-email'))
     = '11111111-1111-1111-1111-111111111111'::uuid,
   'get_team_invite_by_token returns team'
+);
+select ok(
+  (select email_matches from public.get_team_invite_by_token('token-match-email')),
+  'get_team_invite_by_token marks matching email'
+);
+select ok(
+  not (select is_claimed from public.get_team_invite_by_token('token-match-email')),
+  'get_team_invite_by_token marks unclaimed invite'
 );
 
 -- Accept with matching email
@@ -87,6 +106,35 @@ select is(
   (select claimed_by from public.claim_team_invite('token-claim')),
   current_setting('test.claimer')::uuid,
   'claim sets claimed_by'
+);
+
+-- Same caller may reclaim idempotently
+select is(
+  (select claimed_by from public.claim_team_invite('token-claim')),
+  current_setting('test.claimer')::uuid,
+  're-claim by same user keeps claimed_by'
+);
+
+-- Later caller cannot steal the claim
+select pg_temp.as_user(current_setting('test.hijacker')::uuid);
+select throws_ok(
+  $$select public.claim_team_invite('token-claim')$$,
+  'P0001',
+  'Invite already claimed by another user',
+  'second caller cannot overwrite claimed_by'
+);
+
+select ok(
+  (select is_claimed and not claimed_by_me
+   from public.get_team_invite_by_token('token-claim')),
+  'preview shows invite claimed by another user'
+);
+
+set local role postgres;
+select is(
+  (select claimed_by from public.team_invites where token = 'token-claim'),
+  current_setting('test.claimer')::uuid,
+  'original claimer remains after hijack attempt'
 );
 
 -- Owner confirms claimed invite

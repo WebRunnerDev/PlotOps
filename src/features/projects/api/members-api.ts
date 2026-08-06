@@ -10,10 +10,11 @@ import {
 import { supabase } from "@/shared/api/supabase";
 
 export type InvitePreview = {
-    claimed_by: null | string;
-    email: string;
+    claimed_by_me: boolean;
+    email_matches: boolean;
     expires_at: null | string;
     id: string;
+    is_claimed: boolean;
     role: ProjectMemberRole;
     status: ProjectInviteStatus;
     team_id: string;
