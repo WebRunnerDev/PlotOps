@@ -27,13 +27,18 @@ import {
     useSprintsUiStore,
 } from "@/features/sprints";
 import {
+    BoardSortControl,
     type BoardTaskFilters,
     BoardTaskFiltersBar,
+    DEFAULT_BOARD_SORT,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    isWithinColumnDragEnabled,
+    sortTasksByBoardSort,
     type Task,
     TaskCard,
     TaskDrawer,
+    useBoardSortStore,
     useBoardTasks,
 } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
@@ -100,6 +105,11 @@ export function KanbanBoard({
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );
+    const boardSort = useBoardSortStore(
+        (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
+    );
+    const setBoardSort = useBoardSortStore((state) => state.setBoardSort);
+    const withinColumnDragEnabled = isWithinColumnDragEnabled(boardSort);
     const activeSprint = sprints.find((sprint) => sprint.state === "active");
     const createSprintId = resolveCreateTaskSprintId({
         activeSprintId: activeSprint?.id,
@@ -167,9 +177,14 @@ export function KanbanBoard({
         return filterTasks(scoped, filters);
     }, [activeSprint, boardSprintScope, filters, tasks]);
 
+    const displayedTasks = useMemo(
+        () => sortTasksByBoardSort(filteredTasks, boardSort),
+        [boardSort, filteredTasks]
+    );
+
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
-        for (const task of filteredTasks) {
+        for (const task of displayedTasks) {
             const resolved =
                 task.labelIds
                     ?.map((id) => labelsById.get(id))
@@ -179,7 +194,7 @@ export function KanbanBoard({
             map.set(task.id, resolved);
         }
         return map;
-    }, [filteredTasks, labelsById]);
+    }, [displayedTasks, labelsById]);
 
     useEffect(() => {
         setFilters(EMPTY_BOARD_FILTERS);
@@ -245,7 +260,7 @@ export function KanbanBoard({
         if (type === "task") {
             if (!canEdit) return;
             setActiveTask(
-                filteredTasks.find((item) => item.id === event.active.id)
+                displayedTasks.find((item) => item.id === event.active.id)
             );
         }
     };
@@ -312,7 +327,7 @@ export function KanbanBoard({
 
         const overType = over.data.current?.type as DragType | undefined;
 
-        if (overType === "task") {
+        if (overType === "task" && withinColumnDragEnabled) {
             reorderTaskWithin(String(active.id), String(over.id), {
                 persist: false,
             });
@@ -356,11 +371,17 @@ export function KanbanBoard({
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="sticky left-0 z-5 w-[calc(100cqw-6rem)] shrink-0">
+            <div className="sticky left-0 z-5 flex w-[calc(100cqw-6rem)] shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
                 <BoardTaskFiltersBar
                     filters={filters}
                     labels={projectLabels}
                     onChange={setFilters}
+                />
+                <BoardSortControl
+                    onChange={(sort) => {
+                        setBoardSort(boardId, sort);
+                    }}
+                    value={boardSort}
                 />
             </div>
 
@@ -390,9 +411,12 @@ export function KanbanBoard({
                                 }
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
-                                tasks={filteredTasks.filter(
+                                tasks={displayedTasks.filter(
                                     (task) => task.status === column.id
                                 )}
+                                withinColumnDragEnabled={
+                                    withinColumnDragEnabled
+                                }
                             />
                         ))}
 

@@ -166,6 +166,12 @@
             "none": "No deadline"
         }
     },
+    "sort": {
+        "label": "Sort",
+        "manual": "Manual",
+        "priorityAsc": "Priority ↑",
+        "priorityDesc": "Priority ↓"
+    },
     "labels": {
         "empty": "No project labels yet. Type a name to create one.",
         "placeholder": "Select or create…",

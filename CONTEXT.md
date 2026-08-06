@@ -60,6 +60,14 @@ _Avoid_: Issue, card (UI only), ticket
 How urgently a Task should be handled relative to others: urgent, high, medium, or low. Default on create is medium. Distinct from Board column status.
 _Avoid_: severity (not used), importance (vague)
 
+**Manual order**:
+The user-defined sequence of Tasks within a Board column, persisted as each Task's column position. Restored whenever Board sort is Manual (or unset). Distinct from Board sort by field.
+_Avoid_: board order (ambiguous with column position among Board columns), rank, sort order (prefer Manual order vs Board sort)
+
+**Board sort**:
+A per-viewer display preference that reorders Tasks inside each column by a chosen field and direction (Priority, Deadline, created date, or Title) without changing Manual order. When not Manual, within-column drag reorder is off; moving a Task across columns still updates status (and Manual order for that move as today). Persists until the viewer explicitly changes or clears it.
+_Avoid_: filter (filters hide Tasks; Board sort only reorders), Manual order, column sort (Board-wide, not per-column)
+
 **Label**:
 A Project-scoped tag attachable to any Task in the Project, regardless of Board. Not owned by a Board.
 _Avoid_: Board label, tag (prefer Label)

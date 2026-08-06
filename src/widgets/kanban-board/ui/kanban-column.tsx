@@ -1,5 +1,6 @@
 import {
     SortableContext,
+    type SortingStrategy,
     useSortable,
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -40,6 +41,9 @@ import {
 import { DraggableTaskCard } from "./draggable-task-card";
 import { KanbanAddTask } from "./kanban-add-task";
 
+/** Keeps cards draggable across columns without within-column gap preview. */
+const staticTaskSortingStrategy: SortingStrategy = () => null;
+
 type KanbanColumnProperties = {
     boardId: string;
     createSprintId?: string;
@@ -50,6 +54,7 @@ type KanbanColumnProperties = {
     startEditing?: boolean;
     status: TaskStatus;
     tasks: Task[];
+    withinColumnDragEnabled?: boolean;
 };
 
 export function KanbanColumn({
@@ -62,6 +67,7 @@ export function KanbanColumn({
     startEditing = false,
     status,
     tasks,
+    withinColumnDragEnabled = true,
 }: KanbanColumnProperties) {
     const { t } = useTranslation("board");
     const queryClient = useQueryClient();
@@ -285,7 +291,11 @@ export function KanbanColumn({
                 <div className="scrollbar-board flex flex-1 flex-col gap-2 overflow-y-auto">
                     <SortableContext
                         items={tasks.map((task) => task.id)}
-                        strategy={verticalListSortingStrategy}
+                        strategy={
+                            withinColumnDragEnabled
+                                ? verticalListSortingStrategy
+                                : staticTaskSortingStrategy
+                        }
                     >
                         {tasks.map((task) => (
                             <DraggableTaskCard

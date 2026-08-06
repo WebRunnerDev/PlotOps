@@ -19,6 +19,16 @@ export {
     normalizeBranchName,
 } from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
+export { isWithinColumnDragEnabled } from "./lib/is-within-column-drag-enabled";
+export {
+    DEFAULT_BOARD_SORT,
+    sortTasksByBoardSort,
+} from "./lib/sort-tasks-by-board-sort";
+export type {
+    BoardSortDirection,
+    BoardSortPreference,
+} from "./lib/sort-tasks-by-board-sort";
+export { useBoardSortStore } from "./model/board-sort-store";
 export {
     columnAccentClass,
     DEFAULT_TASK_PRIORITY,
@@ -35,6 +45,7 @@ export { useBoardTasks } from "./model/use-board-tasks";
 export { useProjectTasks } from "./model/use-project-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
+export { BoardSortControl } from "./ui/board-sort-control";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { TaskCard } from "./ui/task-card";
