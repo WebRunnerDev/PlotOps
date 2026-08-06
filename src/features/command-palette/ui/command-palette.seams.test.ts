@@ -44,3 +44,30 @@ describe("Command palette active sprint create seam", () => {
         expect(source).toMatch(/sprintId:\s*createSprintId/);
     });
 });
+
+describe("Command palette navigate + typed create seam", () => {
+    it("wires resolveNavigateIntent to TopBar section routes", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/resolveNavigateIntent/);
+        expect(source).toMatch(
+            /to:\s*"\/projects\/\$projectId\/boards\/\$boardId"/
+        );
+        expect(source).toMatch(
+            /to:\s*"\/projects\/\$projectId\/boards\/\$boardId\/backlog"/
+        );
+        expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/ci-cd"/);
+        expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/settings"/);
+    });
+
+    it("threads create-task taskType into createTask options", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(
+            /resolveCreateTaskIntent\(routeContext,\s*query,\s*taskType\)/
+        );
+        expect(source).toMatch(/taskType:\s*intent\.taskType/);
+        expect(source).toMatch(/command:createBugWithTitle/);
+        expect(source).toMatch(/command:createFeatureWithTitle/);
+    });
+});

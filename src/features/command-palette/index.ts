@@ -5,6 +5,7 @@ export {
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
+    resolveNavigateIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
@@ -12,9 +13,11 @@ export {
 } from "./model/rules";
 export type {
     CommandPaletteIntent,
+    CommandPaletteNavigateSection,
     CommandPaletteProject,
     CommandPaletteRouteContext,
     CommandPaletteTask,
+    CommandPaletteTaskType,
     CommandPaletteVisibility,
 } from "./model/rules";
 export { useCommandPaletteStore } from "./model/use-command-palette-store";

@@ -1,8 +1,22 @@
 export type CommandPaletteIntent =
     | { boardId: string; taskId: string; type: "select-task" }
-    | { boardId: string; title: string; type: "create-task" }
+    | {
+          boardId: string;
+          taskType: CommandPaletteTaskType;
+          title: string;
+          type: "create-task";
+      }
+    | {
+          boardId?: string;
+          projectId: string;
+          section: CommandPaletteNavigateSection;
+          type: "navigate";
+      }
     | { projectId: string; type: "switch-project" }
     | { type: "toggle-theme" };
+
+export type CommandPaletteNavigateSection =
+    "backlog" | "board" | "cicd" | "settings";
 
 export type CommandPaletteProject = {
     id: string;
@@ -25,8 +39,14 @@ export type CommandPaletteTask = {
     title: string;
 };
 
+export type CommandPaletteTaskType = "bug" | "feature" | "task";
+
 export type CommandPaletteVisibility = {
     createTask: boolean;
+    navigateBacklog: boolean;
+    navigateBoard: boolean;
+    navigateCicd: boolean;
+    navigateSettings: boolean;
     switchProject: boolean;
     tasks: boolean;
     toggleTheme: boolean;
@@ -42,10 +62,12 @@ export const GUEST_PALETTE_ALLOWS_CREATE_TASK = true;
 
 export function createTaskIntent(
     boardId: string,
-    title: string
+    title: string,
+    taskType: CommandPaletteTaskType = "task"
 ): Extract<CommandPaletteIntent, { type: "create-task" }> {
     return {
         boardId,
+        taskType,
         title,
         type: "create-task",
     };
@@ -106,10 +128,17 @@ export function resolveCommandPaletteVisibility(
     context: CommandPaletteRouteContext,
     projects: readonly CommandPaletteProject[]
 ): CommandPaletteVisibility {
+    const hasProject = Boolean(context.projectId);
+    const hasBoard = Boolean(context.boardId);
+
     return {
         createTask: canOfferCreateTask(context),
+        navigateBacklog: hasProject && hasBoard,
+        navigateBoard: hasProject && hasBoard,
+        navigateCicd: hasProject,
+        navigateSettings: hasProject,
         switchProject: projects.length > 0,
-        tasks: Boolean(context.projectId),
+        tasks: hasProject,
         toggleTheme: true,
     };
 }
@@ -120,7 +149,8 @@ export function resolveCommandPaletteVisibility(
  */
 export function resolveCreateTaskIntent(
     context: CommandPaletteRouteContext,
-    query: string
+    query: string,
+    taskType: CommandPaletteTaskType = "task"
 ): Extract<CommandPaletteIntent, { type: "create-task" }> | null {
     if (!canOfferCreateTask(context) || !context.boardId) {
         return null;
@@ -129,7 +159,38 @@ export function resolveCreateTaskIntent(
     if (!title) {
         return null;
     }
-    return createTaskIntent(context.boardId, title);
+    return createTaskIntent(context.boardId, title, taskType);
+}
+
+/**
+ * Navigate offer for a TopBar section — null when projectId (and boardId for
+ * Board / Backlog) are missing from URL context.
+ */
+export function resolveNavigateIntent(
+    context: CommandPaletteRouteContext,
+    section: CommandPaletteNavigateSection
+): Extract<CommandPaletteIntent, { type: "navigate" }> | null {
+    if (!context.projectId) {
+        return null;
+    }
+
+    if (section === "board" || section === "backlog") {
+        if (!context.boardId) {
+            return null;
+        }
+        return {
+            boardId: context.boardId,
+            projectId: context.projectId,
+            section,
+            type: "navigate",
+        };
+    }
+
+    return {
+        projectId: context.projectId,
+        section,
+        type: "navigate",
+    };
 }
 
 export function selectTaskIntent(

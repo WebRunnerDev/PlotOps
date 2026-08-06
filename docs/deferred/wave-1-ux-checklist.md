@@ -13,11 +13,13 @@ Prerequisites: Guest Mode optional except “Guest palette” (Wave 0 / 4). Pref
 
 Checklist:
 
-- [ ] Extend `CommandPaletteIntent` with navigate intents (or one `navigate` + path).
-- [ ] Visibility when `projectId` (and `boardId` where needed) present in URL context.
-- [ ] Select → TanStack Router navigate to existing TopBar section routes.
-- [ ] i18n + unit tests in `rules.test.ts`.
-- [ ] Remove/update Deferred palette row in SPEC when shipped.
+- [x] Extend `CommandPaletteIntent` with navigate intents (or one `navigate` + path).
+- [x] Visibility when `projectId` (and `boardId` where needed) present in URL context.
+- [x] Select → TanStack Router navigate to existing TopBar section routes.
+- [x] i18n + unit tests in `rules.test.ts`.
+- [x] Remove/update Deferred palette row in SPEC when shipped.
+
+Shipped: #170 (TopBar sections: Board / Backlog / CI/CD / Settings — Deferred “Git” label mapped to current tabs).
 
 ---
 
@@ -25,10 +27,12 @@ Checklist:
 
 Checklist:
 
-- [ ] Add intents or cmdk items that call create with `type: "bug" | "feature"` (default today `task`).
-- [ ] Thread type through `createTaskIntent` / `useBoardTasks.createTask` / `createTaskRecord`.
-- [ ] Same column gate as Create Task (`resolveCreateTaskColumnGate`).
-- [ ] i18n + tests.
+- [x] Add intents or cmdk items that call create with `type: "bug" | "feature"` (default today `task`).
+- [x] Thread type through `createTaskIntent` / `useBoardTasks.createTask` / `createTaskRecord`.
+- [x] Same column gate as Create Task (`resolveCreateTaskColumnGate`).
+- [x] i18n + tests.
+
+Shipped: #170.
 
 ---
 

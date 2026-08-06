@@ -35,7 +35,7 @@ Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** b
 | Git integration (PR, diff, branches)                   | 🟡 In progress (Git tab; branch generate/link/skip; link PR; in-app code diff viewer)                                                                                                                                                                                                                                               |
 | CI/CD dashboard (mock UI)                              | ✅ Done (route + mock builds per branch; simulated streaming logs via `features/ci-cd` seam)                                                                                                                                                                                                                                        |
 | CI/CD — real GitHub Actions                            | ✅ Done (Actions REST behind `buildsProvider`; Linear-style summary/filters/runs list; jobs + logs dialog; polling while in-flight)                                                                                                                                                                                                 |
-| Command palette                                        | ✅ Done (Ctrl/Cmd+K + TopBar; rules seam; search Tasks; Create Task; Switch Project; Toggle theme — #21–#26)                                                                                                                                                                                                                        |
+| Command palette                                        | ✅ Done (Ctrl/Cmd+K + TopBar; rules seam; search Tasks; Create Task/bug/feature; navigate Board/Backlog/CI/CD/Settings; Switch Project; Toggle theme — #21–#26, #170)                                                                                                                                                               |
 | GitHub webhooks + Edge Function                        | ✅ Done (`github-webhook`: PR merge → Task last column on Board Base branch; GitHub App + HMAC; does **not** feed CI/CD — see `docs/github-webhook-setup.md`)                                                                                                                                                                       |
 | Team & permissions (`project_members`, roles, invites) | ✅ Done (Project-boundary MVP); 🟡 Team above Project — domain locked ADR 0017; schema+RLS #155 done (local); Team settings #157 + invite redeem #158 done (local); UI gating #160 done; Home Teams shell #156 done (local); create Project under Team (GH connect) done (local); lifecycle remainder #159 (delete empty Team) open |
 | Multi-board + branch mapping                           | ✅ Done (ADR 0006; Boards under Project; Base branch + Allowed patterns; soft warn)                                                                                                                                                                                                                                                 |
@@ -197,15 +197,13 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 
 > Captured during Command Palette grilling. Not committed backlog — revisit before expanding the MVP set. Checklists: [`docs/deferred/wave-1-ux-checklist.md`](deferred/wave-1-ux-checklist.md) (Guest palette: Wave 0 / [`wave-4-plus-later.md`](deferred/wave-4-plus-later.md)).
 
-| Idea                                                 | Notes                                                                                 |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Navigate to Board / Git / CI / Settings from palette | Beyond MVP actions; would turn palette into fuller launcher                           |
-| Separate Create bug / Create feature commands        | MVP creates Task with default type `task`; user changes type in drawer                |
-| Search Members                                       | Cross-cutting; not in MVP                                                             |
-| Search Task description / Labels                     | MVP is key + title only                                                               |
-| Remember last visited Board per Project              | MVP Switch Project uses project index → first Board                                   |
-| Include archived Tasks in search                     | MVP excludes archive; archive UI remains on Board                                     |
-| Guest-specific palette behaviour                     | Shipped with Guest Mode (#166 / Wave 0 §6): same MVP commands under guest write gates |
+| Idea                                    | Notes                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------- |
+| Search Members                          | Cross-cutting; not in MVP                                                             |
+| Search Task description / Labels        | MVP is key + title only                                                               |
+| Remember last visited Board per Project | MVP Switch Project uses project index → first Board                                   |
+| Include archived Tasks in search        | MVP excludes archive; archive UI remains on Board                                     |
+| Guest-specific palette behaviour        | Shipped with Guest Mode (#166 / Wave 0 §6): same MVP commands under guest write gates |
 
 ## Deferred from Figma Make
 
@@ -298,7 +296,8 @@ Agents: never assume webhook work replaces Actions integration.
 | Command        | Behaviour                                                                                                                                                                                                                                                                   |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Search Tasks   | Current Project, all Boards; match `key` + `title`; exclude archived; results only after ≥1 character; max 20 (exact key first, then title). Select → navigate to that Task's Board and open Task drawer (`selectedTaskId`). Without Project in URL — Tasks section hidden. |
-| Create Task    | Only when `boardId` is in the URL and `canCreateTasks`; otherwise hidden. Type title in cmdk → create on current Board first column with default type `task` → open drawer.                                                                                                 |
+| Create Task    | Only when `boardId` is in the URL and `canCreateTasks`; otherwise hidden. Type title in cmdk → create on current Board first column (default type `task`, or **bug** / **feature** via separate commands) → open drawer. Same column gate as board create.                  |
+| Navigate       | When Project context is present: **CI/CD** and **Settings**. When `boardId` also in URL: **Board** and **Backlog**. Routes match TopBar section tabs (#170).                                                                                                                |
 | Switch Project | List accessible Projects → navigate to `/projects/$projectId` (redirects to first Board).                                                                                                                                                                                   |
 | Toggle theme   | Same as avatar menu theme toggle.                                                                                                                                                                                                                                           |
 
