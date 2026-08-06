@@ -75,19 +75,21 @@ export function createTaskIntent(
 
 export function matchCommandPaletteTasks(
     tasks: readonly CommandPaletteTask[],
-    query: string
+    query: string,
+    options?: { includeArchived?: boolean }
 ): CommandPaletteTask[] {
     const normalized = query.trim().toLowerCase();
     if (normalized.length === 0) {
         return [];
     }
 
+    const includeArchived = options?.includeArchived === true;
     const exactKey: CommandPaletteTask[] = [];
     const titleHits: CommandPaletteTask[] = [];
     const partialKey: CommandPaletteTask[] = [];
 
     for (const task of tasks) {
-        if (task.archivedAt) {
+        if (task.archivedAt && !includeArchived) {
             continue;
         }
 
@@ -116,12 +118,13 @@ export function matchCommandPaletteTasks(
 export function resolveCommandPaletteTaskHits(
     context: CommandPaletteRouteContext,
     tasks: readonly CommandPaletteTask[],
-    query: string
+    query: string,
+    options?: { includeArchived?: boolean }
 ): CommandPaletteTask[] {
     if (!context.projectId) {
         return [];
     }
-    return matchCommandPaletteTasks(tasks, query);
+    return matchCommandPaletteTasks(tasks, query, options);
 }
 
 export function resolveCommandPaletteVisibility(

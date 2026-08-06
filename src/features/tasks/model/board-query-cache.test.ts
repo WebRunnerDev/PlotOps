@@ -68,6 +68,13 @@ describe("board workspace query cache seam", () => {
             "tasks",
             "project",
             projectId,
+            false,
+        ]);
+        expect(taskKeys.project(projectId, true)).toEqual([
+            "tasks",
+            "project",
+            projectId,
+            true,
         ]);
 
         const keys = [

@@ -21,7 +21,10 @@ export type TasksProvider = {
     deleteTaskRecord(taskId: string): Promise<void>;
     fetchArchivedTasks(boardId: string): Promise<Task[]>;
     fetchBoardTasks(boardId: string): Promise<BoardTasksCache>;
-    fetchProjectTasks(projectId: string): Promise<Task[]>;
+    fetchProjectTasks(
+        projectId: string,
+        options?: { includeArchived?: boolean }
+    ): Promise<Task[]>;
     moveTaskToBoard(
         taskId: string,
         targetBoardId: string,

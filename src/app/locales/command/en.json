@@ -1,5 +1,6 @@
 {
     "actions": "Actions",
+    "archivedBadge": "Archived",
     "columnsLoading": "Loading board columns…",
     "columnsLoadFailed": "Could not load board columns",
     "createBugWithTitle": "Create bug “{{title}}”",
@@ -9,6 +10,7 @@
     "description": "Search for a command to run…",
     "empty": "No results found.",
     "guestCreateReminder": "Demo account — changes may be reset on the shared demo.",
+    "includeArchived": "Include archived",
     "navigate": {
         "backlog": "Go to Backlog",
         "board": "Go to Board",

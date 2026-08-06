@@ -79,7 +79,7 @@ export function invalidateBoardWorkspaceSlice(
                 queryKey: [...taskKeys.all, "board", projectId],
             });
             void queryClient.invalidateQueries({
-                queryKey: taskKeys.project(projectId),
+                queryKey: [...taskKeys.all, "project", projectId],
             });
         }
     }

@@ -71,3 +71,18 @@ describe("Command palette navigate + typed create seam", () => {
         expect(source).toMatch(/command:createFeatureWithTitle/);
     });
 });
+
+describe("Command palette include-archived search seam", () => {
+    it("opts into archived Task search via toggle and fetch options", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/includeArchived/);
+        expect(source).toMatch(/command:includeArchived/);
+        expect(source).toMatch(
+            /useProjectTasks\([\s\S]*\{\s*includeArchived\s*\}/
+        );
+        expect(source).toMatch(
+            /resolveCommandPaletteTaskHits\([\s\S]*\{\s*includeArchived\s*\}/
+        );
+    });
+});

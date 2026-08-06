@@ -295,14 +295,17 @@ export const guestTasksProvider: TasksProvider = {
         };
     },
 
-    async fetchProjectTasks(projectId) {
+    async fetchProjectTasks(projectId, options) {
         const sandbox = getGuestSandbox();
         if (!sandbox) {
             throw new Error("No Guest Session");
         }
+        const includeArchived = options?.includeArchived === true;
         return sandbox.tasks
             .filter(
-                (task) => task.projectId === projectId && isActiveTask(task)
+                (task) =>
+                    task.projectId === projectId &&
+                    (includeArchived || isActiveTask(task))
             )
             .map((task) => mapGuestTask(task));
     },

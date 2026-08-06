@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ProjectBoardRecord } from "@/features/boards/model/types";
 
+import { writeLastBoardId } from "@/features/boards/lib/last-board-storage";
 import {
     useBoardMutations,
     useProjectBoards,
@@ -56,6 +57,7 @@ export function BoardSwitcher({
     const current = boards.find((board) => board.id === boardId);
 
     const goToBoard = (next: ProjectBoardRecord) => {
+        writeLastBoardId(projectId, next.id);
         void navigate({
             params: { boardId: next.id, projectId },
             to:

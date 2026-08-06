@@ -40,10 +40,12 @@ Shipped: #170.
 
 Checklist:
 
-- [ ] Persist last `boardId` per `projectId` (`localStorage` via `safe-storage`).
-- [ ] Update on Board visit / switcher.
-- [ ] Switch Project navigates to last Board when known, else first Board (current behavior).
-- [ ] Tests for resolver pure function.
+- [x] Persist last `boardId` per `projectId` (`localStorage` via `safe-storage`).
+- [x] Update on Board visit / switcher.
+- [x] Switch Project navigates to last Board when known, else first Board (current behavior).
+- [x] Tests for resolver pure function.
+
+Shipped: #171.
 
 ---
 
@@ -51,9 +53,11 @@ Checklist:
 
 Checklist:
 
-- [ ] Today [`matchCommandPaletteTasks`](../../src/features/command-palette/model/rules.ts) skips `archivedAt` — add opt-in (toggle or “include archived” query token).
-- [ ] Results still cap 20; navigate opens Task (Board archive dialog semantics unchanged).
-- [ ] i18n + tests.
+- [x] Today [`matchCommandPaletteTasks`](../../src/features/command-palette/model/rules.ts) skips `archivedAt` — add opt-in (toggle or “include archived” query token).
+- [x] Results still cap 20; navigate opens Task (Board archive dialog semantics unchanged).
+- [x] i18n + tests.
+
+Shipped: #171.
 
 ---
 

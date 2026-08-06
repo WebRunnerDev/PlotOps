@@ -1,7 +1,11 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-import { useProjectBoards } from "@/features/boards";
+import {
+    readLastBoardId,
+    resolvePreferredBoardId,
+    useProjectBoards,
+} from "@/features/boards";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { BoardLoading } from "@/widgets/kanban-board/ui/board-loading";
 
@@ -13,13 +17,15 @@ function ProjectIndexRoute() {
     const { projectId } = Route.useParams();
     const { t } = useTranslation("board");
     const { data: boards, error, isLoading } = useProjectBoards(projectId);
-    const firstBoard = boards?.[0];
+    const preferredBoardId = boards
+        ? resolvePreferredBoardId(boards, readLastBoardId(projectId))
+        : undefined;
 
-    if (firstBoard) {
+    if (preferredBoardId) {
         return (
             <Navigate
                 params={{
-                    boardId: firstBoard.id,
+                    boardId: preferredBoardId,
                     projectId,
                 }}
                 replace

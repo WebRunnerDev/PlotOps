@@ -45,6 +45,7 @@ import {
     useProjectTasks,
     useTasksUiStore,
 } from "@/features/tasks";
+import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Command,
     CommandDialog,
@@ -54,6 +55,7 @@ import {
     CommandItem,
     CommandList,
 } from "@/shared/shadcn/ui/command";
+import { Label } from "@/shared/shadcn/ui/label";
 
 const NAVIGATE_SECTIONS: CommandPaletteNavigateSection[] = [
     "board",
@@ -89,9 +91,11 @@ export function CommandPalette() {
         activeSprintId: sprints.find((sprint) => sprint.state === "active")?.id,
         boardSprintScope,
     });
+    const [includeArchived, setIncludeArchived] = useState(false);
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
-        Boolean(projectId)
+        Boolean(projectId),
+        { includeArchived }
     );
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const isOpen = useCommandPaletteStore((state) => state.isOpen);
@@ -144,7 +148,8 @@ export function CommandPalette() {
     const taskHits = resolveCommandPaletteTaskHits(
         routeContext,
         paletteTasks,
-        query
+        query,
+        { includeArchived }
     );
     const showTheme =
         normalizedQuery.length === 0 ||
@@ -303,6 +308,23 @@ export function CommandPalette() {
                     placeholder={t("command:placeholder")}
                     value={query}
                 />
+                {visibility.tasks ? (
+                    <div className="flex items-center gap-2 border-b px-3 py-2">
+                        <Checkbox
+                            checked={includeArchived}
+                            id="command-include-archived"
+                            onCheckedChange={(checked) => {
+                                setIncludeArchived(checked === true);
+                            }}
+                        />
+                        <Label
+                            className="cursor-pointer text-xs font-normal text-muted-foreground"
+                            htmlFor="command-include-archived"
+                        >
+                            {t("command:includeArchived")}
+                        </Label>
+                    </div>
+                ) : null}
                 <CommandList>
                     <CommandEmpty>{t("command:empty")}</CommandEmpty>
                     {showActions ? (
@@ -382,9 +404,14 @@ export function CommandPalette() {
                                     <span className="font-mono text-xs text-muted-foreground">
                                         {task.key}
                                     </span>
-                                    <span className="truncate">
+                                    <span className="min-w-0 truncate">
                                         {task.title}
                                     </span>
+                                    {task.archivedAt ? (
+                                        <span className="shrink-0 text-xs text-muted-foreground">
+                                            {t("command:archivedBadge")}
+                                        </span>
+                                    ) : null}
                                 </CommandItem>
                             ))}
                         </CommandGroup>

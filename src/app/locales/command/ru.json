@@ -1,5 +1,6 @@
 {
     "actions": "Действия",
+    "archivedBadge": "В архиве",
     "columnsLoading": "Загрузка колонок доски…",
     "columnsLoadFailed": "Не удалось загрузить колонки доски",
     "createBugWithTitle": "Создать баг «{{title}}»",
@@ -9,6 +10,7 @@
     "description": "Найдите команду…",
     "empty": "Ничего не найдено.",
     "guestCreateReminder": "Демо-аккаунт — изменения могут быть сброшены на общем демо.",
+    "includeArchived": "Включать архив",
     "navigate": {
         "backlog": "Перейти в бэклог",
         "board": "Перейти на доску",

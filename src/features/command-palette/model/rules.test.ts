@@ -249,6 +249,31 @@ describe("Command Palette rules seam — Task search", () => {
         expect(hits.map((task) => task.id)).toEqual(["t1", "t2"]);
     });
 
+    it("includes archived Tasks when includeArchived is opted in", () => {
+        const hits = matchCommandPaletteTasks(tasks, "login", {
+            includeArchived: true,
+        });
+
+        expect(hits.map((task) => task.id)).toEqual(["t1", "t2", "t3"]);
+    });
+
+    it("still caps archived-inclusive results at 20", () => {
+        const many: CommandPaletteTask[] = Array.from(
+            { length: 25 },
+            (_, index) => ({
+                archivedAt: "2026-01-01T00:00:00Z",
+                boardId: "b1",
+                id: `id-${index}`,
+                key: `TASK-${index}`,
+                title: `Item ${index} alpha`,
+            })
+        );
+
+        expect(
+            matchCommandPaletteTasks(many, "alpha", { includeArchived: true })
+        ).toHaveLength(20);
+    });
+
     it("ranks exact key matches, then title matches, then partial key matches", () => {
         const ranked = matchCommandPaletteTasks(
             [
@@ -313,6 +338,17 @@ describe("Command Palette rules seam — Task search", () => {
                 "login"
             ).map((task) => task.id)
         ).toEqual(["t1", "t2"]);
+    });
+
+    it("passes includeArchived through resolveCommandPaletteTaskHits", () => {
+        expect(
+            resolveCommandPaletteTaskHits(
+                baseContext({ projectId: "project-1" }),
+                tasks,
+                "login",
+                { includeArchived: true }
+            ).map((task) => task.id)
+        ).toEqual(["t1", "t2", "t3"]);
     });
 });
 

@@ -2,7 +2,11 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useProjectBoards } from "@/features/boards";
+import {
+    readLastBoardId,
+    useProjectBoards,
+    writeLastBoardId,
+} from "@/features/boards";
 import { cn } from "@/shared/lib/utils";
 import { buttonVariants } from "@/shared/shadcn/ui/button";
 import { resolveSectionNavBoardId } from "@/widgets/top-bar/model/resolve-section-nav-board-id";
@@ -50,7 +54,7 @@ export function ProjectSectionNav({
     const boardId = resolveSectionNavBoardId({
         boardIdFromRoute,
         boards,
-        rememberedBoardId: readLastBoardId(projectId),
+        rememberedBoardId: readLastBoardId(projectId) ?? undefined,
         status: isPending ? "pending" : isError ? "error" : "success",
     });
     const active = resolveSection(pathname);
@@ -124,32 +128,10 @@ export function ProjectSectionNav({
     );
 }
 
-function lastBoardStorageKey(projectId: string) {
-    return `plotops:lastBoard:${projectId}`;
-}
-
-function readLastBoardId(projectId: string): string | undefined {
-    try {
-        return (
-            sessionStorage.getItem(lastBoardStorageKey(projectId)) ?? undefined
-        );
-    } catch {
-        return undefined;
-    }
-}
-
 function resolveSection(pathname: string): null | ProjectSection {
     if (pathname.includes("/ci-cd")) return "cicd";
     if (pathname.includes("/settings")) return "settings";
     if (pathname.includes("/backlog")) return "backlog";
     if (pathname.includes("/boards/")) return "board";
     return null;
-}
-
-function writeLastBoardId(projectId: string, boardId: string) {
-    try {
-        sessionStorage.setItem(lastBoardStorageKey(projectId), boardId);
-    } catch {
-        // ignore quota / private mode
-    }
 }
