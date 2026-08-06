@@ -1,6 +1,12 @@
 {
     "title": "Teams",
     "subtitle": "Teams you can access. Open a Team to see its Projects.",
+    "homeViewLabel": "Home view",
+    "viewTeams": "Teams",
+    "viewAllProjects": "All projects",
+    "allProjectsSubtitle": "Projects across Teams you can access. Open a Project to continue.",
+    "allProjectsEmptyTitle": "No projects yet",
+    "allProjectsEmptyDescription": "Open a Team and connect a repository to create your first Project.",
     "createTeam": "Create Team",
     "createTeamTitle": "Create Team",
     "createTeamSubtitle": "You can add Projects later. Empty Teams are allowed.",

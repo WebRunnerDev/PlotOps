@@ -90,10 +90,12 @@ Shipped: #173.
 
 Checklist:
 
-- [ ] Home stays Teams-first; add optional “All projects” view or filter listing Projects across Teams user can access.
-- [ ] Read-only list → navigate `/projects/$projectId`.
-- [ ] No new membership model.
-- [ ] Update SPEC Deferred row when shipped.
+- [x] Home stays Teams-first; add optional “All projects” view or filter listing Projects across Teams user can access.
+- [x] Read-only list → navigate `/projects/$projectId`.
+- [x] No new membership model.
+- [x] Update SPEC Deferred row when shipped.
+
+Shipped: #174.
 
 ---
 
