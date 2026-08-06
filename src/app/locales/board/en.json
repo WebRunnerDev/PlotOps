@@ -170,7 +170,11 @@
         "label": "Sort",
         "manual": "Manual",
         "priorityAsc": "Priority ↑",
-        "priorityDesc": "Priority ↓"
+        "priorityDesc": "Priority ↓",
+        "deadlineAsc": "Deadline ↑",
+        "deadlineDesc": "Deadline ↓",
+        "titleAsc": "Title ↑",
+        "titleDesc": "Title ↓"
     },
     "labels": {
         "empty": "No project labels yet. Type a name to create one.",

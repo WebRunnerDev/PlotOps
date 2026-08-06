@@ -5,7 +5,10 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { BoardSortPreference } from "@/features/tasks/lib/sort-tasks-by-board-sort";
+import type {
+    BoardSortField,
+    BoardSortPreference,
+} from "@/features/tasks/lib/sort-tasks-by-board-sort";
 
 import { cn } from "@/shared/lib/utils";
 import {
@@ -22,7 +25,10 @@ type BoardSortControlProperties = {
     value: BoardSortPreference;
 };
 
-type SortRadioValue = "manual" | "priority:asc" | "priority:desc";
+type SortRadioValue =
+    "manual" | `${BoardSortField}:asc` | `${BoardSortField}:desc`;
+
+const FIELD_OPTIONS: BoardSortField[] = ["priority", "deadline", "title"];
 
 export function BoardSortControl({
     onChange,
@@ -62,20 +68,28 @@ export function BoardSortControl({
                         <DropdownMenuRadioItem value="manual">
                             {t("sort.manual")}
                         </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="priority:asc">
-                            <ArrowUpNarrowWide
-                                aria-hidden
-                                className="size-3.5"
-                            />
-                            {t("sort.priorityAsc")}
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="priority:desc">
-                            <ArrowDownWideNarrow
-                                aria-hidden
-                                className="size-3.5"
-                            />
-                            {t("sort.priorityDesc")}
-                        </DropdownMenuRadioItem>
+                        {FIELD_OPTIONS.flatMap((field) => [
+                            <DropdownMenuRadioItem
+                                key={`${field}:asc`}
+                                value={`${field}:asc`}
+                            >
+                                <ArrowUpNarrowWide
+                                    aria-hidden
+                                    className="size-3.5"
+                                />
+                                {t(`sort.${field}Asc`)}
+                            </DropdownMenuRadioItem>,
+                            <DropdownMenuRadioItem
+                                key={`${field}:desc`}
+                                value={`${field}:desc`}
+                            >
+                                <ArrowDownWideNarrow
+                                    aria-hidden
+                                    className="size-3.5"
+                                />
+                                {t(`sort.${field}Desc`)}
+                            </DropdownMenuRadioItem>,
+                        ])}
                     </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -84,37 +98,38 @@ export function BoardSortControl({
 }
 
 function fromRadioValue(value: SortRadioValue): BoardSortPreference {
-    switch (value) {
-        case "manual": {
-            return { field: "manual" };
-        }
-        case "priority:asc": {
-            return { direction: "asc", field: "priority" };
-        }
-        case "priority:desc": {
-            return { direction: "desc", field: "priority" };
-        }
+    if (value === "manual") {
+        return { field: "manual" };
     }
+
+    const { direction, field } = parseFieldDirection(value);
+    return { direction, field };
 }
 
 function labelForValue(
     value: SortRadioValue,
     t: (key: string) => string
 ): string {
-    switch (value) {
-        case "manual": {
-            return t("sort.manual");
-        }
-        case "priority:asc": {
-            return t("sort.priorityAsc");
-        }
-        case "priority:desc": {
-            return t("sort.priorityDesc");
-        }
+    if (value === "manual") {
+        return t("sort.manual");
     }
+
+    const { direction, field } = parseFieldDirection(value);
+    return t(direction === "asc" ? `sort.${field}Asc` : `sort.${field}Desc`);
+}
+
+function parseFieldDirection(value: Exclude<SortRadioValue, "manual">): {
+    direction: "asc" | "desc";
+    field: BoardSortField;
+} {
+    const [field, direction] = value.split(":") as [
+        BoardSortField,
+        "asc" | "desc",
+    ];
+    return { direction, field };
 }
 
 function toRadioValue(sort: BoardSortPreference): SortRadioValue {
     if (sort.field === "manual") return "manual";
-    return `priority:${sort.direction}`;
+    return `${sort.field}:${sort.direction}`;
 }

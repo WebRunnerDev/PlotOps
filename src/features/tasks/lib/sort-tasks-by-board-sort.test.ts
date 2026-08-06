@@ -114,4 +114,125 @@ describe("sortTasksByBoardSort", () => {
             }).map((item) => item.id)
         ).toEqual(["alpha", "beta", "zebra-second", "zebra-first"]);
     });
+
+    it("sorts Deadline ascending (soon → far)", () => {
+        const tasks = [
+            task("far", { deadline: "2026-12-01", title: "Far" }),
+            task("soon", { deadline: "2026-03-01", title: "Soon" }),
+            task("mid", { deadline: "2026-06-15", title: "Mid" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "deadline",
+            }).map((item) => item.id)
+        ).toEqual(["soon", "mid", "far"]);
+    });
+
+    it("sorts Deadline descending (far → soon)", () => {
+        const tasks = [
+            task("soon", { deadline: "2026-03-01", title: "Soon" }),
+            task("far", { deadline: "2026-12-01", title: "Far" }),
+            task("mid", { deadline: "2026-06-15", title: "Mid" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "desc",
+                field: "deadline",
+            }).map((item) => item.id)
+        ).toEqual(["far", "mid", "soon"]);
+    });
+
+    it("places Tasks with no Deadline last for either Deadline direction", () => {
+        const tasks = [
+            task("none-a", { title: "None A" }),
+            task("soon", { deadline: "2026-03-01", title: "Soon" }),
+            task("none-b", { title: "None B" }),
+            task("far", { deadline: "2026-12-01", title: "Far" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "deadline",
+            }).map((item) => item.id)
+        ).toEqual(["soon", "far", "none-a", "none-b"]);
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "desc",
+                field: "deadline",
+            }).map((item) => item.id)
+        ).toEqual(["far", "soon", "none-a", "none-b"]);
+    });
+
+    it("breaks Deadline ties by Title A→Z then Manual order", () => {
+        const tasks = [
+            task("zebra-second", { deadline: "2026-06-01", title: "Zebra" }),
+            task("alpha", { deadline: "2026-06-01", title: "Alpha" }),
+            task("zebra-first", { deadline: "2026-06-01", title: "Zebra" }),
+            task("beta", { deadline: "2026-06-01", title: "Beta" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "deadline",
+            }).map((item) => item.id)
+        ).toEqual(["alpha", "beta", "zebra-second", "zebra-first"]);
+    });
+
+    it("sorts Title ascending (A→Z)", () => {
+        const tasks = [
+            task("c", { title: "Charlie" }),
+            task("a", { title: "Alpha" }),
+            task("b", { title: "Bravo" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "title",
+            }).map((item) => item.id)
+        ).toEqual(["a", "b", "c"]);
+    });
+
+    it("sorts Title descending (Z→A)", () => {
+        const tasks = [
+            task("a", { title: "Alpha" }),
+            task("c", { title: "Charlie" }),
+            task("b", { title: "Bravo" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "desc",
+                field: "title",
+            }).map((item) => item.id)
+        ).toEqual(["c", "b", "a"]);
+    });
+
+    it("breaks Title ties by Manual order", () => {
+        const tasks = [
+            task("second", { title: "Same" }),
+            task("first", { title: "Same" }),
+            task("third", { title: "Same" }),
+        ];
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "asc",
+                field: "title",
+            }).map((item) => item.id)
+        ).toEqual(["second", "first", "third"]);
+
+        expect(
+            sortTasksByBoardSort(tasks, {
+                direction: "desc",
+                field: "title",
+            }).map((item) => item.id)
+        ).toEqual(["second", "first", "third"]);
+    });
 });

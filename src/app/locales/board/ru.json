@@ -170,7 +170,11 @@
         "label": "Сортировка",
         "manual": "Вручную",
         "priorityAsc": "Приоритет ↑",
-        "priorityDesc": "Приоритет ↓"
+        "priorityDesc": "Приоритет ↓",
+        "deadlineAsc": "Дедлайн ↑",
+        "deadlineDesc": "Дедлайн ↓",
+        "titleAsc": "Название ↑",
+        "titleDesc": "Название ↓"
     },
     "labels": {
         "empty": "Меток проекта пока нет. Введите имя, чтобы создать.",

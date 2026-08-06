@@ -26,6 +26,7 @@ export {
 } from "./lib/sort-tasks-by-board-sort";
 export type {
     BoardSortDirection,
+    BoardSortField,
     BoardSortPreference,
 } from "./lib/sort-tasks-by-board-sort";
 export { useBoardSortStore } from "./model/board-sort-store";
