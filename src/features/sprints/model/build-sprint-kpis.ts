@@ -1,4 +1,4 @@
-import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
+import { isTaskEstimate } from "@/features/tasks";
 
 export type SprintKpiEmptyReason = "no_closed_sprints";
 

@@ -1,6 +1,4 @@
-import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
-
-import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
+import { isTaskEstimate, type TaskEstimate } from "@/features/tasks";
 
 export type TaskEstimateSummary = {
     estimatedCount: number;
