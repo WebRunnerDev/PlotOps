@@ -22,3 +22,14 @@ describe("AddProjectDialog name-only seam", () => {
         expect(dialog).not.toMatch(/mutateAsync\(\{\s*repo,/);
     });
 });
+
+describe("AddProjectDialog collaborator suggest seam", () => {
+    it("after GitHub connect with token, opens skippable collaborator suggest step", () => {
+        const dialog = readUi("add-project-dialog.tsx");
+
+        expect(dialog).toMatch(/SuggestCollaboratorsStep/);
+        expect(dialog).toMatch(/suggest-collaborators/);
+        expect(dialog).toMatch(/collaboratorSuggestTitle/);
+        expect(dialog).toMatch(/accessToken/);
+    });
+});

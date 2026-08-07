@@ -48,3 +48,11 @@ export type Project = {
     team_id: string;
     updated_at: string;
 };
+
+/** Collaborator from `GET /repos/{owner}/{repo}/collaborators` (+ optional public email). */
+export type RepoCollaborator = {
+    avatarUrl: string;
+    email: null | string;
+    id: number;
+    login: string;
+};

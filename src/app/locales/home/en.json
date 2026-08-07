@@ -56,5 +56,20 @@
     "removeProjectConfirm": "Remove",
     "removeProjectCancel": "Cancel",
     "removeProjectFailed": "Could not remove project. Only owners can delete a project.",
-    "closeDialog": "Close"
+    "closeDialog": "Close",
+    "collaboratorSuggestTitle": "Invite collaborators",
+    "collaboratorSuggestSubtitle": "Add GitHub collaborators from {{repo}} to this Team",
+    "collaboratorSuggestDescription": "Checked people with an email get a Team invite. People without email cannot be email-invited — share an open link once for the group, or skip.",
+    "collaboratorSuggestLoading": "Loading collaborators from GitHub…",
+    "collaboratorSuggestLoadFailed": "Could not load collaborators. The project was still created — you can invite from Team settings.",
+    "collaboratorSuggestNoEmail": "No email on GitHub",
+    "collaboratorSuggestNoEmailBadge": "No email",
+    "collaboratorSuggestOpenLinkHint": "Some collaborators have no email. Create one open Team link they can all use.",
+    "collaboratorSuggestCopyOpenLink": "Copy open Team link",
+    "collaboratorSuggestOpenLinkCopied": "Open invite link copied",
+    "collaboratorSuggestOpenLinkFailed": "Could not create open invite link",
+    "collaboratorSuggestSkip": "Skip",
+    "collaboratorSuggestInvite": "Invite selected ({{count}})",
+    "collaboratorSuggestInvited": "Sent {{count}} Team invite(s)",
+    "collaboratorSuggestInvitePartialFailed": "{{count}} invite(s) failed"
 }

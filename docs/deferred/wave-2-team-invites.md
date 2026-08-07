@@ -195,9 +195,9 @@ On repo connect, list GH collaborators and offer “Add to Team” → existing 
 
 ### Acceptance
 
-- [ ] Connecting a repo can suggest collaborators without breaking create-project happy path (skippable).
-- [ ] No duplicate members.
-- [ ] SPEC Deferred “GitHub collaborator auto-suggest” cleared.
+- [x] Connecting a repo can suggest collaborators without breaking create-project happy path (skippable).
+- [x] No duplicate members.
+- [x] SPEC Deferred “GitHub collaborator auto-suggest” cleared.
 
 ---
 
@@ -215,4 +215,4 @@ Local verify: `npm run db:reset` / SQL tests. **Do not** remote `db push` / MCP 
 
 - [x] Pull and ship **2.1** first (pure product/RLS).
 - [x] Then **2.2** (ops).
-- [ ] Then **2.3** (composes invites + GH token).
+- [x] Then **2.3** (composes invites + GH token).
