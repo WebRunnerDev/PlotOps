@@ -117,10 +117,12 @@ export type Database = {
           accepted_by: null | string
           claimed_by: null | string
           created_at: string
-          email: string
+          email: null | string
           expires_at: null | string
           id: string
           invited_by: string
+          kind: string
+          redeem_count: number
           role: Database["public"]["Enums"]["project_member_role"]
           status: Database["public"]["Enums"]["project_invite_status"]
           team_id: string
@@ -245,6 +247,14 @@ export type Database = {
         Args: { p_events: Json; p_project_id: string; p_task_id: string }
         Returns: undefined
       }
+      delete_board_column: {
+        Args: {
+          p_board_id: string
+          p_column_id: string
+          p_move_tasks_to?: string
+        }
+        Returns: undefined
+      }
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -253,6 +263,7 @@ export type Database = {
           expires_at: string
           id: string
           is_claimed: boolean
+          kind: string
           role: Database["public"]["Enums"]["project_member_role"]
           status: Database["public"]["Enums"]["project_invite_status"]
           team_id: string
@@ -317,6 +328,10 @@ export type Database = {
         Args: { p_project_id?: string }
         Returns: undefined
       }
+      move_project_label: {
+        Args: { p_label_id: string; p_target_project_id: string }
+        Returns: undefined
+      }
       notification_always_on_kinds: { Args: never; Returns: string[] }
       notification_kind_search_text: {
         Args: { p_kind: string }
@@ -333,6 +348,10 @@ export type Database = {
         Returns: string
       }
       notification_watcher_kinds: { Args: never; Returns: string[] }
+      persist_task_moves: {
+        Args: { p_board_id: string; p_updates: Json }
+        Returns: undefined
+      }
       project_member_role_of: {
         Args: { project_uuid: string }
         Returns: Database["public"]["Enums"]["project_member_role"]
@@ -392,6 +411,10 @@ export type Database = {
           isSetofReturn: false
           to: "teams"
         }
+      }
+      update_task_details: {
+        Args: { p_label_ids?: string[]; p_patch?: Json; p_task_id: string }
+        Returns: undefined
       }
     }
     Tables: {
@@ -1122,10 +1145,12 @@ export type Database = {
           accepted_by?: null | string
           claimed_by?: null | string
           created_at?: string
-          email: string
+          email?: null | string
           expires_at?: null | string
           id?: string
           invited_by: string
+          kind?: string
+          redeem_count?: number
           role: Database["public"]["Enums"]["project_member_role"]
           status?: Database["public"]["Enums"]["project_invite_status"]
           team_id: string
@@ -1166,10 +1191,12 @@ export type Database = {
           accepted_by: null | string
           claimed_by: null | string
           created_at: string
-          email: string
+          email: null | string
           expires_at: null | string
           id: string
           invited_by: string
+          kind: string
+          redeem_count: number
           role: Database["public"]["Enums"]["project_member_role"]
           status: Database["public"]["Enums"]["project_invite_status"]
           team_id: string
@@ -1180,10 +1207,12 @@ export type Database = {
           accepted_by?: null | string
           claimed_by?: null | string
           created_at?: string
-          email?: string
+          email?: null | string
           expires_at?: null | string
           id?: string
           invited_by?: string
+          kind?: string
+          redeem_count?: number
           role?: Database["public"]["Enums"]["project_member_role"]
           status?: Database["public"]["Enums"]["project_invite_status"]
           team_id?: string

@@ -129,7 +129,7 @@ A Role with read-only access to the Team's Projects' Boards, Tasks, and PR statu
 _Avoid_: Stakeholder, Guest (Guest Mode / Guest Session — not a Team Role)
 
 **Invite**:
-A pending offer to join a Team at a chosen Role, addressed to an email. Delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Redeem requires the auth email to match, or the invitee may claim the invite (`claimed_by`) so an Owner/Admin can confirm. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
+A pending offer to join a Team at a chosen Role. **Email** invites are addressed to an email and redeemed when the auth email matches, or the invitee may claim (`claimed_by`) so an Owner/Admin can confirm (ADR 0002/0003). **Open** invites (`kind = open`) have no email binding — any signed-in non-member may redeem until revoke/expire; the invite stays pending and records `redeem_count` (ADR 0019). Both kinds are delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
 _Avoid_: Invitation email (delivery is out-of-band), magic link (Auth magic links are a different mechanism), Project invite
 
 ### Awareness

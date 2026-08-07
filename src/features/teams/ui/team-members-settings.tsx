@@ -103,10 +103,16 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
             (invite) => invite.status === "pending"
         );
         if (!query) return pending;
-        return pending.filter((invite) =>
-            invite.email.toLowerCase().includes(query)
-        );
-    }, [invites, query]);
+        return pending.filter((invite) => {
+            const email = invite.email?.toLowerCase() ?? "";
+            const openLabel = t("members.openInviteLabel").toLowerCase();
+            return (
+                email.includes(query) ||
+                (invite.kind === "open" && openLabel.includes(query)) ||
+                invite.role.toLowerCase().includes(query)
+            );
+        });
+    }, [invites, query, t]);
 
     const pendingInvitesTotal = useMemo(
         () =>
@@ -175,6 +181,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
         try {
             const invite = await createInvite.mutateAsync({
                 email: trimmed,
+                kind: "email",
                 role,
                 ttl,
             });
@@ -183,6 +190,23 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
             setLastInviteToken(invite.token);
             await copyInviteLink(invite.token);
             toast.success(t("members.inviteCreated"));
+        } catch {
+            toast.error(t("members.inviteFailed"));
+        }
+    };
+
+    const onCreateOpenInvite = async () => {
+        if (!canCreateInvite) return;
+        try {
+            const invite = await createInvite.mutateAsync({
+                kind: "open",
+                role,
+                ttl,
+            });
+            if (!invite) throw new Error("Invite create returned empty");
+            setLastInviteToken(invite.token);
+            await copyInviteLink(invite.token);
+            toast.success(t("members.openInviteCreated"));
         } catch {
             toast.error(t("members.inviteFailed"));
         }
@@ -489,7 +513,11 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                         >
                                             <div className="min-w-0 flex-1">
                                                 <p className="truncate text-ui">
-                                                    {invite.email}
+                                                    {invite.kind === "open"
+                                                        ? t(
+                                                              "members.openInviteLabel"
+                                                          )
+                                                        : (invite.email ?? "")}
                                                 </p>
                                                 <p className="text-meta text-muted-foreground">
                                                     {invite.role}
@@ -498,6 +526,17 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                                         invite.expires_at,
                                                         t
                                                     )}
+                                                    {invite.kind === "open" ? (
+                                                        <span>
+                                                            {" · "}
+                                                            {t(
+                                                                "members.openRedeemCount",
+                                                                {
+                                                                    count: invite.redeem_count,
+                                                                }
+                                                            )}
+                                                        </span>
+                                                    ) : undefined}
                                                     {invite.claimed_profile ? (
                                                         <span className="text-amber-500">
                                                             {" · "}
@@ -533,6 +572,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                                     {t("members.copyLink")}
                                                 </Button>
                                                 {invite.claimed_by &&
+                                                invite.kind === "email" &&
                                                 actor &&
                                                 canConfirmClaimedInvite(
                                                     actor,
@@ -718,6 +758,19 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                         <Link2 data-icon="inline-start" />
                                     )}
                                     {t("members.createInvite")}
+                                </Button>
+                                <Button
+                                    disabled={createInvite.isPending}
+                                    onClick={() => void onCreateOpenInvite()}
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {createInvite.isPending ? (
+                                        <Spinner className="size-4" />
+                                    ) : (
+                                        <Link2 data-icon="inline-start" />
+                                    )}
+                                    {t("members.createOpenInvite")}
                                 </Button>
                                 {lastInviteToken ? (
                                     <Button

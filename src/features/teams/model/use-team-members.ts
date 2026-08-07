@@ -16,6 +16,7 @@ import {
     fetchTeamMembers,
     removeTeamMember,
     revokeTeamInvite,
+    type TeamInviteKind,
     transferTeamOwnership,
     updateTeamMemberRole,
 } from "@/features/teams/api/team-members-api";
@@ -55,14 +56,20 @@ export function useCreateTeamInvite(teamId: string) {
 
     return useMutation({
         mutationFn: async (input: {
-            email: string;
+            email?: string;
+            kind?: TeamInviteKind;
             role: ProjectMemberRole;
             ttl: InviteTtlValue;
         }) => {
             if (!user?.id) throw new Error("Not authenticated");
+            const kind = input.kind ?? "email";
+            if (kind === "email" && !input.email?.trim()) {
+                throw new Error("Email is required");
+            }
             const { data, error } = await createTeamInvite({
                 email: input.email,
                 invitedBy: user.id,
+                kind,
                 role: input.role,
                 teamId,
                 ttl: input.ttl,

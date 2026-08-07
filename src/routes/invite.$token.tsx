@@ -49,7 +49,11 @@ function InviteAcceptPage() {
                     setLoadError(true);
                     setInvite(null);
                 } else {
-                    setInvite(row as InvitePreview);
+                    const preview = row as InvitePreview;
+                    setInvite({
+                        ...preview,
+                        kind: preview.kind === "open" ? "open" : "email",
+                    });
                     setLoadError(false);
                 }
             })
@@ -92,7 +96,13 @@ function InviteAcceptPage() {
             const { data, error: previewError } = await getInviteByToken(token);
             if (!previewError) {
                 const row = Array.isArray(data) ? data[0] : data;
-                if (row) setInvite(row as InvitePreview);
+                if (row) {
+                    const preview = row as InvitePreview;
+                    setInvite({
+                        ...preview,
+                        kind: preview.kind === "open" ? "open" : "email",
+                    });
+                }
             }
         } catch {
             toast.error(t("invite.claimFailed"));
@@ -179,11 +189,13 @@ function InviteAcceptPage() {
 
             <div className="border border-border p-4 text-ui">
                 <p>
-                    {invite.email_matches
-                        ? t("invite.forYourEmail", {
-                              email: user.email ?? t("members.unknownUser"),
-                          })
-                        : t("invite.forOtherEmail")}
+                    {invite.kind === "open"
+                        ? t("invite.openDescription")
+                        : invite.email_matches
+                          ? t("invite.forYourEmail", {
+                                email: user.email ?? t("members.unknownUser"),
+                            })
+                          : t("invite.forOtherEmail")}
                 </p>
                 {invite.expires_at ? (
                     <p className="mt-1 text-muted-foreground">
@@ -213,7 +225,7 @@ function InviteAcceptPage() {
                             email: user.email ?? t("members.unknownUser"),
                         })}
                     </p>
-                    {invite.email_matches ? (
+                    {invite.kind === "open" || invite.email_matches ? (
                         <Button
                             disabled={isActing}
                             onClick={() => void onAccept()}

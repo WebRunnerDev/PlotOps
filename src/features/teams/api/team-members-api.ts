@@ -17,15 +17,19 @@ export type ProfileSnippet = {
     username: null | string;
 };
 
+export type TeamInviteKind = "email" | "open";
+
 export type TeamInviteRow = {
     accepted_by: null | string;
     claimed_by: null | string;
     claimed_profile: null | ProfileSnippet;
     created_at: string;
-    email: string;
+    email: null | string;
     expires_at: null | string;
     id: string;
     invited_by: string;
+    kind: TeamInviteKind;
+    redeem_count: number;
     role: ProjectMemberRole;
     status: TeamInviteStatus;
     team_id: string;
@@ -71,6 +75,8 @@ const INVITE_SELECT = `
   id,
   team_id,
   email,
+  kind,
+  redeem_count,
   role,
   token,
   status,
@@ -97,18 +103,24 @@ export async function confirmTeamInvite(inviteId: string, userId: string) {
 }
 
 export async function createTeamInvite(input: {
-    email: string;
+    email?: string;
     invitedBy: string;
+    kind?: TeamInviteKind;
     role: ProjectMemberRole;
     teamId: string;
     ttl: InviteTtlValue;
 }) {
+    const kind = input.kind ?? "email";
     const result = await supabase
         .from("team_invites")
         .insert({
-            email: input.email.trim().toLowerCase(),
+            email:
+                kind === "open"
+                    ? null
+                    : (input.email ?? "").trim().toLowerCase(),
             expires_at: expiresAtFromTtl(input.ttl),
             invited_by: input.invitedBy,
+            kind,
             role: input.role,
             team_id: input.teamId,
         })
@@ -272,6 +284,7 @@ function isMemberRole(value: unknown): value is ProjectMemberRole {
 }
 
 function mapInvite(row: Record<string, unknown>): TeamInviteRow {
+    const kind = row.kind === "open" ? "open" : "email";
     return {
         accepted_by: (row.accepted_by as null | string) ?? null,
         claimed_by: (row.claimed_by as null | string) ?? null,
@@ -279,10 +292,12 @@ function mapInvite(row: Record<string, unknown>): TeamInviteRow {
             row.claimed_profile as null | ProfileSnippet | ProfileSnippet[]
         ),
         created_at: row.created_at as string,
-        email: row.email as string,
+        email: (row.email as null | string) ?? null,
         expires_at: (row.expires_at as null | string) ?? null,
         id: row.id as string,
         invited_by: row.invited_by as string,
+        kind,
+        redeem_count: Number(row.redeem_count ?? 0),
         role: row.role as ProjectMemberRole,
         status: row.status as TeamInviteStatus,
         team_id: row.team_id as string,
