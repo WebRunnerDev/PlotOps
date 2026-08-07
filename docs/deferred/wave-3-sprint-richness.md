@@ -79,9 +79,9 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 ### Acceptance
 
-- [ ] Estimate editable and visible where planned.
-- [ ] Reports use points when present without breaking count view.
-- [ ] SPEC Deferred row cleared.
+- [x] Estimate editable and visible where planned.
+- [x] Reports use points when present without breaking count view.
+- [x] SPEC Deferred row cleared.
 
 **Do not** start burndown until estimate semantics locked.
 

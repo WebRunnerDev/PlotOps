@@ -13,6 +13,7 @@ import {
     updateGuestSandbox,
 } from "@/features/guest-mode";
 import { sortTasksByPosition } from "@/features/tasks/api/board-mappers";
+import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
@@ -33,6 +34,15 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     }
     if (patch.priority !== undefined) {
         task.priority = (patch.priority as null | TaskPriority) ?? undefined;
+    }
+    if (patch.estimate !== undefined) {
+        if (patch.estimate === null) {
+            task.estimate = undefined;
+        } else if (isTaskEstimate(patch.estimate)) {
+            task.estimate = patch.estimate;
+        } else {
+            throw new Error("Estimate must be a Fibonacci story point");
+        }
     }
     if (patch.deadline !== undefined) {
         task.deadline = patch.deadline ?? undefined;
@@ -115,6 +125,7 @@ function mapGuestTask(task: GuestTask): Task {
         createdAt: task.createdAt,
         deadline: task.deadline,
         description: task.description,
+        estimate: task.estimate,
         id: task.id,
         key: task.key,
         labelIds: task.labelIds,

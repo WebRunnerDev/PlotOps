@@ -12,6 +12,7 @@ export type TaskActivitySnapshot = {
     board?: null | { id: string; name: string };
     branchName: null | string;
     deadline: null | string;
+    estimate: null | number;
     labelNames: string[];
     pr: null | { number: number; state: string };
     priority: null | TaskPriority;
@@ -26,21 +27,22 @@ export function applyDetailsToSnapshot(
         assignee?: null | Task["assignee"];
         branchName?: null | string;
         deadline?: null | string;
+        estimate?: null | number;
         labelNames?: string[];
         pr?: null | TaskPullRequest;
         priority?: null | TaskPriority;
         title?: string;
         type?: TaskType;
-    },
+    }
 ): TaskActivitySnapshot {
     return {
         ...base,
         assignee:
             details.assignee === undefined
                 ? base.assignee
-                : (details.assignee
+                : details.assignee
                   ? { id: details.assignee.id, name: details.assignee.name }
-                  : null),
+                  : null,
         branchName:
             details.branchName === undefined
                 ? base.branchName
@@ -49,6 +51,10 @@ export function applyDetailsToSnapshot(
             details.deadline === undefined
                 ? base.deadline
                 : (details.deadline ?? null),
+        estimate:
+            details.estimate === undefined
+                ? base.estimate
+                : (details.estimate ?? null),
         labelNames:
             details.labelNames === undefined
                 ? base.labelNames
@@ -56,9 +62,9 @@ export function applyDetailsToSnapshot(
         pr:
             details.pr === undefined
                 ? base.pr
-                : (details.pr
+                : details.pr
                   ? { number: details.pr.number, state: details.pr.state }
-                  : null),
+                  : null,
         priority:
             details.priority === undefined
                 ? base.priority
@@ -71,7 +77,7 @@ export function applyDetailsToSnapshot(
 /** Diff two snapshots into a batched `changes` list (empty if nothing logged). */
 export function buildTaskActivityChanges(
     before: TaskActivitySnapshot,
-    after: TaskActivitySnapshot,
+    after: TaskActivitySnapshot
 ): TaskActivityChange[] {
     const changes: TaskActivityChange[] = [];
 
@@ -86,6 +92,9 @@ export function buildTaskActivityChanges(
     }
     if (before.deadline !== after.deadline) {
         pushChange(changes, "deadline", before.deadline, after.deadline);
+    }
+    if (before.estimate !== after.estimate) {
+        pushChange(changes, "estimate", before.estimate, after.estimate);
     }
     if (before.status.id !== after.status.id) {
         pushChange(changes, "status", before.status, after.status);
@@ -102,11 +111,7 @@ export function buildTaskActivityChanges(
     if (!samePr(before.pr, after.pr)) {
         pushChange(changes, "pr", before.pr, after.pr);
     }
-    if (
-        before.board &&
-        after.board &&
-        before.board.id !== after.board.id
-    ) {
+    if (before.board && after.board && before.board.id !== after.board.id) {
         pushChange(changes, "board", before.board, after.board);
     }
 
@@ -120,7 +125,7 @@ export function toTaskActivitySnapshot(
         board?: null | { id: string; name: string };
         labelNames?: string[];
         statusName?: string;
-    },
+    }
 ): TaskActivitySnapshot {
     return {
         assignee: task.assignee
@@ -129,10 +134,9 @@ export function toTaskActivitySnapshot(
         board: options?.board,
         branchName: task.branchName ?? null,
         deadline: task.deadline ?? null,
+        estimate: task.estimate ?? null,
         labelNames: options?.labelNames ?? [],
-        pr: task.pr
-            ? { number: task.pr.number, state: task.pr.state }
-            : null,
+        pr: task.pr ? { number: task.pr.number, state: task.pr.state } : null,
         priority: task.priority ?? null,
         status: {
             id: task.status,
@@ -147,7 +151,7 @@ function pushChange(
     changes: TaskActivityChange[],
     field: TaskActivityField,
     from: unknown,
-    to: unknown,
+    to: unknown
 ) {
     changes.push({ field, from, to });
 }
@@ -161,14 +165,14 @@ function sameLabels(a: string[], b: string[]) {
 
 function samePerson(
     a: TaskActivitySnapshot["assignee"],
-    b: TaskActivitySnapshot["assignee"],
+    b: TaskActivitySnapshot["assignee"]
 ) {
     return (a?.id ?? null) === (b?.id ?? null);
 }
 
-function samePr(
-    a: TaskActivitySnapshot["pr"],
-    b: TaskActivitySnapshot["pr"],
-) {
-    return (a?.number ?? null) === (b?.number ?? null) && (a?.state ?? null) === (b?.state ?? null);
+function samePr(a: TaskActivitySnapshot["pr"], b: TaskActivitySnapshot["pr"]) {
+    return (
+        (a?.number ?? null) === (b?.number ?? null) &&
+        (a?.state ?? null) === (b?.state ?? null)
+    );
 }

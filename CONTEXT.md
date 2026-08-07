@@ -53,7 +53,7 @@ A glob-like rule on a Board that describes which task head-branch names fit that
 _Avoid_: branch filter, branch whitelist (implies hard deny)
 
 **Task**:
-A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
+A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
 
 **Priority**:
@@ -75,8 +75,8 @@ _Avoid_: Board label, tag (prefer Label)
 ### Planning
 
 **Sprint**:
-A timeboxed container of Tasks on one Board. Owns lifecycle and calendar bounds; does not define columns or workflow — those stay on the Board. A Task is in at most one Sprint at a time (or in the Backlog when unassigned). A Board may have many Sprints over time, including several Drafts at once, but at most one Sprint in the Active state at once. Commitment and completion for a Sprint are counted by Task, not by estimate points (points / KPI metrics are out of scope for now). Lifecycle states: Draft (planning, not started; dates optional) → Active (in progress; start and end dates required; at most one per Board) → Closed (completed with a Sprint report) or Canceled (aborted without a full completion report).
-_Avoid_: Iteration, cycle, milestone (different concepts), Team sprint (Sprints are Board-scoped, not Team- or Project-scoped), story points (deferred)
+A timeboxed container of Tasks on one Board. Owns lifecycle and calendar bounds; does not define columns or workflow — those stay on the Board. A Task is in at most one Sprint at a time (or in the Backlog when unassigned). A Board may have many Sprints over time, including several Drafts at once, but at most one Sprint in the Active state at once. Commitment and completion are always counted by Task. When Tasks carry Fibonacci Estimates, Active badges and Close reports also show points sum and unestimated count (points primary, task count secondary — ADR 0020). Lifecycle states: Draft (planning, not started; dates optional) → Active (in progress; start and end dates required; at most one per Board) → Closed (completed with a Sprint report) or Canceled (aborted without a full completion report).
+_Avoid_: Iteration, cycle, milestone (different concepts), Team sprint (Sprints are Board-scoped, not Team- or Project-scoped)
 
 **Backlog**:
 The set of Tasks on a Board that are not assigned to any Sprint (`sprint_id` absent). Not a Board column and not a Sprint state.
@@ -91,8 +91,12 @@ Aborting a Draft or Active Sprint without Sprint completion. All of its Tasks re
 _Avoid_: Close, delete (delete may still apply to empty Drafts as a UI shortcut; cancel is the domain action that clears membership)
 
 **Commitment**:
-The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed). Later adds/removes do not rewrite Commitment; they are Scope changes.
-_Avoid_: Sprint backlog (the live set of Tasks currently in the Sprint), estimate, points
+The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed). Later adds/removes do not rewrite Commitment; they are Scope changes. Point totals displayed on reports use each Task's current Estimate (not a frozen points snapshot — burndown may add time-series later).
+_Avoid_: Sprint backlog (the live set of Tasks currently in the Sprint)
+
+**Estimate**:
+Optional Fibonacci story points on a Task (`1 | 2 | 3 | 5 | 8 | 13 | 21`). Absent/null means unestimated. Editable by Manager+ only. Used for Sprint size badges and Close report points alongside task counts.
+_Avoid_: Ideal hours, t-shirt sizes, free-form integers outside the Fibonacci scale
 
 **Scope change**:
 An audited add or remove of a Task from an Active Sprint after Commitment. Recorded as a Sprint event for the report; does not alter the original Commitment snapshot.
@@ -118,10 +122,10 @@ _Avoid_: Admin, Project owner
 A Role that manages Members, Invites, Team settings, creating Projects, and Git repo connection on Projects — but cannot delete a Project, delete the Team, transfer ownership, or grant/revoke the Admin Role (Owner only). May invite and assign Manager, Contributor, or Viewer. Also has Manager-level Board/Task powers on every Project in the Team.
 
 **Manager**:
-A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
+A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, Estimates (Fibonacci story points), and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
 
 **Contributor**:
-A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
+A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, Estimates, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
 _Avoid_: Developer, Member (too vague), Executor
 
 **Viewer**:

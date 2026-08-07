@@ -6,6 +6,8 @@ export type ProjectCapabilities = {
     canDeleteProject: boolean;
     canDeleteTasks: boolean;
     canDeleteTeam: boolean;
+    /** Manager+ — Fibonacci story points / estimates (wave 3.3). */
+    canEditEstimate: boolean;
     canEditTasks: boolean;
     canGrantAdmin: boolean;
     canManageBoard: boolean;
@@ -36,6 +38,7 @@ export function capabilitiesForRole(
         canDeleteProject: isOwner,
         canDeleteTasks: canManageBoard,
         canDeleteTeam: isOwner,
+        canEditEstimate: canManageBoard,
         canEditTasks,
         canGrantAdmin: isOwner,
         canManageBoard,

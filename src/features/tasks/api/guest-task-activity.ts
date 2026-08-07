@@ -13,6 +13,7 @@ const ACTIVITY_FIELDS = new Set<TaskActivityField>([
     "board",
     "branch",
     "deadline",
+    "estimate",
     "labels",
     "pr",
     "priority",

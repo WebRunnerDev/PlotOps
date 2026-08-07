@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
+import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
     TaskActivityChange,
@@ -83,6 +84,8 @@ type TaskDetailsUpdate = {
     deadline?: null | string;
     /** Pass `null` to clear the description. */
     description?: null | string;
+    /** Pass `null` to clear estimate (unestimated). Manager+ only. */
+    estimate?: null | TaskEstimate;
     /** Pass `null` (or `[]`) to clear all labels. */
     labelIds?: null | string[];
     /** Pass `null` to clear a linked pull request. */
@@ -97,6 +100,7 @@ type TaskDetailsUpdate = {
         | "branchName"
         | "deadline"
         | "description"
+        | "estimate"
         | "id"
         | "labelIds"
         | "pr"
@@ -193,6 +197,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             if (details.priority !== undefined) {
                 patch.priority = details.priority ?? null;
+            }
+            if (details.estimate !== undefined) {
+                patch.estimate = details.estimate ?? null;
             }
             if (details.deadline !== undefined) {
                 patch.deadline = details.deadline ?? null;
@@ -784,6 +791,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     assignee: details.assignee,
                     branchName: details.branchName,
                     deadline: details.deadline,
+                    estimate: details.estimate,
                     labelNames:
                         details.labelIds === undefined
                             ? undefined
@@ -813,6 +821,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         branchName: nextBranch,
                         deadline: nextDeadline,
                         description: nextDescription,
+                        estimate: nextEstimate,
                         labelIds: nextLabelIds,
                         pr: nextPr,
                         priority: nextPriority,
@@ -838,6 +847,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
                             : {
                                   description: nextDescription ?? undefined,
                               }),
+                        ...(nextEstimate === undefined
+                            ? {}
+                            : { estimate: nextEstimate ?? undefined }),
                         ...(nextLabelIds === undefined
                             ? {}
                             : {

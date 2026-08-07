@@ -1040,6 +1040,7 @@ export type Database = {
           created_at?: string
           deadline?: null | string
           description?: null | string
+          estimate?: null | number
           id?: string
           position?: number
           pr_number?: null | number
@@ -1108,6 +1109,7 @@ export type Database = {
           created_at: string
           deadline: null | string
           description: null | string
+          estimate: null | number
           id: string
           position: number
           pr_number: null | number
@@ -1132,6 +1134,7 @@ export type Database = {
           created_at?: string
           deadline?: null | string
           description?: null | string
+          estimate?: null | number
           id?: string
           position?: number
           pr_number?: null | number

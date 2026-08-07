@@ -166,6 +166,21 @@ export function SprintTaskTable({
                 header: t("sprints.columnTitle"),
             },
             {
+                cell: ({ row }) =>
+                    row.original.estimate === undefined ? (
+                        <span className="text-meta text-muted-foreground">
+                            —
+                        </span>
+                    ) : (
+                        <span className="text-code tabular-nums">
+                            {row.original.estimate}
+                        </span>
+                    ),
+                header: t("sprints.columnEstimate"),
+                id: "estimate",
+                size: 64,
+            },
+            {
                 cell: ({ row }) => {
                     const taskLabels = (row.original.labelIds ?? [])
                         .map((id) => labelsById.get(id))

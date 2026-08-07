@@ -136,6 +136,8 @@ export type GuestTask = {
     /** ISO calendar date `YYYY-MM-DD`. */
     deadline?: string;
     description?: string;
+    /** Fibonacci story points; absent = unestimated. */
+    estimate?: 1 | 2 | 3 | 5 | 8 | 13 | 21;
     id: string;
     key: string;
     labelIds?: string[];

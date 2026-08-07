@@ -18,6 +18,7 @@ function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
         created_at: "2026-07-15T12:00:00.000Z",
         deadline: null,
         description: null,
+        estimate: null,
         id: "task-1",
         position: 0,
         pr_number: null,
@@ -43,5 +44,12 @@ describe("mapDatabaseTask", () => {
         );
 
         expect(task.createdAt).toBe("2026-08-01T09:30:00.000Z");
+    });
+
+    it("maps Fibonacci estimate and omits null as unestimated", () => {
+        expect(mapDatabaseTask(databaseTask({ estimate: 5 })).estimate).toBe(5);
+        expect(
+            mapDatabaseTask(databaseTask({ estimate: null })).estimate
+        ).toBeUndefined();
     });
 });

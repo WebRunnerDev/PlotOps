@@ -1,3 +1,5 @@
+import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
+
 export type Task = {
     archivedAt?: string;
     archivedBy?: TaskAssignee;
@@ -10,6 +12,11 @@ export type Task = {
     /** ISO calendar date `YYYY-MM-DD`. */
     deadline?: string;
     description?: string;
+    /**
+     * Optional Fibonacci story points (1,2,3,5,8,13,21).
+     * Absent / undefined = unestimated.
+     */
+    estimate?: TaskEstimate;
     id: string;
     /** Human-readable key, e.g. TASK-1, BUG-5, FEAT-12. Set by DB trigger on insert. */
     key: string;
@@ -47,6 +54,7 @@ export type TaskActivityField =
     | "board"
     | "branch"
     | "deadline"
+    | "estimate"
     | "labels"
     | "pr"
     | "priority"

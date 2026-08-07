@@ -55,6 +55,7 @@ describe("guest tasks provider happy path", () => {
 
         await provider.updateTaskDetails(created.id, {
             description: "Edited in sandbox",
+            estimate: 5,
             priority: "high",
             title: "Guest happy-path task (edited)",
         });
@@ -82,6 +83,7 @@ describe("guest tasks provider happy path", () => {
         expect(task!.title).toBe("Guest happy-path task (edited)");
         expect(task!.description).toBe("Edited in sandbox");
         expect(task!.priority).toBe("high");
+        expect(task!.estimate).toBe(5);
         expect(task!.status).toBe(columnIds[1]);
 
         const boardCache = await resolveAgain(true).fetchBoardTasks(boardId);

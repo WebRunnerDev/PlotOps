@@ -30,6 +30,7 @@ import { useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
+import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
 import {
     useBoardSprints,
     useSprintEvents,
@@ -586,9 +587,10 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                             {t("sprints.backlog")}
                                         </h2>
                                         <p className="text-meta text-muted-foreground">
-                                            {t("sprints.taskCount", {
-                                                count: backlogTasks.length,
-                                            })}
+                                            {formatSprintSizeLabel(
+                                                t,
+                                                backlogTasks
+                                            )}
                                         </p>
                                     </header>
                                     <SprintTaskTable
@@ -633,6 +635,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                                       key={sprint.id}
                                                       projectId={projectId}
                                                       sprint={sprint}
+                                                      tasks={tasks}
                                                   />
                                               ))
                                             : null}
@@ -687,16 +690,39 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     );
 }
 
+function formatSprintSizeLabel(
+    t: (key: string, options?: Record<string, unknown>) => string,
+    tasks: Task[]
+) {
+    const summary = summarizeTaskEstimates(tasks);
+    if (summary.estimatedCount === 0) {
+        return t("sprints.taskCount", { count: summary.taskCount });
+    }
+    if (summary.unestimatedCount === 0) {
+        return t("sprints.sizeWithPoints", {
+            count: summary.taskCount,
+            points: summary.pointsSum,
+        });
+    }
+    return t("sprints.sizeWithPointsPartial", {
+        count: summary.taskCount,
+        points: summary.pointsSum,
+        unestimated: summary.unestimatedCount,
+    });
+}
+
 function PastSprintSection({
     boardId,
     canManage,
     projectId,
     sprint,
+    tasks,
 }: {
     boardId: string;
     canManage: boolean;
     projectId: string;
     sprint: Sprint;
+    tasks: Task[];
 }) {
     const { t } = useTranslation("board");
     const { removePast } = useSprintMutations(projectId, boardId);
@@ -771,7 +797,9 @@ function PastSprintSection({
                     </Button>
                 ) : null}
             </header>
-            {reportOpen ? <SprintReportPanel sprint={sprint} /> : null}
+            {reportOpen ? (
+                <SprintReportPanel sprint={sprint} tasks={tasks} />
+            ) : null}
 
             <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
                 <AlertDialogContent size="sm">
@@ -814,7 +842,13 @@ function sortBySprintPosition(tasks: Task[]) {
     });
 }
 
-function SprintReportPanel({ sprint }: { sprint: Sprint }) {
+function SprintReportPanel({
+    sprint,
+    tasks,
+}: {
+    sprint: Sprint;
+    tasks: Task[];
+}) {
     const { t } = useTranslation("board");
     const { data: events = [], isLoading } = useSprintEvents(sprint.id);
     const committed = sprint.committedTaskIds.length;
@@ -833,6 +867,16 @@ function SprintReportPanel({ sprint }: { sprint: Sprint }) {
         );
     }, [events]);
 
+    const estimateLines = useMemo(() => {
+        const byId = new Map(tasks.map((task) => [task.id, task]));
+        const resolve = (ids: string[]) =>
+            ids.map((id) => byId.get(id) ?? { estimate: undefined });
+        return {
+            committed: summarizeTaskEstimates(resolve(sprint.committedTaskIds)),
+            completed: summarizeTaskEstimates(resolve(sprint.completedTaskIds)),
+        };
+    }, [sprint.committedTaskIds, sprint.completedTaskIds, tasks]);
+
     return (
         <div className="space-y-2 border-t border-border px-3 py-3">
             {isCanceled ? (
@@ -840,9 +884,36 @@ function SprintReportPanel({ sprint }: { sprint: Sprint }) {
                     {t("sprints.canceledSummary")}
                 </p>
             ) : (
-                <p className="text-ui">
-                    {t("sprints.reportSummary", { committed, completed })}
-                </p>
+                <>
+                    {estimateLines.committed.estimatedCount > 0 ||
+                    estimateLines.completed.estimatedCount > 0 ? (
+                        <p className="text-ui">
+                            {t("sprints.reportPoints", {
+                                committedPoints:
+                                    estimateLines.committed.pointsSum,
+                                completedPoints:
+                                    estimateLines.completed.pointsSum,
+                            })}
+                        </p>
+                    ) : null}
+                    <p
+                        className={
+                            estimateLines.committed.estimatedCount > 0 ||
+                            estimateLines.completed.estimatedCount > 0
+                                ? "text-ui text-muted-foreground"
+                                : "text-ui"
+                        }
+                    >
+                        {t("sprints.reportSummary", { committed, completed })}
+                    </p>
+                    {estimateLines.committed.unestimatedCount > 0 ? (
+                        <p className="text-ui text-muted-foreground">
+                            {t("sprints.reportUnestimated", {
+                                count: estimateLines.committed.unestimatedCount,
+                            })}
+                        </p>
+                    ) : null}
+                </>
             )}
             <p className="text-ui text-muted-foreground">
                 {t("sprints.reportScope", {
@@ -918,7 +989,7 @@ function SprintSection({
                             {t(`sprints.state.${sprint.state}`)}
                         </span>
                         <span className="text-meta text-muted-foreground">
-                            {t("sprints.taskCount", { count: tasks.length })}
+                            {formatSprintSizeLabel(t, tasks)}
                         </span>
                     </div>
                     {sprint.goal ? (

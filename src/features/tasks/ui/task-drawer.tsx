@@ -32,6 +32,7 @@ import {
     parseIsoDate,
     toIsoDate,
 } from "@/features/tasks/lib/format-deadline";
+import { TASK_ESTIMATE_VALUES } from "@/features/tasks/lib/task-estimate";
 import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
@@ -93,6 +94,7 @@ import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
 
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
 const PRIORITY_NONE = "__none__";
+const ESTIMATE_NONE = "__none__";
 const FIELD_LABEL_CLASS = "text-meta text-muted-foreground";
 const FIELD_CONTROL_CLASS = "w-full font-mono text-code";
 
@@ -133,8 +135,13 @@ export function TaskDrawer({
     const { data: boards = [] } = useProjectBoards(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
-    const { canDeleteTasks, canEditTasks, canManageBoard, isSettled } =
-        useProjectAccess(projectId);
+    const {
+        canDeleteTasks,
+        canEditEstimate,
+        canEditTasks,
+        canManageBoard,
+        isSettled,
+    } = useProjectAccess(projectId);
     const people = useProjectPeople(projectId);
     const mentionCandidates = useMemo<MentionCandidate[]>(
         () => people.map((person) => ({ id: person.id, label: person.name })),
@@ -154,6 +161,7 @@ export function TaskDrawer({
         boardTask ?? archivedTasks.find((item) => item.id === selectedTaskId);
     const isArchived = Boolean(task?.archivedAt);
     const canEdit = isSettled && canEditTasks && !isArchived;
+    const canSetEstimate = isSettled && canEditEstimate && !isArchived;
     const canDelete = isSettled && canDeleteTasks;
     const allowCreateLabels = isSettled && canManageBoard;
 
@@ -725,6 +733,85 @@ export function TaskDrawer({
                                                             >
                                                                 {t(
                                                                     `priority.${priority}`
+                                                                )}
+                                                            </SelectItem>
+                                                        )
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-estimate"
+                                            >
+                                                {t("fields.estimate")}
+                                            </Label>
+                                            <Select
+                                                disabled={!canSetEstimate}
+                                                onValueChange={(value) => {
+                                                    if (
+                                                        typeof value !==
+                                                        "string"
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    updateTaskDetails(task.id, {
+                                                        estimate:
+                                                            value ===
+                                                            ESTIMATE_NONE
+                                                                ? null
+                                                                : (Number(
+                                                                      value
+                                                                  ) as (typeof TASK_ESTIMATE_VALUES)[number]),
+                                                    });
+                                                }}
+                                                value={
+                                                    task.estimate === undefined
+                                                        ? ESTIMATE_NONE
+                                                        : String(task.estimate)
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    className={
+                                                        FIELD_CONTROL_CLASS
+                                                    }
+                                                    id="task-estimate"
+                                                >
+                                                    <span>
+                                                        {task.estimate ===
+                                                        undefined
+                                                            ? t("estimate.none")
+                                                            : t(
+                                                                  "estimate.points",
+                                                                  {
+                                                                      count: task.estimate,
+                                                                  }
+                                                              )}
+                                                    </span>
+                                                </SelectTrigger>
+                                                <SelectContent
+                                                    alignItemWithTrigger={false}
+                                                >
+                                                    <SelectItem
+                                                        value={ESTIMATE_NONE}
+                                                    >
+                                                        {t("estimate.none")}
+                                                    </SelectItem>
+                                                    {TASK_ESTIMATE_VALUES.map(
+                                                        (points) => (
+                                                            <SelectItem
+                                                                key={points}
+                                                                value={String(
+                                                                    points
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "estimate.points",
+                                                                    {
+                                                                        count: points,
+                                                                    }
                                                                 )}
                                                             </SelectItem>
                                                         )

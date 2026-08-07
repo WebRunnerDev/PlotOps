@@ -350,6 +350,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-07",
             description:
                 "<p>Primary secondary button on sign-in that starts a Guest Session.</p>",
+            estimate: 5,
             id: T01,
             key: "FEAT-1",
             labelIds: [LABEL_FRONTEND],
@@ -376,6 +377,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-06",
             description:
                 "<p>Route guest sessions through the canned builds provider — no GitHub token.</p>",
+            estimate: 8,
             id: T02,
             key: "FEAT-2",
             labelIds: [LABEL_CI, LABEL_BACKEND],
@@ -402,6 +404,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-05",
             description:
                 "<p>Populate the Guest Mode seed with a Team, two Projects, and about 15 colourful tasks.</p>",
+            estimate: 3,
             id: T03,
             key: "TASK-3",
             labelIds: [LABEL_BACKEND],
@@ -479,6 +482,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-10",
             description:
                 "<p>Show a Demo chip so reviewers know they are in Guest Mode.</p>",
+            estimate: 2,
             id: T06,
             key: "TASK-6",
             position: 0,

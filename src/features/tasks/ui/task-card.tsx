@@ -84,6 +84,16 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
                         <span className="truncate text-meta text-muted-foreground">
                             {task.key}
                         </span>
+                        {task.estimate === undefined ? undefined : (
+                            <span
+                                className="shrink-0 text-meta font-medium text-foreground/80"
+                                title={t("estimate.points", {
+                                    count: task.estimate,
+                                })}
+                            >
+                                {task.estimate}
+                            </span>
+                        )}
                         {task.priority ? (
                             <span
                                 className={cn(

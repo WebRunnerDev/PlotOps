@@ -1,0 +1,3 @@
+# Fibonacci Estimates on Tasks (points + count)
+
+Tasks may carry an optional Fibonacci Estimate (`1|2|3|5|8|13|21`; null = unestimated). Manager+ may set/clear via drawer (DB-enforced on `update_task_details` and `BEFORE UPDATE OF estimate`). Contributor still edits other Task fields. Sprint Active badges and Close reports show points sum (and unestimated count) as primary size signal while keeping task-count secondary — Commitment/completion membership stays task-id based. Burndown/velocity remain deferred until time-series snapshots land.

@@ -1,5 +1,6 @@
 import type { BoardColumn } from "@/features/boards";
 import type { ProjectLabel } from "@/features/labels";
+import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
     TaskPriority,
@@ -9,6 +10,7 @@ import type {
 import type { Database } from "@/shared/api/database.types";
 
 import { fetchBoardColumnIds } from "@/features/boards";
+import { parseTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
@@ -58,6 +60,7 @@ const TASK_SELECT = `
   description,
   status,
   priority,
+  estimate,
   deadline,
   branch_name,
   assignee_id,
@@ -104,6 +107,8 @@ export type TaskRecordPatch = {
     branch_name?: null | string;
     deadline?: null | string;
     description?: null | string;
+    /** Pass `null` to clear estimate (unestimated). Manager+ only. */
+    estimate?: null | TaskEstimate;
     position?: number;
     pr_number?: null | number;
     pr_state?: null | string;
@@ -377,10 +382,17 @@ export async function updateTaskDetails(
     patch: TaskRecordPatch,
     labelIds?: null | string[]
 ) {
-    const nextPatch =
+    const withTitle =
         patch.title === undefined
             ? patch
             : { ...patch, title: normalizeTaskTitle(patch.title) };
+    const nextPatch =
+        withTitle.estimate === undefined
+            ? withTitle
+            : {
+                  ...withTitle,
+                  estimate: parseTaskEstimate(withTitle.estimate),
+              };
 
     // RPC from migration 20260731182502 — regenerate types after local DB includes it.
     const { error } = await supabase.rpc(
@@ -397,10 +409,17 @@ export async function updateTaskDetails(
 
 /** Row patch only — prefer `updateTaskDetails` when labels may change too. */
 export async function updateTaskRecord(taskId: string, patch: TaskRecordPatch) {
-    const nextPatch =
+    const withTitle =
         patch.title === undefined
             ? patch
             : { ...patch, title: normalizeTaskTitle(patch.title) };
+    const nextPatch =
+        withTitle.estimate === undefined
+            ? withTitle
+            : {
+                  ...withTitle,
+                  estimate: parseTaskEstimate(withTitle.estimate),
+              };
 
     const { error } = await supabase
         .from("tasks")

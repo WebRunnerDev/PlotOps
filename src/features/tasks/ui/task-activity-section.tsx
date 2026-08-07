@@ -217,6 +217,13 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
                 to: displayScalar(change.to, none),
             });
         }
+        case "estimate": {
+            return t("activity.change.fromTo", {
+                field: fieldLabel,
+                from: displayScalar(change.from, none),
+                to: displayScalar(change.to, none),
+            });
+        }
         case "labels": {
             const fromList = asStringList(change.from);
             const toList = asStringList(change.to);

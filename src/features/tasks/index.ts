@@ -29,6 +29,8 @@ export type {
     BoardSortField,
     BoardSortPreference,
 } from "./lib/sort-tasks-by-board-sort";
+export { TASK_ESTIMATE_VALUES } from "./lib/task-estimate";
+export type { TaskEstimate } from "./lib/task-estimate";
 export { useBoardSortStore } from "./model/board-sort-store";
 export {
     columnAccentClass,

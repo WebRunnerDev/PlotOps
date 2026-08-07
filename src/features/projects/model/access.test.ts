@@ -8,6 +8,7 @@ import {
 const BOARD_AFFORDANCES = [
     "canCreateTasks",
     "canDeleteTasks",
+    "canEditEstimate",
     "canEditTasks",
     "canManageBoard",
 ] as const;
@@ -23,10 +24,11 @@ describe("Project Role access seam — Board affordances", () => {
         expect(caps.canManageBoard).toBe(false);
     });
 
-    it("Contributor can edit Tasks but not create/delete or manage Board columns", () => {
+    it("Contributor can edit Tasks but not estimates, create/delete, or manage Board", () => {
         const caps = capabilitiesForRole("contributor");
 
         expect(caps.canEditTasks).toBe(true);
+        expect(caps.canEditEstimate).toBe(false);
         expect(caps.canCreateTasks).toBe(false);
         expect(caps.canDeleteTasks).toBe(false);
         expect(caps.canManageBoard).toBe(false);
@@ -37,11 +39,12 @@ describe("Project Role access seam — Board affordances", () => {
         "admin",
         "manager",
     ] as const satisfies ProjectAccessRole[])(
-        "%s can manage Board columns and create/delete Tasks",
+        "%s can manage Board columns, estimates, and create/delete Tasks",
         (role) => {
             const caps = capabilitiesForRole(role);
 
             expect(caps.canManageBoard).toBe(true);
+            expect(caps.canEditEstimate).toBe(true);
             expect(caps.canCreateTasks).toBe(true);
             expect(caps.canDeleteTasks).toBe(true);
             expect(caps.canEditTasks).toBe(true);
