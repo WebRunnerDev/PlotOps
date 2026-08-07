@@ -121,9 +121,9 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 ### Acceptance
 
-- [ ] At least one velocity + one quality metric shipped with i18n.
-- [ ] Does not imply corporate SSO/reporting export.
-- [ ] SPEC Deferred row cleared.
+- [x] At least one velocity + one quality metric shipped with i18n.
+- [x] Does not imply corporate SSO/reporting export.
+- [x] SPEC Deferred row cleared.
 
 ---
 
@@ -132,4 +132,4 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 - [x] Ship **3.1** before treating Close as accurate.
 - [x] Ship **3.2** and/or **3.3** next (independent after 3.1).
 - [x] **3.4** only after points (or alternate) locked.
-- [ ] **3.5** last.
+- [x] **3.5** last.

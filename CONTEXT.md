@@ -91,12 +91,20 @@ Aborting a Draft or Active Sprint without Sprint completion. All of its Tasks re
 _Avoid_: Close, delete (delete may still apply to empty Drafts as a UI shortcut; cancel is the domain action that clears membership)
 
 **Commitment**:
-The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed). Later adds/removes do not rewrite Commitment; they are Scope changes. Point totals displayed on reports use each Task's current Estimate (not a frozen points snapshot). Burndown reconstructs daily remaining from Commitment ± Scope events; Active remaining treats Done-column membership as a proxy until formal Sprint completion at Close.
+The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed) and Board Insights commitment accuracy. Later adds/removes do not rewrite Commitment; they are Scope changes. Point totals displayed on reports use each Task's current Estimate (not a frozen points snapshot). Burndown reconstructs daily remaining from Commitment ± Scope events; Active remaining treats Done-column membership as a proxy until formal Sprint completion at Close.
 _Avoid_: Sprint backlog (the live set of Tasks currently in the Sprint)
 
 **Estimate**:
-Optional Fibonacci story points on a Task (`1 | 2 | 3 | 5 | 8 | 13 | 21`). Absent/null means unestimated. Editable by Manager+ only. Used for Sprint size badges and Close report points alongside task counts.
+Optional Fibonacci story points on a Task (`1 | 2 | 3 | 5 | 8 | 13 | 21`). Absent/null means unestimated. Editable by Manager+ only. Used for Sprint size badges, Close report points, burndown, and Board Insights KPIs alongside task counts.
 _Avoid_: Ideal hours, t-shirt sizes, free-form integers outside the Fibonacci scale
+
+**Velocity**:
+Average completed work across the last N Closed Sprints on a Board (default N = 5). Prefers points when any Estimate exists in the window; otherwise task count. Shown on Backlog Insights for all viewers — not a corporate reporting export.
+_Avoid_: Throughput (broader), lead time
+
+**Commitment accuracy**:
+Completed ÷ committed work over the same Closed-Sprint window as Velocity (macro ratio). Quality companion to Velocity; null when the window's Commitment total is zero.
+_Avoid_: Predictability index, SPI (corporate terms)
 
 **Scope change**:
 An audited add or remove of a Task from an Active Sprint after Commitment. Recorded as a Sprint event for the report; does not alter the original Commitment snapshot.

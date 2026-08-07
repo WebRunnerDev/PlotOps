@@ -39,6 +39,7 @@ import {
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
 import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
+import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
 import {
     CancelSprintDialog,
     CloseSprintDialog,
@@ -682,6 +683,8 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             </DragOverlay>
                         </DndContext>
                     )}
+
+                    <SprintInsightsPanel sprints={sprints} tasks={tasks} />
 
                     <TaskDrawer
                         boardId={boardId}
