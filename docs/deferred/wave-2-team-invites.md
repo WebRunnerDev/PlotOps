@@ -216,3 +216,69 @@ Local verify: `npm run db:reset` / SQL tests. **Do not** remote `db push` / MCP 
 - [x] Pull and ship **2.1** first (pure product/RLS).
 - [x] Then **2.2** (ops).
 - [x] Then **2.3** (composes invites + GH token).
+
+---
+
+## Manual test runbook
+
+No new `VITE_*` keys. Resend secrets belong only on Edge Function `send-team-invite` (never SPA publishable env). Full secrets table + remote CLI: [`docs/SUPABASE.md`](../SUPABASE.md) → `send-team-invite`.
+
+### Secrets (2.2)
+
+| Secret              | Required for send? | Notes                                                                 |
+| ------------------- | ------------------ | --------------------------------------------------------------------- |
+| `RESEND_API_KEY`    | Yes                | Resend API key. Unset → EF `200` + `{ skipped: true }` (local-safe). |
+| `INVITE_FROM_EMAIL` | Yes                | Verified Resend from, e.g. `PlotOps <invites@yourdomain.com>`.        |
+| `INVITE_APP_ORIGIN` | Optional           | Canonical app origin for invite URLs; else request `Origin` from SPA. |
+
+**Remote (PlotOps):**
+
+```bash
+npx supabase secrets set \
+  RESEND_API_KEY="re_..." \
+  INVITE_FROM_EMAIL="PlotOps <invites@yourdomain.com>" \
+  INVITE_APP_ORIGIN="https://your-app.example" \
+  --project-ref ijcelrdcygzyzhcijkhe
+
+npx supabase functions deploy send-team-invite --project-ref ijcelrdcygzyzhcijkhe
+```
+
+**Local:** `npm run db:start` serves the function. For real mail, put the same vars in `supabase/functions/.env` (gitignored) and restart the stack; omit them to exercise the no-op path. Root `.env` stays `VITE_SUPABASE_*` (+ optional local GH OAuth vars) — do not put Resend there.
+
+### Prep
+
+1. Local: `npm run db:reset` (or wait for migrate CI on remote).
+2. `npm run dev`; two accounts (Owner/Admin + invitee), ideally two browsers/profiles.
+3. Open **Team → Settings → Members/Invites**.
+
+### 2.1 Open invite
+
+- [ ] Owner creates open link (role + TTL) and copies URL.
+- [ ] Signed-in non-member opens `/invite/<token>` → single **Accept** → joins Team; invite stays `pending`; `redeem_count` increments.
+- [ ] Second non-member redeems same link (multi-use until TTL/revoke).
+- [ ] Revoked or expired token fails safely.
+- [ ] Email-kind Accept / Claim / Confirm unchanged.
+- [ ] Admin cannot create open (or email) invite with role Admin (Owner-only).
+
+### 2.2 Email + Resend
+
+- [ ] **Without secrets:** create email invite → copy-link works; EF skips send (logs URL).
+- [ ] **With secrets:** create email invite → Resend delivers mail with `/invite/$token`.
+- [ ] Open invite does **not** invoke `send-team-invite`.
+- [ ] EF failure → toast “email may be delayed” (or equivalent); copy-link still available.
+- [ ] Remote: function deployed (migrate CI does **not** deploy Edge Functions).
+
+### 2.3 GitHub collaborator suggest
+
+- [ ] Sign in with GitHub (`provider_token` present).
+- [ ] Team → Add project → connect a repo that has collaborators.
+- [ ] After create, suggest step appears (skippable).
+- [ ] Checked + email → bulk email invites (+ EF send if 2.2 configured).
+- [ ] No email → “no email” badge; one shared open-link copy / skip — no username-as-email invent.
+- [ ] Existing members and pending email invites are deduped.
+- [ ] Guest / no token → step hidden.
+- [ ] **Skip** leaves create-project happy path intact.
+
+### Optional automated seam
+
+Extend/run [`supabase/tests/team_invites_test.sql`](../../supabase/tests/team_invites_test.sql) after `db:reset` for RPC/RLS coverage beyond UI.
