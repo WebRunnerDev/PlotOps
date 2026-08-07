@@ -29,6 +29,8 @@ import {
 import { useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
+import { todayIsoDate } from "@/features/sprints/api/sprints-api";
+import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
 import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
 import {
@@ -36,6 +38,7 @@ import {
     useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
+import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
 import {
     CancelSprintDialog,
     CloseSprintDialog,
@@ -561,6 +564,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                 {planningSprints.map((sprint) => (
                                     <SprintSection
                                         activeSprint={active}
+                                        allTasks={tasks}
                                         boardId={boardId}
                                         canManage={canManage}
                                         columns={columns}
@@ -632,6 +636,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                                   <PastSprintSection
                                                       boardId={boardId}
                                                       canManage={canManage}
+                                                      columns={columns}
                                                       key={sprint.id}
                                                       projectId={projectId}
                                                       sprint={sprint}
@@ -714,12 +719,14 @@ function formatSprintSizeLabel(
 function PastSprintSection({
     boardId,
     canManage,
+    columns,
     projectId,
     sprint,
     tasks,
 }: {
     boardId: string;
     canManage: boolean;
+    columns: Array<{ id: string; isDone: boolean }>;
     projectId: string;
     sprint: Sprint;
     tasks: Task[];
@@ -798,7 +805,11 @@ function PastSprintSection({
                 ) : null}
             </header>
             {reportOpen ? (
-                <SprintReportPanel sprint={sprint} tasks={tasks} />
+                <SprintReportPanel
+                    columns={columns}
+                    sprint={sprint}
+                    tasks={tasks}
+                />
             ) : null}
 
             <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
@@ -843,9 +854,11 @@ function sortBySprintPosition(tasks: Task[]) {
 }
 
 function SprintReportPanel({
+    columns,
     sprint,
     tasks,
 }: {
+    columns: Array<{ id: string; isDone: boolean }>;
     sprint: Sprint;
     tasks: Task[];
 }) {
@@ -877,8 +890,36 @@ function SprintReportPanel({
         };
     }, [sprint.committedTaskIds, sprint.completedTaskIds, tasks]);
 
+    const burndownSeries = useMemo(() => {
+        const doneColumnIds = new Set(
+            columns.filter((column) => column.isDone).map((column) => column.id)
+        );
+        const closedOn = sprint.closedAt
+            ? todayIsoDate(new Date(sprint.closedAt))
+            : undefined;
+        return buildSprintBurndownSeries({
+            asOfDate:
+                sprint.state === "closed"
+                    ? (sprint.endsOn ?? closedOn ?? todayIsoDate())
+                    : todayIsoDate(),
+            closedOn,
+            committedTaskIds: sprint.committedTaskIds,
+            completedTaskIds: sprint.completedTaskIds,
+            doneColumnIds,
+            endsOn: sprint.endsOn,
+            events,
+            startsOn: sprint.startsOn,
+            state: sprint.state,
+            tasks: tasks.map((task) => ({
+                estimate: task.estimate,
+                id: task.id,
+                status: task.status,
+            })),
+        });
+    }, [columns, events, sprint, tasks]);
+
     return (
-        <div className="space-y-2 border-t border-border px-3 py-3">
+        <div className="space-y-3 border-t border-border px-3 py-3">
             {isCanceled ? (
                 <p className="text-ui text-muted-foreground">
                     {t("sprints.canceledSummary")}
@@ -913,6 +954,14 @@ function SprintReportPanel({
                             })}
                         </p>
                     ) : null}
+                    {sprint.state === "active" || sprint.state === "closed" ? (
+                        <SprintBurndownChart
+                            mode={
+                                sprint.state === "active" ? "active" : "closed"
+                            }
+                            series={burndownSeries}
+                        />
+                    ) : null}
                 </>
             )}
             <p className="text-ui text-muted-foreground">
@@ -946,6 +995,7 @@ function SprintReportPanel({
 
 function SprintSection({
     activeSprint,
+    allTasks,
     boardId,
     canManage,
     columns,
@@ -960,6 +1010,7 @@ function SprintSection({
     tasks,
 }: {
     activeSprint?: Sprint;
+    allTasks: Task[];
     boardId: string;
     canManage: boolean;
     columns: Array<{ id: string; isDone: boolean }>;
@@ -978,6 +1029,7 @@ function SprintSection({
     const [startOpen, setStartOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
 
     return (
         <section className="rounded-md border border-border bg-card">
@@ -1003,6 +1055,18 @@ function SprintSection({
                         </p>
                     ) : null}
                 </div>
+                {sprint.state === "active" ? (
+                    <Button
+                        onClick={() => setReportOpen((value) => !value)}
+                        size="xs"
+                        type="button"
+                        variant="outline"
+                    >
+                        {reportOpen
+                            ? t("sprints.hideReport")
+                            : t("sprints.showReport")}
+                    </Button>
+                ) : null}
                 {canManage && sprint.state === "draft" ? (
                     <Button
                         disabled={Boolean(activeSprint)}
@@ -1079,6 +1143,14 @@ function SprintSection({
                     </DropdownMenu>
                 ) : null}
             </header>
+
+            {reportOpen && sprint.state === "active" ? (
+                <SprintReportPanel
+                    columns={columns}
+                    sprint={sprint}
+                    tasks={allTasks}
+                />
+            ) : null}
 
             <SprintTaskTable
                 canManage={canManage}

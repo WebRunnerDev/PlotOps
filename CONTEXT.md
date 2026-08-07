@@ -91,7 +91,7 @@ Aborting a Draft or Active Sprint without Sprint completion. All of its Tasks re
 _Avoid_: Close, delete (delete may still apply to empty Drafts as a UI shortcut; cancel is the domain action that clears membership)
 
 **Commitment**:
-The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed). Later adds/removes do not rewrite Commitment; they are Scope changes. Point totals displayed on reports use each Task's current Estimate (not a frozen points snapshot — burndown may add time-series later).
+The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed). Later adds/removes do not rewrite Commitment; they are Scope changes. Point totals displayed on reports use each Task's current Estimate (not a frozen points snapshot). Burndown reconstructs daily remaining from Commitment ± Scope events; Active remaining treats Done-column membership as a proxy until formal Sprint completion at Close.
 _Avoid_: Sprint backlog (the live set of Tasks currently in the Sprint)
 
 **Estimate**:

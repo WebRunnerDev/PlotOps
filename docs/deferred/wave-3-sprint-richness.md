@@ -101,9 +101,9 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 ### Acceptance
 
-- [ ] Active/closed Sprint shows readable burndown from commitment.
-- [ ] Empty/unestimated state explained.
-- [ ] SPEC Deferred row cleared.
+- [x] Active/closed Sprint shows readable burndown from commitment.
+- [x] Empty/unestimated state explained.
+- [x] SPEC Deferred row cleared.
 
 ---
 
@@ -131,5 +131,5 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 - [x] Ship **3.1** before treating Close as accurate.
 - [x] Ship **3.2** and/or **3.3** next (independent after 3.1).
-- [ ] **3.4** only after points (or alternate) locked.
+- [x] **3.4** only after points (or alternate) locked.
 - [ ] **3.5** last.
