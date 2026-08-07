@@ -178,6 +178,41 @@ CI / `supabase db push` must **never** run seed against production. Product Gues
 3. **App tables:** SQL Editor → paste and run all of [`supabase/seed-guest-dataset.sql`](../supabase/seed-guest-dataset.sql). It is idempotent on the fixed team id (skips if already present). Do **not** paste `seed.sql` auth inserts into remote unless you know you need them — prefer Dashboard/Admin for `auth.users`.
 4. **Reseed:** delete the demo team (`b0000000-0000-4000-8000-000000000001`) or wipe only guest rows, then re-run `seed-guest-dataset.sql`. Never `db reset` remote.
 
+## Edge Functions
+
+Functions live under `supabase/functions/`. They are **not** deployed by the migration CI pipeline — deploy manually when needed.
+
+| Function           | JWT                        | Purpose                                                                                                |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `github-webhook`   | Off (`verify_jwt = false`) | GitHub App PR merge → Task column sync — see [`docs/github-webhook-setup.md`](github-webhook-setup.md) |
+| `send-team-invite` | On (`verify_jwt = true`)   | Best-effort Resend email for **email-kind** Team invites (copy-link remains primary)                   |
+
+### `send-team-invite` (Resend)
+
+After `createTeamInvite` (email kind), the client invokes this function with the caller’s JWT. Open invites (`kind = open`) never call it.
+
+**Secrets** (Dashboard → Edge Functions → Secrets, or CLI — never `VITE_*`):
+
+| Secret              | Required | Notes                                                                                                                                                |
+| ------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`    | For send | [Resend](https://resend.com) API key. If unset, function returns `200` + `{ skipped: true }` and logs the invite URL (safe for local/dev).           |
+| `INVITE_FROM_EMAIL` | For send | Verified Resend from address, e.g. `PlotOps <invites@yourdomain.com>`.                                                                               |
+| `INVITE_APP_ORIGIN` | Optional | Canonical app origin for invite links (`https://app.example.com`). If unset, uses request `Origin` / `x-invite-origin` / body `origin` from the SPA. |
+
+`SUPABASE_URL` and `SUPABASE_ANON_KEY` are provided automatically to Edge Functions.
+
+```bash
+# Set secrets (PlotOps remote)
+npx supabase secrets set RESEND_API_KEY="re_..." INVITE_FROM_EMAIL="PlotOps <invites@yourdomain.com>" INVITE_APP_ORIGIN="https://your-app.example" --project-ref ijcelrdcygzyzhcijkhe
+
+# Deploy
+npx supabase functions deploy send-team-invite --project-ref ijcelrdcygzyzhcijkhe
+```
+
+**Local:** `npm run db:start` serves functions; omit Resend secrets to exercise the no-op path (invite still created + copy-link in UI). Confirm `verify_jwt = true` under `[functions.send-team-invite]` in `supabase/config.toml`.
+
+**Auth:** caller must be able to `SELECT` the invite under RLS (`can_manage_team_members`). Only `kind = email` + `status = pending` are sent.
+
 ## Migrations
 
 - `supabase/migrations/20260710120000_create_projects.sql` — `projects` table, RLS, GitHub fields (idempotent)

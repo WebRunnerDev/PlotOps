@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import type {
     InviteTtlValue,
@@ -16,6 +18,7 @@ import {
     fetchTeamMembers,
     removeTeamMember,
     revokeTeamInvite,
+    sendTeamInviteEmail,
     type TeamInviteKind,
     transferTeamOwnership,
     updateTeamMemberRole,
@@ -53,6 +56,7 @@ export function useConfirmTeamInvite(teamId: string) {
 export function useCreateTeamInvite(teamId: string) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { t } = useTranslation("board");
 
     return useMutation({
         mutationFn: async (input: {
@@ -75,6 +79,19 @@ export function useCreateTeamInvite(teamId: string) {
                 ttl: input.ttl,
             });
             if (error) throw error;
+            if (kind === "email" && data?.id) {
+                const { data: sendData, error: sendError } =
+                    await sendTeamInviteEmail(data.id);
+                const sendFailed =
+                    Boolean(sendError) ||
+                    (sendData !== null &&
+                        typeof sendData === "object" &&
+                        "error" in sendData &&
+                        Boolean((sendData as { error?: unknown }).error));
+                if (sendFailed) {
+                    toast.message(t("members.inviteEmailDelayed"));
+                }
+            }
             return data;
         },
         onSuccess: () => {

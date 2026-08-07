@@ -28,7 +28,7 @@ Email-addressed Team invites + copy-link + redeem Accept/Claim/Confirm:
 | SQL tests      | [`supabase/tests/team_invites_test.sql`](../../supabase/tests/team_invites_test.sql), [`team_schema_test.sql`](../../supabase/tests/team_schema_test.sql)                     |
 | API / hooks    | [`src/features/teams/api/team-members-api.ts`](../../src/features/teams/api/team-members-api.ts), [`use-team-members.ts`](../../src/features/teams/model/use-team-members.ts) |
 | UI             | [`team-members-settings.tsx`](../../src/features/teams/ui/team-members-settings.tsx), [`invite.$token.tsx`](../../src/routes/invite.$token.tsx)                               |
-| Edge Functions | Only `github-webhook` — no mail path                                                                                                                                          |
+| Edge Functions | `github-webhook` + `send-team-invite` (wave 2.2)                                                                                                                              |
 | Domain         | ADR 0002 (copy-link), 0003 (redeem/confirm), 0004 (Owner-only admin), 0017 (Team boundary)                                                                                    |
 
 ```mermaid
@@ -149,10 +149,10 @@ Custom Auth SMTP is available on Free for Auth emails (confirm/reset) and is opt
 
 ### Acceptance
 
-- [ ] Configured env: creating email invite triggers outbound mail.
-- [ ] Copy-link path unchanged without secret/SMTP.
-- [ ] No publishable key misuse.
-- [ ] SPEC Deferred “Custom SMTP / real invite emails” cleared.
+- [x] Configured env: creating email invite triggers outbound mail.
+- [x] Copy-link path unchanged without secret/SMTP.
+- [x] No publishable key misuse.
+- [x] SPEC Deferred “Custom SMTP / real invite emails” cleared.
 
 ### Out of scope
 
@@ -214,5 +214,5 @@ Local verify: `npm run db:reset` / SQL tests. **Do not** remote `db push` / MCP 
 ### Wave checklist
 
 - [x] Pull and ship **2.1** first (pure product/RLS).
-- [ ] Then **2.2** (ops).
+- [x] Then **2.2** (ops).
 - [ ] Then **2.3** (composes invites + GH token).

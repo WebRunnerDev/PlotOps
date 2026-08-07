@@ -241,6 +241,22 @@ export async function revokeTeamInvite(inviteId: string) {
     };
 }
 
+/** Best-effort outbound email for an email-kind pending invite (Edge Function). */
+export async function sendTeamInviteEmail(inviteId: string) {
+    const origin =
+        globalThis.window === undefined
+            ? undefined
+            : globalThis.location.origin;
+
+    return supabase.functions.invoke("send-team-invite", {
+        body: {
+            inviteId,
+            ...(origin ? { origin } : {}),
+        },
+        headers: origin ? { "x-invite-origin": origin } : undefined,
+    });
+}
+
 export async function transferTeamOwnership(
     teamId: string,
     newOwnerId: string
