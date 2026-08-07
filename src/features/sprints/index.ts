@@ -18,6 +18,7 @@ export {
 } from "./api/sprints-api";
 export type { SprintsProvider } from "./api/sprints-provider";
 export { supabaseSprintsProvider } from "./api/supabase-sprints-provider";
+export { filterLiveBoardTasks } from "./model/filter-live-board-tasks";
 export { invalidateSprintBoardCaches } from "./model/invalidate-sprint-board";
 export { sprintKeys } from "./model/query-keys";
 export { resolveCreateTaskSprintId } from "./model/resolve-create-task-sprint-id";

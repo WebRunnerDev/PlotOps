@@ -32,6 +32,7 @@ import { useProject } from "@/features/projects/model/use-projects";
 import { todayIsoDate } from "@/features/sprints/api/sprints-api";
 import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
+import { listSprintCompletionTasks } from "@/features/sprints/model/list-sprint-completion-tasks";
 import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
 import {
     useBoardSprints,
@@ -809,7 +810,10 @@ function PastSprintSection({
             </header>
             {reportOpen ? (
                 <SprintReportPanel
+                    boardId={boardId}
+                    canManage={canManage}
                     columns={columns}
+                    projectId={projectId}
                     sprint={sprint}
                     tasks={tasks}
                 />
@@ -857,15 +861,22 @@ function sortBySprintPosition(tasks: Task[]) {
 }
 
 function SprintReportPanel({
+    boardId,
+    canManage,
     columns,
+    projectId,
     sprint,
     tasks,
 }: {
+    boardId: string;
+    canManage: boolean;
     columns: Array<{ id: string; isDone: boolean }>;
+    projectId: string;
     sprint: Sprint;
     tasks: Task[];
 }) {
     const { t } = useTranslation("board");
+    const { moveTasks } = useSprintMutations(projectId, boardId);
     const { data: events = [], isLoading } = useSprintEvents(sprint.id);
     const committed = sprint.committedTaskIds.length;
     const completed = sprint.completedTaskIds.length;
@@ -921,6 +932,16 @@ function SprintReportPanel({
         });
     }, [columns, events, sprint, tasks]);
 
+    const completedRows = useMemo(
+        () =>
+            listSprintCompletionTasks({
+                completedTaskIds: sprint.completedTaskIds,
+                sprintId: sprint.id,
+                tasks,
+            }),
+        [sprint.completedTaskIds, sprint.id, tasks]
+    );
+
     return (
         <div className="space-y-3 border-t border-border px-3 py-3">
             {isCanceled ? (
@@ -956,6 +977,87 @@ function SprintReportPanel({
                                 count: estimateLines.committed.unestimatedCount,
                             })}
                         </p>
+                    ) : null}
+                    {sprint.state === "closed" && completedRows.length > 0 ? (
+                        <div className="space-y-1">
+                            <p className="text-ui text-muted-foreground">
+                                {t("sprints.reportCompletedList")}
+                            </p>
+                            <ul className="max-h-40 space-y-1 overflow-y-auto text-code">
+                                {completedRows.map((row) => (
+                                    <li
+                                        className="flex min-w-0 items-center gap-2"
+                                        key={row.id}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate">
+                                            {row.key ? (
+                                                <>
+                                                    <span className="text-foreground">
+                                                        {row.key}
+                                                    </span>
+                                                    {row.title
+                                                        ? ` · ${row.title}`
+                                                        : ""}
+                                                    {row.stillMember
+                                                        ? ""
+                                                        : ` · ${t("sprints.reportCompletedMoved")}`}
+                                                </>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    {t(
+                                                        "sprints.reportCompletedMissing",
+                                                        {
+                                                            id: row.id.slice(
+                                                                0,
+                                                                8
+                                                            ),
+                                                        }
+                                                    )}
+                                                </span>
+                                            )}
+                                        </span>
+                                        {canManage && row.stillMember ? (
+                                            <Button
+                                                className="shrink-0"
+                                                disabled={moveTasks.isPending}
+                                                onClick={() => {
+                                                    void moveTasks
+                                                        .mutateAsync([
+                                                            {
+                                                                sprintId: null,
+                                                                sprintPosition:
+                                                                    null,
+                                                                taskId: row.id,
+                                                            },
+                                                        ])
+                                                        .then(() => {
+                                                            toast.success(
+                                                                t(
+                                                                    "sprints.reportMoveToBacklogDone"
+                                                                )
+                                                            );
+                                                        })
+                                                        .catch(() => {
+                                                            toast.error(
+                                                                t(
+                                                                    "sprints.reportMoveToBacklogFailed"
+                                                                )
+                                                            );
+                                                        });
+                                                }}
+                                                size="xs"
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                {t(
+                                                    "sprints.reportMoveToBacklog"
+                                                )}
+                                            </Button>
+                                        ) : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     ) : null}
                     {sprint.state === "active" || sprint.state === "closed" ? (
                         <SprintBurndownChart
@@ -1149,7 +1251,10 @@ function SprintSection({
 
             {reportOpen && sprint.state === "active" ? (
                 <SprintReportPanel
+                    boardId={boardId}
+                    canManage={canManage}
                     columns={columns}
+                    projectId={projectId}
                     sprint={sprint}
                     tasks={allTasks}
                 />

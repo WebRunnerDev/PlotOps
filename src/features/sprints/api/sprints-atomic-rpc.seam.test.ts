@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -29,6 +29,36 @@ describe("sprints API atomic close carryover seam", () => {
         expect(source).not.toMatch(/p_carryover_sprint_id/);
         expect(source).not.toMatch(
             /for\s*\([^)]*of\s*Object\.(entries|keys)\([^)]*carryover/i
+        );
+    });
+});
+
+describe("close_sprint retains completed membership seam", () => {
+    it("latest close_sprint migration keeps completed Tasks on the Closed Sprint", () => {
+        const migrationsDirectory = path.resolve(
+            dirname,
+            "../../../../supabase/migrations"
+        );
+        const files = readdirSync(migrationsDirectory)
+            .filter((name) =>
+                name.endsWith("_closed_sprint_retains_completed.sql")
+            )
+            .toSorted();
+        expect(files.length).toBeGreaterThan(0);
+        const source = readFileSync(
+            path.join(migrationsDirectory, files.at(-1)!),
+            "utf8"
+        );
+
+        expect(source).toMatch(
+            /create or replace function public\.close_sprint/
+        );
+        expect(source).toMatch(/Completed retain sprint_id/);
+        expect(source).not.toMatch(
+            /Completed → Backlog \(history lives on the sprint row\)/
+        );
+        expect(source).not.toMatch(
+            /sprint_id = null[\s\S]*and t\.id = any \(completed\)/
         );
     });
 });

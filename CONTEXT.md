@@ -75,15 +75,15 @@ _Avoid_: Board label, tag (prefer Label)
 ### Planning
 
 **Sprint**:
-A timeboxed container of Tasks on one Board. Owns lifecycle and calendar bounds; does not define columns or workflow — those stay on the Board. A Task is in at most one Sprint at a time (or in the Backlog when unassigned). A Board may have many Sprints over time, including several Drafts at once, but at most one Sprint in the Active state at once. Commitment and completion are always counted by Task. When Tasks carry Fibonacci Estimates, Active badges and Close reports also show points sum and unestimated count (points primary, task count secondary — ADR 0020). Lifecycle states: Draft (planning, not started; dates optional) → Active (in progress; start and end dates required; at most one per Board) → Closed (completed with a Sprint report) or Canceled (aborted without a full completion report).
+A timeboxed container of Tasks on one Board. Owns lifecycle and calendar bounds; does not define columns or workflow — those stay on the Board. A Task is in at most one Sprint at a time (or in the Backlog when unassigned). A Board may have many Sprints over time, including several Drafts at once, but at most one Sprint in the Active state at once. Commitment and completion are always counted by Task. When Tasks carry Fibonacci Estimates, Active badges and Close reports also show points sum and unestimated count (points primary, task count secondary — ADR 0020). Lifecycle states: Draft (planning, not started; dates optional) → Active (in progress; start and end dates required; at most one per Board) → Closed (completed with a Sprint report; Tasks that counted as Sprint completion remain members of that Closed Sprint and are omitted from Kanban's Active Sprint and Entire board filters until membership changes; Sprint history / report lists them) or Canceled (aborted without a full completion report; membership cleared to Backlog). Close does not change Board columns or archive Tasks. Permanent delete of Closed/Canceled history releases remaining member Tasks to the Backlog.
 _Avoid_: Iteration, cycle, milestone (different concepts), Team sprint (Sprints are Board-scoped, not Team- or Project-scoped)
 
 **Backlog**:
-The set of Tasks on a Board that are not assigned to any Sprint (`sprint_id` absent). Not a Board column and not a Sprint state.
+The set of Tasks on a Board that are not assigned to any Sprint (`sprint_id` absent) — including not assigned to a Closed Sprint. Not a Board column and not a Sprint state. Completed work left on a Closed Sprint is therefore outside the Backlog.
 _Avoid_: Backlog column (a column named Backlog is unrelated), icebox
 
 **Sprint completion**:
-A Close-Sprint decision: which Tasks in that Sprint count as completed for the Sprint report. Not inferred continuously from Board columns during the Sprint. The close dialog pre-suggests Tasks currently in the Board's Done column (`board_columns.is_done`; falls back to the rightmost column when none is marked); the user confirms or adjusts before the Sprint is closed.
+A Close-Sprint decision: which Tasks in that Sprint count as completed for the Sprint report. Not inferred continuously from Board columns during the Sprint. The close dialog pre-suggests Tasks currently in the Board's Done column (`board_columns.is_done`; falls back to the rightmost column when none is marked); the user confirms or adjusts before the Sprint is closed. Those Tasks remain members of the Closed Sprint for history and are hidden from Kanban filters (Active Sprint and Entire board) until Manager+ moves them to the Backlog or a Draft; the stored completion snapshot used by the report is not rewritten when membership later changes. Field edits on those Tasks remain allowed; new Tasks cannot be added to a Closed Sprint. Permanently deleting Closed Sprint history releases any remaining member Tasks to the Backlog (they become visible on Kanban again).
 _Avoid_: Done column (a column is not automatically “completed”), auto-DONE from git merge (separate automation; not the Sprint completion rule)
 
 **Sprint cancel**:
@@ -111,7 +111,7 @@ An audited add or remove of a Task from an Active Sprint after Commitment. Recor
 _Avoid_: Edit, update (too vague), re-commitment
 
 **Carryover**:
-Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (per Task: existing Draft or a newly created Draft). Completed Tasks are recorded on the closed Sprint and are not carried over.
+Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (per Task: existing Draft or a newly created Draft). Tasks counted as Sprint completion stay members of the Closed Sprint (they are not carried over and do not enter the Backlog via Close).
 _Avoid_: Rollover, spillover
 
 **Member**:

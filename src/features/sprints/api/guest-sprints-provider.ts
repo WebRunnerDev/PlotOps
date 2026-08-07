@@ -111,11 +111,7 @@ export const guestSprintsProvider: SprintsProvider = {
             sprint.completedTaskIds = completed;
             sprint.closedAt = new Date().toISOString();
 
-            for (const taskId of completed) {
-                const task = findTask(sandbox, taskId);
-                delete task.sprintId;
-                delete task.sprintPosition;
-            }
+            // Completed stay members of the Closed Sprint (ADR 0021).
 
             const ordered = incomplete
                 .map((id) => findTask(sandbox, id))
@@ -175,6 +171,12 @@ export const guestSprintsProvider: SprintsProvider = {
                 throw new Error(
                     "Only closed or canceled sprints can be deleted"
                 );
+            }
+            for (const task of sandbox.tasks) {
+                if (task.sprintId === sprintId) {
+                    delete task.sprintId;
+                    delete task.sprintPosition;
+                }
             }
             sandbox.sprints = sandbox.sprints.filter(
                 (item) => item.id !== sprintId

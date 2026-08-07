@@ -22,6 +22,7 @@ import { type BoardColumn, useBoardColumns } from "@/features/boards";
 import { type ProjectLabel, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
+    filterLiveBoardTasks,
     resolveCreateTaskSprintId,
     useBoardSprints,
     useSprintsUiStore,
@@ -170,12 +171,14 @@ export function KanbanBoard({
     }, [projectLabels]);
 
     const filteredTasks = useMemo(() => {
-        const scoped =
-            boardSprintScope === "active" && activeSprint
-                ? tasks.filter((task) => task.sprintId === activeSprint.id)
-                : tasks;
+        const scoped = filterLiveBoardTasks({
+            activeSprintId: activeSprint?.id,
+            scope: boardSprintScope,
+            sprints,
+            tasks,
+        });
         return filterTasks(scoped, filters);
-    }, [activeSprint, boardSprintScope, filters, tasks]);
+    }, [activeSprint?.id, boardSprintScope, filters, sprints, tasks]);
 
     const displayedTasks = useMemo(
         () => sortTasksByBoardSort(filteredTasks, boardSort),

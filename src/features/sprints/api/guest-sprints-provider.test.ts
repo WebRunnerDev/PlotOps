@@ -178,6 +178,78 @@ describe("guestSprintsProvider happy path", () => {
         ).toBe(draftB.id);
     });
 
+    it("keeps completed Tasks on the Closed Sprint and only carries incomplete", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+        const { guestSprintsProvider } =
+            await import("@/features/sprints/api/guest-sprints-provider");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const boardId = sandbox.boards[0]!.id;
+        const projectId = sandbox.projects[0]!.id;
+        const active = sandbox.sprints.find(
+            (sprint) => sprint.boardId === boardId && sprint.state === "active"
+        )!;
+        const members = sandbox.tasks.filter(
+            (task) => task.sprintId === active.id
+        );
+        expect(members.length).toBeGreaterThanOrEqual(2);
+
+        const [doneTask, incompleteTask] = members;
+        const draft = await guestSprintsProvider.createDraftSprint(
+            boardId,
+            projectId,
+            "Next"
+        );
+
+        await guestSprintsProvider.closeSprint(active.id, [doneTask!.id], {
+            [incompleteTask!.id]: draft.id,
+        });
+
+        const after = getGuestSandbox()!;
+        const closed = after.sprints.find((sprint) => sprint.id === active.id);
+        expect(closed?.state).toBe("closed");
+        expect(closed?.completedTaskIds).toEqual([doneTask!.id]);
+        expect(
+            after.tasks.find((task) => task.id === doneTask!.id)?.sprintId
+        ).toBe(active.id);
+        expect(
+            after.tasks.find((task) => task.id === incompleteTask!.id)?.sprintId
+        ).toBe(draft.id);
+    });
+
+    it("releases Closed Sprint members to Backlog when history is deleted", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+        const { guestSprintsProvider } =
+            await import("@/features/sprints/api/guest-sprints-provider");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const boardId = sandbox.boards[0]!.id;
+        const active = sandbox.sprints.find(
+            (sprint) => sprint.boardId === boardId && sprint.state === "active"
+        )!;
+        const memberIds = sandbox.tasks
+            .filter((task) => task.sprintId === active.id)
+            .map((task) => task.id);
+        expect(memberIds.length).toBeGreaterThan(0);
+
+        await guestSprintsProvider.closeSprint(active.id, memberIds, {});
+        await guestSprintsProvider.deletePastSprint(active.id);
+
+        const after = getGuestSandbox()!;
+        expect(after.sprints.some((sprint) => sprint.id === active.id)).toBe(
+            false
+        );
+        for (const taskId of memberIds) {
+            expect(
+                after.tasks.find((task) => task.id === taskId)?.sprintId
+            ).toBeUndefined();
+        }
+    });
+
     it("returns no sprint events and does not grow activity on mutations", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");
