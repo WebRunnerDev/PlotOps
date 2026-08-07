@@ -28,7 +28,11 @@
         "deleteFailed": "Could not delete this status",
         "deleted": "Status “{{name}}” deleted",
         "deletedWithMove": "Moved {{count}} task(s) to “{{target}}” and deleted “{{name}}”",
-        "dragAria": "Drag to reorder status"
+        "dragAria": "Drag to reorder status",
+        "markDoneAria": "Mark as Done column for Sprint Close",
+        "clearDoneAria": "Clear Done column",
+        "doneMarked": "“{{name}}” is the Done column for Sprint Close",
+        "doneCleared": "Done column cleared — Close will suggest the rightmost status"
     },
     "tasks": {
         "add": "Add task",

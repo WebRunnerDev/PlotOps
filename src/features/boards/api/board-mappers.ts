@@ -3,6 +3,7 @@ import type { BoardColumn } from "@/features/boards/model/types";
 export type DatabaseBoardColumn = {
     board_id: string;
     id: string;
+    is_done: boolean;
     name: string;
     position: number;
     project_id: string;
@@ -11,6 +12,7 @@ export type DatabaseBoardColumn = {
 export function mapDatabaseColumn(row: DatabaseBoardColumn): BoardColumn {
     return {
         id: row.id,
+        isDone: row.is_done,
         name: row.name,
     };
 }

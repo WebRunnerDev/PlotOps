@@ -6,6 +6,7 @@ export {
     fetchBoardColumnSummaries,
     renameBoardColumn,
     reorderBoardColumns,
+    setBoardDoneColumn,
 } from "./api/board-columns-api";
 export {
     type DatabaseBoardColumn,

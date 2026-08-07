@@ -46,10 +46,10 @@ const T14 = "b0000000-0000-4000-8000-000000000114";
 const T15 = "b0000000-0000-4000-8000-000000000115";
 
 const DEFAULT_COLUMNS = [
-    { id: "todo", name: "To Do", position: 0 },
-    { id: "in_progress", name: "In Progress", position: 1 },
-    { id: "in_review", name: "In Review", position: 2 },
-    { id: "done", name: "Done", position: 3 },
+    { id: "todo", isDone: false, name: "To Do", position: 0 },
+    { id: "in_progress", isDone: false, name: "In Progress", position: 1 },
+    { id: "in_review", isDone: false, name: "In Review", position: 2 },
+    { id: "done", isDone: true, name: "Done", position: 3 },
 ] as const;
 
 /**

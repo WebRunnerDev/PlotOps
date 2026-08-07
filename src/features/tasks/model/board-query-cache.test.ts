@@ -20,8 +20,8 @@ const projectId = "proj_1";
 const boardId = "board_1";
 
 const columns: BoardColumn[] = [
-    { id: "todo", name: "Todo" },
-    { id: "done", name: "Done" },
+    { id: "todo", isDone: false, name: "Todo" },
+    { id: "done", isDone: true, name: "Done" },
 ];
 
 const labels: ProjectLabel[] = [

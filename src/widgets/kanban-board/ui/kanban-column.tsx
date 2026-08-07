@@ -6,7 +6,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useQueryClient } from "@tanstack/react-query";
-import { GripVertical, Trash2 } from "lucide-react";
+import { CheckCircle2, GripVertical, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -71,10 +71,8 @@ export function KanbanColumn({
 }: KanbanColumnProperties) {
     const { t } = useTranslation("board");
     const queryClient = useQueryClient();
-    const { columns, deleteColumn, renameColumn } = useBoardColumns(
-        projectId,
-        boardId
-    );
+    const { columns, deleteColumn, renameColumn, setDoneColumn } =
+        useBoardColumns(projectId, boardId);
     const { canEditTasks, canManageBoard, isSettled } =
         useProjectAccess(projectId);
     const canEdit = isSettled && canEditTasks;
@@ -101,6 +99,8 @@ export function KanbanColumn({
 
     const otherColumns = columns.filter((column) => column.id !== status);
     const canDelete = otherColumns.length > 0;
+    const isDone =
+        columns.find((column) => column.id === status)?.isDone ?? false;
     const [moveTo, setMoveTo] = useState<TaskStatus | undefined>(
         otherColumns[0]?.id
     );
@@ -155,6 +155,19 @@ export function KanbanColumn({
             return;
         }
         setDeleteOpen(true);
+    };
+
+    const handleToggleDone = async () => {
+        try {
+            await setDoneColumn(status);
+            toast.success(
+                isDone
+                    ? t("columns.doneCleared")
+                    : t("columns.doneMarked", { name })
+            );
+        } catch {
+            // Toast comes from useBoardColumns onError.
+        }
     };
 
     const handleConfirmDelete = async () => {
@@ -274,6 +287,33 @@ export function KanbanColumn({
                     <span className="shrink-0 text-meta text-muted-foreground">
                         {tasks.length}
                     </span>
+                    {canManage ? (
+                        <Button
+                            aria-label={
+                                isDone
+                                    ? t("columns.clearDoneAria")
+                                    : t("columns.markDoneAria")
+                            }
+                            aria-pressed={isDone}
+                            className={cn(
+                                "size-7 shrink-0 opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100",
+                                isDone
+                                    ? "text-success opacity-100"
+                                    : "text-muted-foreground"
+                            )}
+                            onClick={() => void handleToggleDone()}
+                            size="icon-sm"
+                            title={
+                                isDone
+                                    ? t("columns.clearDoneAria")
+                                    : t("columns.markDoneAria")
+                            }
+                            type="button"
+                            variant="ghost"
+                        >
+                            <CheckCircle2 className="size-3.5" />
+                        </Button>
+                    ) : undefined}
                     {canManage ? (
                         <Button
                             aria-label={t("columns.deleteAria")}

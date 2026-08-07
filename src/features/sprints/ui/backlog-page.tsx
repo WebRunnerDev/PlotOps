@@ -876,7 +876,7 @@ function SprintSection({
     activeSprint?: Sprint;
     boardId: string;
     canManage: boolean;
-    columns: Array<{ id: string }>;
+    columns: Array<{ id: string; isDone: boolean }>;
     drafts: Sprint[];
     draggingTaskIds: string[];
     labels: Parameters<typeof SprintTaskTable>[0]["labels"];

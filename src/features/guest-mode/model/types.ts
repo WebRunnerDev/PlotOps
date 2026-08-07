@@ -31,6 +31,7 @@ export type GuestBoard = {
 
 export type GuestBoardColumn = {
     id: string;
+    isDone: boolean;
     name: string;
     position: number;
 };

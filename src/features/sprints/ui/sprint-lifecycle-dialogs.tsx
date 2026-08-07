@@ -9,6 +9,7 @@ import {
     defaultSprintEndDate,
     todayIsoDate,
 } from "@/features/sprints/api/sprints-api";
+import { suggestedCompletedTaskIds } from "@/features/sprints/model/suggested-completed-task-ids";
 import { useSprintMutations } from "@/features/sprints/model/use-sprints";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -32,7 +33,7 @@ type CancelSprintDialogProperties = {
 
 type CloseSprintDialogProperties = {
     boardId: string;
-    columns: Array<{ id: string }>;
+    columns: Array<{ id: string; isDone: boolean }>;
     draftSprints: Sprint[];
     onOpenChange: (open: boolean) => void;
     open: boolean;
@@ -118,16 +119,17 @@ export function CloseSprintDialog({
         projectId,
         boardId
     );
-    const lastColumnId = columns.at(-1)?.id;
-
-    const suggestedCompleted = useMemo(() => {
-        if (!lastColumnId) return new Set<string>();
-        return new Set(
-            tasks
-                .filter((task) => task.status === lastColumnId)
-                .map((task) => task.id)
-        );
-    }, [lastColumnId, tasks]);
+    const suggestedCompleted = useMemo(
+        () =>
+            suggestedCompletedTaskIds({
+                columns,
+                tasks: tasks.map((task) => ({
+                    id: task.id,
+                    status: task.status,
+                })),
+            }),
+        [columns, tasks]
+    );
 
     const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
     const [carryover, setCarryover] = useState<string>("backlog");

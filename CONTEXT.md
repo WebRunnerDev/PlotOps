@@ -83,7 +83,7 @@ The set of Tasks on a Board that are not assigned to any Sprint (`sprint_id` abs
 _Avoid_: Backlog column (a column named Backlog is unrelated), icebox
 
 **Sprint completion**:
-A Close-Sprint decision: which Tasks in that Sprint count as completed for the Sprint report. Not inferred continuously from Board columns during the Sprint. The close dialog pre-suggests Tasks currently in the Board's last column (highest position); the user confirms or adjusts before the Sprint is closed.
+A Close-Sprint decision: which Tasks in that Sprint count as completed for the Sprint report. Not inferred continuously from Board columns during the Sprint. The close dialog pre-suggests Tasks currently in the Board's Done column (`board_columns.is_done`; falls back to the rightmost column when none is marked); the user confirms or adjusts before the Sprint is closed.
 _Avoid_: Done column (a column is not automatically “completed”), auto-DONE from git merge (separate automation; not the Sprint completion rule)
 
 **Sprint cancel**:

@@ -320,6 +320,7 @@ export function TaskDrawer({
                 columnId: (sameName?.id ?? targetColumns[0]!.id) as TaskStatus,
                 columns: targetColumns.map((column) => ({
                     id: column.id as TaskStatus,
+                    isDone: column.isDone,
                     name: column.name,
                 })),
             });

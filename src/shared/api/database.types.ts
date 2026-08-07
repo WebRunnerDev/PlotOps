@@ -365,6 +365,10 @@ export type Database = {
         Args: { p_label_ids: string[]; p_task_id: string }
         Returns: undefined
       }
+      set_board_done_column: {
+        Args: { p_board_id: string; p_column_id: null | string }
+        Returns: undefined
+      }
       start_sprint: {
         Args: { p_ends_on: string; p_sprint_id: string; p_starts_on: string }
         Returns: {
@@ -475,6 +479,7 @@ export type Database = {
           board_id: string
           created_at?: string
           id: string
+          is_done?: boolean
           name: string
           position?: number
           project_id: string
@@ -499,6 +504,7 @@ export type Database = {
           board_id: string
           created_at: string
           id: string
+          is_done: boolean
           name: string
           position: number
           project_id: string
@@ -507,6 +513,7 @@ export type Database = {
           board_id?: string
           created_at?: string
           id?: string
+          is_done?: boolean
           name?: string
           position?: number
           project_id?: string
