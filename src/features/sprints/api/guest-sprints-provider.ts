@@ -60,7 +60,7 @@ export const guestSprintsProvider: SprintsProvider = {
         });
     },
 
-    async closeSprint(sprintId, completedTaskIds, carryoverSprintId) {
+    async closeSprint(sprintId, completedTaskIds, carryoverByTaskId) {
         return mutateSandbox((sandbox) => {
             const sprint = findSprint(sandbox, sprintId);
             if (sprint.state !== "active") {
@@ -77,10 +77,14 @@ export const guestSprintsProvider: SprintsProvider = {
             const completedSet = new Set(completed);
             const incomplete = memberIds.filter((id) => !completedSet.has(id));
 
-            let carry: GuestSprint | undefined;
-            let nextPos = -1;
-            if (carryoverSprintId) {
-                carry = findSprint(sandbox, carryoverSprintId);
+            const nextPosBySprint = new Map<string, number>();
+            const validatedTargets = new Set<string>();
+
+            for (const taskId of incomplete) {
+                const targetId = carryoverByTaskId[taskId] ?? null;
+                if (!targetId || validatedTargets.has(targetId)) continue;
+
+                const carry = findSprint(sandbox, targetId);
                 if (carry.boardId !== sprint.boardId) {
                     throw new Error(
                         "Carryover sprint must be on the same board"
@@ -89,14 +93,18 @@ export const guestSprintsProvider: SprintsProvider = {
                 if (carry.state !== "draft") {
                     throw new Error("Carryover target must be a draft sprint");
                 }
+
+                let nextPos = -1;
                 for (const task of sandbox.tasks) {
                     if (
-                        task.sprintId === carryoverSprintId &&
+                        task.sprintId === targetId &&
                         typeof task.sprintPosition === "number"
                     ) {
                         nextPos = Math.max(nextPos, task.sprintPosition);
                     }
                 }
+                nextPosBySprint.set(targetId, nextPos);
+                validatedTargets.add(targetId);
             }
 
             sprint.state = "closed";
@@ -109,18 +117,18 @@ export const guestSprintsProvider: SprintsProvider = {
                 delete task.sprintPosition;
             }
 
-            if (carryoverSprintId) {
-                const ordered = incomplete
-                    .map((id) => findTask(sandbox, id))
-                    .toSorted(compareSprintMembers);
-                for (const task of ordered) {
-                    nextPos += 1;
-                    task.sprintId = carryoverSprintId;
+            const ordered = incomplete
+                .map((id) => findTask(sandbox, id))
+                .toSorted(compareSprintMembers);
+
+            for (const task of ordered) {
+                const targetId = carryoverByTaskId[task.id] ?? null;
+                if (targetId) {
+                    const nextPos = (nextPosBySprint.get(targetId) ?? -1) + 1;
+                    nextPosBySprint.set(targetId, nextPos);
+                    task.sprintId = targetId;
                     task.sprintPosition = nextPos;
-                }
-            } else {
-                for (const taskId of incomplete) {
-                    const task = findTask(sandbox, taskId);
+                } else {
                     delete task.sprintId;
                     delete task.sprintPosition;
                 }

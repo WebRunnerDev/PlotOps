@@ -9,6 +9,14 @@ import {
     defaultSprintEndDate,
     todayIsoDate,
 } from "@/features/sprints/api/sprints-api";
+import {
+    type CarryoverTarget,
+    defaultCarryoverByTaskId,
+    incompleteMemberTaskIds,
+    resolveCarryoverSprintIds,
+    setAllCarryoverTargets,
+    syncCarryoverByTaskId,
+} from "@/features/sprints/model/carryover-targets";
 import { suggestedCompletedTaskIds } from "@/features/sprints/model/suggested-completed-task-ids";
 import { useSprintMutations } from "@/features/sprints/model/use-sprints";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -132,49 +140,95 @@ export function CloseSprintDialog({
     );
 
     const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
-    const [carryover, setCarryover] = useState<string>("backlog");
+    const [carryoverByTaskId, setCarryoverByTaskId] = useState<
+        Record<string, CarryoverTarget>
+    >({});
+    const [bulkTarget, setBulkTarget] = useState<CarryoverTarget>("backlog");
     const [newDraftName, setNewDraftName] = useState("");
     const wasOpenReference = useRef(false);
 
+    const incompleteIds = useMemo(
+        () =>
+            incompleteMemberTaskIds(
+                tasks.map((task) => task.id),
+                completedIds
+            ),
+        [completedIds, tasks]
+    );
+
+    const incompleteTasks = useMemo(
+        () => tasks.filter((task) => incompleteIds.includes(task.id)),
+        [incompleteIds, tasks]
+    );
+
+    const needsNewDraft = Object.values(carryoverByTaskId).includes("new");
+
     useEffect(() => {
         if (open && !wasOpenReference.current) {
-            setCompletedIds(new Set(suggestedCompleted));
-            setCarryover("backlog");
+            const suggested = new Set(suggestedCompleted);
+            const nextIncomplete = incompleteMemberTaskIds(
+                tasks.map((task) => task.id),
+                suggested
+            );
+            setCompletedIds(suggested);
+            setCarryoverByTaskId(defaultCarryoverByTaskId(nextIncomplete));
+            setBulkTarget("backlog");
             setNewDraftName("");
         }
         wasOpenReference.current = open;
-    }, [open, suggestedCompleted]);
+    }, [open, suggestedCompleted, tasks]);
 
     const handleOpen = (next: boolean) => {
         onOpenChange(next);
     };
 
     const toggleCompleted = (taskId: string, checked: boolean) => {
-        setCompletedIds((previous) => {
-            const next = new Set(previous);
-            if (checked) next.add(taskId);
-            else next.delete(taskId);
-            return next;
-        });
+        const nextCompleted = new Set(completedIds);
+        if (checked) nextCompleted.add(taskId);
+        else nextCompleted.delete(taskId);
+
+        const nextIncomplete = incompleteMemberTaskIds(
+            tasks.map((task) => task.id),
+            nextCompleted
+        );
+
+        setCompletedIds(nextCompleted);
+        setCarryoverByTaskId((previousCarryover) =>
+            syncCarryoverByTaskId(previousCarryover, nextIncomplete)
+        );
+    };
+
+    const setTaskCarryover = (taskId: string, target: CarryoverTarget) => {
+        setCarryoverByTaskId((previous) => ({
+            ...previous,
+            [taskId]: target,
+        }));
+    };
+
+    const handleBulkApply = () => {
+        setCarryoverByTaskId((previous) =>
+            setAllCarryoverTargets(previous, bulkTarget)
+        );
     };
 
     const handleClose = async () => {
         let createdDraftId: null | string = null;
         try {
-            let carryoverSprintId: null | string = null;
-            if (carryover === "new") {
+            if (needsNewDraft) {
                 const name =
                     newDraftName.trim() ||
                     t("sprints.defaultNextName", { name: sprint.name });
                 const created = await createDraft.mutateAsync({ name });
                 createdDraftId = created.id;
-                carryoverSprintId = created.id;
-            } else if (carryover !== "backlog") {
-                carryoverSprintId = carryover;
             }
 
+            const carryoverResolved = resolveCarryoverSprintIds(
+                carryoverByTaskId,
+                createdDraftId
+            );
+
             await close.mutateAsync({
-                carryoverSprintId,
+                carryoverByTaskId: carryoverResolved,
                 completedTaskIds: [...completedIds],
                 sprintId: sprint.id,
             });
@@ -191,6 +245,18 @@ export function CloseSprintDialog({
             toast.error(t("sprints.closeFailed"));
         }
     };
+
+    const renderCarryoverOptions = () => (
+        <>
+            <option value="backlog">{t("sprints.carryoverBacklog")}</option>
+            {draftSprints.map((draft) => (
+                <option key={draft.id} value={draft.id}>
+                    {draft.name}
+                </option>
+            ))}
+            <option value="new">{t("sprints.carryoverNew")}</option>
+        </>
+    );
 
     return (
         <Dialog onOpenChange={handleOpen} open={open}>
@@ -252,36 +318,80 @@ export function CloseSprintDialog({
                     </ul>
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="carryover">
-                        {t("sprints.carryoverLabel")}
-                    </Label>
-                    <select
-                        className="h-9 rounded-md border border-input bg-background px-3 text-ui"
-                        id="carryover"
-                        onChange={(event) => setCarryover(event.target.value)}
-                        value={carryover}
-                    >
-                        <option value="backlog">
-                            {t("sprints.carryoverBacklog")}
-                        </option>
-                        {draftSprints.map((draft) => (
-                            <option key={draft.id} value={draft.id}>
-                                {draft.name}
-                            </option>
-                        ))}
-                        <option value="new">{t("sprints.carryoverNew")}</option>
-                    </select>
-                    {carryover === "new" ? (
-                        <Input
-                            onChange={(event) =>
-                                setNewDraftName(event.target.value)
-                            }
-                            placeholder={t("sprints.newDraftPlaceholder")}
-                            value={newDraftName}
-                        />
-                    ) : null}
-                </div>
+                {incompleteTasks.length > 0 ? (
+                    <div className="grid gap-2">
+                        <Label>{t("sprints.carryoverLabel")}</Label>
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                            <select
+                                aria-label={t("sprints.carryoverBulkLabel")}
+                                className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-ui focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                id="carryover-bulk"
+                                onChange={(event) =>
+                                    setBulkTarget(
+                                        event.target.value as CarryoverTarget
+                                    )
+                                }
+                                value={bulkTarget}
+                            >
+                                {renderCarryoverOptions()}
+                            </select>
+                            <Button
+                                className="shrink-0"
+                                onClick={handleBulkApply}
+                                type="button"
+                                variant="outline"
+                            >
+                                {t("sprints.carryoverBulkApply")}
+                            </Button>
+                        </div>
+                        <ul className="divide-y divide-border rounded-md border border-border">
+                            {incompleteTasks.map((task) => (
+                                <li
+                                    className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center"
+                                    key={task.id}
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-code text-muted-foreground">
+                                            {task.key}
+                                        </p>
+                                        <p className="truncate text-ui">
+                                            {task.title}
+                                        </p>
+                                    </div>
+                                    <select
+                                        aria-label={t(
+                                            "sprints.carryoverTaskLabel",
+                                            { key: task.key }
+                                        )}
+                                        className="h-9 w-full shrink-0 rounded-md border border-input bg-background px-3 text-ui focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:w-48"
+                                        onChange={(event) =>
+                                            setTaskCarryover(
+                                                task.id,
+                                                event.target
+                                                    .value as CarryoverTarget
+                                            )
+                                        }
+                                        value={
+                                            carryoverByTaskId[task.id] ??
+                                            "backlog"
+                                        }
+                                    >
+                                        {renderCarryoverOptions()}
+                                    </select>
+                                </li>
+                            ))}
+                        </ul>
+                        {needsNewDraft ? (
+                            <Input
+                                onChange={(event) =>
+                                    setNewDraftName(event.target.value)
+                                }
+                                placeholder={t("sprints.newDraftPlaceholder")}
+                                value={newDraftName}
+                            />
+                        ) : null}
+                    </div>
+                ) : null}
 
                 <DialogFooter>
                     <Button

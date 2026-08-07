@@ -99,7 +99,7 @@ An audited add or remove of a Task from an Active Sprint after Commitment. Recor
 _Avoid_: Edit, update (too vague), re-commitment
 
 **Carryover**:
-Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (existing Draft or a newly created Draft). Completed Tasks are recorded on the closed Sprint and are not carried over.
+Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (per Task: existing Draft or a newly created Draft). Completed Tasks are recorded on the closed Sprint and are not carried over.
 _Avoid_: Rollover, spillover
 
 **Member**:

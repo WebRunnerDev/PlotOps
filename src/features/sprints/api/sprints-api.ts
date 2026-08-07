@@ -105,10 +105,10 @@ export async function cancelSprint(sprintId: string): Promise<Sprint> {
 export async function closeSprint(
     sprintId: string,
     completedTaskIds: string[],
-    carryoverSprintId: null | string
+    carryoverByTaskId: Record<string, null | string>
 ): Promise<Sprint> {
     const { data, error } = await supabase.rpc("close_sprint", {
-        p_carryover_sprint_id: carryoverSprintId ?? undefined,
+        p_carryover_by_task_id: asJson(carryoverByTaskId),
         p_completed_task_ids: completedTaskIds,
         p_sprint_id: sprintId,
     });

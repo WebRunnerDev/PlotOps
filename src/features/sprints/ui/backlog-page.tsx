@@ -29,6 +29,7 @@ import {
 import { useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
+import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
 import {
     useBoardSprints,
     useSprintEvents,
@@ -825,6 +826,12 @@ function SprintReportPanel({ sprint }: { sprint: Sprint }) {
         (event) => event.eventType === "task_removed"
     ).length;
     const isCanceled = sprint.state === "canceled";
+    const carryoverSummary = useMemo(() => {
+        const closed = events.find((event) => event.eventType === "closed");
+        return summarizeCarryoverByTaskId(
+            closed?.payload?.carryover_by_task_id
+        );
+    }, [events]);
 
     return (
         <div className="space-y-2 border-t border-border px-3 py-3">
@@ -843,6 +850,14 @@ function SprintReportPanel({ sprint }: { sprint: Sprint }) {
                     removed: scopeRemoves,
                 })}
             </p>
+            {carryoverSummary ? (
+                <p className="text-ui text-muted-foreground">
+                    {t("sprints.reportCarryover", {
+                        backlog: carryoverSummary.backlogCount,
+                        drafts: carryoverSummary.draftCount,
+                    })}
+                </p>
+            ) : null}
             {isLoading ? <Spinner className="size-4" /> : null}
             <ul className="space-y-1 text-code text-muted-foreground">
                 {events.map((event) => (

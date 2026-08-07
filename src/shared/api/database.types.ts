@@ -139,7 +139,7 @@ export type Database = {
       cleanup_notifications_for_user: { Args: never; Returns: undefined }
       close_sprint: {
         Args: {
-          p_carryover_sprint_id?: string
+          p_carryover_by_task_id?: Json
           p_completed_task_ids: string[]
           p_sprint_id: string
         }

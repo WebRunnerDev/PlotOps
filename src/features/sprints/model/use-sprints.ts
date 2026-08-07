@@ -108,15 +108,15 @@ export function useSprintMutations(projectId: string, boardId: string) {
 
     const close = useMutation({
         mutationFn: ({
-            carryoverSprintId,
+            carryoverByTaskId,
             completedTaskIds,
             sprintId,
         }: {
-            carryoverSprintId: null | string;
+            carryoverByTaskId: Record<string, null | string>;
             completedTaskIds: string[];
             sprintId: string;
         }) =>
-            provider.closeSprint(sprintId, completedTaskIds, carryoverSprintId),
+            provider.closeSprint(sprintId, completedTaskIds, carryoverByTaskId),
         onSuccess: (_data, variables) => {
             invalidateSprintBoardCaches(queryClient, projectId, boardId);
             void queryClient.invalidateQueries({
