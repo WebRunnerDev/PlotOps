@@ -96,15 +96,18 @@ export async function deleteProject(projectId: string) {
 }
 
 export async function fetchProject(projectId: string) {
+    // Array read + first row: avoids PostgREST object coercion when 0 rows.
     const result = await supabase
         .from("projects")
         .select(PROJECT_SELECT)
         .eq("id", projectId)
-        .single();
+        .limit(1);
+
+    const row = result.data?.[0] as ProjectRow | undefined;
 
     return {
         ...result,
-        data: result.data ? mapProject(result.data as ProjectRow) : null,
+        data: row ? mapProject(row) : null,
     };
 }
 
