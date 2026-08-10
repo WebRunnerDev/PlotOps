@@ -79,8 +79,13 @@ export function useDeleteProject() {
             const { error } = await provider.deleteProject(projectId);
             if (error) throw error;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: projectKeys.all });
+        onSuccess: (_data, projectId) => {
+            // Same pattern as useDeleteTeam: drop detail (and nested keys under it)
+            // so a still-mounted useProject(deletedId) does not GET a gone row.
+            queryClient.removeQueries({
+                queryKey: projectKeys.detail(projectId),
+            });
+            queryClient.invalidateQueries({ queryKey: projectKeys.list() });
         },
     });
 }
