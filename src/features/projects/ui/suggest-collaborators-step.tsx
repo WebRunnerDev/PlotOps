@@ -18,6 +18,7 @@ import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import { DialogFooter } from "@/shared/shadcn/ui/dialog";
+import { ScrollArea } from "@/shared/shadcn/ui/scroll-area";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type SuggestCollaboratorsStepProperties = {
@@ -251,52 +252,59 @@ export function SuggestCollaboratorsStep({
                 </p>
             </div>
 
-            <ul className="flex-1 space-y-1 overflow-y-auto p-2">
-                {plan.suggestions.map((suggestion) => {
-                    const checked = selectedIds.has(suggestion.id);
-                    const noEmail = suggestion.inviteMode === "open-only";
+            <ScrollArea className="min-h-0 flex-1">
+                <ul className="space-y-1 p-2 pr-3">
+                    {plan.suggestions.map((suggestion) => {
+                        const checked = selectedIds.has(suggestion.id);
+                        const noEmail = suggestion.inviteMode === "open-only";
 
-                    return (
-                        <li key={suggestion.id}>
-                            <label className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 hover:bg-accent/50">
-                                <Checkbox
-                                    checked={checked && !noEmail}
-                                    disabled={noEmail || busy}
-                                    onCheckedChange={(value) => {
-                                        if (noEmail) return;
-                                        toggleId(suggestion.id, value === true);
-                                    }}
-                                />
-                                <Avatar className="size-8 shrink-0">
-                                    <AvatarImage
-                                        alt=""
-                                        src={suggestion.avatarUrl}
+                        return (
+                            <li key={suggestion.id}>
+                                <label className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 hover:bg-accent/50">
+                                    <Checkbox
+                                        checked={checked && !noEmail}
+                                        disabled={noEmail || busy}
+                                        onCheckedChange={(value) => {
+                                            if (noEmail) return;
+                                            toggleId(
+                                                suggestion.id,
+                                                value === true
+                                            );
+                                        }}
                                     />
-                                    <AvatarFallback>
-                                        {suggestion.login
-                                            .slice(0, 2)
-                                            .toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate font-medium">
-                                        {suggestion.login}
-                                    </p>
-                                    <p className="truncate font-mono text-xs text-muted-foreground">
-                                        {suggestion.email ??
-                                            t("collaboratorSuggestNoEmail")}
-                                    </p>
-                                </div>
-                                {noEmail ? (
-                                    <Badge variant="secondary">
-                                        {t("collaboratorSuggestNoEmailBadge")}
-                                    </Badge>
-                                ) : null}
-                            </label>
-                        </li>
-                    );
-                })}
-            </ul>
+                                    <Avatar className="size-8 shrink-0">
+                                        <AvatarImage
+                                            alt=""
+                                            src={suggestion.avatarUrl}
+                                        />
+                                        <AvatarFallback>
+                                            {suggestion.login
+                                                .slice(0, 2)
+                                                .toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate font-medium">
+                                            {suggestion.login}
+                                        </p>
+                                        <p className="truncate font-mono text-xs text-muted-foreground">
+                                            {suggestion.email ??
+                                                t("collaboratorSuggestNoEmail")}
+                                        </p>
+                                    </div>
+                                    {noEmail ? (
+                                        <Badge variant="secondary">
+                                            {t(
+                                                "collaboratorSuggestNoEmailBadge"
+                                            )}
+                                        </Badge>
+                                    ) : null}
+                                </label>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </ScrollArea>
 
             {plan.needsOpenLinkAffordance ? (
                 <div className="flex flex-col gap-2 border-t border-border px-4 py-3">

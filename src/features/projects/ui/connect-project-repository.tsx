@@ -16,6 +16,7 @@ import {
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
+import { ScrollArea } from "@/shared/shadcn/ui/scroll-area";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type ConnectProjectRepositoryProperties = {
@@ -115,88 +116,94 @@ export function ConnectProjectRepository({
                 value={search}
             />
 
-            <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
-                {isLoading ? (
-                    <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted-foreground">
-                        <Spinner />
-                        {t("settings.repository.loadingRepos")}
-                    </div>
-                ) : undefined}
+            <ScrollArea className="h-72 rounded-lg border border-border">
+                <div className="p-1 pr-3">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted-foreground">
+                            <Spinner />
+                            {t("settings.repository.loadingRepos")}
+                        </div>
+                    ) : undefined}
 
-                {error ? (
-                    <Alert className="m-2" variant="destructive">
-                        <AlertDescription className="flex flex-col gap-3">
-                            <span>
-                                {missingRepoScope
-                                    ? t("settings.repository.reposScopeError")
-                                    : t("settings.repository.reposError")}
-                            </span>
-                            {missingRepoScope ? (
+                    {error ? (
+                        <Alert className="m-2" variant="destructive">
+                            <AlertDescription className="flex flex-col gap-3">
+                                <span>
+                                    {missingRepoScope
+                                        ? t(
+                                              "settings.repository.reposScopeError"
+                                          )
+                                        : t("settings.repository.reposError")}
+                                </span>
+                                {missingRepoScope ? (
+                                    <Button
+                                        className="self-start"
+                                        onClick={() => {
+                                            void signInWithGitHub();
+                                        }}
+                                        size="sm"
+                                        type="button"
+                                        variant="outline"
+                                    >
+                                        {t(
+                                            "settings.repository.reconnectGitHub"
+                                        )}
+                                    </Button>
+                                ) : undefined}
+                            </AlertDescription>
+                        </Alert>
+                    ) : undefined}
+
+                    {!isLoading && !error && availableRepos.length === 0 ? (
+                        <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                            {t("settings.repository.noReposFound")}
+                        </p>
+                    ) : undefined}
+
+                    <ul className="flex flex-col gap-1">
+                        {availableRepos.map((repo) => (
+                            <li key={repo.id}>
                                 <Button
-                                    className="self-start"
+                                    className="h-auto w-full justify-between px-3 py-2.5 text-left"
+                                    disabled={connect.isPending}
                                     onClick={() => {
-                                        void signInWithGitHub();
+                                        void handleConnect(repo);
                                     }}
-                                    size="sm"
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                 >
-                                    {t("settings.repository.reconnectGitHub")}
-                                </Button>
-                            ) : undefined}
-                        </AlertDescription>
-                    </Alert>
-                ) : undefined}
-
-                {!isLoading && !error && availableRepos.length === 0 ? (
-                    <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                        {t("settings.repository.noReposFound")}
-                    </p>
-                ) : undefined}
-
-                <ul className="flex flex-col gap-1 p-1">
-                    {availableRepos.map((repo) => (
-                        <li key={repo.id}>
-                            <Button
-                                className="h-auto w-full justify-between px-3 py-2.5 text-left"
-                                disabled={connect.isPending}
-                                onClick={() => {
-                                    void handleConnect(repo);
-                                }}
-                                type="button"
-                                variant="ghost"
-                            >
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="truncate font-medium">
-                                            {repo.name}
-                                        </span>
-                                        {repo.private ? (
-                                            <Lock
-                                                aria-hidden
-                                                className="size-3 shrink-0 text-muted-foreground"
-                                            />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="truncate font-medium">
+                                                {repo.name}
+                                            </span>
+                                            {repo.private ? (
+                                                <Lock
+                                                    aria-hidden
+                                                    className="size-3 shrink-0 text-muted-foreground"
+                                                />
+                                            ) : undefined}
+                                        </div>
+                                        <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+                                            {repo.full_name}
+                                        </p>
+                                        {repo.description ? (
+                                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                                {repo.description}
+                                            </p>
                                         ) : undefined}
                                     </div>
-                                    <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">
-                                        {repo.full_name}
-                                    </p>
-                                    {repo.description ? (
-                                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                            {repo.description}
-                                        </p>
-                                    ) : undefined}
-                                </div>
-                                {connect.isPending ? (
-                                    <Spinner className="shrink-0" />
-                                ) : (
-                                    <Plus className="shrink-0 text-primary" />
-                                )}
-                            </Button>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+                                    {connect.isPending ? (
+                                        <Spinner className="shrink-0" />
+                                    ) : (
+                                        <Plus className="shrink-0 text-primary" />
+                                    )}
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </ScrollArea>
         </div>
     );
 }

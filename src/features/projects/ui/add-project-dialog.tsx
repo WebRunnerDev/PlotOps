@@ -28,6 +28,7 @@ import {
 } from "@/shared/shadcn/ui/dialog";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
+import { ScrollArea } from "@/shared/shadcn/ui/scroll-area";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type AddProjectDialogProperties = {
@@ -166,7 +167,13 @@ export function AddProjectDialog({
             }}
             open={open}
         >
-            <DialogContent className="flex max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+            <DialogContent
+                className={
+                    suggesting || mode === "github"
+                        ? "flex h-[min(80vh,640px)] max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+                        : "flex max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+                }
+            >
                 <DialogHeader className="border-b border-border px-4 py-3">
                     <DialogTitle>
                         {suggesting
@@ -227,8 +234,8 @@ export function AddProjectDialog({
                         {mode === "github" ? (
                             <>
                                 {hasGitHubToken ? (
-                                    <>
-                                        <div className="border-b border-border px-4 py-3">
+                                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                                        <div className="shrink-0 border-b border-border px-4 py-3">
                                             <Input
                                                 onChange={(event) =>
                                                     setSearch(
@@ -241,106 +248,111 @@ export function AddProjectDialog({
                                             />
                                         </div>
 
-                                        <div className="flex-1 overflow-y-auto p-2">
-                                            {isLoading && (
-                                                <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted-foreground">
-                                                    <Spinner />
-                                                    {t("loadingRepos")}
-                                                </div>
-                                            )}
-
-                                            {error && (
-                                                <Alert
-                                                    className="mx-2"
-                                                    variant="destructive"
-                                                >
-                                                    <AlertDescription className="flex flex-col gap-3">
-                                                        <span>
-                                                            {missingRepoScope
-                                                                ? t(
-                                                                      "reposScopeError"
-                                                                  )
-                                                                : t(
-                                                                      "reposError"
-                                                                  )}
-                                                        </span>
-                                                        {missingRepoScope && (
-                                                            <Button
-                                                                className="self-start"
-                                                                onClick={
-                                                                    handleReconnectGitHub
-                                                                }
-                                                                size="sm"
-                                                                type="button"
-                                                                variant="outline"
-                                                            >
-                                                                {t(
-                                                                    "reconnectGitHub"
-                                                                )}
-                                                            </Button>
-                                                        )}
-                                                    </AlertDescription>
-                                                </Alert>
-                                            )}
-
-                                            {!isLoading &&
-                                                !error &&
-                                                availableRepos.length === 0 && (
-                                                    <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                                                        {t("noReposFound")}
-                                                    </p>
+                                        <ScrollArea className="min-h-0 flex-1">
+                                            <div className="p-2 pr-3">
+                                                {isLoading && (
+                                                    <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted-foreground">
+                                                        <Spinner />
+                                                        {t("loadingRepos")}
+                                                    </div>
                                                 )}
 
-                                            <ul className="flex flex-col gap-1">
-                                                {availableRepos.map((repo) => (
-                                                    <li key={repo.id}>
-                                                        <Button
-                                                            className="h-auto w-full justify-between px-3 py-2.5 text-left"
-                                                            disabled={
-                                                                createProject.isPending
-                                                            }
-                                                            onClick={() => {
-                                                                void handleConnect(
-                                                                    repo
-                                                                );
-                                                            }}
-                                                            type="button"
-                                                            variant="ghost"
-                                                        >
-                                                            <div className="min-w-0 flex-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="truncate font-medium">
-                                                                        {
-                                                                            repo.name
-                                                                        }
-                                                                    </span>
-                                                                    {repo.private && (
-                                                                        <Lock
-                                                                            aria-hidden
-                                                                            className="size-3 shrink-0 text-muted-foreground"
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                                <p className="font-mono text-xs text-muted-foreground">
-                                                                    {
-                                                                        repo.full_name
+                                                {error && (
+                                                    <Alert
+                                                        className="mx-2"
+                                                        variant="destructive"
+                                                    >
+                                                        <AlertDescription className="flex flex-col gap-3">
+                                                            <span>
+                                                                {missingRepoScope
+                                                                    ? t(
+                                                                          "reposScopeError"
+                                                                      )
+                                                                    : t(
+                                                                          "reposError"
+                                                                      )}
+                                                            </span>
+                                                            {missingRepoScope && (
+                                                                <Button
+                                                                    className="self-start"
+                                                                    onClick={
+                                                                        handleReconnectGitHub
                                                                     }
-                                                                </p>
-                                                                {repo.description && (
-                                                                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                                                        {
-                                                                            repo.description
-                                                                        }
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            <Plus className="shrink-0 text-primary" />
-                                                        </Button>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    </>
+                                                                    size="sm"
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                >
+                                                                    {t(
+                                                                        "reconnectGitHub"
+                                                                    )}
+                                                                </Button>
+                                                            )}
+                                                        </AlertDescription>
+                                                    </Alert>
+                                                )}
+
+                                                {!isLoading &&
+                                                    !error &&
+                                                    availableRepos.length ===
+                                                        0 && (
+                                                        <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                                                            {t("noReposFound")}
+                                                        </p>
+                                                    )}
+
+                                                <ul className="flex flex-col gap-1">
+                                                    {availableRepos.map(
+                                                        (repo) => (
+                                                            <li key={repo.id}>
+                                                                <Button
+                                                                    className="h-auto w-full justify-between px-3 py-2.5 text-left"
+                                                                    disabled={
+                                                                        createProject.isPending
+                                                                    }
+                                                                    onClick={() => {
+                                                                        void handleConnect(
+                                                                            repo
+                                                                        );
+                                                                    }}
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                >
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="truncate font-medium">
+                                                                                {
+                                                                                    repo.name
+                                                                                }
+                                                                            </span>
+                                                                            {repo.private && (
+                                                                                <Lock
+                                                                                    aria-hidden
+                                                                                    className="size-3 shrink-0 text-muted-foreground"
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="font-mono text-xs text-muted-foreground">
+                                                                            {
+                                                                                repo.full_name
+                                                                            }
+                                                                        </p>
+                                                                        {repo.description && (
+                                                                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                                                                {
+                                                                                    repo.description
+                                                                                }
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    <Plus className="shrink-0 text-primary" />
+                                                                </Button>
+                                                            </li>
+                                                        )
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
                                 ) : (
                                     <div className="flex flex-1 flex-col gap-3 p-4">
                                         <Alert>

@@ -19,6 +19,8 @@ describe("AddProjectDialog name-only seam", () => {
         expect(dialog).toMatch(/mode:\s*"github"/);
         expect(dialog).toMatch(/isValidProjectName/);
         expect(dialog).toMatch(/isValidProjectSlug/);
+        expect(dialog).toMatch(/ScrollArea/);
+        expect(dialog).not.toMatch(/overflow-y-auto/);
         expect(dialog).not.toMatch(/mutateAsync\(\{\s*repo,/);
     });
 });

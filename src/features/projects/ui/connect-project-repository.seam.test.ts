@@ -32,5 +32,7 @@ describe("ConnectProjectRepository seam", () => {
         expect(ui).toMatch(/isUniqueViolation/);
         expect(ui).toMatch(/connectDuplicate/);
         expect(ui).toMatch(/mutateAsync/);
+        expect(ui).toMatch(/ScrollArea/);
+        expect(ui).not.toMatch(/overflow-y-auto/);
     });
 });
