@@ -9,6 +9,7 @@ export function useBoardSprints(boardId: string) {
     const provider = resolveSprintsProvider(isGuest());
 
     return useQuery({
+        enabled: Boolean(boardId),
         queryFn: () => provider.fetchBoardSprints(boardId),
         queryKey: sprintKeys.board(boardId),
     });
