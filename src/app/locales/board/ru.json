@@ -65,6 +65,18 @@
         "archivedByAt": "Архивировал(а) {{name}} · {{when}}",
         "archivedAt": "В архиве · {{when}}"
     },
+    "selection": {
+        "toggleTask": "Выбрать задачу {{key}}",
+        "count": "Выбрано: {{count}}",
+        "clear": "Сбросить",
+        "cancel": "Отмена",
+        "archive": "В архив {{count}}",
+        "archived": "В архив: {{count}} задач",
+        "archiveFailed": "Не удалось архивировать выбранные задачи",
+        "confirmTitle": "Архивировать выбранные задачи?",
+        "confirmDescription": "{{count}} задач будут скрыты с доски. Восстановить можно из Архива.",
+        "dragCount": "{{count}} задач"
+    },
     "prLink": "Pull request #{{number}} ({{state}})",
     "prTooltip": "PR #{{number}} · {{state}}",
     "prState": {

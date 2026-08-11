@@ -65,6 +65,18 @@
         "archivedByAt": "Archived by {{name}} · {{when}}",
         "archivedAt": "Archived · {{when}}"
     },
+    "selection": {
+        "toggleTask": "Select task {{key}}",
+        "count": "{{count}} selected",
+        "clear": "Clear",
+        "cancel": "Cancel",
+        "archive": "Archive {{count}}",
+        "archived": "Archived {{count}} tasks",
+        "archiveFailed": "Could not archive selected tasks",
+        "confirmTitle": "Archive selected tasks?",
+        "confirmDescription": "{{count}} tasks will be hidden from the board. You can restore them from Archive.",
+        "dragCount": "{{count}} tasks"
+    },
     "prLink": "Pull request #{{number}} ({{state}})",
     "prTooltip": "PR #{{number}} · {{state}}",
     "prState": {

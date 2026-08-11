@@ -36,6 +36,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/shared/shadcn/ui/card";
+import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Tooltip,
     TooltipContent,
@@ -51,10 +52,19 @@ const TASK_TYPE_ICON: Record<TaskType, LucideIcon> = {
 
 type TaskCardProperties = {
     labels: ProjectLabel[];
+    selection?: TaskCardSelection;
     task: Task;
 };
 
-export function TaskCard({ labels, task }: TaskCardProperties) {
+type TaskCardSelection = {
+    checked: boolean;
+    /** Always show checkbox (selection session active); else hover/focus on card. */
+    forceVisible: boolean;
+    onCheckedChange: () => void;
+    toggleLabel: string;
+};
+
+export function TaskCard({ labels, selection, task }: TaskCardProperties) {
     const { i18n, t } = useTranslation("board");
     const assigneeName = task.assignee?.name;
     const overdue =
@@ -62,6 +72,9 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
     const shared = task.branchName ? isSharedBranch(task.branchName) : false;
     const TypeIcon = TASK_TYPE_ICON[task.type];
     const typeLabel = t(`taskType.${task.type}`);
+    const showSelectionControl =
+        selection !== undefined &&
+        (selection.forceVisible || selection.checked);
 
     return (
         <Card
@@ -74,13 +87,51 @@ export function TaskCard({ labels, task }: TaskCardProperties) {
             <CardHeader className="gap-2">
                 <div className="flex items-center justify-between gap-2">
                     <span className="inline-flex min-w-0 items-center gap-1.5">
-                        <TypeIcon
-                            aria-label={typeLabel}
-                            className={cn(
-                                "size-3 shrink-0",
-                                TASK_TYPE_ICON_CLASS[task.type]
-                            )}
-                        />
+                        <span className="relative inline-flex size-3.5 shrink-0 items-center justify-center">
+                            <TypeIcon
+                                aria-hidden={showSelectionControl || undefined}
+                                aria-label={typeLabel}
+                                className={cn(
+                                    "size-3.5 shrink-0 transition-opacity",
+                                    TASK_TYPE_ICON_CLASS[task.type],
+                                    selection &&
+                                        (showSelectionControl
+                                            ? "pointer-events-none opacity-0"
+                                            : "group-hover/task:opacity-0 group-focus-within/task:opacity-0")
+                                )}
+                            />
+                            {selection ? (
+                                <span
+                                    className={cn(
+                                        // Expand hit target beyond the 14px icon so clicks
+                                        // near the checkbox don't arm card drag.
+                                        "absolute -inset-2 z-10 flex cursor-pointer items-center justify-center transition-opacity",
+                                        showSelectionControl
+                                            ? "opacity-100"
+                                            : "pointer-events-none opacity-0 group-hover/task:pointer-events-auto group-hover/task:opacity-100 group-focus-within/task:pointer-events-auto group-focus-within/task:opacity-100"
+                                    )}
+                                    data-no-card-open
+                                    data-no-dnd=""
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                    }}
+                                    onPointerDown={(event) => {
+                                        event.stopPropagation();
+                                    }}
+                                >
+                                    <Checkbox
+                                        aria-label={selection.toggleLabel}
+                                        checked={selection.checked}
+                                        className="size-3.5 cursor-pointer after:hidden"
+                                        data-no-dnd=""
+                                        onCheckedChange={() => {
+                                            selection.onCheckedChange();
+                                        }}
+                                    />
+                                </span>
+                            ) : undefined}
+                        </span>
                         <span className="truncate text-meta text-muted-foreground">
                             {task.key}
                         </span>

@@ -44,12 +44,14 @@ export {
 } from "./model/constants";
 export { taskKeys } from "./model/query-keys";
 export type { Task, TaskPriority, TaskStatus, TaskType } from "./model/types";
+export { useBoardTaskSelectionStore } from "./model/use-board-task-selection-store";
 export { useBoardTasks } from "./model/use-board-tasks";
 export { useProjectTasks } from "./model/use-project-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
 export { BoardSortControl } from "./ui/board-sort-control";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";
+export { BoardTaskSelectionBar } from "./ui/board-task-selection-bar";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";

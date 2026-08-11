@@ -73,10 +73,11 @@ export function KanbanColumn({
     const queryClient = useQueryClient();
     const { columns, deleteColumn, renameColumn, setDoneColumn } =
         useBoardColumns(projectId, boardId);
-    const { canEditTasks, canManageBoard, isSettled } =
+    const { canDeleteTasks, canEditTasks, canManageBoard, isSettled } =
         useProjectAccess(projectId);
     const canEdit = isSettled && canEditTasks;
     const canManage = isSettled && canManageBoard;
+    const canSelectForArchive = isSettled && canDeleteTasks;
 
     const {
         attributes,
@@ -339,9 +340,11 @@ export function KanbanColumn({
                     >
                         {tasks.map((task) => (
                             <DraggableTaskCard
+                                boardId={boardId}
                                 canDrag={canEdit}
                                 key={task.id}
                                 labels={labelsByTaskId.get(task.id) ?? []}
+                                selectionEnabled={canSelectForArchive}
                                 task={task}
                             />
                         ))}
