@@ -1,5 +1,9 @@
 import type { ParsedLocation } from "@tanstack/react-router";
 
+type DocumentWithViewTransition = Document & {
+    activeViewTransition?: null | { finished: Promise<unknown> };
+};
+
 type TransitionLocation = Pick<ParsedLocation, "pathname" | "state">;
 
 /**
@@ -45,6 +49,45 @@ export function getPageTransitionTypes({
     }
 
     return ["fade"];
+}
+
+/**
+ * TanStack Router starts a document View Transition but resolves `navigate()`
+ * when the DOM update callback finishes — not when the CSS fade/slide ends.
+ * Await this after `navigate` before opening overlays (e.g. task drawer).
+ */
+export async function waitForActiveViewTransition(): Promise<void> {
+    if (typeof document === "undefined") return;
+
+    // Let `document.startViewTransition` assign `activeViewTransition` first.
+    await Promise.resolve();
+
+    const transition = (document as DocumentWithViewTransition)
+        .activeViewTransition;
+    if (transition) {
+        try {
+            await transition.finished;
+        } catch {
+            // Skipped / aborted — safe to continue.
+        }
+        return;
+    }
+
+    const animations = document.getAnimations?.() ?? [];
+    const viewTransitionAnimations = animations.filter((animation) => {
+        const effect = animation.effect;
+        return (
+            effect instanceof KeyframeEffect &&
+            Boolean(effect.pseudoElement?.startsWith("::view-transition"))
+        );
+    });
+    if (viewTransitionAnimations.length === 0) return;
+
+    await Promise.all(
+        viewTransitionAnimations.map((animation) =>
+            animation.finished.catch(() => {})
+        )
+    );
 }
 
 function historyIndex(location: TransitionLocation): number | undefined {
