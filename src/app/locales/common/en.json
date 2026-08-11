@@ -87,6 +87,12 @@
         "signedInAs": "Signed in as {{email}}",
         "title": "Sign out?"
     },
+    "notFound": {
+        "description": "This route does not exist, or you do not have access to it.",
+        "goHome": "Go to Home",
+        "goSignIn": "Go to sign-in",
+        "title": "Page not found"
+    },
     "platformSettings": "Platform settings",
     "ru": "Russian",
     "settingsDescription": "Your profile and account preferences.",
