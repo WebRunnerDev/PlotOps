@@ -59,7 +59,7 @@
     "closeDialog": "Закрыть",
     "collaboratorSuggestTitle": "Пригласить коллабораторов",
     "collaboratorSuggestSubtitle": "Добавьте коллабораторов GitHub из {{repo}} в эту команду",
-    "collaboratorSuggestDescription": "Отмеченные люди с email получат приглашение в команду. Без email email-приглашение невозможно — один раз поделитесь открытой ссылкой для группы или пропустите.",
+    "collaboratorSuggestDescription": "Выбранные с email получат приглашение. Остальным можно один раз дать открытую ссылку команды — или пропустите.",
     "collaboratorSuggestLoading": "Загрузка коллабораторов из GitHub…",
     "collaboratorSuggestLoadFailed": "Не удалось загрузить коллабораторов. Проект всё равно создан — пригласите из настроек команды.",
     "collaboratorSuggestNoEmail": "Нет email в GitHub",

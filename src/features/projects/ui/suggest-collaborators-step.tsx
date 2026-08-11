@@ -220,7 +220,7 @@ export function SuggestCollaboratorsStep({
                 <p className="text-sm text-muted-foreground">
                     {t("collaboratorSuggestLoadFailed")}
                 </p>
-                <DialogFooter className="px-0 sm:justify-end">
+                <DialogFooter className="mx-0 mb-0 sm:justify-end">
                     <Button onClick={onDone} type="button">
                         {t("collaboratorSuggestSkip")}
                     </Button>
@@ -307,7 +307,7 @@ export function SuggestCollaboratorsStep({
             </ScrollArea>
 
             {plan.needsOpenLinkAffordance ? (
-                <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+                <div className="flex flex-col gap-3 border-t border-border px-4 py-4">
                     <p className="text-xs text-muted-foreground">
                         {t("collaboratorSuggestOpenLinkHint")}
                     </p>
@@ -327,7 +327,7 @@ export function SuggestCollaboratorsStep({
                 </div>
             ) : null}
 
-            <DialogFooter className="border-t border-border px-4 py-3 sm:justify-between">
+            <DialogFooter className="mx-0 mb-0 sm:justify-between">
                 <Button
                     disabled={busy}
                     onClick={onDone}

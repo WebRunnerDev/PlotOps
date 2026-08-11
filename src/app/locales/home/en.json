@@ -59,7 +59,7 @@
     "closeDialog": "Close",
     "collaboratorSuggestTitle": "Invite collaborators",
     "collaboratorSuggestSubtitle": "Add GitHub collaborators from {{repo}} to this Team",
-    "collaboratorSuggestDescription": "Checked people with an email get a Team invite. People without email cannot be email-invited — share an open link once for the group, or skip.",
+    "collaboratorSuggestDescription": "Selected people with an email get a Team invite. Everyone else can use a single open Team link — or skip.",
     "collaboratorSuggestLoading": "Loading collaborators from GitHub…",
     "collaboratorSuggestLoadFailed": "Could not load collaborators. The project was still created — you can invite from Team settings.",
     "collaboratorSuggestNoEmail": "No email on GitHub",
