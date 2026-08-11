@@ -52,7 +52,7 @@
     "projectNoGitHub": "No repository connected",
     "removeProject": "Remove project",
     "removeProjectTitle": "Remove project?",
-    "removeProjectDescription": "“{{name}}” will be disconnected from PlotOps. This cannot be undone.",
+    "removeProjectDescription": "“{{name}}” and all of its boards, tasks, labels, and activity will be permanently deleted. This cannot be undone.",
     "removeProjectConfirm": "Remove",
     "removeProjectCancel": "Cancel",
     "removeProjectFailed": "Could not remove project. Only owners can delete a project.",

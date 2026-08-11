@@ -52,7 +52,7 @@
     "projectNoGitHub": "Репозиторий не подключён",
     "removeProject": "Удалить проект",
     "removeProjectTitle": "Удалить проект?",
-    "removeProjectDescription": "«{{name}}» будет отключён от PlotOps. Это действие нельзя отменить.",
+    "removeProjectDescription": "«{{name}}» и все его доски, задачи, метки и история будут удалены навсегда. Это действие нельзя отменить.",
     "removeProjectConfirm": "Удалить",
     "removeProjectCancel": "Отмена",
     "removeProjectFailed": "Не удалось удалить проект. Удалять может только владелец.",
