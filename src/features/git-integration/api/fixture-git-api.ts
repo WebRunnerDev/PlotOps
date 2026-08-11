@@ -65,6 +65,7 @@ export async function fetchFixtureBranchPullRequests(
             created_at: "2026-07-27T10:00:00.000Z",
             draft: false,
             head_ref: branchName,
+            mergeable: true,
             merged_at: null,
             number,
             state: "open",

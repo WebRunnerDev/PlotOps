@@ -8,6 +8,16 @@ const GITHUB_HEADERS = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
+export type CreatePullRequestInput = {
+    base: string;
+    body?: string;
+    draft?: boolean;
+    head: string;
+    repoFullName: string;
+    title: string;
+    token: string;
+};
+
 export type GitCommit = {
     author: {
         avatar_url: null | string;
@@ -19,6 +29,17 @@ export type GitCommit = {
     sha: string;
     url: string;
 };
+
+export type GitHubWriteErrorKind =
+    | "auth"
+    | "conflict"
+    | "forbidden"
+    | "not_found"
+    | "rate_limit"
+    | "unknown"
+    | "validation";
+
+export type GitMergeMethod = "merge" | "rebase" | "squash";
 
 export type GitPrFile = {
     additions: number;
@@ -35,6 +56,8 @@ export type GitPullRequest = {
     created_at: string;
     draft: boolean;
     head_ref: string;
+    /** Null while GitHub is still computing mergeability. */
+    mergeable: boolean | null;
     merged_at: null | string;
     number: number;
     state: "closed" | "open";
@@ -43,10 +66,45 @@ export type GitPullRequest = {
     url: string;
 };
 
+export type MergePullRequestInput = {
+    commitTitle?: string;
+    mergeMethod: GitMergeMethod;
+    prNumber: number;
+    repoFullName: string;
+    token: string;
+};
+
+export type MergePullRequestResult = {
+    merged: boolean;
+    message: string;
+    sha: string;
+};
+
 export type PullRequestFilesResult = {
     files: GitPrFile[];
     /** True when GitHub still had more pages after `PR_FILES_MAX_PAGES`. */
     truncated: boolean;
+};
+
+type GithubFetchOptions = {
+    body?: unknown;
+    method?: string;
+    parameters?: Record<string, string>;
+    signal?: AbortSignal;
+};
+
+type RawPrPayload = {
+    body: null | string;
+    created_at: string;
+    draft: boolean;
+    head: { ref: string };
+    html_url: string;
+    mergeable?: boolean | null;
+    merged_at: null | string;
+    number: number;
+    state: string;
+    title: string;
+    updated_at: string;
 };
 
 export class GitHubApiError extends Error {
@@ -57,6 +115,28 @@ export class GitHubApiError extends Error {
         this.name = "GitHubApiError";
         this.status = status;
     }
+}
+
+/** Open a PR: `head` into `base`. */
+export async function createPullRequest(
+    input: CreatePullRequestInput
+): Promise<GitPullRequest> {
+    const pr = await githubFetch<RawPrPayload>(
+        `/repos/${input.repoFullName}/pulls`,
+        input.token,
+        {
+            body: {
+                base: input.base,
+                ...(input.body === undefined ? {} : { body: input.body }),
+                draft: input.draft ?? false,
+                head: input.head,
+                title: input.title,
+            },
+            method: "POST",
+        }
+    );
+
+    return mapPullRequest(pr);
 }
 
 /** Last N commits on a branch (default 20). */
@@ -79,7 +159,7 @@ export async function fetchBranchCommits(
     const raw = await githubFetch<RawCommit[]>(
         `/repos/${repoFullName}/commits`,
         token,
-        { per_page: String(perPage), sha: branchName }
+        { parameters: { per_page: String(perPage), sha: branchName } }
     );
 
     return raw.map((c) => ({
@@ -101,42 +181,20 @@ export async function fetchBranchPullRequests(
     branchName: string,
     token: string
 ): Promise<GitPullRequest[]> {
-    type RawPR = {
-        body: null | string;
-        created_at: string;
-        draft: boolean;
-        head: { ref: string };
-        html_url: string;
-        merged_at: null | string;
-        number: number;
-        state: string;
-        title: string;
-        updated_at: string;
-    };
-
     const [owner] = repoFullName.split("/");
-    const raw = await githubFetch<RawPR[]>(
+    const raw = await githubFetch<RawPrPayload[]>(
         `/repos/${repoFullName}/pulls`,
         token,
         {
-            head: `${owner}:${branchName}`,
-            per_page: "10",
-            state: "all",
+            parameters: {
+                head: `${owner}:${branchName}`,
+                per_page: "10",
+                state: "all",
+            },
         }
     );
 
-    return raw.map((pr) => ({
-        body: pr.body,
-        created_at: pr.created_at,
-        draft: pr.draft,
-        head_ref: pr.head.ref,
-        merged_at: pr.merged_at,
-        number: pr.number,
-        state: pr.state as GitPullRequest["state"],
-        title: pr.title,
-        updated_at: pr.updated_at,
-        url: pr.html_url,
-    }));
+    return raw.map((pr) => mapPullRequest(pr));
 }
 
 /** Single pull request by number. */
@@ -146,38 +204,13 @@ export async function fetchPullRequest(
     token: string,
     signal?: AbortSignal
 ): Promise<GitPullRequest> {
-    type RawPR = {
-        body: null | string;
-        created_at: string;
-        draft: boolean;
-        head: { ref: string };
-        html_url: string;
-        merged_at: null | string;
-        number: number;
-        state: string;
-        title: string;
-        updated_at: string;
-    };
-
-    const pr = await githubFetch<RawPR>(
+    const pr = await githubFetch<RawPrPayload>(
         `/repos/${repoFullName}/pulls/${prNumber}`,
         token,
-        undefined,
-        signal
+        { signal }
     );
 
-    return {
-        body: pr.body,
-        created_at: pr.created_at,
-        draft: pr.draft,
-        head_ref: pr.head.ref,
-        merged_at: pr.merged_at,
-        number: pr.number,
-        state: pr.state as GitPullRequest["state"],
-        title: pr.title,
-        updated_at: pr.updated_at,
-        url: pr.html_url,
-    };
+    return mapPullRequest(pr);
 }
 
 /** Changed files (with unified diff patches) for a PR — paginated. */
@@ -203,8 +236,10 @@ export async function fetchPullRequestFiles(
             `/repos/${repoFullName}/pulls/${prNumber}/files`,
             token,
             {
-                page: String(page),
-                per_page: String(PR_FILES_PAGE_SIZE),
+                parameters: {
+                    page: String(page),
+                    per_page: String(PR_FILES_PAGE_SIZE),
+                },
             }
         );
 
@@ -229,31 +264,107 @@ export async function fetchPullRequestFiles(
     return { files, truncated };
 }
 
+export function gitHubWriteErrorKind(error: unknown): GitHubWriteErrorKind {
+    if (!isGitHubApiError(error)) return "unknown";
+    switch (error.status) {
+        case 401: {
+            return "auth";
+        }
+        case 403: {
+            return "forbidden";
+        }
+        case 404: {
+            return "not_found";
+        }
+        case 405:
+        case 409: {
+            return "conflict";
+        }
+        case 422: {
+            return "validation";
+        }
+        case 429: {
+            return "rate_limit";
+        }
+        default: {
+            return "unknown";
+        }
+    }
+}
+
 export function isGitHubApiError(error: unknown): error is GitHubApiError {
     return error instanceof GitHubApiError;
+}
+
+/** Merge an open PR (GitHub enforces mergeability / branch protection). */
+export async function mergePullRequest(
+    input: MergePullRequestInput
+): Promise<MergePullRequestResult> {
+    return githubFetch<MergePullRequestResult>(
+        `/repos/${input.repoFullName}/pulls/${input.prNumber}/merge`,
+        input.token,
+        {
+            body: {
+                ...(input.commitTitle === undefined
+                    ? {}
+                    : { commit_title: input.commitTitle }),
+                merge_method: input.mergeMethod,
+            },
+            method: "PUT",
+        }
+    );
 }
 
 async function githubFetch<T>(
     path: string,
     token: string,
-    parameters?: Record<string, string>,
-    signal?: AbortSignal
+    options?: GithubFetchOptions
 ): Promise<T> {
     const url = new URL(`${GITHUB_API}${path}`);
-    if (parameters) {
-        for (const [key, value] of Object.entries(parameters)) {
+    if (options?.parameters) {
+        for (const [key, value] of Object.entries(options.parameters)) {
             url.searchParams.set(key, value);
         }
     }
 
+    const method = options?.method ?? "GET";
+    const headers: Record<string, string> = { ...GITHUB_HEADERS(token) };
+    let body: string | undefined;
+    if (options?.body !== undefined) {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify(options.body);
+    }
+
     const response = await fetch(url.toString(), {
-        headers: GITHUB_HEADERS(token),
-        signal,
+        body,
+        headers,
+        method,
+        signal: options?.signal,
     });
 
     if (!response.ok) {
         throw new GitHubApiError(response.status, path);
     }
 
+    if (response.status === 204) {
+        return undefined as T;
+    }
+
     return response.json() as Promise<T>;
+}
+
+function mapPullRequest(pr: RawPrPayload): GitPullRequest {
+    return {
+        body: pr.body,
+        created_at: pr.created_at,
+        draft: pr.draft,
+        head_ref: pr.head.ref,
+        mergeable: pr.mergeable === undefined ? null : pr.mergeable,
+        merged_at: pr.merged_at,
+        number: pr.number,
+        state: pr.state as GitPullRequest["state"],
+        title: pr.title,
+        updated_at: pr.updated_at,
+        url: pr.html_url,
+    };
 }

@@ -529,7 +529,30 @@
         "prRateLimited": "GitHub rate limit hit — wait a moment and try again",
         "prLinkFailed": "Could not link pull request #{{number}}",
         "prLinkedToast": "Linked PR #{{number}}",
-        "prLink": "PR #{{number}} · {{state}}"
+        "prLink": "PR #{{number}} · {{state}}",
+        "openPr": "Open pull request",
+        "openPrToast": "Opened PR #{{number}}",
+        "openPrFailed": "Could not open pull request",
+        "mergePr": "Merge",
+        "mergePrTitle": "Merge pull request #{{number}}?",
+        "mergePrBody": "Merges into {{base}}. The board column updates when GitHub confirms the merge (webhook).",
+        "mergePrConfirm": "Merge pull request",
+        "mergePrCancel": "Cancel",
+        "mergeMethod": "Merge method",
+        "mergeMethodSquash": "Squash and merge",
+        "mergeMethodMerge": "Create a merge commit",
+        "mergeMethodRebase": "Rebase and merge",
+        "mergePrToast": "Merged PR #{{number}}",
+        "mergePrFailed": "Could not merge pull request",
+        "writeError": {
+            "auth": "GitHub session expired — reconnect GitHub and try again",
+            "forbidden": "GitHub denied this action — check repo permissions",
+            "not_found": "Branch or pull request was not found on GitHub",
+            "conflict": "Pull request cannot be merged (conflicts or checks)",
+            "validation": "GitHub rejected the request (PR may already exist or be a draft)",
+            "rate_limit": "GitHub rate limit hit — wait a moment and try again",
+            "unknown": "GitHub request failed — try again"
+        }
     },
     "git": {
         "branchLabel": "Branch:",

@@ -533,7 +533,30 @@
         "prRateLimited": "Лимит GitHub — подождите и попробуйте снова",
         "prLinkFailed": "Не удалось привязать pull request #{{number}}",
         "prLinkedToast": "Привязан PR #{{number}}",
-        "prLink": "PR #{{number}} · {{state}}"
+        "prLink": "PR #{{number}} · {{state}}",
+        "openPr": "Открыть pull request",
+        "openPrToast": "Открыт PR #{{number}}",
+        "openPrFailed": "Не удалось открыть pull request",
+        "mergePr": "Merge",
+        "mergePrTitle": "Слить pull request #{{number}}?",
+        "mergePrBody": "Цель: {{base}}. Колонка на доске обновится после подтверждения от GitHub (webhook).",
+        "mergePrConfirm": "Слить pull request",
+        "mergePrCancel": "Отмена",
+        "mergeMethod": "Способ слияния",
+        "mergeMethodSquash": "Squash and merge",
+        "mergeMethodMerge": "Create a merge commit",
+        "mergeMethodRebase": "Rebase and merge",
+        "mergePrToast": "Слит PR #{{number}}",
+        "mergePrFailed": "Не удалось слить pull request",
+        "writeError": {
+            "auth": "Сессия GitHub истекла — переподключите GitHub и повторите",
+            "forbidden": "GitHub отклонил действие — проверьте права на репозиторий",
+            "not_found": "Ветка или pull request не найдены на GitHub",
+            "conflict": "Pull request нельзя слить (конфликты или проверки)",
+            "validation": "GitHub отклонил запрос (PR уже существует или это draft)",
+            "rate_limit": "Лимит GitHub — подождите и повторите",
+            "unknown": "Запрос к GitHub не удался — попробуйте снова"
+        }
     },
     "git": {
         "branchLabel": "Ветка:",

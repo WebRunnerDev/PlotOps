@@ -75,23 +75,21 @@ Low portfolio demo value — pull only with real org pain.
 
 ## Wave 7 — GitHub write API
 
-| Item                                | Size   | Own plan  | Notes                                                                                   |
-| ----------------------------------- | ------ | --------- | --------------------------------------------------------------------------------------- |
-| In-app PR merge / approve / open PR | **XL** | yes + ADR | Token scopes / GitHub App permissions; error UX; idempotency. Today view/link/sync only |
+| Item                            | Size  | Own plan | Notes                                                                                                   |
+| ------------------------------- | ----- | -------- | ------------------------------------------------------------------------------------------------------- |
+| In-app Open PR + Merge          | **M** | ADR 0022 | ✅ Shipped — client `provider_token`; Owner/Admin any; Manager/Contributor author\|assignee; guest hide |
+| In-app Approve / request review | **M** | yes      | Parked — same token + UI confirmations; not in Open+Merge MVP                                           |
 
-### Prerequisites
+### Prerequisites (done for Open+Merge)
 
 - Git integration Progress closed (diff/link solid).
-- Wave 1 Git empty-states okay; Guest uses mocks — hide write actions for guest.
+- Guest uses mocks — write actions hidden for guest.
 
-### Plan stub
+### Remaining (Approve)
 
-1. Product: which writes (open PR, approve, merge, request review).
-2. App permissions + docs runbook.
-3. UI confirmations; map GH errors to i18n.
-4. Keep webhook as source of Truth for Task column on merge.
-
-High risk / medium portfolio signal vs already-shipped webhook+diff.
+1. Product: approve vs request review only.
+2. UI confirmations; map GH review API errors to i18n.
+3. Keep webhook as source of truth for Task column on merge.
 
 ---
 
