@@ -191,13 +191,22 @@ function normalizeTaskTitle(title: string): string {
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */
 export const guestTasksProvider: TasksProvider = {
     async archiveTaskRecord(taskId) {
+        await guestTasksProvider.archiveTaskRecords([taskId]);
+    },
+
+    async archiveTaskRecords(taskIds) {
+        const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+        let archivedCount = 0;
         updateGuestSandbox((sandbox) => {
-            const task = findTaskOrThrow(sandbox.tasks, taskId);
-            if (task.archivedAt) {
-                return;
+            const now = new Date().toISOString();
+            for (const taskId of uniqueIds) {
+                const task = sandbox.tasks.find((item) => item.id === taskId);
+                if (!task || task.archivedAt) continue;
+                task.archivedAt = now;
+                archivedCount += 1;
             }
-            task.archivedAt = new Date().toISOString();
         });
+        return { archivedCount };
     },
 
     async createTaskRecord(

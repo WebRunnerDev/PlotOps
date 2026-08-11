@@ -10,6 +10,7 @@ import type { Task, TaskStatus, TaskType } from "@/features/tasks/model/types";
  */
 export type TasksProvider = {
     archiveTaskRecord(taskId: string): Promise<void>;
+    archiveTaskRecords(taskIds: string[]): Promise<{ archivedCount: number }>;
     createTaskRecord(
         projectId: string,
         boardId: string,

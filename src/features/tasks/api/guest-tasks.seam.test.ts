@@ -94,6 +94,45 @@ describe("guest tasks provider happy path", () => {
         ).toBe(true);
     });
 
+    it("bulk archiveTaskRecords archives multiple guest tasks", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const boardId = board.id;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const a = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Bulk A"
+        );
+        const b = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Bulk B"
+        );
+
+        const { archivedCount } = await provider.archiveTaskRecords([
+            a.id,
+            b.id,
+        ]);
+        expect(archivedCount).toBe(2);
+
+        const boardAfter = await provider.fetchBoardTasks(boardId);
+        expect(boardAfter.tasks.some((task) => task.id === a.id)).toBe(false);
+        expect(boardAfter.tasks.some((task) => task.id === b.id)).toBe(false);
+
+        const archived = await provider.fetchArchivedTasks(boardId);
+        expect(archived.some((task) => task.id === a.id)).toBe(true);
+        expect(archived.some((task) => task.id === b.id)).toBe(true);
+    });
+
     it("archive / delete persisted archived task without Supabase", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");

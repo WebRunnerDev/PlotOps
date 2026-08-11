@@ -121,13 +121,26 @@ export type TaskRecordPatch = {
 
 /** Signal archive; DB trigger sets `archived_at` / `archived_by`. */
 export async function archiveTaskRecord(taskId: string) {
-    const { error } = await supabase
-        .from("tasks")
-        .update({ archived_at: new Date().toISOString() })
-        .eq("id", taskId)
-        .is("archived_at", null);
+    await archiveTaskRecords([taskId]);
+}
+
+/**
+ * Bulk soft-archive via RPC (migration 20260811120000).
+ * Writes activity rows server-side; returns how many tasks transitioned.
+ */
+export async function archiveTaskRecords(taskIds: string[]) {
+    const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+        return { archivedCount: 0 };
+    }
+
+    const { data, error } = await supabase.rpc(
+        "archive_tasks" as never,
+        { p_task_ids: uniqueIds } as never
+    );
 
     if (error) throw error;
+    return { archivedCount: typeof data === "number" ? data : 0 };
 }
 
 export async function createTaskRecord(
