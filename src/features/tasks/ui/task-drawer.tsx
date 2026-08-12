@@ -92,6 +92,7 @@ import {
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
 
+/** Mobile: bottom sheet (swipe down + snap). Desktop: same shell, two-column body at md+. */
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
 const PRIORITY_NONE = "__none__";
 const ESTIMATE_NONE = "__none__";
@@ -386,7 +387,7 @@ export function TaskDrawer({
                         <>
                             <DrawerHeader
                                 className={cn(
-                                    `border-b border-border p-4 text-left`,
+                                    "shrink-0 border-b border-border p-4 text-left",
                                     isArchived &&
                                         "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
                                 )}
@@ -407,7 +408,7 @@ export function TaskDrawer({
                                 </DrawerDescription>
                             </DrawerHeader>
 
-                            <div className="scrollbar-board mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
+                            <div className="scrollbar-board mx-auto flex min-h-0 w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
                                 {/* Title and Description */}
                                 <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
                                     <div className="flex flex-col gap-2">
@@ -418,7 +419,7 @@ export function TaskDrawer({
                                             {t("fields.title")}
                                         </Label>
                                         <Input
-                                            className="h-auto text-h3 font-semibold"
+                                            className="h-auto min-w-0 text-h3 font-semibold"
                                             disabled={!canEdit}
                                             id="task-title"
                                             maxLength={TASK_TITLE_MAX_LENGTH}
@@ -494,7 +495,7 @@ export function TaskDrawer({
                                 />
                                 {/* Type, Status, Priority, Deadline */}
                                 <div className="flex min-w-0 flex-[1_1_0%] flex-col gap-5">
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid min-w-0 grid-cols-2 gap-3">
                                         <div className="flex flex-col gap-1.5">
                                             <Label
                                                 className={FIELD_LABEL_CLASS}

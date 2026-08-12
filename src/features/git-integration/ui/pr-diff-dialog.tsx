@@ -82,6 +82,8 @@ const STATUS_CLASS: Record<string, string> = {
     renamed: "text-amber-400",
 };
 
+const MOBILE_MAX_WIDTH_QUERY = "(max-width: 639px)";
+
 export function PrDiffDialog({
     onClose,
     open,
@@ -92,6 +94,7 @@ export function PrDiffDialog({
 }: PrDiffDialogProperties) {
     const { t } = useTranslation("board");
     const theme = useDocumentTheme();
+    const preferUnifiedOnMobile = usePreferUnifiedDiffOnMobile();
     const [activeFilename, setActiveFilename] = useState<string | undefined>();
     const [mode, setMode] = useState<DiffModeEnum>(DiffModeEnum.Split);
     const [fullscreen, setFullscreen] = useState(false);
@@ -107,7 +110,10 @@ export function PrDiffDialog({
     useEffect(() => {
         setActiveFilename(undefined);
         setFullscreen(false);
-    }, [prNumber, repoFullName]);
+        setMode(
+            preferUnifiedOnMobile ? DiffModeEnum.Unified : DiffModeEnum.Split
+        );
+    }, [prNumber, preferUnifiedOnMobile, repoFullName]);
 
     useEffect(() => {
         if (!open) setFullscreen(false);
@@ -168,13 +174,14 @@ export function PrDiffDialog({
             <DialogContent
                 className={cn(
                     "flex max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none",
+                    "max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none",
                     fullscreen
                         ? "inset-0 top-0 left-0 h-dvh w-screen max-h-none translate-x-0 translate-y-0 rounded-none"
                         : "h-[85vh] w-[min(96vw,72rem)]"
                 )}
                 showCloseButton={false}
             >
-                <DialogHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-border px-4 py-3 text-left">
+                <DialogHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-border px-4 py-3 text-left">
                     <DialogTitle className="flex min-w-0 flex-1 items-center gap-2 text-sm">
                         <span className="shrink-0 font-mono text-muted-foreground">
                             #{prNumber}
@@ -198,6 +205,7 @@ export function PrDiffDialog({
                         <Button
                             aria-label={t("git.splitView")}
                             aria-pressed={mode === DiffModeEnum.Split}
+                            className="max-sm:hidden"
                             onClick={() => setMode(DiffModeEnum.Split)}
                             size="icon-sm"
                             type="button"
@@ -503,4 +511,22 @@ function FileEntry({
             </span>
         </button>
     );
+}
+
+function usePreferUnifiedDiffOnMobile() {
+    const [preferUnified, setPreferUnified] = useState(() =>
+        typeof globalThis.matchMedia === "function"
+            ? globalThis.matchMedia(MOBILE_MAX_WIDTH_QUERY).matches
+            : false
+    );
+
+    useEffect(() => {
+        const media = globalThis.matchMedia(MOBILE_MAX_WIDTH_QUERY);
+        const sync = () => setPreferUnified(media.matches);
+        sync();
+        media.addEventListener("change", sync);
+        return () => media.removeEventListener("change", sync);
+    }, []);
+
+    return preferUnified;
 }

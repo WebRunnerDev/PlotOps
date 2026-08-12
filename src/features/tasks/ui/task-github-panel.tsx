@@ -467,11 +467,11 @@ export function TaskGithubPanel({
             <p className="text-ui text-muted-foreground">
                 {t("github.linkPrHint")}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
                     aria-label={t("github.linkPrPlaceholder")}
                     autoFocus
-                    className="font-mono text-code"
+                    className="min-w-0 font-mono text-code"
                     disabled={prLoading}
                     onChange={(event) => setPrDraft(event.target.value)}
                     onKeyDown={(event) => {
@@ -561,7 +561,7 @@ export function TaskGithubPanel({
 
     return (
         <>
-            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+            <div className="flex min-w-0 flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
                 <div className="flex flex-col gap-0.5">
                     <p className="text-meta text-muted-foreground">
                         {t("github.title")}
@@ -594,7 +594,7 @@ export function TaskGithubPanel({
                                     </Button>
                                 ) : undefined}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                                 <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
                                     {checkoutCommand}
                                 </code>
@@ -627,13 +627,13 @@ export function TaskGithubPanel({
                                 <p className="text-ui text-muted-foreground">
                                     {t("github.linkBranchHint")}
                                 </p>
-                                <div className="flex items-center gap-2">
+                                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                                     <Input
                                         aria-label={t(
                                             "github.linkBranchPlaceholder"
                                         )}
                                         autoFocus
-                                        className="font-mono text-code"
+                                        className="min-w-0 font-mono text-code"
                                         onChange={(event) =>
                                             setBranchDraft(event.target.value)
                                         }
