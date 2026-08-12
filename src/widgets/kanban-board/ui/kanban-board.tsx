@@ -46,6 +46,7 @@ import {
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { BoardPointerSensor } from "@/widgets/kanban-board/model/board-pointer-sensor";
+import { isBoardTaskViewRestricted } from "@/widgets/kanban-board/model/is-board-task-view-restricted";
 import { resolveCrossColumnDragTaskIds } from "@/widgets/kanban-board/model/resolve-cross-column-drag-task-ids";
 
 import { BoardLoading } from "./board-loading";
@@ -215,6 +216,16 @@ export function KanbanBoard({
         [boardSort, filteredTasks]
     );
 
+    const boardTaskViewRestricted = isBoardTaskViewRestricted(
+        tasks,
+        displayedTasks
+    );
+
+    const displayedTaskIds = useMemo(
+        () => new Set(displayedTasks.map((task) => task.id)),
+        [displayedTasks]
+    );
+
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
         for (const task of displayedTasks) {
@@ -331,6 +342,9 @@ export function KanbanBoard({
             selectedIds: selectionIdsForBoard,
         });
         moveTasksToColumn(dragIds, String(over.id), {
+            displayedTaskIds: boardTaskViewRestricted
+                ? displayedTaskIds
+                : undefined,
             persist: false,
         });
     };
@@ -382,8 +396,19 @@ export function KanbanBoard({
             withinColumnDragEnabled &&
             dragIds.length === 1
         ) {
+            const activeTaskStatus = displayedTasks.find(
+                (task) => task.id === String(active.id)
+            )?.status;
+            const visibleColumnTaskIds =
+                boardTaskViewRestricted && activeTaskStatus
+                    ? displayedTasks
+                          .filter((task) => task.status === activeTaskStatus)
+                          .map((task) => task.id)
+                    : undefined;
+
             reorderTaskWithin(String(active.id), String(over.id), {
                 persist: false,
+                visibleColumnTaskIds,
             });
         }
 

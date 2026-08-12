@@ -17,7 +17,7 @@ describe("Board UI Role gating seam", () => {
 
         expect(board).toMatch(/useProjectAccess/);
         expect(board).toMatch(/canEditTasks/);
-        expect(board).toMatch(/moveTaskToColumn/);
+        expect(board).toMatch(/moveTasksToColumn/);
         expect(column).toMatch(/useProjectAccess/);
         expect(column).toMatch(/canEditTasks/);
         expect(card).toMatch(/disabled:\s*!canDrag|disabled:\s*!canEditTasks/);

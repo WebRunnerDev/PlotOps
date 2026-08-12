@@ -512,7 +512,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const moveTasksToColumn = (
         activeIds: readonly string[],
         overId: string,
-        options?: { persist?: boolean }
+        options?: { displayedTaskIds?: ReadonlySet<string>; persist?: boolean }
     ) => {
         const persist = options?.persist ?? true;
         const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
@@ -528,7 +528,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             snapshot.tasks,
             snapshot.columns,
             activeIds,
-            overId
+            overId,
+            options?.displayedTaskIds
         );
         if (!result) return;
 
@@ -740,7 +741,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
         reorderTaskWithin: (
             activeId: string,
             overId: string,
-            options?: { persist?: boolean }
+            options?: {
+                persist?: boolean;
+                visibleColumnTaskIds?: readonly string[];
+            }
         ) => {
             const persist = options?.persist ?? true;
             const cache = queryClient.getQueryData<BoardTasksCache>(
@@ -748,7 +752,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
             if (!cache) return;
 
-            const result = reorderTasksInMemory(cache.tasks, activeId, overId);
+            const result = reorderTasksInMemory(
+                cache.tasks,
+                activeId,
+                overId,
+                options?.visibleColumnTaskIds
+            );
             if (!result) return;
 
             if (!persist && !dragGestureCacheReference.current) {

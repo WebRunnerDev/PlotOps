@@ -87,4 +87,28 @@ describe("moveTasksToColumnInMemory", () => {
             result?.tasks.map((entry) => `${entry.id}:${entry.status}`)
         ).toEqual(["b:doing", "a:doing", "c:doing"]);
     });
+
+    it("inserts before a visible neighbor while hidden siblings keep their slots", () => {
+        const tasks = [
+            task("a", "todo"),
+            task("hidden", "todo"),
+            task("c", "todo"),
+            task("incoming", "doing"),
+        ];
+        const displayed = new Set(["a", "c", "incoming"]);
+
+        const result = moveTasksToColumnInMemory(
+            tasks,
+            columns,
+            ["incoming"],
+            "c",
+            displayed
+        );
+
+        expect(
+            result?.tasks
+                .filter((entry) => entry.status === "todo")
+                .map((entry) => entry.id)
+        ).toEqual(["a", "hidden", "incoming", "c"]);
+    });
 });
