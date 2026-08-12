@@ -2,7 +2,6 @@
 
 <img src="/public/PlotOps.png" width=350 height=350>
 
-[![CI](https://github.com/WebRunnerDev/PlotOps/actions/workflows/main.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
