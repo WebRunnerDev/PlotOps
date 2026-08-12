@@ -42,31 +42,21 @@ describe("buildInviteEmailText", () => {
 });
 
 describe("resolveInviteAppOrigin", () => {
-    it("prefers INVITE_APP_ORIGIN secret when set", () => {
-        expect(
-            resolveInviteAppOrigin({
-                inviteAppOrigin: "https://plotops.app",
-                requestOrigin: "http://127.0.0.1:5173",
-            })
-        ).toBe("https://plotops.app");
+    it("uses INVITE_APP_ORIGIN secret (canonical origin only)", () => {
+        expect(resolveInviteAppOrigin("https://plotops.app/path")).toBe(
+            "https://plotops.app"
+        );
+        expect(resolveInviteAppOrigin("http://127.0.0.1:5173/")).toBe(
+            "http://127.0.0.1:5173"
+        );
     });
 
-    it("falls back to request Origin (trimmed, no trailing slash)", () => {
-        expect(
-            resolveInviteAppOrigin({
-                inviteAppOrigin: "",
-                requestOrigin: "http://127.0.0.1:5173/",
-            })
-        ).toBe("http://127.0.0.1:5173");
-    });
-
-    it("returns null when neither origin is usable", () => {
-        expect(
-            resolveInviteAppOrigin({
-                inviteAppOrigin: "  ",
-                requestOrigin: null,
-            })
-        ).toBeNull();
+    it("returns null when secret is missing or not an http(s) origin", () => {
+        expect(resolveInviteAppOrigin("")).toBeNull();
+        expect(resolveInviteAppOrigin("  ")).toBeNull();
+        expect(resolveInviteAppOrigin(null)).toBeNull();
+        expect(resolveInviteAppOrigin("javascript:alert(1)")).toBeNull();
+        expect(resolveInviteAppOrigin("not-a-url")).toBeNull();
     });
 });
 

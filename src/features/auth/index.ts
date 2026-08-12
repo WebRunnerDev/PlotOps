@@ -10,6 +10,7 @@ export type { ProfileGateInput } from "./lib/guest-profile-gate";
 export { AuthProvider } from "./model/auth-provider";
 export type { AuthContextValue } from "./model/types";
 export { useAuth } from "./model/use-auth";
+export { AuthLanguageSwitcher } from "./ui/auth-language-switcher";
 export { CompleteProfileForm } from "./ui/complete-profile-form";
 export { LoginForm } from "./ui/login-form";
 export { ProfileSettingsForm } from "./ui/profile-settings-form";

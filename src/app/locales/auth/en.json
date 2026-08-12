@@ -48,6 +48,8 @@
     "or": "or",
     "password": "Password",
     "passwordPlaceholder": "••••••••",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password",
     "settings": {
         "profileDescription": "How you appear to project members. Your username (handle) stays separate.",
         "profileTitle": "Profile",

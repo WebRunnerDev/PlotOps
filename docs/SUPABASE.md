@@ -193,11 +193,11 @@ After `createTeamInvite` (email kind), the client invokes this function with the
 
 **Secrets** (Dashboard → Edge Functions → Secrets, or CLI — never `VITE_*`):
 
-| Secret              | Required | Notes                                                                                                                                                |
-| ------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RESEND_API_KEY`    | For send | [Resend](https://resend.com) API key. If unset, function returns `200` + `{ skipped: true }` and logs the invite URL (safe for local/dev).           |
-| `INVITE_FROM_EMAIL` | For send | Verified Resend from address, e.g. `PlotOps <invites@yourdomain.com>`.                                                                               |
-| `INVITE_APP_ORIGIN` | Optional | Canonical app origin for invite links (`https://app.example.com`). If unset, uses request `Origin` / `x-invite-origin` / body `origin` from the SPA. |
+| Secret              | Required | Notes                                                                                                                                                  |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RESEND_API_KEY`    | For send | [Resend](https://resend.com) API key. If unset, function returns `200` + `{ skipped: true }` and logs skip metadata only (never the invite URL/token). |
+| `INVITE_FROM_EMAIL` | For send | Verified Resend from address, e.g. `PlotOps <invites@yourdomain.com>`.                                                                                 |
+| `INVITE_APP_ORIGIN` | For send | Canonical app origin for invite links (`https://app.example.com`). Required when Resend is configured — never taken from the SPA (phishing risk).      |
 
 `SUPABASE_URL` and `SUPABASE_ANON_KEY` are provided automatically to Edge Functions.
 

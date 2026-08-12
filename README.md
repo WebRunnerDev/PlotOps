@@ -2,6 +2,8 @@
 
 <img src="/public/PlotOps.png" width=350 height=350>
 
+[![Migrate check](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate-check.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate-check.yml)
+[![Migrate + deploy](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -9,7 +11,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-**Git-native project tracker** — a Linear/Jira-style board where tasks, branches, pull requests, and CI runs live in one place. Built as an open portfolio project to showcase modern frontend architecture (React 19, TanStack, Feature-Sliced Design) with a real Supabase backend and GitHub integration.
+**Git-native project tracker** — a Linear/Jira-style board where tasks, branches, pull requests, and CI runs live in one place. Built as an open portfolio project to showcase modern frontend architecture (React 19, TanStack, Feature-Sliced Design) with a real Supabase backend, GitHub integration, and production-minded GitOps (branch rulesets, migration gates, agent-assisted triage).
 
 Stay on the board instead of tab-hopping: link a task to a branch, review diffs in-app, watch GitHub Actions status, and let webhooks move cards when a PR merges.
 
@@ -44,6 +46,41 @@ Collaboration is scoped to a **Team**; Projects live under a Team ([ADR 0017](do
 - **CI/CD Dashboard** — build status per branch, jobs + streaming logs from GitHub Actions
 - **Command Palette** — search tasks, create tasks, switch projects, toggle theme
 - **Guest Mode** — try the app without GitHub OAuth; client-side sandbox with pre-seeded data
+
+## Why use PlotOps?
+
+PlotOps is a **personal / portfolio product**, not a hosted SaaS competitor to Linear or Jira. It is still useful day-to-day if your work already lives next to GitHub.
+
+### Practical benefit
+
+Most trackers treat Git as an afterthought: you jump out to GitHub for the branch, the PR, the Actions run, then back to update the card. PlotOps keeps that loop on one board:
+
+| Pain today                         | What PlotOps does                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| Card ≠ branch / PR                 | Link a Task to a branch and PR; generate a branch name from the Task           |
+| “Did the build pass?” → new tab    | CI/CD tab reads GitHub Actions (jobs + logs) for the linked repo               |
+| Merge happened, board is stale     | Webhook moves the Task when a PR merges onto the Board’s base branch           |
+| Review means leaving the tracker   | In-app diff, Open PR, and Merge from the Task panel                            |
+| Small team, no need for enterprise | Teams, roles, invites, sprints, estimates — enough for a real side project     |
+
+### Who it fits
+
+- **You + 1–5 collaborators** on a GitHub-backed side project or small product
+- Developers who want a **Linear-like board** without paying for another cloud workspace yet
+- Friends / colleagues willing to try a pet project and give blunt feedback
+- Hiring managers / peers reviewing a **full-stack portfolio** (real backend, RLS, Edge Functions, GitOps — not a mock landing page)
+
+### Who it does not fit (yet)
+
+- Companies that need SLAs, SSO, audit exports, or “never lose data” guarantees
+- Non-git workflows (PlotOps is intentionally Git-native)
+- Anyone expecting a finished commercial product — see [Disclaimer](#disclaimer)
+
+### How to try it with friends
+
+1. Open the live app (or run locally) → **Try demo** for a no-signup sandbox (local Guest Session; nothing hits production DB).
+2. Or sign in with GitHub / email, create a **Team**, invite them, connect a repo, and use a real Board for one shared project.
+3. Tell them up front: pet project, expect rough edges, feedback welcome — delete-account path is documented in the Disclaimer.
 
 ## Domain (MVP)
 
@@ -82,6 +119,56 @@ src/
   features/   # auth, tasks, boards, sprints, git-integration, …
   shared/     # api, ui kit, lib utilities
 ```
+
+## Engineering practices
+
+Portfolio signal beyond the UI: the repo is operated like a small product — protected `main`, schema-before-frontend deploys, ADRs, and an agent-ready issue pipeline.
+
+### Branch protection & merge gates
+
+GitHub **Ruleset** on the default branch (`main`):
+
+| Rule                        | Effect                                              |
+| --------------------------- | --------------------------------------------------- |
+| Block force-push / deletion | `main` cannot be rewritten or removed               |
+| Required check              | **`supabase-migrate-check`** must pass before merge |
+
+PR workflow ([`.github/workflows/supabase-migrate-check.yml`](.github/workflows/supabase-migrate-check.yml)): path-filtered — when `supabase/migrations/**` (or related paths) change, Actions starts a fresh local Supabase stack and runs `db reset` so broken SQL never lands on `main`.
+
+### CI/CD — migrate, then ship
+
+Remote schema is **not** pushed from laptops day-to-day ([ADR 0016](docs/adr/0016-migrations-via-ci.md)). Happy path:
+
+```mermaid
+flowchart LR
+  PR["PR"] --> Check["supabase-migrate-check<br/>(Docker reset)"]
+  Check --> Merge["Merge to main"]
+  Merge --> Migrate["supabase db push"]
+  Migrate --> Hook["Cloudflare Deploy Hook"]
+  Hook --> Pages["Cloudflare Pages"]
+```
+
+1. **PR** — migration check on a clean DB (required status check).
+2. **`main` push** — [`supabase-migrate`](.github/workflows/supabase-migrate.yml) links PlotOps, runs `supabase db push`, then POSTs the Cloudflare Pages Deploy Hook.
+3. **Cloudflare** — automatic production deploys stay off so the UI never races ahead of schema.
+
+Local safety net: **Husky + lint-staged** on pre-commit (ESLint `--fix`, Prettier) via `npm install` → `prepare`.
+
+Details / secrets: [`docs/SUPABASE.md`](docs/SUPABASE.md).
+
+### Agent-assisted delivery & security review
+
+Work is tracked as **GitHub Issues** (`gh`), not ad-hoc chat notes. Repo conventions live in [`AGENTS.md`](AGENTS.md) and [`docs/agents/`](docs/agents/):
+
+| Practice       | What it looks like                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| Triage labels  | `needs-triage` → `needs-info` → `ready-for-agent` / `ready-for-human` / `wontfix`        |
+| Spec → tickets | Skills publish PRDs / tracer-bullet tickets as issues; Wayfinder maps + sub-issues       |
+| Feature audit  | `/audit` reviews a path and opens findings as Issues                                     |
+| PR agents      | Cursor **Bugbot** (regression pass) and **Security Review** on local / branch diffs      |
+| Domain lock    | Ubiquitous language in [`CONTEXT.md`](CONTEXT.md); decisions in [`docs/adr/`](docs/adr/) |
+
+Agents are instructed to verify migrations on **local Docker** and leave remote apply to CI — same rule as humans.
 
 ## Getting Started
 
@@ -156,14 +243,15 @@ Dark, strict, Linear / Neobrutalism-inspired: sharp borders, monospace for git e
 
 ## Docs
 
-| Doc                                                            | Contents                                                |
-| -------------------------------------------------------------- | ------------------------------------------------------- |
-| [`docs/SPEC.md`](docs/SPEC.md)                                 | Product & technical specification, progress, roadmap    |
-| [`CONTEXT.md`](CONTEXT.md)                                     | Ubiquitous language (Project, Board, roles, invites, …) |
-| [`docs/SUPABASE.md`](docs/SUPABASE.md)                         | Supabase project / CLI notes                            |
-| [`docs/github-webhook-setup.md`](docs/github-webhook-setup.md) | GitHub App + webhook Edge Function setup                |
-| [`docs/adr/`](docs/adr/)                                       | Architecture decision records                           |
-| [`docs/agents/`](docs/agents/)                                 | Agent notes (issue tracker, triage, domain)             |
+| Doc                                                                        | Contents                                                                 |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [`docs/SPEC.md`](docs/SPEC.md)                                             | Product & technical specification, progress, roadmap                     |
+| [`CONTEXT.md`](CONTEXT.md)                                                 | Ubiquitous language (Project, Board, roles, invites, …)                  |
+| [`docs/SUPABASE.md`](docs/SUPABASE.md)                                     | Supabase project / CLI; migrate-check + CI secrets; branch ruleset notes |
+| [`docs/adr/0016-migrations-via-ci.md`](docs/adr/0016-migrations-via-ci.md) | Why remote schema applies only via Actions + Deploy Hook                 |
+| [`docs/github-webhook-setup.md`](docs/github-webhook-setup.md)             | GitHub App + webhook Edge Function setup                                 |
+| [`docs/adr/`](docs/adr/)                                                   | Architecture decision records                                            |
+| [`AGENTS.md`](AGENTS.md) / [`docs/agents/`](docs/agents/)                  | Issue tracker, triage labels, Wayfinder, domain docs for agents          |
 
 ## Disclaimer
 

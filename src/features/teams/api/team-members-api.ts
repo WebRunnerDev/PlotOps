@@ -243,17 +243,10 @@ export async function revokeTeamInvite(inviteId: string) {
 
 /** Best-effort outbound email for an email-kind pending invite (Edge Function). */
 export async function sendTeamInviteEmail(inviteId: string) {
-    const origin =
-        globalThis.window === undefined
-            ? undefined
-            : globalThis.location.origin;
-
+    // Invite link origin comes only from Edge secret INVITE_APP_ORIGIN — never
+    // from the SPA (caller-controlled origins enable phishing token links).
     return supabase.functions.invoke("send-team-invite", {
-        body: {
-            inviteId,
-            ...(origin ? { origin } : {}),
-        },
-        headers: origin ? { "x-invite-origin": origin } : undefined,
+        body: { inviteId },
     });
 }
 

@@ -13,7 +13,7 @@ import { sendResendEmail } from "./resend.ts";
 
 const corsHeaders = {
     "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type, x-invite-origin",
+        "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Origin": "*",
 };
 
@@ -41,7 +41,7 @@ Deno.serve(async (request) => {
         return json({ error: "unauthorized" }, 401);
     }
 
-    let body: { inviteId?: unknown; origin?: unknown };
+    let body: { inviteId?: unknown };
     try {
         body = (await request.json()) as typeof body;
     } catch {
@@ -114,31 +114,16 @@ Deno.serve(async (request) => {
         resendApiKey: Deno.env.get("RESEND_API_KEY"),
     });
 
-    const origin = resolveInviteAppOrigin({
-        inviteAppOrigin: Deno.env.get("INVITE_APP_ORIGIN"),
-        requestOrigin:
-            (typeof body.origin === "string" ? body.origin : null) ??
-            request.headers.get("x-invite-origin") ??
-            request.headers.get("Origin"),
-    });
-
-    const inviteUrl = origin ? buildInviteRedeemUrl(origin, row.token) : null;
-    const teamName = teamNameFrom(row.teams) ?? "a team";
-    const fields = {
-        email: row.email.trim(),
-        inviteUrl: inviteUrl ?? `(missing origin)/invite/${row.token}`,
-        role: row.role,
-        teamName,
-    };
+    const toEmail = row.email.trim();
 
     if (!delivery.send) {
+        // Never log inviteUrl/token — Edge Function logs may leave the request path.
         console.log(
             JSON.stringify({
                 inviteId,
-                inviteUrl,
                 reason: delivery.reason,
                 skipped: true,
-                to: fields.email,
+                to: toEmail,
                 userId: user.id,
             })
         );
@@ -149,17 +134,27 @@ Deno.serve(async (request) => {
         });
     }
 
+    const origin = resolveInviteAppOrigin(Deno.env.get("INVITE_APP_ORIGIN"));
+    const inviteUrl = origin ? buildInviteRedeemUrl(origin, row.token) : null;
     if (!origin || !inviteUrl) {
         return json({ error: "origin_required" }, 400);
     }
 
+    const teamName = teamNameFrom(row.teams) ?? "a team";
+    const fields = {
+        email: toEmail,
+        inviteUrl,
+        role: row.role,
+        teamName,
+    };
+
     const resendKey = Deno.env.get("RESEND_API_KEY")!.trim();
     const result = await sendResendEmail(resendKey, {
         from: delivery.fromEmail,
-        html: buildInviteEmailHtml({ ...fields, inviteUrl }),
+        html: buildInviteEmailHtml(fields),
         subject: `Join ${teamName} on PlotOps`,
-        text: buildInviteEmailText({ ...fields, inviteUrl }),
-        to: [fields.email],
+        text: buildInviteEmailText(fields),
+        to: [toEmail],
     });
 
     if (!result.ok) {
