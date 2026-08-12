@@ -17,17 +17,19 @@ function readHook() {
 }
 
 describe("sendTeamInviteEmail API", () => {
-    it("invokes send-team-invite with inviteId and app origin", () => {
+    it("invokes send-team-invite with inviteId only (no caller origin)", () => {
         const source = readApi();
-
-        expect(source).toMatch(
-            /export async function sendTeamInviteEmail\(inviteId: string\)/
+        const function_ = source.slice(
+            source.indexOf("export async function sendTeamInviteEmail")
         );
-        expect(source).toMatch(
+
+        expect(function_).toMatch(
             /functions\.invoke\(\s*["']send-team-invite["']/
         );
-        expect(source).toMatch(/inviteId/);
-        expect(source).toMatch(/x-invite-origin|origin/);
+        expect(function_).toMatch(/body:\s*\{\s*inviteId\s*\}/);
+        expect(function_).not.toMatch(/x-invite-origin/);
+        expect(function_).not.toMatch(/location\.origin/);
+        expect(function_).not.toMatch(/\borigin\s*:/);
     });
 });
 

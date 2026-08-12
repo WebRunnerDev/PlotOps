@@ -39,13 +39,15 @@ export function buildInviteRedeemUrl(origin: string, token: string): string {
     return `${origin.replace(/\/+$/, "")}/invite/${token}`;
 }
 
-export function resolveInviteAppOrigin(input: {
-    inviteAppOrigin: null | string | undefined;
-    requestOrigin: null | string | undefined;
-}): null | string {
-    const fromSecret = normalizeOrigin(input.inviteAppOrigin);
-    if (fromSecret) return fromSecret;
-    return normalizeOrigin(input.requestOrigin);
+/**
+ * Canonical app origin for invite redeem links in outbound email.
+ * Only `INVITE_APP_ORIGIN` is trusted — never request Origin / body / headers
+ * (those are caller-controlled and enable phishing links with invite tokens).
+ */
+export function resolveInviteAppOrigin(
+    inviteAppOrigin: null | string | undefined
+): null | string {
+    return normalizeOrigin(inviteAppOrigin);
 }
 
 export function resolveMailDelivery(input: {
@@ -85,6 +87,15 @@ function escapeHtml(value: string): string {
 
 function normalizeOrigin(value: null | string | undefined): null | string {
     if (!value) return null;
-    const trimmed = value.trim().replace(/\/+$/, "");
-    return trimmed.length > 0 ? trimmed : null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+        const url = new URL(trimmed);
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+            return null;
+        }
+        return url.origin;
+    } catch {
+        return null;
+    }
 }
