@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AuthLanguageSwitcher } from "@/features/auth";
 import { cn } from "@/shared/lib/utils";
 
 type AuthPageShellProperties = {
@@ -15,10 +16,13 @@ export function AuthPageShell({
     return (
         <div
             className={cn(
-                "flex min-h-[60vh] w-full min-w-0 items-center justify-center px-4 py-8 sm:py-12",
+                "relative flex min-h-[60vh] w-full min-w-0 items-center justify-center px-4 py-8 sm:py-12",
                 className
             )}
         >
+            <div className="absolute top-4 right-4">
+                <AuthLanguageSwitcher />
+            </div>
             {children}
         </div>
     );

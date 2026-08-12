@@ -22,6 +22,8 @@ import {
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 
+import { PasswordInput } from "./password-input";
+
 const REDIRECT_TIMEOUT_MS = 8000;
 
 type SignUpFormProperties = {
@@ -279,7 +281,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                         <Label htmlFor="sign-up-password">
                             {t("password")}
                         </Label>
-                        <Input
+                        <PasswordInput
                             autoComplete="new-password"
                             id="sign-up-password"
                             onChange={(event) =>
@@ -287,7 +289,6 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                             }
                             placeholder={t("passwordPlaceholder")}
                             required
-                            type="password"
                             value={password}
                         />
                     </div>
@@ -296,7 +297,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                         <Label htmlFor="sign-up-confirm">
                             {t("confirmPassword")}
                         </Label>
-                        <Input
+                        <PasswordInput
                             autoComplete="new-password"
                             id="sign-up-confirm"
                             onChange={(event) =>
@@ -304,7 +305,6 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                             }
                             placeholder={t("passwordPlaceholder")}
                             required
-                            type="password"
                             value={confirmPassword}
                         />
                     </div>

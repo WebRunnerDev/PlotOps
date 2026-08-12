@@ -48,6 +48,8 @@
     "or": "или",
     "password": "Пароль",
     "passwordPlaceholder": "••••••••",
+    "hidePassword": "Скрыть пароль",
+    "showPassword": "Показать пароль",
     "settings": {
         "profileDescription": "Как вас видят участники проектов. Username (handle) остаётся отдельно.",
         "profileTitle": "Профиль",

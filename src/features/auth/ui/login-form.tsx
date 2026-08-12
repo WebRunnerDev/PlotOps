@@ -28,6 +28,8 @@ import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
 
+import { PasswordInput } from "./password-input";
+
 const REDIRECT_TIMEOUT_MS = 8000;
 
 export function LoginForm() {
@@ -231,7 +233,7 @@ export function LoginForm() {
 
                     <div className="flex flex-col gap-2">
                         <Label htmlFor="password">{t("password")}</Label>
-                        <Input
+                        <PasswordInput
                             autoComplete="current-password"
                             id="password"
                             onChange={(event) =>
@@ -239,7 +241,6 @@ export function LoginForm() {
                             }
                             placeholder={t("passwordPlaceholder")}
                             required
-                            type="password"
                             value={password}
                         />
                     </div>
