@@ -81,7 +81,7 @@ export function CancelSprintDialog({
 
     return (
         <Dialog onOpenChange={onOpenChange} open={open}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="w-full min-w-0 sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>
                         {t("sprints.cancelTitle", { name: sprint.name })}
@@ -260,7 +260,7 @@ export function CloseSprintDialog({
 
     return (
         <Dialog onOpenChange={handleOpen} open={open}>
-            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+            <DialogContent className="max-h-[85dvh] w-full min-w-0 overflow-y-auto sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>
                         {t("sprints.closeTitle", { name: sprint.name })}
@@ -454,7 +454,7 @@ export function StartSprintDialog({
 
     return (
         <Dialog onOpenChange={handleOpen} open={open}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="w-full min-w-0 sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>
                         {t("sprints.startTitle", { name: sprint.name })}

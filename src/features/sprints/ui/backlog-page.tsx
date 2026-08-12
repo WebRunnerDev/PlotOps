@@ -319,7 +319,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     if (sprintsError) {
         return (
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">
                     <AlertDescription>
                         {t("sprints.loadFailed")}
@@ -338,7 +338,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     if (error) {
         return (
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">
                     <AlertDescription>{t("boardLoadFailed")}</AlertDescription>
                 </Alert>
@@ -348,7 +348,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     if (boardsError) {
         return (
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">
                     <AlertDescription>{t("boardsLoadFailed")}</AlertDescription>
                 </Alert>
@@ -365,7 +365,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     if (!boardsLoading && !boardsList.some((board) => board.id === boardId)) {
         return (
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
                 <Alert variant="destructive">
                     <AlertDescription>{t("boardNotFound")}</AlertDescription>
                 </Alert>
@@ -376,7 +376,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const showBodySpinner = isLoading || sprintsLoading || boardsLoading;
 
     return (
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+        <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
             <header className="flex flex-col gap-3 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h1 className="truncate text-sm font-semibold">
@@ -397,9 +397,9 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 </div>
 
                 {canManage ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <Input
-                            className="max-w-xs"
+                            className="min-w-0 w-full sm:max-w-xs"
                             onChange={(event) => setNewName(event.target.value)}
                             onKeyDown={(event) => {
                                 if (event.key === "Enter") {
@@ -422,8 +422,8 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     </div>
                 ) : null}
 
-                <div className="flex flex-col gap-2">
-                    <div className="relative max-w-sm">
+                <div className="flex min-w-0 flex-col gap-2">
+                    <div className="relative w-full min-w-0 sm:max-w-sm">
                         <Search
                             aria-hidden
                             className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
@@ -477,7 +477,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
                     {canManage && selectedCount > 0 ? (
                         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
-                            <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur">
+                            <div className="pointer-events-auto flex w-full min-w-0 max-w-full flex-col items-stretch gap-2 rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
                                 <p className="text-ui whitespace-nowrap">
                                     {t("sprints.selectedCount", {
                                         count: selectedCount,
@@ -497,7 +497,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                 >
                                     <SelectTrigger
                                         aria-label={t("sprints.moveSelected")}
-                                        className="min-w-44"
+                                        className="w-full min-w-0 sm:min-w-44"
                                         size="sm"
                                     >
                                         <span>
@@ -728,7 +728,7 @@ function PastSprintSection({
 
     return (
         <section className="rounded-md border border-border bg-card">
-            <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+            <header className="flex min-w-0 flex-col gap-2 border-b border-border px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                         <h2 className="text-h3">{sprint.name}</h2>
@@ -1113,7 +1113,7 @@ function SprintSection({
 
     return (
         <section className="rounded-md border border-border bg-card">
-            <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+            <header className="flex min-w-0 flex-col gap-2 border-b border-border px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                         <h2 className="text-h3">{sprint.name}</h2>

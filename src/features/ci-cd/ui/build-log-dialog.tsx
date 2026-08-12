@@ -67,6 +67,7 @@ export function BuildLogDialog({
             <DialogContent
                 className={cn(
                     "flex h-[min(90vh,44rem)] w-full max-w-3xl flex-col gap-3 overflow-hidden rounded-none border-l-2 sm:max-w-3xl",
+                    "max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:p-3",
                     build?.status === "success" && "border-l-emerald-500",
                     build?.status === "failure" && "border-l-red-500",
                     build?.status === "running" && "border-l-amber-400",
@@ -74,9 +75,9 @@ export function BuildLogDialog({
                 )}
             >
                 <DialogHeader className="shrink-0">
-                    <div className="flex flex-wrap items-start justify-between gap-2 pr-6">
+                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:pr-6">
                         <div className="min-w-0 space-y-1">
-                            <DialogTitle className="text-h3">
+                            <DialogTitle className="text-h3 wrap-break-word">
                                 {build
                                     ? t("cicd.logs.title", {
                                           branch: build.branch,
@@ -84,7 +85,7 @@ export function BuildLogDialog({
                                       })
                                     : t("cicd.logs.titleFallback")}
                             </DialogTitle>
-                            <DialogDescription className="font-mono text-meta text-muted-foreground">
+                            <DialogDescription className="font-mono text-meta text-muted-foreground wrap-break-word">
                                 {build
                                     ? `${build.commitSha} · ${build.commitMessage}`
                                     : t("cicd.logs.hint")}
@@ -92,6 +93,7 @@ export function BuildLogDialog({
                         </div>
                         {build?.htmlUrl ? (
                             <Button
+                                className="w-full shrink-0 sm:w-auto"
                                 nativeButton={false}
                                 render={
                                     <a
@@ -143,15 +145,15 @@ export function BuildLogDialog({
                         <ul className="flex flex-col gap-1.5">
                             {jobs.map((job) => (
                                 <li
-                                    className="flex items-center justify-between gap-2 border border-border px-2 py-1.5"
+                                    className="flex min-w-0 flex-col gap-2 border border-border px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between"
                                     key={job.id}
                                 >
-                                    <span className="truncate text-ui">
+                                    <span className="min-w-0 text-ui wrap-break-word">
                                         {job.name}
                                     </span>
                                     <Badge
                                         className={cn(
-                                            "gap-1 border font-mono text-meta uppercase tracking-wide",
+                                            "w-fit gap-1 border font-mono text-meta uppercase tracking-wide",
                                             buildStatusAccentClass(job.status)
                                         )}
                                         variant="outline"
@@ -169,7 +171,7 @@ export function BuildLogDialog({
                     <pre
                         aria-live="polite"
                         className={cn(
-                            "m-0 min-h-full whitespace-pre-wrap p-3 font-mono text-code text-foreground",
+                            "m-0 min-h-full whitespace-pre-wrap break-all p-3 font-mono text-meta text-foreground sm:text-code",
                             "selection:bg-primary/30"
                         )}
                     >
