@@ -100,7 +100,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                     <Skeleton width={220} />
                     <Skeleton width={160} />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {Array.from(
                         { length: PROJECT_SKELETON_COUNT },
                         (_, index) => (
@@ -222,7 +222,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
             )}
 
             {projects.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {projects.map((project) => (
                         <ProjectCard
                             isRemoving={

@@ -103,7 +103,7 @@ export function TeamsPage() {
                 <div
                     aria-busy="true"
                     aria-live="polite"
-                    className="grid gap-4 sm:grid-cols-2"
+                    className="grid grid-cols-1 gap-4 sm:grid-cols-2"
                     role="status"
                 >
                     {Array.from({ length: SKELETON_COUNT }, (_, index) => (
@@ -173,7 +173,7 @@ export function TeamsPage() {
                 )}
 
             {isTeamsView && !isLoading && teams.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {teams.map((team) => (
                         <TeamCard key={team.id} team={team} />
                     ))}
@@ -181,7 +181,7 @@ export function TeamsPage() {
             )}
 
             {!isTeamsView && !isLoading && allProjectRows.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {allProjectRows.map(({ project, teamName }) => (
                         <ProjectCard
                             key={project.id}

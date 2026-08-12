@@ -257,7 +257,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                 ) : (
                     <ul className="divide-y divide-border border border-border bg-card">
                         {showOwner && team && ownerProfile ? (
-                            <li className="flex items-center gap-3 px-3.5 py-2">
+                            <li className="flex flex-wrap items-center gap-3 px-3.5 py-2">
                                 <Avatar className="size-8 rounded-md">
                                     {ownerProfile.avatar_url ? (
                                         <AvatarImage
