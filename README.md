@@ -1,37 +1,50 @@
 # PlotOps
 
-Git-native project tracker (Linear/Jira-style) with GitHub integration.
+![PlotOps](/public/PlotOps.png)
 
-Collaboration and access are scoped to a **Team**; Projects live under a Team (ADR 0017 — in progress). Full product/tech spec: [`docs/SPEC.md`](docs/SPEC.md). Domain glossary: [`CONTEXT.md`](CONTEXT.md).
+[![CI](https://github.com/WebRunnerDev/PlotOps/actions/workflows/main.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/main.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
+**Git-native project tracker** — a Linear/Jira-style board where tasks, branches, pull requests, and CI runs live in one place. Built as an open portfolio project to showcase modern frontend architecture (React 19, TanStack, Feature-Sliced Design) with a real Supabase backend and GitHub integration.
+
+Stay on the board instead of tab-hopping: link a task to a branch, review diffs in-app, watch GitHub Actions status, and let webhooks move cards when a PR merges.
+
+Collaboration is scoped to a **Team**; Projects live under a Team ([ADR 0017](docs/adr/0017-team-above-project.md)). Full product/tech spec: [`docs/SPEC.md`](docs/SPEC.md). Domain glossary: [`CONTEXT.md`](CONTEXT.md).
 
 ## Features
 
 | Area                                                                                | Status      |
 | ----------------------------------------------------------------------------------- | ----------- |
 | Auth (GitHub OAuth + email signup/confirm + complete profile)                       | Done        |
+| Guest mode (local sandbox — “Try demo”, no shared remote login)                     | Done        |
 | GitHub project import                                                               | Done        |
 | Kanban board (columns, labels, priority, deadline, filters, comments, soft-archive) | Done        |
 | Multi-board + branch mapping (base branch, allowed head patterns)                   | Done        |
-| Sprints (Board-scoped backlog, start/close/cancel, report)                          | Done        |
+| Sprints (board-scoped backlog, start/close/cancel, report, estimates)               | Done        |
 | Task rich text + media (TipTap, Storage)                                            | Done        |
 | Task activity feed                                                                  | Done        |
-| Team & permissions (Team above Project — ADR 0017)                                  | In progress |
+| Team & permissions (Team above Project — ADR 0017)                                  | Done        |
 | Notifications (Watch + assignment + structural kinds)                               | Done        |
 | Mentions (`@` in description/comments → always-on inbox)                            | Done        |
 | App chrome (top bar, project tabs, breadcrumbs)                                     | Done        |
 | Command palette (`Ctrl/Cmd+K`)                                                      | Done        |
-| CI/CD dashboard (GitHub Actions)                                                    | Done        |
-| GitHub webhooks + Edge Function                                                     | Done        |
-| Git integration (PR, diff, branches)                                                | In progress |
-| Guest mode                                                                          | Not started |
+| CI/CD dashboard (GitHub Actions — jobs, logs, polling)                              | Done        |
+| GitHub webhooks + Edge Function (PR merge → task column sync)                       | Done        |
+| Git integration (PR link, in-app diff, Open PR + Merge)                             | Done        |
+| Deeper Git polish (commits history, UX refinements)                                 | In progress |
 
 ### Roadmap highlights
 
-- **Git Kanban** — tasks optionally linked to branches; drag-and-drop updates status; branch name generator (`feature/TASK-123-login-page`)
-- **In-app Git** — PR list, commit history, code diff viewer (no redirect to GitHub) — in progress
-- **CI/CD Dashboard** — build status per branch, jobs + logs from GitHub Actions
+- **Git Kanban** — tasks linked to branches; drag-and-drop updates status; branch name generator (`feature/TASK-123-login-page`)
+- **In-app Git** — PR list, commit history, code diff viewer without leaving the app
+- **CI/CD Dashboard** — build status per branch, jobs + streaming logs from GitHub Actions
 - **Command Palette** — search tasks, create tasks, switch projects, toggle theme
-- **Guest Mode** — demo without GitHub OAuth; pre-seeded projects, tasks, fake diffs and CI logs
+- **Guest Mode** — try the app without GitHub OAuth; client-side sandbox with pre-seeded data
 
 ## Domain (MVP)
 
