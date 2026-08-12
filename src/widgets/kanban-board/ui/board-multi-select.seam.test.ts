@@ -42,8 +42,9 @@ describe("board multi-select archive seams", () => {
         expect(board).toMatch(/Escape/);
         expect(board).toMatch(/moveTasksToColumn/);
         expect(board).toMatch(/resolveCrossColumnDragTaskIds/);
-        expect(board).toMatch(/BoardPointerSensor/);
-        expect(card).toMatch(/gateDragPointerDown/);
+        expect(board).toMatch(/BoardMouseSensor/);
+        expect(board).toMatch(/BoardTouchSensor/);
+        expect(card).toMatch(/gateDragListeners/);
         expect(card).toMatch(/toggleTask/);
         expect(card).toMatch(/selection=\{/);
         expect(taskCard).toMatch(/Checkbox/);

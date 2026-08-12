@@ -103,9 +103,9 @@ export function TaskCard({ labels, selection, task }: TaskCardProperties) {
                             {selection ? (
                                 <span
                                     className={cn(
-                                        // Expand hit target beyond the 14px icon so clicks
-                                        // near the checkbox don't arm card drag.
-                                        "absolute -inset-2 z-10 flex cursor-pointer items-center justify-center transition-opacity",
+                                        // Expand hit target beyond the 14px icon so taps
+                                        // near the checkbox don't arm card drag (~44px).
+                                        "absolute -inset-3 z-10 flex min-h-11 min-w-11 cursor-pointer items-center justify-center transition-opacity",
                                         showSelectionControl
                                             ? "opacity-100"
                                             : "pointer-events-none opacity-0 group-hover/task:pointer-events-auto group-hover/task:opacity-100 group-focus-within/task:pointer-events-auto group-focus-within/task:opacity-100"

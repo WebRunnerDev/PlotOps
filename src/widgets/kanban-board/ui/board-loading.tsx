@@ -40,7 +40,7 @@ export function BoardLoading({
             className={cn("flex h-full min-h-0 flex-col gap-3 pt-2", className)}
             role="status"
         >
-            <header className="shrink-0 border-b border-border px-12 py-2">
+            <header className="shrink-0 border-b border-border px-3 py-2 sm:px-12">
                 <div className="flex flex-wrap items-center gap-2">
                     <Skeleton width={96} />
                     <Skeleton width={112} />

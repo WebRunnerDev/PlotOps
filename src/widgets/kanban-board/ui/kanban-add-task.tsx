@@ -93,7 +93,7 @@ export function KanbanAddTask({
     if (!open) {
         return (
             <Button
-                className="h-8 w-full justify-start gap-2 text-muted-foreground"
+                className="h-9 w-full justify-start gap-2 text-muted-foreground sm:h-8"
                 onClick={() => setOpen(true)}
                 type="button"
                 variant="ghost"

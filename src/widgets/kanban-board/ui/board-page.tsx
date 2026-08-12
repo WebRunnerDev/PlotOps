@@ -122,7 +122,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     return (
         <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
             <div className="flex h-full w-max min-w-full flex-col gap-3 pt-2">
-                <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-12 py-2 backdrop-blur-sm">
+                <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm sm:px-12">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {branchUrl ? (
                             <a
@@ -156,7 +156,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                         />
                         {showNewTaskCta ? (
                             <Button
-                                className="ml-auto min-w-0 shrink gap-1.5 focus-visible:ring-2"
+                                className="ml-auto min-h-9 min-w-0 shrink gap-1.5 focus-visible:ring-2 sm:min-h-8"
                                 onClick={() =>
                                     setOpenCreateTaskRequestKey(
                                         (key) => key + 1
@@ -181,7 +181,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                     ) : undefined}
                 </header>
 
-                <div className="min-h-0 min-w-0 flex-1 px-12">
+                <div className="min-h-0 min-w-0 flex-1 px-3 sm:px-12">
                     <KanbanBoard
                         boardId={currentBoard.id}
                         githubToken={githubAccessToken}

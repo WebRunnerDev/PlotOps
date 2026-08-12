@@ -1,23 +1,52 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type {
+    MouseEvent as ReactMouseEvent,
+    TouchEvent as ReactTouchEvent,
+} from "react";
 
-import { PointerSensor, type PointerSensorOptions } from "@dnd-kit/core";
+import {
+    MouseSensor,
+    type MouseSensorOptions,
+    TouchSensor,
+    type TouchSensorOptions,
+} from "@dnd-kit/core";
 
 /**
- * PointerSensor that ignores presses on `[data-no-dnd]` (e.g. card checkboxes).
- * Pair with gating `{...listeners}` at the sortable node — synthetic listeners
+ * Drag sensors that ignore presses on `[data-no-dnd]` (e.g. card checkboxes).
+ * Pair with gated `{...listeners}` at the sortable node — synthetic listeners
  * still fire even when a child calls stopPropagation in some cases.
+ *
+ * Mouse uses short distance activation; touch uses long-press so board/column
+ * scroll still works (see resolve-board-drag-activation).
  */
-export class BoardPointerSensor extends PointerSensor {
+export class BoardMouseSensor extends MouseSensor {
     static activators = [
         {
-            eventName: "onPointerDown" as const,
+            eventName: "onMouseDown" as const,
             handler: (
-                { nativeEvent: event }: ReactPointerEvent,
-                { onActivation }: PointerSensorOptions
+                { nativeEvent: event }: ReactMouseEvent,
+                { onActivation }: MouseSensorOptions
+            ) => {
+                if (event.button === 2 || isNoDndEventTarget(event.target)) {
+                    return false;
+                }
+
+                onActivation?.({ event });
+                return true;
+            },
+        },
+    ];
+}
+
+export class BoardTouchSensor extends TouchSensor {
+    static activators = [
+        {
+            eventName: "onTouchStart" as const,
+            handler: (
+                { nativeEvent: event }: ReactTouchEvent,
+                { onActivation }: TouchSensorOptions
             ) => {
                 if (
-                    !event.isPrimary ||
-                    event.button !== 0 ||
+                    event.touches.length > 1 ||
                     isNoDndEventTarget(event.target)
                 ) {
                     return false;

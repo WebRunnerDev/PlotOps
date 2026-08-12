@@ -1,4 +1,4 @@
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 import { useDndContext } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
@@ -15,7 +15,7 @@ import {
     useTasksUiStore,
 } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
-import { gateDragPointerDown } from "@/widgets/kanban-board/model/gate-drag-pointer-down";
+import { gateDragListeners } from "@/widgets/kanban-board/model/gate-drag-pointer-down";
 import { shouldOpenTaskFromKeyboard } from "@/widgets/kanban-board/model/should-open-task-from-keyboard";
 import { shouldOpenTaskFromPointer } from "@/widgets/kanban-board/model/should-open-task-from-pointer";
 
@@ -103,7 +103,7 @@ export function DraggableTaskCard({
         selectTask(task.id);
     };
 
-    const onPointerDown = gateDragPointerDown(canDrag ? listeners : undefined);
+    const dragListeners = canDrag ? gateDragListeners(listeners) : undefined;
 
     return (
         <div
@@ -111,7 +111,6 @@ export function DraggableTaskCard({
             className={cn(
                 "group/task relative min-w-0 cursor-pointer rounded-lg outline-none transition-opacity duration-150",
                 "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                canDrag && "touch-none",
                 (isDragging || multiDragGhost) &&
                     "opacity-40 ring-2 ring-inset ring-primary/50",
                 // Inset ring: no ring-offset, so selection never grows card width.
@@ -127,14 +126,7 @@ export function DraggableTaskCard({
                 transition,
             }}
             {...(canDrag ? attributes : undefined)}
-            {...(canDrag
-                ? {
-                      ...listeners,
-                      onPointerDown: onPointerDown as (
-                          event: ReactPointerEvent<HTMLDivElement>
-                      ) => void,
-                  }
-                : undefined)}
+            {...(dragListeners ?? undefined)}
             onKeyDown={onKeyDown}
             role="button"
             tabIndex={0}

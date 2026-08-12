@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { gateDragPointerDown } from "./gate-drag-pointer-down";
+import { gateDragListeners } from "./gate-drag-pointer-down";
 
 function elementWithClosest(found: boolean): Element {
     return {
@@ -9,27 +9,43 @@ function elementWithClosest(found: boolean): Element {
     } as Element;
 }
 
-describe("gateDragPointerDown", () => {
+describe("gateDragListeners", () => {
     it("does not call the activator when the press is on [data-no-dnd]", () => {
-        const original = vi.fn();
-        const gated = gateDragPointerDown({ onPointerDown: original });
+        const onMouseDown = vi.fn();
+        const gated = gateDragListeners({ onMouseDown });
 
-        gated?.({
+        gated?.onMouseDown?.({
             target: elementWithClosest(true),
-        } as unknown as React.PointerEvent<HTMLElement>);
+        } as never);
 
-        expect(original).not.toHaveBeenCalled();
+        expect(onMouseDown).not.toHaveBeenCalled();
     });
 
     it("forwards the activator when the press is outside [data-no-dnd]", () => {
-        const original = vi.fn();
-        const gated = gateDragPointerDown({ onPointerDown: original });
+        const onTouchStart = vi.fn();
+        const gated = gateDragListeners({ onTouchStart });
         const event = {
             target: elementWithClosest(false),
-        } as unknown as React.PointerEvent<HTMLElement>;
+        } as never;
 
-        gated?.(event);
+        gated?.onTouchStart?.(event);
 
-        expect(original).toHaveBeenCalledWith(event);
+        expect(onTouchStart).toHaveBeenCalledWith(event);
+    });
+
+    it("gates mouse and touch activators independently", () => {
+        const onMouseDown = vi.fn();
+        const onTouchStart = vi.fn();
+        const gated = gateDragListeners({ onMouseDown, onTouchStart });
+
+        gated?.onMouseDown?.({
+            target: elementWithClosest(true),
+        } as never);
+        gated?.onTouchStart?.({
+            target: elementWithClosest(false),
+        } as never);
+
+        expect(onMouseDown).not.toHaveBeenCalled();
+        expect(onTouchStart).toHaveBeenCalled();
     });
 });

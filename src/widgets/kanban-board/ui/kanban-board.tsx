@@ -45,8 +45,15 @@ import {
 } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
-import { BoardPointerSensor } from "@/widgets/kanban-board/model/board-pointer-sensor";
+import {
+    BoardMouseSensor,
+    BoardTouchSensor,
+} from "@/widgets/kanban-board/model/board-pointer-sensor";
 import { isBoardTaskViewRestricted } from "@/widgets/kanban-board/model/is-board-task-view-restricted";
+import {
+    resolveBoardMouseActivation,
+    resolveBoardTouchActivation,
+} from "@/widgets/kanban-board/model/resolve-board-drag-activation";
 import { resolveCrossColumnDragTaskIds } from "@/widgets/kanban-board/model/resolve-cross-column-drag-task-ids";
 
 import { BoardLoading } from "./board-loading";
@@ -158,8 +165,11 @@ export function KanbanBoard({
     }, [clearBoardSelection]);
 
     const sensors = useSensors(
-        useSensor(BoardPointerSensor, {
-            activationConstraint: { distance: 6 },
+        useSensor(BoardMouseSensor, {
+            activationConstraint: resolveBoardMouseActivation(),
+        }),
+        useSensor(BoardTouchSensor, {
+            activationConstraint: resolveBoardTouchActivation(),
         })
     );
 
@@ -450,7 +460,7 @@ export function KanbanBoard({
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="sticky left-0 z-5 flex w-[calc(100cqw-6rem)] shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="sticky left-0 z-5 flex w-[calc(100cqw-1.5rem)] shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:w-[calc(100cqw-6rem)]">
                 <BoardTaskFiltersBar
                     filters={filters}
                     labels={projectLabels}

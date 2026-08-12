@@ -23,6 +23,9 @@ describe("kanban board DnD persist seams", () => {
         expect(source).toMatch(/isBoardTaskViewRestricted/);
         expect(source).toMatch(/displayedTaskIds/);
         expect(source).toMatch(/moveTasksToColumn/);
-        expect(source).toMatch(/BoardPointerSensor/);
+        expect(source).toMatch(/BoardMouseSensor/);
+        expect(source).toMatch(/BoardTouchSensor/);
+        expect(source).toMatch(/resolveBoardMouseActivation/);
+        expect(source).toMatch(/resolveBoardTouchActivation/);
     });
 });
