@@ -47,6 +47,41 @@ Collaboration is scoped to a **Team**; Projects live under a Team ([ADR 0017](do
 - **Command Palette** — search tasks, create tasks, switch projects, toggle theme
 - **Guest Mode** — try the app without GitHub OAuth; client-side sandbox with pre-seeded data
 
+## Why use PlotOps?
+
+PlotOps is a **personal / portfolio product**, not a hosted SaaS competitor to Linear or Jira. It is still useful day-to-day if your work already lives next to GitHub.
+
+### Practical benefit
+
+Most trackers treat Git as an afterthought: you jump out to GitHub for the branch, the PR, the Actions run, then back to update the card. PlotOps keeps that loop on one board:
+
+| Pain today                         | What PlotOps does                                                              |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| Card ≠ branch / PR                 | Link a Task to a branch and PR; generate a branch name from the Task           |
+| “Did the build pass?” → new tab    | CI/CD tab reads GitHub Actions (jobs + logs) for the linked repo               |
+| Merge happened, board is stale     | Webhook moves the Task when a PR merges onto the Board’s base branch           |
+| Review means leaving the tracker   | In-app diff, Open PR, and Merge from the Task panel                            |
+| Small team, no need for enterprise | Teams, roles, invites, sprints, estimates — enough for a real side project     |
+
+### Who it fits
+
+- **You + 1–5 collaborators** on a GitHub-backed side project or small product
+- Developers who want a **Linear-like board** without paying for another cloud workspace yet
+- Friends / colleagues willing to try a pet project and give blunt feedback
+- Hiring managers / peers reviewing a **full-stack portfolio** (real backend, RLS, Edge Functions, GitOps — not a mock landing page)
+
+### Who it does not fit (yet)
+
+- Companies that need SLAs, SSO, audit exports, or “never lose data” guarantees
+- Non-git workflows (PlotOps is intentionally Git-native)
+- Anyone expecting a finished commercial product — see [Disclaimer](#disclaimer)
+
+### How to try it with friends
+
+1. Open the live app (or run locally) → **Try demo** for a no-signup sandbox (local Guest Session; nothing hits production DB).
+2. Or sign in with GitHub / email, create a **Team**, invite them, connect a repo, and use a real Board for one shared project.
+3. Tell them up front: pet project, expect rough edges, feedback welcome — delete-account path is documented in the Disclaimer.
+
 ## Domain (MVP)
 
 | Term              | Meaning                                                                                 |
