@@ -165,7 +165,7 @@ export function LoginForm() {
     };
 
     return (
-        <Card className="mx-auto w-full max-w-sm">
+        <Card className="mx-auto w-full min-w-0 max-w-sm">
             <CardHeader className="text-center">
                 <CardTitle>{t("signInTitle")}</CardTitle>
                 <CardDescription>{t("signInSubtitle")}</CardDescription>
@@ -183,6 +183,7 @@ export function LoginForm() {
                         className="w-full"
                         disabled={isBusy}
                         onClick={handleGitHubLogin}
+                        size="lg"
                         type="button"
                         variant="outline"
                     >
@@ -195,6 +196,7 @@ export function LoginForm() {
                         className="w-full"
                         disabled={isBusy}
                         onClick={handleGuestLogin}
+                        size="lg"
                         type="button"
                         variant="secondary"
                     >
@@ -242,7 +244,12 @@ export function LoginForm() {
                         />
                     </div>
 
-                    <Button className="w-full" disabled={isBusy} type="submit">
+                    <Button
+                        className="w-full"
+                        disabled={isBusy}
+                        size="lg"
+                        type="submit"
+                    >
                         {isEmailLoading ? t("signInLoading") : t("signIn")}
                     </Button>
                 </form>

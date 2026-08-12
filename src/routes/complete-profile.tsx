@@ -7,6 +7,7 @@ import {
     useAuth,
 } from "@/features/auth";
 import { isGuest } from "@/features/guest-mode";
+import { AuthPageShell } from "@/widgets/auth-page-shell";
 
 type CompleteProfileSearch = {
     redirect?: string;
@@ -69,8 +70,8 @@ function CompleteProfilePage() {
     }, [navigate, profileNamesComplete, redirectTo, user]);
 
     return (
-        <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <AuthPageShell>
             <CompleteProfileForm redirectTo={redirectTo} />
-        </div>
+        </AuthPageShell>
     );
 }

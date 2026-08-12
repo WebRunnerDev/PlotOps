@@ -14,8 +14,9 @@ describe("Top bar narrow viewport seam", () => {
         const topBar = readUi("top-bar.tsx");
         const nav = readUi("project-section-nav.tsx");
 
-        expect(topBar).toMatch(/overflow-x-auto/);
-        expect(topBar).toMatch(/overflow-y-hidden/);
+        expect(topBar).toMatch(/overflow-hidden/);
+        expect(nav).toMatch(/overflow-x-auto/);
+        expect(nav).toMatch(/overflow-y-hidden/);
         expect(topBar).toMatch(/max-sm:hidden|sm:inline|sm:hidden/);
         expect(topBar).toMatch(/sm:grid-cols-3/);
         expect(nav).toMatch(/focus-visible:ring-inset/);

@@ -14,6 +14,7 @@ import { safeRemoveItem, safeSetItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
+import { PublicPageShell } from "@/widgets/auth-page-shell";
 
 export const Route = createFileRoute("/invite/$token")({
     component: InviteAcceptPage,
@@ -121,7 +122,7 @@ function InviteAcceptPage() {
 
     if (authLoading || (user && isLoadingInvite)) {
         return (
-            <div className="flex min-h-[50vh] items-center justify-center">
+            <div className="flex min-h-[50vh] w-full min-w-0 items-center justify-center px-4">
                 <Spinner className="size-8 text-primary" />
             </div>
         );
@@ -129,8 +130,8 @@ function InviteAcceptPage() {
 
     if (!user) {
         return (
-            <div className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-16">
-                <header className="flex flex-col gap-1">
+            <PublicPageShell>
+                <header className="flex min-w-0 flex-col gap-1 break-words">
                     <p className="text-meta text-muted-foreground">
                         {t("invite.eyebrow")}
                     </p>
@@ -141,41 +142,50 @@ function InviteAcceptPage() {
                 </header>
                 <div className="flex flex-col gap-3">
                     <Button
+                        className="w-full"
                         nativeButton={false}
                         onClick={goSignUp}
                         render={<Link to="/sign-up" />}
+                        size="lg"
                     >
                         {t("invite.createAccount")}
                     </Button>
                     <Button
+                        className="w-full"
                         nativeButton={false}
                         onClick={goSignIn}
                         render={<Link to="/sign-in" />}
+                        size="lg"
                         variant="outline"
                     >
                         {t("invite.signIn")}
                     </Button>
                 </div>
-            </div>
+            </PublicPageShell>
         );
     }
 
     if (loadError || !invite) {
         return (
-            <div className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-16">
+            <PublicPageShell className="gap-4">
                 <Alert variant="destructive">
                     <AlertDescription>{t("invite.notFound")}</AlertDescription>
                 </Alert>
-                <Button nativeButton={false} render={<Link to="/home" />}>
+                <Button
+                    className="w-full"
+                    nativeButton={false}
+                    render={<Link to="/home" />}
+                    size="lg"
+                >
                     {t("invite.goHome")}
                 </Button>
-            </div>
+            </PublicPageShell>
         );
     }
 
     return (
-        <div className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-16">
-            <header className="flex flex-col gap-1">
+        <PublicPageShell>
+            <header className="flex min-w-0 flex-col gap-1 break-words">
                 <p className="text-meta text-muted-foreground">
                     {t("invite.eyebrow")}
                 </p>
@@ -187,7 +197,7 @@ function InviteAcceptPage() {
                 </p>
             </header>
 
-            <div className="border border-border p-4 text-ui">
+            <div className="min-w-0 break-words border border-border p-4 text-ui">
                 <p>
                     {invite.kind === "open"
                         ? t("invite.openDescription")
@@ -227,8 +237,10 @@ function InviteAcceptPage() {
                     </p>
                     {invite.kind === "open" || invite.email_matches ? (
                         <Button
+                            className="w-full"
                             disabled={isActing}
                             onClick={() => void onAccept()}
+                            size="lg"
                             type="button"
                         >
                             {isActing ? (
@@ -252,8 +264,10 @@ function InviteAcceptPage() {
                                 </AlertDescription>
                             </Alert>
                             <Button
+                                className="w-full"
                                 disabled={isActing}
                                 onClick={() => void onClaim()}
+                                size="lg"
                                 type="button"
                                 variant="outline"
                             >
@@ -266,6 +280,6 @@ function InviteAcceptPage() {
                     )}
                 </div>
             ) : undefined}
-        </div>
+        </PublicPageShell>
     );
 }
