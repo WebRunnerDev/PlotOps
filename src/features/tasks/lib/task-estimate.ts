@@ -25,6 +25,6 @@ export function isTaskEstimate(value: unknown): value is TaskEstimate {
 }
 
 /** Parse a patch/API value; throws when outside Fibonacci | null. */
-export function parseTaskEstimate(value: unknown): null | TaskEstimate {
+export function parseTaskEstimate(value?: unknown): null | TaskEstimate {
     return taskEstimateSchema.parse(value);
 }

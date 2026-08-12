@@ -69,7 +69,7 @@ export function SuggestCollaboratorsStep({
     const memberUsernames = useMemo(() => {
         const names = members
             .map((member) => member.profile?.username)
-            .filter(Boolean);
+            .filter(Boolean) as string[];
         if (ownerProfile?.username) {
             names.push(ownerProfile.username);
         }
@@ -84,7 +84,7 @@ export function SuggestCollaboratorsStep({
                         invite.status === "pending" && invite.kind === "email"
                 )
                 .map((invite) => invite.email)
-                .filter(Boolean),
+                .filter(Boolean) as string[],
         [invites]
     );
 

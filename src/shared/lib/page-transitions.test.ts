@@ -8,7 +8,7 @@ describe("waitForActiveViewTransition", () => {
     });
 
     it("resolves immediately when document is unavailable", async () => {
-        vi.stubGlobal("document");
+        vi.stubGlobal("document", null);
         await expect(waitForActiveViewTransition()).resolves.toBeUndefined();
     });
 

@@ -57,7 +57,7 @@ export function getPageTransitionTypes({
  * Await this after `navigate` before opening overlays (e.g. task drawer).
  */
 export async function waitForActiveViewTransition(): Promise<void> {
-    if (typeof document === "undefined") return;
+    if (typeof document === "undefined" || document === null) return;
 
     // Let `document.startViewTransition` assign `activeViewTransition` first.
     await Promise.resolve();

@@ -1,14 +1,10 @@
 /** Soft-empty branch/PR fields when the Project has no linked repo full name. */
-export function githubPanelNeedsRepo(
-    repoFullName: string | undefined
-): boolean {
+export function githubPanelNeedsRepo(repoFullName?: string): boolean {
     return !repoFullName?.trim();
 }
 
 /** Whether the Project has a linked GitHub repository (non-null `github_repo_id`). */
-export function projectHasGithubRepo(
-    githubRepoId: null | number | undefined
-): boolean {
+export function projectHasGithubRepo(githubRepoId?: null | number): boolean {
     return githubRepoId != undefined;
 }
 
