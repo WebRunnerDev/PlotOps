@@ -1,17 +1,29 @@
 {
     "actions": "Действия",
+    "archivedBadge": "В архиве",
     "columnsLoading": "Загрузка колонок доски…",
     "columnsLoadFailed": "Не удалось загрузить колонки доски",
+    "createBugWithTitle": "Создать баг «{{title}}»",
+    "createFeatureWithTitle": "Создать фичу «{{title}}»",
     "createTaskFailed": "Не удалось создать задачу",
     "createTaskWithTitle": "Создать задачу «{{title}}»",
     "description": "Найдите команду…",
     "empty": "Ничего не найдено.",
     "guestCreateReminder": "Демо-аккаунт — изменения могут быть сброшены на общем демо.",
+    "includeArchived": "Включать архив",
+    "members": "Участники",
+    "navigate": {
+        "backlog": "Перейти в бэклог",
+        "board": "Перейти на доску",
+        "cicd": "Перейти в CI/CD",
+        "settings": "Перейти в настройки"
+    },
     "open": "Открыть палитру команд",
     "placeholder": "Команда или поиск…",
     "projects": "Проекты",
     "shortcut": "Ctrl K",
     "shortcutMac": "⌘K",
     "tasks": "Задачи",
-    "title": "Палитра команд"
+    "title": "Палитра команд",
+    "unknownMember": "Неизвестный пользователь"
 }

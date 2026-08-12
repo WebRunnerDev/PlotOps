@@ -40,6 +40,8 @@ export type BoardsProvider = {
         name: string
     ): Promise<void>;
     reorderBoardColumns(boardId: string, columnIds: string[]): Promise<void>;
+    /** Marks `columnId` as Done (≤1 per board); `null` clears Done. */
+    setBoardDoneColumn(boardId: string, columnId: null | string): Promise<void>;
     updateBoard(
         boardId: string,
         patch: {

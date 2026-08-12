@@ -438,3 +438,7 @@ enabled = true
 # GitHub App webhooks have no Supabase JWT — verify HMAC in the function instead.
 [functions.github-webhook]
 verify_jwt = false
+
+# Callers must be signed-in Team managers; JWT verified by the gateway.
+[functions.send-team-invite]
+verify_jwt = true

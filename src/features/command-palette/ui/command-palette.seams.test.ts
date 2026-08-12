@@ -44,3 +44,59 @@ describe("Command palette active sprint create seam", () => {
         expect(source).toMatch(/sprintId:\s*createSprintId/);
     });
 });
+
+describe("Command palette navigate + typed create seam", () => {
+    it("wires resolveNavigateIntent to TopBar section routes", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/resolveNavigateIntent/);
+        expect(source).toMatch(
+            /to:\s*"\/projects\/\$projectId\/boards\/\$boardId"/
+        );
+        expect(source).toMatch(
+            /to:\s*"\/projects\/\$projectId\/boards\/\$boardId\/backlog"/
+        );
+        expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/ci-cd"/);
+        expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/settings"/);
+    });
+
+    it("threads create-task taskType into createTask options", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(
+            /resolveCreateTaskIntent\(routeContext,\s*query,\s*taskType\)/
+        );
+        expect(source).toMatch(/taskType:\s*intent\.taskType/);
+        expect(source).toMatch(/command:createBugWithTitle/);
+        expect(source).toMatch(/command:createFeatureWithTitle/);
+    });
+});
+
+describe("Command palette include-archived search seam", () => {
+    it("opts into archived Task search via toggle and fetch options", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/includeArchived/);
+        expect(source).toMatch(/command:includeArchived/);
+        expect(source).toMatch(
+            /useProjectTasks\([\s\S]*\{\s*includeArchived\s*\}/
+        );
+        expect(source).toMatch(
+            /resolveCommandPaletteTaskHits\([\s\S]*\{\s*includeArchived\s*\}/
+        );
+    });
+});
+
+describe("Command palette Search Members seam", () => {
+    it("queries Team membership and navigates to Team member settings", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/useTeamMembers/);
+        expect(source).toMatch(/useTeamOwnerProfile/);
+        expect(source).toMatch(/resolveCommandPaletteMemberHits/);
+        expect(source).toMatch(/openMemberSettingsIntent/);
+        expect(source).toMatch(/to:\s*"\/teams\/\$teamId\/settings"/);
+        expect(source).toMatch(/command:members/);
+        expect(source).toMatch(/visibility\.searchMembers/);
+    });
+});

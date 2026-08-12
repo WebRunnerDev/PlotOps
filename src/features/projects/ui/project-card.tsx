@@ -18,19 +18,23 @@ import {
 
 type ProjectCardProperties = {
     isRemoving?: boolean;
-    onRemove: (project: Project) => void;
+    /** When omitted, the card is navigate-only (no delete control). */
+    onRemove?: (project: Project) => void;
     project: Project;
+    /** Optional Team label for cross-Team lists (e.g. Home All projects). */
+    teamName?: string;
 };
 
 export function ProjectCard({
     isRemoving = false,
     onRemove,
     project,
+    teamName,
 }: ProjectCardProperties) {
     const { t } = useTranslation("home");
     const navigate = useNavigate();
     const { canDeleteProject, isSettled } = useProjectAccess(project.id);
-    const canDelete = isSettled && canDeleteProject;
+    const canDelete = Boolean(onRemove) && isSettled && canDeleteProject;
     const defaultBranch = project.github_default_branch ?? "main";
 
     return (
@@ -55,7 +59,7 @@ export function ProjectCard({
             tabIndex={0}
         >
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex min-w-0 items-center gap-2">
                     <span className="truncate">{project.name}</span>
                     {project.is_private && (
                         <Lock
@@ -64,12 +68,17 @@ export function ProjectCard({
                         />
                     )}
                 </CardTitle>
+                {teamName ? (
+                    <CardDescription className="min-w-0 truncate text-meta">
+                        {teamName}
+                    </CardDescription>
+                ) : undefined}
                 {project.github_full_name ? (
-                    <CardDescription className="text-code">
+                    <CardDescription className="truncate text-code">
                         {project.github_full_name}
                     </CardDescription>
                 ) : undefined}
-                {canDelete ? (
+                {canDelete && onRemove ? (
                     <CardAction>
                         <Button
                             aria-label={t("removeProject")}
@@ -98,10 +107,16 @@ export function ProjectCard({
             )}
 
             <CardFooter className="justify-between border-0 bg-transparent">
-                <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
-                    <GitBranch />
-                    {defaultBranch}
-                </span>
+                {project.github_repo_id == undefined ? (
+                    <span className="text-meta text-muted-foreground">
+                        {t("projectNoGitHub")}
+                    </span>
+                ) : (
+                    <span className="inline-flex items-center gap-1.5 text-code text-muted-foreground">
+                        <GitBranch />
+                        {defaultBranch}
+                    </span>
+                )}
 
                 {project.github_html_url ? (
                     <Button

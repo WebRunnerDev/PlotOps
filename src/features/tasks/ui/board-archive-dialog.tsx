@@ -105,7 +105,7 @@ export function BoardArchiveDialog({
                     <Archive data-icon="inline-start" />
                     {t("archive.open")}
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="min-w-0 max-sm:top-0 max-sm:left-0 max-sm:max-h-dvh max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>{t("archive.title")}</DialogTitle>
                         <DialogDescription>
@@ -126,8 +126,8 @@ export function BoardArchiveDialog({
                             {t("archive.empty")}
                         </p>
                     ) : (
-                        <ScrollArea className="max-h-[min(24rem,50vh)]">
-                            <ul className="flex flex-col gap-2 pr-3">
+                        <ScrollArea className="max-h-[min(24rem,50dvh)]">
+                            <ul className="flex min-w-0 flex-col gap-2 pr-3">
                                 {archived.map((task) => {
                                     const archivedLabel = task.archivedAt
                                         ? new Intl.DateTimeFormat(
@@ -141,14 +141,14 @@ export function BoardArchiveDialog({
 
                                     return (
                                         <li
-                                            className="flex flex-col gap-2 border border-foreground/10 p-3"
+                                            className="flex min-w-0 flex-col gap-2 border border-foreground/10 p-3"
                                             key={task.id}
                                         >
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="text-meta font-mono text-muted-foreground">
                                                     {task.key}
                                                 </span>
-                                                <span className="font-medium">
+                                                <span className="min-w-0 font-medium wrap-break-word">
                                                     {task.title}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">

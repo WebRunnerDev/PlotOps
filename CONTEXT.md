@@ -53,12 +53,20 @@ A glob-like rule on a Board that describes which task head-branch names fit that
 _Avoid_: branch filter, branch whitelist (implies hard deny)
 
 **Task**:
-A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
+A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
 
 **Priority**:
 How urgently a Task should be handled relative to others: urgent, high, medium, or low. Default on create is medium. Distinct from Board column status.
 _Avoid_: severity (not used), importance (vague)
+
+**Manual order**:
+The user-defined sequence of Tasks within a Board column, persisted as each Task's column position. Restored whenever Board sort is Manual (or unset). Distinct from Board sort by field.
+_Avoid_: board order (ambiguous with column position among Board columns), rank, sort order (prefer Manual order vs Board sort)
+
+**Board sort**:
+A per-viewer display preference that reorders Tasks inside each column by a chosen field and direction (Priority, Deadline, created date, or Title) without changing Manual order. When not Manual, within-column drag reorder is off; moving a Task across columns still updates status (and Manual order for that move as today). Persists until the viewer explicitly changes or clears it.
+_Avoid_: filter (filters hide Tasks; Board sort only reorders), Manual order, column sort (Board-wide, not per-column)
 
 **Label**:
 A Project-scoped tag attachable to any Task in the Project, regardless of Board. Not owned by a Board.
@@ -67,15 +75,15 @@ _Avoid_: Board label, tag (prefer Label)
 ### Planning
 
 **Sprint**:
-A timeboxed container of Tasks on one Board. Owns lifecycle and calendar bounds; does not define columns or workflow — those stay on the Board. A Task is in at most one Sprint at a time (or in the Backlog when unassigned). A Board may have many Sprints over time, including several Drafts at once, but at most one Sprint in the Active state at once. Commitment and completion for a Sprint are counted by Task, not by estimate points (points / KPI metrics are out of scope for now). Lifecycle states: Draft (planning, not started; dates optional) → Active (in progress; start and end dates required; at most one per Board) → Closed (completed with a Sprint report) or Canceled (aborted without a full completion report).
-_Avoid_: Iteration, cycle, milestone (different concepts), Team sprint (Sprints are Board-scoped, not Team- or Project-scoped), story points (deferred)
+A timeboxed container of Tasks on one Board. Owns lifecycle and calendar bounds; does not define columns or workflow — those stay on the Board. A Task is in at most one Sprint at a time (or in the Backlog when unassigned). A Board may have many Sprints over time, including several Drafts at once, but at most one Sprint in the Active state at once. Commitment and completion are always counted by Task. When Tasks carry Fibonacci Estimates, Active badges and Close reports also show points sum and unestimated count (points primary, task count secondary — ADR 0020). Lifecycle states: Draft (planning, not started; dates optional) → Active (in progress; start and end dates required; at most one per Board) → Closed (completed with a Sprint report; Tasks that counted as Sprint completion remain members of that Closed Sprint and are omitted from Kanban's Active Sprint and Entire board filters until membership changes; Sprint history / report lists them) or Canceled (aborted without a full completion report; membership cleared to Backlog). Close does not change Board columns or archive Tasks. Permanent delete of Closed/Canceled history releases remaining member Tasks to the Backlog.
+_Avoid_: Iteration, cycle, milestone (different concepts), Team sprint (Sprints are Board-scoped, not Team- or Project-scoped)
 
 **Backlog**:
-The set of Tasks on a Board that are not assigned to any Sprint (`sprint_id` absent). Not a Board column and not a Sprint state.
+The set of Tasks on a Board that are not assigned to any Sprint (`sprint_id` absent) — including not assigned to a Closed Sprint. Not a Board column and not a Sprint state. Completed work left on a Closed Sprint is therefore outside the Backlog.
 _Avoid_: Backlog column (a column named Backlog is unrelated), icebox
 
 **Sprint completion**:
-A Close-Sprint decision: which Tasks in that Sprint count as completed for the Sprint report. Not inferred continuously from Board columns during the Sprint. The close dialog pre-suggests Tasks currently in the Board's last column (highest position); the user confirms or adjusts before the Sprint is closed.
+A Close-Sprint decision: which Tasks in that Sprint count as completed for the Sprint report. Not inferred continuously from Board columns during the Sprint. The close dialog pre-suggests Tasks currently in the Board's Done column (`board_columns.is_done`; falls back to the rightmost column when none is marked); the user confirms or adjusts before the Sprint is closed. Those Tasks remain members of the Closed Sprint for history and are hidden from Kanban filters (Active Sprint and Entire board) until Manager+ moves them to the Backlog or a Draft; the stored completion snapshot used by the report is not rewritten when membership later changes. Field edits on those Tasks remain allowed; new Tasks cannot be added to a Closed Sprint. Permanently deleting Closed Sprint history releases any remaining member Tasks to the Backlog (they become visible on Kanban again).
 _Avoid_: Done column (a column is not automatically “completed”), auto-DONE from git merge (separate automation; not the Sprint completion rule)
 
 **Sprint cancel**:
@@ -83,15 +91,27 @@ Aborting a Draft or Active Sprint without Sprint completion. All of its Tasks re
 _Avoid_: Close, delete (delete may still apply to empty Drafts as a UI shortcut; cancel is the domain action that clears membership)
 
 **Commitment**:
-The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed). Later adds/removes do not rewrite Commitment; they are Scope changes.
-_Avoid_: Sprint backlog (the live set of Tasks currently in the Sprint), estimate, points
+The snapshot of Task membership taken when a Sprint starts (Draft → Active). The baseline for the Sprint report (committed vs completed) and Board Insights commitment accuracy. Later adds/removes do not rewrite Commitment; they are Scope changes. Point totals displayed on reports use each Task's current Estimate (not a frozen points snapshot). Burndown reconstructs daily remaining from Commitment ± Scope events; Active remaining treats Done-column membership as a proxy until formal Sprint completion at Close.
+_Avoid_: Sprint backlog (the live set of Tasks currently in the Sprint)
+
+**Estimate**:
+Optional Fibonacci story points on a Task (`1 | 2 | 3 | 5 | 8 | 13 | 21`). Absent/null means unestimated. Editable by Manager+ only. Used for Sprint size badges, Close report points, burndown, and Board Insights KPIs alongside task counts.
+_Avoid_: Ideal hours, t-shirt sizes, free-form integers outside the Fibonacci scale
+
+**Velocity**:
+Average completed work across the last N Closed Sprints on a Board (default N = 5). Prefers points when any Estimate exists in the window; otherwise task count. Shown on Backlog Insights for all viewers — not a corporate reporting export.
+_Avoid_: Throughput (broader), lead time
+
+**Commitment accuracy**:
+Completed ÷ committed work over the same Closed-Sprint window as Velocity (macro ratio). Quality companion to Velocity; null when the window's Commitment total is zero.
+_Avoid_: Predictability index, SPI (corporate terms)
 
 **Scope change**:
 An audited add or remove of a Task from an Active Sprint after Commitment. Recorded as a Sprint event for the report; does not alter the original Commitment snapshot.
 _Avoid_: Edit, update (too vague), re-commitment
 
 **Carryover**:
-Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (existing Draft or a newly created Draft). Completed Tasks are recorded on the closed Sprint and are not carried over.
+Incomplete Tasks at Close that are moved to the Backlog or into another Sprint (per Task: existing Draft or a newly created Draft). Tasks counted as Sprint completion stay members of the Closed Sprint (they are not carried over and do not enter the Backlog via Close).
 _Avoid_: Rollover, spillover
 
 **Member**:
@@ -110,10 +130,10 @@ _Avoid_: Admin, Project owner
 A Role that manages Members, Invites, Team settings, creating Projects, and Git repo connection on Projects — but cannot delete a Project, delete the Team, transfer ownership, or grant/revoke the Admin Role (Owner only). May invite and assign Manager, Contributor, or Viewer. Also has Manager-level Board/Task powers on every Project in the Team.
 
 **Manager**:
-A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
+A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, Estimates (Fibonacci story points), and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
 
 **Contributor**:
-A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
+A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, Estimates, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
 _Avoid_: Developer, Member (too vague), Executor
 
 **Viewer**:
@@ -121,8 +141,8 @@ A Role with read-only access to the Team's Projects' Boards, Tasks, and PR statu
 _Avoid_: Stakeholder, Guest (Guest Mode / Guest Session — not a Team Role)
 
 **Invite**:
-A pending offer to join a Team at a chosen Role, addressed to an email. Delivered as a copyable token link in-app — not sent by email in the MVP. States: pending, accepted, expired, revoked. Redeem requires the auth email to match, or the invitee may claim the invite (`claimed_by`) so an Owner/Admin can confirm. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
-_Avoid_: Invitation email (delivery is out-of-band), magic link (Auth magic links are a different mechanism), Project invite
+A pending offer to join a Team at a chosen Role. **Email** invites are addressed to an email and redeemed when the auth email matches, or the invitee may claim (`claimed_by`) so an Owner/Admin can confirm (ADR 0002/0003). **Open** invites (`kind = open`) have no email binding — any signed-in non-member may redeem until revoke/expire; the invite stays pending and records `redeem_count` (ADR 0019). Delivery is copy-link first (ADR 0002); email-kind invites may also trigger best-effort outbound mail via Edge Function `send-team-invite` (Resend) when secrets are configured. States: pending, accepted, expired, revoked. Expiry is chosen at creation: 1 day, 7 days, 30 days, or never.
+_Avoid_: Auth magic link (different mechanism), Project invite, treating Resend as required for invite redeem
 
 ### Awareness
 

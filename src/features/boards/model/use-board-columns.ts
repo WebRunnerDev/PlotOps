@@ -61,6 +61,17 @@ export function useBoardColumns(projectId: string, boardId: string) {
         },
     });
 
+    const setDoneColumnMutation = useMutation({
+        mutationFn: (columnId: null | string) =>
+            boardsProvider.setBoardDoneColumn(boardId, columnId),
+        onError: () => {
+            toast.error("Failed to update Done column");
+        },
+        onSuccess: () => {
+            invalidateBoardColumns(queryClient, projectId);
+        },
+    });
+
     const deleteColumnMutation = useMutation({
         mutationFn: ({
             columnId,
@@ -207,6 +218,15 @@ export function useBoardColumns(projectId: string, boardId: string) {
                 boardKeys.columns(projectId, boardId),
                 previous
             );
+        },
+        /**
+         * Marks `columnId` as the board Done column. Passing the current Done
+         * column id again clears Done (Close falls back to rightmost).
+         */
+        setDoneColumn: async (columnId: string) => {
+            const currentDone = columns.find((column) => column.isDone);
+            const nextId = currentDone?.id === columnId ? null : columnId;
+            await setDoneColumnMutation.mutateAsync(nextId);
         },
     };
 }

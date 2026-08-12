@@ -1,0 +1,5 @@
+# Closed Sprint retains completed members (Kanban hides them)
+
+On Close, Tasks that count as Sprint completion stay members of that Closed Sprint (`sprint_id` kept). Incomplete Tasks still Carryover (Backlog or Draft). Completed members are omitted from Kanban Active Sprint and Entire board filters so the live board stays unclogged; the “big list” is Sprint history / report (live members plus snapshot ids for any later Manager+ reassignment). Close does not move columns or archive. Manager+ may later move a Task off a Closed Sprint to Backlog or a Draft without rewriting `completed_task_ids`. Deleting Closed history releases remaining members to the Backlog. Fields remain editable; adding Tasks to a Closed Sprint is forbidden.
+
+Rejected: dump completed into Backlog and rely only on `completed_task_ids` (current code) — looks like “Done was thrown away” and fights the mental model that history is membership. Rejected: keep Closed members visible on Entire board — conflicts with wanting a Jira-like clean board after Complete Sprint. No one-shot backfill of already-closed rows in the first ship; new Close behaviour + guest parity only.

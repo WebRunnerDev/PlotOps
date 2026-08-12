@@ -18,12 +18,20 @@ describe("sprint close carryover compensation seam", () => {
 });
 
 describe("backlog move serialization seam", () => {
-    it("gates overlapping backlog moves while a mutation is pending", () => {
-        const source = readFileSync(
+    it("routes backlog moves through serialized sprint membership planning", () => {
+        const backlogSource = readFileSync(
             path.join(dirname, "backlog-page.tsx"),
             "utf8"
         );
+        const hookSource = readFileSync(
+            path.join(dirname, "..", "model", "use-sprints.ts"),
+            "utf8"
+        );
 
-        expect(source).toMatch(/moveTasks\.isPending/);
+        expect(backlogSource).toMatch(/moveTasksToSprint/);
+        expect(backlogSource).toMatch(/moveTasks\.isPending/);
+        expect(hookSource).toMatch(/createMutationQueue/);
+        expect(hookSource).toMatch(/planSprintMembershipMove/);
+        expect(hookSource).toMatch(/applySprintMembershipUpdates/);
     });
 });

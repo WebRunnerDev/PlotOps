@@ -6,6 +6,7 @@ export {
     fetchBoardColumnSummaries,
     renameBoardColumn,
     reorderBoardColumns,
+    setBoardDoneColumn,
 } from "./api/board-columns-api";
 export {
     type DatabaseBoardColumn,
@@ -27,12 +28,14 @@ export {
     matchesAllowedHeadPatterns,
     parseAllowedHeadPatterns,
 } from "./lib/allowed-head-patterns";
+export { readLastBoardId, writeLastBoardId } from "./lib/last-board-storage";
 export { DEFAULT_KANBAN_COLUMNS, KANBAN_COLUMNS } from "./model/constants";
 export {
     invalidateBoardColumns,
     invalidateProjectBoards,
 } from "./model/invalidate-boards";
 export { boardKeys } from "./model/query-keys";
+export { resolvePreferredBoardId } from "./model/resolve-preferred-board-id";
 export type { BoardColumn, ProjectBoardRecord } from "./model/types";
 export { useBoardColumns } from "./model/use-board-columns";
 export {

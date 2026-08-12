@@ -44,12 +44,17 @@ const T12 = "b0000000-0000-4000-8000-000000000112";
 const T13 = "b0000000-0000-4000-8000-000000000113";
 const T14 = "b0000000-0000-4000-8000-000000000114";
 const T15 = "b0000000-0000-4000-8000-000000000115";
+const T16 = "b0000000-0000-4000-8000-000000000116";
+const T17 = "b0000000-0000-4000-8000-000000000117";
+const T18 = "b0000000-0000-4000-8000-000000000118";
+const T19 = "b0000000-0000-4000-8000-000000000119";
+const LABEL_CONTENT = "b0000000-0000-4000-8000-000000000035";
 
 const DEFAULT_COLUMNS = [
-    { id: "todo", name: "To Do", position: 0 },
-    { id: "in_progress", name: "In Progress", position: 1 },
-    { id: "in_review", name: "In Review", position: 2 },
-    { id: "done", name: "Done", position: 3 },
+    { id: "todo", isDone: false, name: "To Do", position: 0 },
+    { id: "in_progress", isDone: false, name: "In Progress", position: 1 },
+    { id: "in_review", isDone: false, name: "In Review", position: 2 },
+    { id: "done", isDone: true, name: "Done", position: 3 },
 ] as const;
 
 /**
@@ -236,6 +241,12 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             name: "design",
             projectId: PROJ_PLAIN_ID,
         },
+        {
+            color: "green",
+            id: LABEL_CONTENT,
+            name: "content",
+            projectId: PROJ_PLAIN_ID,
+        },
     ],
     notifications: [
         {
@@ -300,8 +311,9 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         },
         {
             createdAt: "2026-07-18T10:00:00.000Z",
-            description: "Second project without a linked GitHub repo.",
-            githubDefaultBranch: "main",
+            description:
+                "Name-only Project — board and backlog without a GitHub repo (connect later from Settings).",
+            githubDefaultBranch: null,
             githubFullName: null,
             githubHtmlUrl: null,
             githubRepoId: null,
@@ -346,9 +358,11 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/TASK-1-guest-signin-cta",
+            createdAt: "2026-07-20T10:00:00.000Z",
             deadline: "2026-08-07",
             description:
                 "<p>Primary secondary button on sign-in that starts a Guest Session.</p>",
+            estimate: 5,
             id: T01,
             key: "FEAT-1",
             labelIds: [LABEL_FRONTEND],
@@ -371,9 +385,11 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/FEAT-2-guest-ci-mock",
+            createdAt: "2026-07-21T11:00:00.000Z",
             deadline: "2026-08-06",
             description:
                 "<p>Route guest sessions through the canned builds provider — no GitHub token.</p>",
+            estimate: 8,
             id: T02,
             key: "FEAT-2",
             labelIds: [LABEL_CI, LABEL_BACKEND],
@@ -396,9 +412,11 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/TASK-3-guest-seed-dataset",
+            createdAt: "2026-07-22T09:00:00.000Z",
             deadline: "2026-08-05",
             description:
                 "<p>Populate the Guest Mode seed with a Team, two Projects, and about 15 colourful tasks.</p>",
+            estimate: 3,
             id: T03,
             key: "TASK-3",
             labelIds: [LABEL_BACKEND],
@@ -421,6 +439,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/TASK-4-is-guest-session",
+            createdAt: "2026-07-23T14:00:00.000Z",
             deadline: "2026-08-01",
             description:
                 "<p>Guest detection is a Guest Session client flag — not a demo email/UUID.</p>",
@@ -446,6 +465,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "docs/TASK-5-guest-creds-docs",
+            createdAt: "2026-07-24T08:00:00.000Z",
             deadline: "2026-07-31",
             description:
                 "<p>Document Local Guest Mode and that Docker SQL seed is for RLS experiments only.</p>",
@@ -470,9 +490,11 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-25T16:00:00.000Z",
             deadline: "2026-08-10",
             description:
                 "<p>Show a Demo chip so reviewers know they are in Guest Mode.</p>",
+            estimate: 2,
             id: T06,
             key: "TASK-6",
             position: 0,
@@ -487,6 +509,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-26T10:00:00.000Z",
             description:
                 "<p>Keep Search / Switch Project / Theme; Create Task stays local-only.</p>",
             id: T07,
@@ -503,6 +526,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-27T12:00:00.000Z",
             description:
                 "<p>Hide or no-op dangerous mutations that do not apply locally.</p>",
             id: T08,
@@ -521,6 +545,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "feature/FEAT-9-git-fixtures",
+            createdAt: "2026-07-28T09:30:00.000Z",
             deadline: "2026-08-12",
             description:
                 "<p>Git tab should return canned commits/PRs when Guest has no provider token.</p>",
@@ -537,6 +562,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-29T15:00:00.000Z",
             description:
                 "<p>Replay canned CI log lines so the CI tab looks alive without Actions.</p>",
             id: T10,
@@ -554,6 +580,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             author: ACTOR,
             boardId: BOARD_GIT_ID,
             branchName: "fix/BUG-11-realtime-reconnect",
+            createdAt: "2026-07-30T11:00:00.000Z",
             deadline: "2026-08-08",
             description:
                 "<p>Reproduce drop under slow 3G and harden the subscription bounce.</p>",
@@ -576,6 +603,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-31T13:00:00.000Z",
             deadline: "2026-07-28",
             description:
                 "<p>Short paragraph pointing employers at Guest Mode from the README.</p>",
@@ -593,12 +621,14 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-01T10:00:00.000Z",
             deadline: "2026-08-14",
             description:
-                "<p>Sharper headline for the marketing site without binding a GitHub repo.</p>",
+                "<p>Sharper headline for the marketing site — no branch or PR until a repo is connected.</p>",
+            estimate: 3,
             id: T13,
             key: "TASK-13",
-            labelIds: [LABEL_DESIGN],
+            labelIds: [LABEL_DESIGN, LABEL_CONTENT],
             position: 0,
             priority: "medium",
             projectId: PROJ_PLAIN_ID,
@@ -607,13 +637,33 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             type: "task",
         },
         {
+            author: ACTOR,
+            boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-01T12:00:00.000Z",
+            description:
+                "<p>Backlog candidate — pricing FAQ outline before design kicks off.</p>",
+            estimate: 2,
+            id: T16,
+            key: "TASK-16",
+            labelIds: [LABEL_CONTENT],
+            position: 1,
+            priority: "low",
+            projectId: PROJ_PLAIN_ID,
+            status: "todo",
+            title: "Pricing FAQ outline",
+            type: "task",
+        },
+        {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-02T09:00:00.000Z",
             description:
                 "<p>Collect logos and screenshots for outbound press notes.</p>",
+            estimate: 5,
             id: T14,
             key: "TASK-14",
+            labelIds: [LABEL_CONTENT],
             position: 0,
             priority: "low",
             projectId: PROJ_PLAIN_ID,
@@ -625,6 +675,26 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-02T16:00:00.000Z",
+            deadline: "2026-08-12",
+            description:
+                "<p>Wireframe-ready sections for the product story page.</p>",
+            estimate: 8,
+            id: T17,
+            key: "TASK-17",
+            labelIds: [LABEL_DESIGN],
+            position: 1,
+            priority: "medium",
+            projectId: PROJ_PLAIN_ID,
+            status: "in_progress",
+            title: "Product story wireframes",
+            type: "feature",
+        },
+        {
+            assignee: ACTOR,
+            author: ACTOR,
+            boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-08-03T14:00:00.000Z",
             deadline: "2026-08-06",
             description:
                 "<p>Accordion fails to expand below the sm breakpoint.</p>",
@@ -637,6 +707,41 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             status: "in_review",
             title: "Broken FAQ accordion on mobile",
             type: "bug",
+        },
+        {
+            assignee: ACTOR,
+            author: ACTOR,
+            boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-07-28T10:00:00.000Z",
+            description:
+                "<p>Approved brand tokens for the marketing site palette.</p>",
+            estimate: 2,
+            id: T18,
+            key: "TASK-18",
+            labelIds: [LABEL_DESIGN],
+            position: 0,
+            priority: "medium",
+            projectId: PROJ_PLAIN_ID,
+            status: "done",
+            title: "Brand color token pass",
+            type: "task",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_PLAIN_ID,
+            createdAt: "2026-07-25T09:00:00.000Z",
+            description:
+                "<p>Stakeholder interview notes synthesized into messaging pillars.</p>",
+            estimate: 5,
+            id: T19,
+            key: "TASK-19",
+            labelIds: [LABEL_CONTENT],
+            position: 1,
+            priority: "low",
+            projectId: PROJ_PLAIN_ID,
+            status: "done",
+            title: "Messaging pillars from interviews",
+            type: "task",
         },
     ],
     teams: [

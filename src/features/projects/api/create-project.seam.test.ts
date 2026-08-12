@@ -11,9 +11,11 @@ describe("createProject under Team seam", () => {
             path.join(dirname, "projects-api.ts"),
             "utf8"
         );
+        const start = source.indexOf("export async function createProject");
+        const nextExport = source.indexOf("export async function", start + 1);
         const function_ = source.slice(
-            source.indexOf("export async function createProject"),
-            source.indexOf("export async function deleteProject")
+            start,
+            nextExport === -1 ? undefined : nextExport
         );
 
         expect(function_).toMatch(/\.from\(\s*["']projects["']\s*\)/);

@@ -1,5 +1,6 @@
 import type { BoardColumn } from "@/features/boards";
 import type { ProjectLabel } from "@/features/labels";
+import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
     TaskPriority,
@@ -9,6 +10,7 @@ import type {
 import type { Database } from "@/shared/api/database.types";
 
 import { fetchBoardColumnIds } from "@/features/boards";
+import { parseTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
@@ -58,6 +60,7 @@ const TASK_SELECT = `
   description,
   status,
   priority,
+  estimate,
   deadline,
   branch_name,
   assignee_id,
@@ -104,6 +107,8 @@ export type TaskRecordPatch = {
     branch_name?: null | string;
     deadline?: null | string;
     description?: null | string;
+    /** Pass `null` to clear estimate (unestimated). Manager+ only. */
+    estimate?: null | TaskEstimate;
     position?: number;
     pr_number?: null | number;
     pr_state?: null | string;
@@ -116,13 +121,26 @@ export type TaskRecordPatch = {
 
 /** Signal archive; DB trigger sets `archived_at` / `archived_by`. */
 export async function archiveTaskRecord(taskId: string) {
-    const { error } = await supabase
-        .from("tasks")
-        .update({ archived_at: new Date().toISOString() })
-        .eq("id", taskId)
-        .is("archived_at", null);
+    await archiveTaskRecords([taskId]);
+}
+
+/**
+ * Bulk soft-archive via RPC (migration 20260811120000).
+ * Writes activity rows server-side; returns how many tasks transitioned.
+ */
+export async function archiveTaskRecords(taskIds: string[]) {
+    const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+        return { archivedCount: 0 };
+    }
+
+    const { data, error } = await supabase.rpc(
+        "archive_tasks" as never,
+        { p_task_ids: uniqueIds } as never
+    );
 
     if (error) throw error;
+    return { archivedCount: typeof data === "number" ? data : 0 };
 }
 
 export async function createTaskRecord(
@@ -229,14 +247,24 @@ export async function fetchBoardTasks(
     };
 }
 
-/** Non-archived Tasks for a Project (all Boards) — palette search and similar. */
-export async function fetchProjectTasks(projectId: string): Promise<Task[]> {
-    const { data, error } = await supabase
+/** Tasks for a Project (all Boards) — palette search and similar.
+ * By default excludes archived; pass `includeArchived` for opt-in archive search.
+ */
+export async function fetchProjectTasks(
+    projectId: string,
+    options?: { includeArchived?: boolean }
+): Promise<Task[]> {
+    let query = supabase
         .from("tasks")
         .select(TASK_SELECT)
         .eq("project_id", projectId)
-        .is("archived_at", null)
         .order("created_at", { ascending: false });
+
+    if (!options?.includeArchived) {
+        query = query.is("archived_at", null);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return ((data ?? []) as DatabaseTask[]).map((row) => mapDatabaseTask(row));
@@ -367,10 +395,17 @@ export async function updateTaskDetails(
     patch: TaskRecordPatch,
     labelIds?: null | string[]
 ) {
-    const nextPatch =
+    const withTitle =
         patch.title === undefined
             ? patch
             : { ...patch, title: normalizeTaskTitle(patch.title) };
+    const nextPatch =
+        withTitle.estimate === undefined
+            ? withTitle
+            : {
+                  ...withTitle,
+                  estimate: parseTaskEstimate(withTitle.estimate),
+              };
 
     // RPC from migration 20260731182502 — regenerate types after local DB includes it.
     const { error } = await supabase.rpc(
@@ -387,10 +422,17 @@ export async function updateTaskDetails(
 
 /** Row patch only — prefer `updateTaskDetails` when labels may change too. */
 export async function updateTaskRecord(taskId: string, patch: TaskRecordPatch) {
-    const nextPatch =
+    const withTitle =
         patch.title === undefined
             ? patch
             : { ...patch, title: normalizeTaskTitle(patch.title) };
+    const nextPatch =
+        withTitle.estimate === undefined
+            ? withTitle
+            : {
+                  ...withTitle,
+                  estimate: parseTaskEstimate(withTitle.estimate),
+              };
 
     const { error } = await supabase
         .from("tasks")

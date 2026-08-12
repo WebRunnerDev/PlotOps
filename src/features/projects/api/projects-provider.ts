@@ -1,13 +1,21 @@
 import type {
+    ConnectProjectGithubPatch,
     CreateProjectInput,
     Project,
 } from "@/features/projects/model/types";
 
 /**
  * Narrow Projects data seam for Guest vs Supabase resolution.
- * Happy-path reads for board navigation; Guest create/delete stay blocked.
+ * Happy-path reads for board navigation; Guest create/delete/connect stay blocked.
  */
 export type ProjectsProvider = {
+    connectProjectGithub(
+        projectId: string,
+        patch: ConnectProjectGithubPatch
+    ): Promise<{
+        data: null | Project;
+        error: Error | null;
+    }>;
     createProject(input: CreateProjectInput): Promise<{
         data: null | Project;
         error: Error | null;

@@ -6,6 +6,7 @@ import {
     GUEST_DEMO_PROJECT_ID,
     isGuest,
 } from "@/features/guest-mode";
+import { AuthPageShell } from "@/widgets/auth-page-shell";
 
 export const Route = createFileRoute("/(auth)/sign-in")({
     beforeLoad: ({ context }) => {
@@ -27,8 +28,8 @@ export const Route = createFileRoute("/(auth)/sign-in")({
 
 function SignInPage() {
     return (
-        <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <AuthPageShell>
             <LoginForm />
-        </div>
+        </AuthPageShell>
     );
 }

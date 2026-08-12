@@ -133,7 +133,7 @@ export function CompleteProfileForm({
     };
 
     return (
-        <Card className="mx-auto w-full max-w-sm">
+        <Card className="mx-auto w-full min-w-0 max-w-sm">
             <CardHeader className="text-center">
                 <CardTitle>{t("completeProfile.title")}</CardTitle>
                 <CardDescription>
@@ -212,6 +212,7 @@ export function CompleteProfileForm({
                     <Button
                         className="w-full"
                         disabled={isLoading || isSigningOut}
+                        size="lg"
                         type="submit"
                     >
                         {isLoading

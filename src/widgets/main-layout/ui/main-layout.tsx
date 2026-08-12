@@ -29,7 +29,11 @@ function MainLayoutContent() {
     return (
         <div
             className={cn(
-                "w-full",
+                // overflow-x-hidden on all modes prevents horizontal bleed from
+                // children that temporarily exceed viewport width (e.g. wide tables,
+                // kanban columns on mobile). Child scroll regions opt back in with
+                // overflow-x-auto on their own containers.
+                "w-full overflow-x-hidden",
                 layoutMode === "kanban" &&
                     "flex h-dvh flex-col overflow-hidden",
                 layoutMode === "project" && "min-h-dvh overflow-y-auto",

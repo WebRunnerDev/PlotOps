@@ -434,6 +434,22 @@ html:active-view-transition-type(fade) {
     }
 }
 
+/* ─── Mobile scroll convention (M-0 foundation) ────────────────────────────
+ * • html/body: overflow-x hidden — no horizontal bleed at the document level.
+ * • Layout root (.main-layout): overflow-x-hidden (via MainLayoutWidget).
+ *   Kanban mode keeps its own overflow-hidden for the full-height scroll trick.
+ * • Scrollable regions (e.g. ProjectSectionNav, kanban board columns) must add
+ *   overflow-x-auto and [scrollbar-width:none] / [&::-webkit-scrollbar]:hidden
+ *   so native scrollbars don't appear on mobile.
+ * • All flex children in the TopBar carry min-w-0 so they cannot force the
+ *   header wider than the viewport.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+html,
+body {
+    overflow-x: hidden;
+}
+
 .react-loading-skeleton {
     --base-color: var(--muted);
     --highlight-color: color-mix(in oklab, var(--muted) 72%, var(--foreground));

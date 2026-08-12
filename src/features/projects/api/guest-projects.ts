@@ -31,6 +31,15 @@ function resolveOwnerId(
 
 /** Guest Mode Projects adapter — reads the local sandbox; never calls Supabase. */
 export const guestProjectsProvider: ProjectsProvider = {
+    async connectProjectGithub() {
+        return {
+            data: null,
+            error: new Error(
+                "Connecting a repository is not available in Guest Mode"
+            ),
+        };
+    },
+
     async createProject() {
         return {
             data: null,

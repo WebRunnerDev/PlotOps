@@ -2,6 +2,7 @@ import type { TasksProvider } from "@/features/tasks/api/tasks-provider";
 
 import {
     archiveTaskRecord,
+    archiveTaskRecords,
     createTaskRecord,
     deleteTaskRecord,
     fetchArchivedTasks,
@@ -17,6 +18,7 @@ import {
 /** Real-account Tasks adapter — delegates to existing Supabase APIs. */
 export const supabaseTasksProvider: TasksProvider = {
     archiveTaskRecord,
+    archiveTaskRecords,
     createTaskRecord,
     deleteTaskRecord,
     fetchArchivedTasks,

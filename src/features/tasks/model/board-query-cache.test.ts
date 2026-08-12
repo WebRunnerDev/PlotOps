@@ -20,8 +20,8 @@ const projectId = "proj_1";
 const boardId = "board_1";
 
 const columns: BoardColumn[] = [
-    { id: "todo", name: "Todo" },
-    { id: "done", name: "Done" },
+    { id: "todo", isDone: false, name: "Todo" },
+    { id: "done", isDone: true, name: "Done" },
 ];
 
 const labels: ProjectLabel[] = [
@@ -36,6 +36,7 @@ const labels: ProjectLabel[] = [
 const tasks: Task[] = [
     {
         boardId,
+        createdAt: "2026-01-01T00:00:00.000Z",
         id: "task_1",
         key: "TASK-1",
         labelIds: ["label_1"],
@@ -68,6 +69,13 @@ describe("board workspace query cache seam", () => {
             "tasks",
             "project",
             projectId,
+            false,
+        ]);
+        expect(taskKeys.project(projectId, true)).toEqual([
+            "tasks",
+            "project",
+            projectId,
+            true,
         ]);
 
         const keys = [

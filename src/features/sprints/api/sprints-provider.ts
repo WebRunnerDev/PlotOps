@@ -22,7 +22,8 @@ export type SprintsProvider = {
     closeSprint: (
         sprintId: string,
         completedTaskIds: string[],
-        carryoverSprintId: null | string
+        /** Incomplete task_id → Draft id, or null for Backlog. */
+        carryoverByTaskId: Record<string, null | string>
     ) => Promise<Sprint>;
     createDraftSprint: (
         boardId: string,

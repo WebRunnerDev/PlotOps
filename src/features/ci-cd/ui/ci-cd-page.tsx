@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { CircleCheck, CircleX, LoaderCircle, Timer } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +15,10 @@ import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
 import { isGuest } from "@/features/guest-mode";
+import {
+    projectHasGithubRepo,
+    resolveProjectConnectHash,
+} from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { cn } from "@/shared/lib/utils";
@@ -32,23 +37,25 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
     const { i18n, t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
     const guest = isGuest();
-    const canFetchBuilds = canFetchProjectBuilds({
-        githubAccessToken,
-        isGuest: guest,
-        projectId,
-    });
     const {
         canView,
         isLoading: accessLoading,
         isSettled,
     } = useProjectAccess(projectId);
     const { data: project, isLoading: projectLoading } = useProject(projectId);
+    const hasGithubRepo = projectHasGithubRepo(project?.github_repo_id);
+    const canFetchBuilds = canFetchProjectBuilds({
+        githubAccessToken,
+        githubRepoId: project?.github_repo_id,
+        isGuest: guest,
+        projectId,
+    });
     const {
         data: builds = [],
         error: buildsError,
         isFetching: buildsFetching,
         isLoading: buildsLoading,
-    } = useProjectBuilds(projectId);
+    } = useProjectBuilds(projectId, project?.github_repo_id);
     const [selectedBuild, setSelectedBuild] = useState<
         ProjectBuild | undefined
     >();
@@ -99,14 +106,14 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         );
     }
 
-    const needsGitHubToken = !canFetchBuilds;
+    const needsGitHubToken = hasGithubRepo && !canFetchBuilds;
     const tokenError =
         !guest &&
         (buildsError instanceof CiCdMissingTokenError ||
             buildsError instanceof CiCdUnauthorizedError);
 
     return (
-        <div className="scrollbar-board mx-auto flex h-full w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-4">
+        <div className="scrollbar-board mx-auto flex h-full w-full min-w-0 max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-4">
             <header className="flex flex-col gap-3 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -126,7 +133,30 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                 </p>
             </header>
 
-            {needsGitHubToken || tokenError ? (
+            {hasGithubRepo ? undefined : (
+                <Alert>
+                    <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <span className="min-w-0">{t("cicd.connectRepo")}</span>
+                        <Button
+                            className="shrink-0 self-start sm:self-auto"
+                            nativeButton={false}
+                            render={
+                                <Link
+                                    hash={resolveProjectConnectHash()}
+                                    params={{ projectId }}
+                                    to="/projects/$projectId/settings"
+                                />
+                            }
+                            size="sm"
+                            variant="outline"
+                        >
+                            {t("cicd.connectRepoAction")}
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            {hasGithubRepo && (needsGitHubToken || tokenError) ? (
                 <Alert>
                     <AlertDescription>{t("cicd.needsToken")}</AlertDescription>
                 </Alert>
@@ -142,7 +172,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                 <>
                     <section
                         aria-label={t("cicd.summary.label")}
-                        className="grid gap-3 border border-border p-3 sm:grid-cols-3"
+                        className="grid grid-cols-1 gap-3 border border-border p-3 sm:grid-cols-3"
                     >
                         <SummaryCell
                             label={t("cicd.summary.defaultBranch", {
@@ -251,9 +281,9 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                             }}
                                             type="button"
                                         >
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                                    <span className="truncate text-ui font-medium">
+                                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                                                <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                                                    <span className="min-w-0 text-ui font-medium wrap-break-word">
                                                         {build.workflowName}
                                                     </span>
                                                     <span className="font-mono text-code text-muted-foreground">
@@ -265,8 +295,8 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                                     label={statusLabel}
                                                 />
                                             </div>
-                                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                                                <span className="min-w-0 truncate text-ui text-muted-foreground">
+                                            <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3 sm:gap-y-0.5">
+                                                <span className="min-w-0 text-ui text-muted-foreground wrap-break-word">
                                                     {build.commitMessage}
                                                 </span>
                                                 <span className="shrink-0 font-mono text-meta text-muted-foreground">
@@ -291,6 +321,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
 
             <BuildLogDialog
                 build={selectedBuild}
+                githubRepoId={project.github_repo_id}
                 onClose={() => {
                     setSelectedBuild(undefined);
                 }}

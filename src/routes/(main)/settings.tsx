@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -8,6 +9,7 @@ import {
 } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
 import { Badge } from "@/shared/shadcn/ui/badge";
+import { Button } from "@/shared/shadcn/ui/button";
 
 export const Route = createFileRoute("/(main)/settings")({
     component: SettingsPage,
@@ -15,13 +17,24 @@ export const Route = createFileRoute("/(main)/settings")({
 
 function SettingsPage() {
     const { t } = useTranslation("common");
+    const router = useRouter();
     const guest = useIsGuest();
     const showDemoBadge = demoAccountBadgeVisible(guest);
 
     return (
         <div className="flex flex-col gap-6 py-8">
             <div className="flex flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Button
+                        className="shrink-0 text-muted-foreground"
+                        onClick={() => router.history.back()}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                    >
+                        <ArrowLeft data-icon="inline-start" />
+                        {t("back")}
+                    </Button>
                     <h1>{t("platformSettings")}</h1>
                     {showDemoBadge ? (
                         <Badge

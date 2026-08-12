@@ -159,11 +159,26 @@ export function SprintTaskTable({
             {
                 accessorKey: "title",
                 cell: ({ row }) => (
-                    <span className="block max-w-md truncate text-ui">
+                    <span className="block max-w-md text-ui sm:truncate">
                         {row.original.title}
                     </span>
                 ),
                 header: t("sprints.columnTitle"),
+            },
+            {
+                cell: ({ row }) =>
+                    row.original.estimate === undefined ? (
+                        <span className="text-meta text-muted-foreground">
+                            —
+                        </span>
+                    ) : (
+                        <span className="text-code tabular-nums">
+                            {row.original.estimate}
+                        </span>
+                    ),
+                header: t("sprints.columnEstimate"),
+                id: "estimate",
+                size: 64,
             },
             {
                 cell: ({ row }) => {
@@ -274,6 +289,8 @@ export function SprintTaskTable({
         );
     }
 
+    const rows = table.getRowModel().rows;
+
     return (
         <div
             className={cn(
@@ -282,46 +299,189 @@ export function SprintTaskTable({
             )}
             ref={setNodeRef}
         >
-            <Table>
-                <TableHeader>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                        <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map((header) => (
-                                <TableHead
-                                    key={header.id}
-                                    style={{
-                                        width:
-                                            header.column.getSize() === 150
-                                                ? undefined
-                                                : header.column.getSize(),
-                                    }}
-                                >
-                                    {header.isPlaceholder
-                                        ? null
-                                        : flexRender(
-                                              header.column.columnDef.header,
-                                              header.getContext()
-                                          )}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    ))}
-                </TableHeader>
-                <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                        <DraggableTaskRow
-                            canManage={canManage}
-                            containerId={containerId}
-                            isDragging={draggingTaskIds.includes(row.id)}
-                            key={row.id}
-                            onOpenTask={onOpenTask}
-                            row={row}
-                            rowSelection={rowSelection}
-                        />
-                    ))}
-                </TableBody>
-            </Table>
+            <ul className="divide-y divide-border sm:hidden">
+                {rows.map((row) => (
+                    <DraggableTaskCard
+                        canManage={canManage}
+                        containerId={containerId}
+                        isDragging={draggingTaskIds.includes(row.id)}
+                        key={row.id}
+                        onOpenTask={onOpenTask}
+                        row={row}
+                        rowSelection={rowSelection}
+                    />
+                ))}
+            </ul>
+
+            <div className="hidden sm:block">
+                <Table>
+                    <TableHeader>
+                        {table.getHeaderGroups().map((headerGroup) => (
+                            <TableRow key={headerGroup.id}>
+                                {headerGroup.headers.map((header) => (
+                                    <TableHead
+                                        key={header.id}
+                                        style={{
+                                            width:
+                                                header.column.getSize() === 150
+                                                    ? undefined
+                                                    : header.column.getSize(),
+                                        }}
+                                    >
+                                        {header.isPlaceholder
+                                            ? null
+                                            : flexRender(
+                                                  header.column.columnDef
+                                                      .header,
+                                                  header.getContext()
+                                              )}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableHeader>
+                    <TableBody>
+                        {rows.map((row) => (
+                            <DraggableTaskRow
+                                canManage={canManage}
+                                containerId={containerId}
+                                isDragging={draggingTaskIds.includes(row.id)}
+                                key={row.id}
+                                onOpenTask={onOpenTask}
+                                row={row}
+                                rowSelection={rowSelection}
+                            />
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
+    );
+}
+
+function DraggableTaskCard({
+    canManage,
+    containerId,
+    isDragging,
+    onOpenTask,
+    row,
+    rowSelection,
+}: {
+    canManage: boolean;
+    containerId: string;
+    isDragging: boolean;
+    onOpenTask?: (taskId: string) => void;
+    row: Row<Task>;
+    rowSelection: RowSelectionState;
+}) {
+    const {
+        attributes,
+        canDrag,
+        isSelected,
+        listeners,
+        setNodeRef,
+        suppressClickReference,
+    } = useTaskDrag({
+        canManage,
+        containerId,
+        isDragging,
+        row,
+        rowSelection,
+    });
+
+    const cells = row.getVisibleCells();
+    const selectCell = cells.find((cell) => cell.column.id === "select");
+    const keyCell = cells.find((cell) => cell.column.id === "key");
+    const titleCell = cells.find((cell) => cell.column.id === "title");
+    const metaCells = cells.filter(
+        (cell) =>
+            cell.column.id !== "select" &&
+            cell.column.id !== "key" &&
+            cell.column.id !== "title"
+    );
+
+    return (
+        <li
+            className={cn(
+                "flex min-w-0 flex-col gap-2 px-3 py-2.5",
+                canDrag && "cursor-grab active:cursor-grabbing",
+                onOpenTask && "hover:bg-muted/40",
+                isDragging && "opacity-40",
+                isSelected && "bg-muted/60"
+            )}
+            data-state={isSelected ? "selected" : undefined}
+            onClick={(event) => {
+                if (suppressClickReference.current) {
+                    suppressClickReference.current = false;
+                    return;
+                }
+                const target = event.target;
+                if (
+                    target instanceof Element &&
+                    target.closest("[data-no-row-activate]")
+                ) {
+                    return;
+                }
+                onOpenTask?.(row.id);
+            }}
+            ref={setNodeRef}
+            {...(canDrag ? attributes : {})}
+            {...(canDrag ? listeners : {})}
+        >
+            <div className="flex min-w-0 items-start gap-2">
+                {selectCell ? (
+                    <div
+                        className="shrink-0 pt-0.5"
+                        data-no-row-activate
+                        onClick={(event) => event.stopPropagation()}
+                        onPointerDown={(event) => event.stopPropagation()}
+                    >
+                        {flexRender(
+                            selectCell.column.columnDef.cell,
+                            selectCell.getContext()
+                        )}
+                    </div>
+                ) : null}
+                <div className="min-w-0 flex-1 space-y-1">
+                    {keyCell
+                        ? flexRender(
+                              keyCell.column.columnDef.cell,
+                              keyCell.getContext()
+                          )
+                        : null}
+                    {titleCell ? (
+                        <div className="min-w-0 text-ui wrap-break-word">
+                            {flexRender(
+                                titleCell.column.columnDef.cell,
+                                titleCell.getContext()
+                            )}
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+            {metaCells.length > 0 ? (
+                <div
+                    className={cn(
+                        "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1",
+                        selectCell && "pl-8"
+                    )}
+                >
+                    {metaCells.map((cell) => (
+                        <div
+                            className="min-w-0 shrink-0"
+                            key={cell.id}
+                            onClick={(event) => event.stopPropagation()}
+                            onPointerDown={(event) => event.stopPropagation()}
+                        >
+                            {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ) : null}
+        </li>
     );
 }
 
@@ -340,31 +500,19 @@ function DraggableTaskRow({
     row: Row<Task>;
     rowSelection: RowSelectionState;
 }) {
-    const isSelected = row.getIsSelected();
-    const canDrag = canManage;
-    const selectedIds = Object.keys(rowSelection).filter(
-        (id) => rowSelection[id]
-    );
-    const dragTaskIds =
-        isSelected && selectedIds.length > 0 ? selectedIds : [row.id];
-    const suppressClickReference = useRef(false);
-
-    useEffect(() => {
-        if (isDragging) {
-            suppressClickReference.current = true;
-        }
-    }, [isDragging]);
-
-    const { attributes, listeners, setNodeRef } = useDraggable({
-        data: {
-            sourceContainerId: containerId,
-            taskId: row.id,
-            taskIds: dragTaskIds,
-            tasks: [row.original],
-            type: "backlog-task",
-        } satisfies BacklogTaskDragData,
-        disabled: !canDrag,
-        id: row.id,
+    const {
+        attributes,
+        canDrag,
+        isSelected,
+        listeners,
+        setNodeRef,
+        suppressClickReference,
+    } = useTaskDrag({
+        canManage,
+        containerId,
+        isDragging,
+        row,
+        rowSelection,
     });
 
     return (
@@ -434,4 +582,54 @@ function initials(name: string): string {
     }
 
     return name.slice(0, 2).toUpperCase();
+}
+
+function useTaskDrag({
+    canManage,
+    containerId,
+    isDragging,
+    row,
+    rowSelection,
+}: {
+    canManage: boolean;
+    containerId: string;
+    isDragging: boolean;
+    row: Row<Task>;
+    rowSelection: RowSelectionState;
+}) {
+    const isSelected = row.getIsSelected();
+    const canDrag = canManage;
+    const selectedIds = Object.keys(rowSelection).filter(
+        (id) => rowSelection[id]
+    );
+    const dragTaskIds =
+        isSelected && selectedIds.length > 0 ? selectedIds : [row.id];
+    const suppressClickReference = useRef(false);
+
+    useEffect(() => {
+        if (isDragging) {
+            suppressClickReference.current = true;
+        }
+    }, [isDragging]);
+
+    const { attributes, listeners, setNodeRef } = useDraggable({
+        data: {
+            sourceContainerId: containerId,
+            taskId: row.id,
+            taskIds: dragTaskIds,
+            tasks: [row.original],
+            type: "backlog-task",
+        } satisfies BacklogTaskDragData,
+        disabled: !canDrag,
+        id: row.id,
+    });
+
+    return {
+        attributes,
+        canDrag,
+        isSelected,
+        listeners,
+        setNodeRef,
+        suppressClickReference,
+    };
 }

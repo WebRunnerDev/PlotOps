@@ -208,7 +208,7 @@ export function ProjectLabelsSettings({
                     {t("labelSettings.addSection")}
                 </h3>
                 <div className="flex flex-wrap items-end gap-3">
-                    <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         <Label htmlFor="new-label-name">
                             {t("labelSettings.name")}
                         </Label>
@@ -413,7 +413,7 @@ function LabelColorPicker({
                                     aria-label={t(
                                         "labelSettings.customColorHex"
                                     )}
-                                    className="h-8 w-28 font-mono text-sm"
+                                    className="h-8 w-24 min-w-0 sm:w-28 font-mono text-sm"
                                     onChange={(event) =>
                                         onCustomDraftChange?.(
                                             event.target.value

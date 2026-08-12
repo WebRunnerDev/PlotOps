@@ -1,30 +1,45 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
+    BugIcon,
     FolderIcon,
+    KanbanIcon,
+    LayoutListIcon,
     MoonIcon,
     PlusIcon,
+    SettingsIcon,
+    SparklesIcon,
     SquareCheckBigIcon,
     SunIcon,
+    UsersIcon,
+    WorkflowIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
+import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { useBoardColumns } from "@/features/boards";
 import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
 import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
 import {
+    type CommandPaletteIntent,
+    type CommandPaletteMember,
+    type CommandPaletteNavigateSection,
+    type CommandPaletteTaskType,
+    openMemberSettingsIntent,
+    resolveCommandPaletteMemberHits,
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
+    resolveNavigateIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
 } from "@/features/command-palette/model/rules";
 import { useCommandPaletteStore } from "@/features/command-palette/model/use-command-palette-store";
 import { isGuest } from "@/features/guest-mode";
-import { useProjectAccess, useProjects } from "@/features/projects";
+import { useProject, useProjectAccess, useProjects } from "@/features/projects";
 import {
     resolveCreateTaskSprintId,
     useBoardSprints,
@@ -35,6 +50,13 @@ import {
     useProjectTasks,
     useTasksUiStore,
 } from "@/features/tasks";
+import { useTeamAccess } from "@/features/teams";
+import {
+    useTeam,
+    useTeamMembers,
+    useTeamOwnerProfile,
+} from "@/features/teams/model/use-team-members";
+import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Command,
     CommandDialog,
@@ -44,6 +66,16 @@ import {
     CommandItem,
     CommandList,
 } from "@/shared/shadcn/ui/command";
+import { Label } from "@/shared/shadcn/ui/label";
+
+const NAVIGATE_SECTIONS: CommandPaletteNavigateSection[] = [
+    "board",
+    "backlog",
+    "cicd",
+    "settings",
+];
+
+const CREATE_TASK_TYPES: CommandPaletteTaskType[] = ["task", "bug", "feature"];
 
 export function CommandPalette() {
     const { t } = useTranslation(["command", "common"]);
@@ -54,9 +86,17 @@ export function CommandPalette() {
         typeof parameters.projectId === "string" ? parameters.projectId : null;
     const boardId =
         typeof parameters.boardId === "string" ? parameters.boardId : null;
+    const teamIdFromRoute =
+        typeof parameters.teamId === "string" ? parameters.teamId : null;
     const { theme, toggleTheme } = useTheme();
     const { data: projects = [] } = useProjects();
+    const { data: project } = useProject(projectId ?? "");
+    const teamId = teamIdFromRoute ?? project?.team_id ?? null;
     const { canCreateTasks, isSettled } = useProjectAccess(projectId ?? "");
+    const teamAccess = useTeamAccess(teamId ?? "");
+    const { data: team } = useTeam(teamId ?? "");
+    const { data: teamMembers = [] } = useTeamMembers(teamId ?? "");
+    const { data: ownerProfile } = useTeamOwnerProfile(team?.owner_id);
     const { columns, columnsError, columnsReady } = useBoardColumns(
         projectId ?? "",
         boardId ?? ""
@@ -70,9 +110,11 @@ export function CommandPalette() {
         activeSprintId: sprints.find((sprint) => sprint.state === "active")?.id,
         boardSprintScope,
     });
+    const [includeArchived, setIncludeArchived] = useState(false);
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
-        Boolean(projectId)
+        Boolean(projectId),
+        { includeArchived }
     );
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const isOpen = useCommandPaletteStore((state) => state.isOpen);
@@ -88,18 +130,35 @@ export function CommandPalette() {
     const routeContext = {
         boardId,
         canCreateTasks: isSettled && canCreateTasks,
+        canViewMembers: teamAccess.isSettled && teamAccess.canView,
         isGuest: guest,
         projectId,
+        teamId,
     };
-    const paletteProjects = projects.map((project) => ({
-        id: project.id,
-        name: project.name,
+    const paletteProjects = projects.map((projectItem) => ({
+        id: projectItem.id,
+        name: projectItem.name,
     }));
     const visibility = resolveCommandPaletteVisibility(
         routeContext,
         paletteProjects
     );
-    const createIntent = resolveCreateTaskIntent(routeContext, query);
+    const createIntents = CREATE_TASK_TYPES.map((taskType) =>
+        resolveCreateTaskIntent(routeContext, query, taskType)
+    ).filter(
+        (
+            intent
+        ): intent is Extract<CommandPaletteIntent, { type: "create-task" }> =>
+            intent !== null
+    );
+    const navigateIntents = NAVIGATE_SECTIONS.map((section) =>
+        resolveNavigateIntent(routeContext, section)
+    ).filter(
+        (
+            intent
+        ): intent is Extract<CommandPaletteIntent, { type: "navigate" }> =>
+            intent !== null
+    );
     const paletteTasks = projectTasks.map((task) => ({
         archivedAt: task.archivedAt,
         boardId: task.boardId,
@@ -110,6 +169,17 @@ export function CommandPalette() {
     const taskHits = resolveCommandPaletteTaskHits(
         routeContext,
         paletteTasks,
+        query,
+        { includeArchived }
+    );
+    const paletteMembers = buildPaletteMembers(
+        ownerProfile,
+        teamMembers,
+        t("command:unknownMember")
+    );
+    const memberHits = resolveCommandPaletteMemberHits(
+        routeContext,
+        paletteMembers,
         query
     );
     const showTheme =
@@ -124,7 +194,13 @@ export function CommandPalette() {
             : paletteProjects.filter((project) =>
                   project.name.toLowerCase().includes(normalizedQuery)
               );
-    const showActions = showTheme || createIntent !== null;
+    const visibleNavigateIntents = navigateIntents.filter((intent) =>
+        matchesNavigateQuery(intent.section, normalizedQuery, t)
+    );
+    const showActions =
+        showTheme ||
+        createIntents.length > 0 ||
+        visibleNavigateIntents.length > 0;
     const createColumnGate = resolveCreateTaskColumnGate(
         columnsReady,
         columns[0]?.id,
@@ -154,6 +230,93 @@ export function CommandPalette() {
         setQuery(reset.query);
     }, [isOpen]);
 
+    function runCreateTask(
+        intent: Extract<CommandPaletteIntent, { type: "create-task" }>
+    ) {
+        if (isCreating || !projectId) return;
+        if (createColumnGate === "loading") {
+            toast.message(t("command:columnsLoading"));
+            return;
+        }
+        if (createColumnGate === "error") {
+            toast.error(t("command:columnsLoadFailed"));
+            return;
+        }
+        if (createColumnGate === "empty") {
+            toast.error(t("command:createTaskFailed"));
+            return;
+        }
+
+        const firstColumn = columns[0];
+        if (!firstColumn) {
+            toast.error(t("command:createTaskFailed"));
+            return;
+        }
+
+        setIsCreating(true);
+        void createTask(firstColumn.id, intent.title, {
+            sprintId: createSprintId,
+            taskType: intent.taskType,
+        })
+            .then((task) => {
+                if (shouldRemindGuestCreateTask(guest)) {
+                    toast.message(t("command:guestCreateReminder"));
+                }
+                selectTask(task.id);
+                close();
+            })
+            .catch(() => {
+                toast.error(t("command:createTaskFailed"));
+            })
+            .finally(() => {
+                setIsCreating(false);
+            });
+    }
+
+    function runNavigate(
+        intent: Extract<CommandPaletteIntent, { type: "navigate" }>
+    ) {
+        switch (intent.section) {
+            case "backlog": {
+                if (!intent.boardId) return;
+                void navigate({
+                    params: {
+                        boardId: intent.boardId,
+                        projectId: intent.projectId,
+                    },
+                    to: "/projects/$projectId/boards/$boardId/backlog",
+                });
+                break;
+            }
+            case "board": {
+                if (!intent.boardId) return;
+                void navigate({
+                    params: {
+                        boardId: intent.boardId,
+                        projectId: intent.projectId,
+                    },
+                    to: "/projects/$projectId/boards/$boardId",
+                });
+                break;
+            }
+            case "cicd": {
+                void navigate({
+                    params: { projectId: intent.projectId },
+                    to: "/projects/$projectId/ci-cd",
+                });
+                break;
+            }
+            case "settings": {
+                void navigate({
+                    params: { projectId: intent.projectId },
+                    to: "/projects/$projectId/settings",
+                });
+                break;
+            }
+        }
+        close();
+    }
+
     return (
         <CommandDialog
             description={t("command:description")}
@@ -176,6 +339,23 @@ export function CommandPalette() {
                     placeholder={t("command:placeholder")}
                     value={query}
                 />
+                {visibility.tasks ? (
+                    <div className="flex items-center gap-2 border-b px-3 py-2">
+                        <Checkbox
+                            checked={includeArchived}
+                            id="command-include-archived"
+                            onCheckedChange={(checked) => {
+                                setIncludeArchived(checked === true);
+                            }}
+                        />
+                        <Label
+                            className="cursor-pointer text-xs font-normal text-muted-foreground"
+                            htmlFor="command-include-archived"
+                        >
+                            {t("command:includeArchived")}
+                        </Label>
+                    </div>
+                ) : null}
                 <CommandList>
                     <CommandEmpty>{t("command:empty")}</CommandEmpty>
                     {showActions ? (
@@ -192,83 +372,43 @@ export function CommandPalette() {
                                     <span>{themeLabel}</span>
                                 </CommandItem>
                             ) : null}
-                            {createIntent ? (
+                            {visibleNavigateIntents.map((intent) => (
+                                <CommandItem
+                                    key={intent.section}
+                                    onSelect={() => {
+                                        runNavigate(intent);
+                                    }}
+                                    value={`navigate-${intent.section}`}
+                                >
+                                    {navigateSectionIcon(intent.section)}
+                                    <span>
+                                        {t(
+                                            `command:navigate.${intent.section}`
+                                        )}
+                                    </span>
+                                </CommandItem>
+                            ))}
+                            {createIntents.map((intent) => (
                                 <CommandItem
                                     disabled={
                                         isCreating ||
                                         createColumnGate === "loading"
                                     }
+                                    key={intent.taskType}
                                     onSelect={() => {
-                                        if (isCreating || !projectId) return;
-                                        if (createColumnGate === "loading") {
-                                            toast.message(
-                                                t("command:columnsLoading")
-                                            );
-                                            return;
-                                        }
-                                        if (createColumnGate === "error") {
-                                            toast.error(
-                                                t("command:columnsLoadFailed")
-                                            );
-                                            return;
-                                        }
-                                        if (createColumnGate === "empty") {
-                                            toast.error(
-                                                t("command:createTaskFailed")
-                                            );
-                                            return;
-                                        }
-
-                                        const firstColumn = columns[0];
-                                        if (!firstColumn) {
-                                            toast.error(
-                                                t("command:createTaskFailed")
-                                            );
-                                            return;
-                                        }
-
-                                        setIsCreating(true);
-                                        void createTask(
-                                            firstColumn.id,
-                                            createIntent.title,
-                                            { sprintId: createSprintId }
-                                        )
-                                            .then((task) => {
-                                                if (
-                                                    shouldRemindGuestCreateTask(
-                                                        guest
-                                                    )
-                                                ) {
-                                                    toast.message(
-                                                        t(
-                                                            "command:guestCreateReminder"
-                                                        )
-                                                    );
-                                                }
-                                                selectTask(task.id);
-                                                close();
-                                            })
-                                            .catch(() => {
-                                                toast.error(
-                                                    t(
-                                                        "command:createTaskFailed"
-                                                    )
-                                                );
-                                            })
-                                            .finally(() => {
-                                                setIsCreating(false);
-                                            });
+                                        runCreateTask(intent);
                                     }}
-                                    value={`create-task-${createIntent.title}`}
+                                    value={`create-${intent.taskType}-${intent.title}`}
                                 >
-                                    <PlusIcon />
+                                    {createTaskTypeIcon(intent.taskType)}
                                     <span>
-                                        {t("command:createTaskWithTitle", {
-                                            title: createIntent.title,
-                                        })}
+                                        {t(
+                                            createTaskLabelKey(intent.taskType),
+                                            { title: intent.title }
+                                        )}
                                     </span>
                                 </CommandItem>
-                            ) : null}
+                            ))}
                         </CommandGroup>
                     ) : null}
                     {visibility.tasks && taskHits.length > 0 ? (
@@ -295,21 +435,58 @@ export function CommandPalette() {
                                     <span className="font-mono text-xs text-muted-foreground">
                                         {task.key}
                                     </span>
-                                    <span className="truncate">
+                                    <span className="min-w-0 truncate">
                                         {task.title}
                                     </span>
+                                    {task.archivedAt ? (
+                                        <span className="shrink-0 text-xs text-muted-foreground">
+                                            {t("command:archivedBadge")}
+                                        </span>
+                                    ) : null}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    ) : null}
+                    {visibility.searchMembers && memberHits.length > 0 ? (
+                        <CommandGroup heading={t("command:members")}>
+                            {memberHits.map((member) => (
+                                <CommandItem
+                                    key={member.userId}
+                                    onSelect={() => {
+                                        if (!teamId) return;
+                                        const intent = openMemberSettingsIntent(
+                                            teamId,
+                                            member.userId
+                                        );
+                                        void navigate({
+                                            params: { teamId: intent.teamId },
+                                            to: "/teams/$teamId/settings",
+                                        });
+                                        close();
+                                    }}
+                                    value={`member-${member.userId}`}
+                                >
+                                    <UsersIcon />
+                                    <span className="min-w-0 truncate">
+                                        {member.displayName}
+                                    </span>
+                                    {member.username ? (
+                                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                                            @{member.username}
+                                        </span>
+                                    ) : null}
                                 </CommandItem>
                             ))}
                         </CommandGroup>
                     ) : null}
                     {visibility.switchProject && projectHits.length > 0 ? (
                         <CommandGroup heading={t("command:projects")}>
-                            {projectHits.map((project) => (
+                            {projectHits.map((projectItem) => (
                                 <CommandItem
-                                    key={project.id}
+                                    key={projectItem.id}
                                     onSelect={() => {
                                         const intent = switchProjectIntent(
-                                            project.id
+                                            projectItem.id
                                         );
                                         void navigate({
                                             params: {
@@ -319,10 +496,10 @@ export function CommandPalette() {
                                         });
                                         close();
                                     }}
-                                    value={`project-${project.id}`}
+                                    value={`project-${projectItem.id}`}
                                 >
                                     <FolderIcon />
-                                    <span>{project.name}</span>
+                                    <span>{projectItem.name}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
@@ -331,4 +508,109 @@ export function CommandPalette() {
             </Command>
         </CommandDialog>
     );
+}
+
+function buildPaletteMembers(
+    ownerProfile:
+        | null
+        | undefined
+        | {
+              first_name: null | string;
+              id: string;
+              last_name: null | string;
+              username: null | string;
+          },
+    teamMembers: readonly {
+        profile: null | {
+            first_name: null | string;
+            last_name: null | string;
+            username: null | string;
+        };
+        user_id: string;
+    }[],
+    unknownLabel: string
+): CommandPaletteMember[] {
+    const byId = new Map<string, CommandPaletteMember>();
+
+    if (ownerProfile) {
+        byId.set(ownerProfile.id, {
+            displayName: formatProfileDisplayName(ownerProfile) || unknownLabel,
+            userId: ownerProfile.id,
+            username: ownerProfile.username,
+        });
+    }
+
+    for (const member of teamMembers) {
+        if (!member.profile) continue;
+        byId.set(member.user_id, {
+            displayName:
+                formatProfileDisplayName(member.profile) || unknownLabel,
+            userId: member.user_id,
+            username: member.profile.username,
+        });
+    }
+
+    return [...byId.values()];
+}
+
+function createTaskLabelKey(
+    taskType: CommandPaletteTaskType
+):
+    | "command:createBugWithTitle"
+    | "command:createFeatureWithTitle"
+    | "command:createTaskWithTitle" {
+    if (taskType === "bug") return "command:createBugWithTitle";
+    if (taskType === "feature") return "command:createFeatureWithTitle";
+    return "command:createTaskWithTitle";
+}
+
+function createTaskTypeIcon(taskType: CommandPaletteTaskType) {
+    if (taskType === "bug") return <BugIcon />;
+    if (taskType === "feature") return <SparklesIcon />;
+    return <PlusIcon />;
+}
+
+function matchesNavigateQuery(
+    section: CommandPaletteNavigateSection,
+    normalizedQuery: string,
+    translate: (key: string) => string
+): boolean {
+    if (normalizedQuery.length === 0) {
+        return true;
+    }
+
+    const label = translate(`command:navigate.${section}`).toLowerCase();
+    if (label.includes(normalizedQuery)) {
+        return true;
+    }
+
+    const keywords: Record<CommandPaletteNavigateSection, string[]> = {
+        backlog: ["backlog", "бэклог", "бэклоги"],
+        board: ["board", "доска", "kanban"],
+        cicd: ["ci", "cicd", "ci/cd", "pipeline", "ci cd"],
+        settings: ["settings", "настройки", "setting"],
+    };
+
+    return keywords[section].some(
+        (keyword) =>
+            keyword.includes(normalizedQuery) ||
+            normalizedQuery.includes(keyword)
+    );
+}
+
+function navigateSectionIcon(section: CommandPaletteNavigateSection) {
+    switch (section) {
+        case "backlog": {
+            return <LayoutListIcon />;
+        }
+        case "board": {
+            return <KanbanIcon />;
+        }
+        case "cicd": {
+            return <WorkflowIcon />;
+        }
+        case "settings": {
+            return <SettingsIcon />;
+        }
+    }
 }

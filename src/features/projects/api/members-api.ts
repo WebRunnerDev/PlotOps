@@ -15,6 +15,7 @@ export type InvitePreview = {
     expires_at: null | string;
     id: string;
     is_claimed: boolean;
+    kind: "email" | "open";
     role: ProjectMemberRole;
     status: ProjectInviteStatus;
     team_id: string;

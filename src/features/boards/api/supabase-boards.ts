@@ -8,6 +8,7 @@ import {
     fetchBoardColumnSummaries,
     renameBoardColumn,
     reorderBoardColumns,
+    setBoardDoneColumn,
 } from "@/features/boards/api/board-columns-api";
 import {
     boardHasTasks,
@@ -32,5 +33,6 @@ export const supabaseBoardsProvider: BoardsProvider = {
     fetchProjectBoards,
     renameBoardColumn,
     reorderBoardColumns,
+    setBoardDoneColumn,
     updateBoard,
 };

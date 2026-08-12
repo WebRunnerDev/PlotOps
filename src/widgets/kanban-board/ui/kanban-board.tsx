@@ -8,36 +8,54 @@ import {
     DragOverlay,
     type DragStartEvent,
     type DropAnimation,
-    PointerSensor,
     pointerWithin,
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
 import { rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { type BoardColumn, useBoardColumns } from "@/features/boards";
 import { type ProjectLabel, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
+    filterLiveBoardTasks,
     resolveCreateTaskSprintId,
+    resolveEffectiveBoardSprintScope,
     useBoardSprints,
     useSprintsUiStore,
 } from "@/features/sprints";
 import {
+    BoardSortControl,
     type BoardTaskFilters,
     BoardTaskFiltersBar,
+    BoardTaskSelectionBar,
+    DEFAULT_BOARD_SORT,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    isWithinColumnDragEnabled,
+    sortTasksByBoardSort,
     type Task,
     TaskCard,
     TaskDrawer,
+    useBoardSortStore,
     useBoardTasks,
+    useBoardTaskSelectionStore,
 } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import {
+    BoardMouseSensor,
+    BoardTouchSensor,
+} from "@/widgets/kanban-board/model/board-pointer-sensor";
+import { isBoardTaskViewRestricted } from "@/widgets/kanban-board/model/is-board-task-view-restricted";
+import {
+    resolveBoardMouseActivation,
+    resolveBoardTouchActivation,
+} from "@/widgets/kanban-board/model/resolve-board-drag-activation";
+import { resolveCrossColumnDragTaskIds } from "@/widgets/kanban-board/model/resolve-cross-column-drag-task-ids";
 
 import { BoardLoading } from "./board-loading";
 import { KanbanColumn } from "./kanban-column";
@@ -77,6 +95,8 @@ const collisionDetection: CollisionDetection = (arguments_) => {
 type KanbanBoardProperties = {
     boardId: string;
     githubToken: null | string;
+    /** Increments when Board chrome + New Task should open create on the first column. */
+    openCreateTaskRequestKey?: number;
     projectId: string;
     repoFullName: string | undefined;
 };
@@ -84,6 +104,7 @@ type KanbanBoardProperties = {
 export function KanbanBoard({
     boardId,
     githubToken,
+    openCreateTaskRequestKey = 0,
     projectId,
     repoFullName,
 }: KanbanBoardProperties) {
@@ -97,20 +118,63 @@ export function KanbanBoard({
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );
+    const boardSort = useBoardSortStore(
+        (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
+    );
+    const setBoardSort = useBoardSortStore((state) => state.setBoardSort);
+    const withinColumnDragEnabled = isWithinColumnDragEnabled(boardSort);
+    const syncBoardSelection = useBoardTaskSelectionStore(
+        (state) => state.syncBoard
+    );
+    const clearBoardSelection = useBoardTaskSelectionStore(
+        (state) => state.clearSelection
+    );
     const activeSprint = sprints.find((sprint) => sprint.state === "active");
+    const effectiveBoardSprintScope = resolveEffectiveBoardSprintScope({
+        boardSprintScope,
+        hasActiveSprint: activeSprint !== undefined,
+    });
     const createSprintId = resolveCreateTaskSprintId({
         activeSprintId: activeSprint?.id,
-        boardSprintScope,
+        boardSprintScope: effectiveBoardSprintScope,
     });
+    const selectedIds = useBoardTaskSelectionStore(
+        (state) => state.selectedIds
+    );
+    const selectionBoardId = useBoardTaskSelectionStore(
+        (state) => state.boardId
+    );
     const [activeTask, setActiveTask] = useState<Task | undefined>();
+    const [activeDragCount, setActiveDragCount] = useState(1);
     const [activeColumn, setActiveColumn] = useState<BoardColumn | undefined>();
     const [focusColumnId, setFocusColumnId] = useState<string | undefined>();
+    const [focusAddTaskColumnId, setFocusAddTaskColumnId] = useState<
+        string | undefined
+    >();
+    const lastCreateTaskRequestKey = useRef(0);
     const [filters, setFilters] =
         useState<BoardTaskFilters>(EMPTY_BOARD_FILTERS);
 
+    useEffect(() => {
+        syncBoardSelection(boardId);
+    }, [boardId, syncBoardSelection]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                clearBoardSelection();
+            }
+        };
+        globalThis.addEventListener("keydown", onKeyDown);
+        return () => globalThis.removeEventListener("keydown", onKeyDown);
+    }, [clearBoardSelection]);
+
     const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 6 },
+        useSensor(BoardMouseSensor, {
+            activationConstraint: resolveBoardMouseActivation(),
+        }),
+        useSensor(BoardTouchSensor, {
+            activationConstraint: resolveBoardTouchActivation(),
         })
     );
 
@@ -118,7 +182,7 @@ export function KanbanBoard({
     const { labels } = labelsApi;
     const {
         commitTaskDragGesture,
-        moveTaskToColumn,
+        moveTasksToColumn,
         reorderTaskWithin,
         rollbackTaskDragGesture,
         tasks,
@@ -153,16 +217,33 @@ export function KanbanBoard({
     }, [projectLabels]);
 
     const filteredTasks = useMemo(() => {
-        const scoped =
-            boardSprintScope === "active" && activeSprint
-                ? tasks.filter((task) => task.sprintId === activeSprint.id)
-                : tasks;
+        const scoped = filterLiveBoardTasks({
+            activeSprintId: activeSprint?.id,
+            scope: effectiveBoardSprintScope,
+            sprints,
+            tasks,
+        });
         return filterTasks(scoped, filters);
-    }, [activeSprint, boardSprintScope, filters, tasks]);
+    }, [activeSprint?.id, effectiveBoardSprintScope, filters, sprints, tasks]);
+
+    const displayedTasks = useMemo(
+        () => sortTasksByBoardSort(filteredTasks, boardSort),
+        [boardSort, filteredTasks]
+    );
+
+    const boardTaskViewRestricted = isBoardTaskViewRestricted(
+        tasks,
+        displayedTasks
+    );
+
+    const displayedTaskIds = useMemo(
+        () => new Set(displayedTasks.map((task) => task.id)),
+        [displayedTasks]
+    );
 
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
-        for (const task of filteredTasks) {
+        for (const task of displayedTasks) {
             const resolved =
                 task.labelIds
                     ?.map((id) => labelsById.get(id))
@@ -172,7 +253,7 @@ export function KanbanBoard({
             map.set(task.id, resolved);
         }
         return map;
-    }, [filteredTasks, labelsById]);
+    }, [displayedTasks, labelsById]);
 
     useEffect(() => {
         setFilters(EMPTY_BOARD_FILTERS);
@@ -186,10 +267,47 @@ export function KanbanBoard({
         return () => globalThis.clearTimeout(timer);
     }, [focusColumnId]);
 
+    useEffect(() => {
+        if (!focusAddTaskColumnId) return;
+        const timer = globalThis.setTimeout(() => {
+            setFocusAddTaskColumnId(undefined);
+        }, 0);
+        return () => globalThis.clearTimeout(timer);
+    }, [focusAddTaskColumnId]);
+
+    useEffect(() => {
+        if (
+            !openCreateTaskRequestKey ||
+            openCreateTaskRequestKey === lastCreateTaskRequestKey.current
+        ) {
+            return;
+        }
+        const firstColumnId = columns[0]?.id;
+        if (!firstColumnId) return;
+
+        lastCreateTaskRequestKey.current = openCreateTaskRequestKey;
+        setFocusAddTaskColumnId(firstColumnId);
+
+        globalThis.requestAnimationFrame(() => {
+            const node = document.querySelector(
+                `[data-column-id="${firstColumnId}"]`
+            );
+            node?.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+                inline: "start",
+            });
+        });
+    }, [columns, openCreateTaskRequestKey]);
+
     const clearActiveDrag = () => {
         setActiveTask(undefined);
+        setActiveDragCount(1);
         setActiveColumn(undefined);
     };
+
+    const selectionIdsForBoard =
+        selectionBoardId === boardId ? selectedIds : new Set<string>();
 
     const handleDragStart = (event: DragStartEvent) => {
         const type = event.active.data.current?.type as DragType | undefined;
@@ -204,9 +322,13 @@ export function KanbanBoard({
 
         if (type === "task") {
             if (!canEdit) return;
-            setActiveTask(
-                filteredTasks.find((item) => item.id === event.active.id)
-            );
+            const activeId = String(event.active.id);
+            const dragIds = resolveCrossColumnDragTaskIds({
+                activeId,
+                selectedIds: selectionIdsForBoard,
+            });
+            setActiveDragCount(dragIds.length);
+            setActiveTask(displayedTasks.find((item) => item.id === activeId));
         }
     };
 
@@ -230,7 +352,14 @@ export function KanbanBoard({
 
         // Only move across columns here; same-column ordering is handled
         // visually by the sort strategy and committed on drop.
-        moveTaskToColumn(String(active.id), String(over.id), {
+        const dragIds = resolveCrossColumnDragTaskIds({
+            activeId: String(active.id),
+            selectedIds: selectionIdsForBoard,
+        });
+        moveTasksToColumn(dragIds, String(over.id), {
+            displayedTaskIds: boardTaskViewRestricted
+                ? displayedTaskIds
+                : undefined,
             persist: false,
         });
     };
@@ -266,19 +395,39 @@ export function KanbanBoard({
             // Cross-column preview may still need committing, or cancel.
             // If over is missing/same id after a cross-column preview, keep the
             // previewed placement and persist; pure cancel goes through onDragCancel.
-            commitTaskDragGesture(String(active.id));
+            commitTaskDragGesture();
             return;
         }
 
         const overType = over.data.current?.type as DragType | undefined;
+        const dragIds = resolveCrossColumnDragTaskIds({
+            activeId: String(active.id),
+            selectedIds: selectionIdsForBoard,
+        });
 
-        if (overType === "task") {
+        // Multi-select: cross-column only — skip within-column reorder for a set.
+        if (
+            overType === "task" &&
+            withinColumnDragEnabled &&
+            dragIds.length === 1
+        ) {
+            const activeTaskStatus = displayedTasks.find(
+                (task) => task.id === String(active.id)
+            )?.status;
+            const visibleColumnTaskIds =
+                boardTaskViewRestricted && activeTaskStatus
+                    ? displayedTasks
+                          .filter((task) => task.status === activeTaskStatus)
+                          .map((task) => task.id)
+                    : undefined;
+
             reorderTaskWithin(String(active.id), String(over.id), {
                 persist: false,
+                visibleColumnTaskIds,
             });
         }
 
-        commitTaskDragGesture(String(active.id));
+        commitTaskDragGesture();
     };
 
     const handleAddColumn = () => {
@@ -316,11 +465,17 @@ export function KanbanBoard({
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="sticky left-0 z-5 w-[calc(100cqw-6rem)] shrink-0">
+            <div className="sticky left-0 z-5 flex w-[calc(100cqw-1.5rem)] shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:w-[calc(100cqw-6rem)]">
                 <BoardTaskFiltersBar
                     filters={filters}
                     labels={projectLabels}
                     onChange={setFilters}
+                />
+                <BoardSortControl
+                    onChange={(sort) => {
+                        setBoardSort(boardId, sort);
+                    }}
+                    value={boardSort}
                 />
             </div>
 
@@ -345,11 +500,17 @@ export function KanbanBoard({
                                 labelsByTaskId={labelsByTaskId}
                                 name={column.name}
                                 projectId={projectId}
+                                startAddingTask={
+                                    focusAddTaskColumnId === column.id
+                                }
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
-                                tasks={filteredTasks.filter(
+                                tasks={displayedTasks.filter(
                                     (task) => task.status === column.id
                                 )}
+                                withinColumnDragEnabled={
+                                    withinColumnDragEnabled
+                                }
                             />
                         ))}
 
@@ -371,11 +532,21 @@ export function KanbanBoard({
 
                 <DragOverlay dropAnimation={dropAnimation}>
                     {activeTask ? (
-                        <div className="rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
+                        <div className="relative rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
                             <TaskCard
                                 labels={labelsByTaskId.get(activeTask.id) ?? []}
                                 task={activeTask}
                             />
+                            {activeDragCount > 1 ? (
+                                <span
+                                    aria-label={t("selection.dragCount", {
+                                        count: activeDragCount,
+                                    })}
+                                    className="absolute -top-2 -right-2 inline-flex min-w-5 items-center justify-center rounded-md border border-border bg-primary px-1.5 py-0.5 text-meta font-semibold text-primary-foreground shadow-sm"
+                                >
+                                    {activeDragCount}
+                                </span>
+                            ) : undefined}
                         </div>
                     ) : undefined}
                     {activeColumn ? (
@@ -394,6 +565,7 @@ export function KanbanBoard({
                 projectId={projectId}
                 repoFullName={repoFullName}
             />
+            <BoardTaskSelectionBar boardId={boardId} projectId={projectId} />
         </div>
     );
 }

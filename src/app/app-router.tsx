@@ -10,6 +10,7 @@ import {
 } from "@/features/auth/model/github-token";
 import { clearGitQueryCache } from "@/features/git-integration/model/clear-git-query-cache";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Toaster } from "@/shared/shadcn/ui/sonner";
 
 import { queryClient, router } from "./router";
 
@@ -65,6 +66,7 @@ export function AppRouter() {
                 }}
                 router={router}
             />
+            <Toaster />
         </QueryClientProvider>
     );
 }

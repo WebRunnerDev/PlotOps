@@ -13,7 +13,7 @@ describe("deleteProject RLS seam", () => {
         );
         const function_ = source.slice(
             source.indexOf("export async function deleteProject"),
-            source.indexOf("export async function fetchProjects")
+            source.indexOf("export async function fetchProject")
         );
 
         expect(function_).toMatch(/\.delete\(\)/);

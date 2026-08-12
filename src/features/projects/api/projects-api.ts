@@ -1,4 +1,7 @@
-import type { CreateProjectInput } from "@/features/projects/model/types";
+import type {
+    ConnectProjectGithubPatch,
+    CreateProjectInput,
+} from "@/features/projects/model/types";
 
 import { ensureUserProfile } from "@/features/auth/api/profile-api";
 import { supabase } from "@/shared/api/supabase";
@@ -25,6 +28,31 @@ const PROJECT_SELECT = `
     owner_id
   )
 `;
+
+/** Attach a GitHub repo to a name-only Project (`github_repo_id` currently null). */
+export async function connectProjectGithub(
+    projectId: string,
+    patch: ConnectProjectGithubPatch
+) {
+    const { data, error } = await supabase
+        .from("projects")
+        .update(patch)
+        .eq("id", projectId)
+        .is("github_repo_id", null)
+        .select(PROJECT_SELECT)
+        .maybeSingle();
+
+    if (error) return { data: null, error };
+    if (!data) {
+        return {
+            data: null,
+            error: new Error(
+                "Project not found, already connected, or update not permitted"
+            ),
+        };
+    }
+    return { data: mapProject(data as ProjectRow), error: null };
+}
 
 export async function createProject(input: CreateProjectInput) {
     const {
@@ -68,15 +96,18 @@ export async function deleteProject(projectId: string) {
 }
 
 export async function fetchProject(projectId: string) {
+    // Array read + first row: avoids PostgREST object coercion when 0 rows.
     const result = await supabase
         .from("projects")
         .select(PROJECT_SELECT)
         .eq("id", projectId)
-        .single();
+        .limit(1);
+
+    const row = result.data?.[0] as ProjectRow | undefined;
 
     return {
         ...result,
-        data: result.data ? mapProject(result.data as ProjectRow) : null,
+        data: row ? mapProject(row) : null,
     };
 }
 

@@ -10,6 +10,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
+import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
     TaskActivityChange,
@@ -44,6 +45,7 @@ import {
     buildTaskActivityChanges,
     toTaskActivitySnapshot,
 } from "@/features/tasks/lib/build-task-activity-changes";
+import { moveTasksToColumnInMemory } from "@/features/tasks/lib/move-task-to-column-in-memory";
 import {
     reorderTasksInMemory,
     type TaskMoveUpdate,
@@ -83,6 +85,8 @@ type TaskDetailsUpdate = {
     deadline?: null | string;
     /** Pass `null` to clear the description. */
     description?: null | string;
+    /** Pass `null` to clear estimate (unestimated). Manager+ only. */
+    estimate?: null | TaskEstimate;
     /** Pass `null` (or `[]`) to clear all labels. */
     labelIds?: null | string[];
     /** Pass `null` to clear a linked pull request. */
@@ -97,6 +101,7 @@ type TaskDetailsUpdate = {
         | "branchName"
         | "deadline"
         | "description"
+        | "estimate"
         | "id"
         | "labelIds"
         | "pr"
@@ -131,9 +136,14 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
     const moveTaskMutation = useMutation({
         mutationFn: async ({
+            activities,
             activity,
             updates,
         }: {
+            activities?: {
+                changes: TaskActivityChange[];
+                taskId: string;
+            }[];
             activity?: {
                 changes: TaskActivityChange[];
                 taskId: string;
@@ -142,17 +152,19 @@ export function useBoardTasks(projectId: string, boardId: string) {
             updates: TaskMoveUpdate[];
         }) => {
             await tasksProvider.persistTaskMoves(boardId, updates);
-            if (activity && !guest) {
+            if (guest) return;
+            const activityEntries = activities ?? (activity ? [activity] : []);
+            for (const entry of activityEntries) {
                 await notifyStatusChangeBestEffort({
-                    activityChanges: activity.changes,
+                    activityChanges: entry.changes,
                     projectId,
-                    taskId: activity.taskId,
+                    taskId: entry.taskId,
                 });
                 await recordTaskActivity({
-                    changes: activity.changes,
+                    changes: entry.changes,
                     projectId,
                     queryClient,
-                    taskId: activity.taskId,
+                    taskId: entry.taskId,
                 });
             }
         },
@@ -193,6 +205,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             if (details.priority !== undefined) {
                 patch.priority = details.priority ?? null;
+            }
+            if (details.estimate !== undefined) {
+                patch.estimate = details.estimate ?? null;
             }
             if (details.deadline !== undefined) {
                 patch.deadline = details.deadline ?? null;
@@ -418,18 +433,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
     });
 
     const archiveTaskMutation = useMutation({
-        mutationFn: async (taskId: string) => {
-            await tasksProvider.archiveTaskRecord(taskId);
-            if (guest) {
-                return;
-            }
-            const { error } = await insertTaskActivityEvent({
-                action: "updated",
-                changes: [{ field: "archived", from: false, to: true }],
-                projectId,
-                taskId,
-            });
-            if (error) throw error;
+        mutationFn: async (taskIds: string[]) => {
+            const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+            const { archivedCount } =
+                await tasksProvider.archiveTaskRecords(uniqueIds);
+            return { archivedCount, taskIds: uniqueIds };
         },
         onError: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -437,14 +445,16 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
-        onSettled: (_data, _error, taskId) => {
+        onSettled: (_data, _error, taskIds) => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
-            void queryClient.invalidateQueries({
-                queryKey: activityKey(taskId),
-            });
+            for (const taskId of taskIds) {
+                void queryClient.invalidateQueries({
+                    queryKey: activityKey(taskId),
+                });
+            }
         },
     });
 
@@ -481,24 +491,113 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
     const tasks = tasksQuery.data?.tasks ?? [];
 
+    const archiveTasks = async (taskIds: string[]) => {
+        const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return { archivedCount: 0 };
+
+        setTasksCache(queryClient, projectId, boardId, (current) => {
+            const idSet = new Set(uniqueIds);
+            const nextPositions = new Map(current.taskPositions);
+            for (const taskId of uniqueIds) {
+                nextPositions.delete(taskId);
+            }
+            return {
+                taskPositions: nextPositions,
+                tasks: current.tasks.filter((task) => !idSet.has(task.id)),
+            };
+        });
+        return archiveTaskMutation.mutateAsync(uniqueIds);
+    };
+
+    const moveTasksToColumn = (
+        activeIds: readonly string[],
+        overId: string,
+        options?: { displayedTaskIds?: ReadonlySet<string>; persist?: boolean }
+    ) => {
+        const persist = options?.persist ?? true;
+        const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+        if (!snapshot) return;
+
+        const previousCache =
+            dragGestureCacheReference.current ??
+            queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
+            );
+
+        const result = moveTasksToColumnInMemory(
+            snapshot.tasks,
+            snapshot.columns,
+            activeIds,
+            overId,
+            options?.displayedTaskIds
+        );
+        if (!result) return;
+
+        if (!persist && !dragGestureCacheReference.current && previousCache) {
+            dragGestureCacheReference.current = previousCache;
+        }
+
+        const activities: {
+            changes: TaskActivityChange[];
+            taskId: string;
+        }[] = [];
+        for (const activeId of activeIds) {
+            const previous = snapshot.tasks.find(
+                (task) => task.id === activeId
+            );
+            const next = result.tasks.find((task) => task.id === activeId);
+            if (!previous || !next || previous.status === next.status) {
+                continue;
+            }
+            const before = toTaskActivitySnapshot(previous, {
+                labelNames: resolveLabelNames(
+                    snapshot.labels,
+                    previous.labelIds
+                ),
+                statusName: resolveStatusName(
+                    snapshot.columns,
+                    previous.status
+                ),
+            });
+            const after = {
+                ...before,
+                status: {
+                    id: next.status,
+                    name: resolveStatusName(snapshot.columns, next.status),
+                },
+            };
+            activities.push({
+                changes: buildTaskActivityChanges(before, after),
+                taskId: activeId,
+            });
+        }
+
+        setTasksCache(queryClient, projectId, boardId, (current) =>
+            applyTaskUpdates(current, result.updates, result.tasks)
+        );
+
+        if (!persist) return;
+
+        moveTaskMutation.mutate({
+            activities,
+            previousCache,
+            updates: result.updates,
+        });
+        dragGestureCacheReference.current = null;
+    };
+
     return {
         archiveTask: async (taskId: string) => {
-            setTasksCache(queryClient, projectId, boardId, (current) => {
-                const nextPositions = new Map(current.taskPositions);
-                nextPositions.delete(taskId);
-                return {
-                    taskPositions: nextPositions,
-                    tasks: current.tasks.filter((task) => task.id !== taskId),
-                };
-            });
-            await archiveTaskMutation.mutateAsync(taskId);
+            await archiveTasks([taskId]);
         },
+        archiveTasks,
         boardId,
         /**
          * Persist the board task cache vs the in-progress drag gesture snapshot.
          * No-op when no live preview ran (same-column-only drags).
+         * Records status activity for every task that changed column.
          */
-        commitTaskDragGesture: (activityTaskId?: string) => {
+        commitTaskDragGesture: () => {
             const previousCache = dragGestureCacheReference.current;
             if (!previousCache) return;
 
@@ -511,26 +610,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
             const updates = diffTaskMoveUpdates(previousCache, current);
             if (updates.length === 0) return;
 
-            let activity:
-                undefined | { changes: TaskActivityChange[]; taskId: string };
-            if (activityTaskId) {
-                const snapshot = getBoardSnapshot(
-                    queryClient,
-                    projectId,
-                    boardId
-                );
-                const previous = previousCache.tasks.find(
-                    (task) => task.id === activityTaskId
-                );
-                const next = current.tasks.find(
-                    (task) => task.id === activityTaskId
-                );
-                if (
-                    snapshot &&
-                    previous &&
-                    next &&
-                    previous.status !== next.status
-                ) {
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const activities: {
+                changes: TaskActivityChange[];
+                taskId: string;
+            }[] = [];
+            if (snapshot) {
+                for (const next of current.tasks) {
+                    const previous = previousCache.tasks.find(
+                        (task) => task.id === next.id
+                    );
+                    if (!previous || previous.status === next.status) continue;
                     const before = toTaskActivitySnapshot(previous, {
                         labelNames: resolveLabelNames(
                             snapshot.labels,
@@ -551,15 +641,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
                             ),
                         },
                     };
-                    activity = {
+                    activities.push({
                         changes: buildTaskActivityChanges(before, after),
-                        taskId: activityTaskId,
-                    };
+                        taskId: next.id,
+                    });
                 }
             }
 
             moveTaskMutation.mutate({
-                activity,
+                activities,
                 previousCache,
                 updates,
             });
@@ -593,79 +683,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
         error: tasksQuery.error ?? null,
         isLoading: tasksQuery.isLoading,
+        moveTasksToColumn,
         moveTaskToColumn: (
             activeId: string,
             overId: string,
             options?: { persist?: boolean }
         ) => {
-            const persist = options?.persist ?? true;
-            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
-            if (!snapshot) return;
-
-            const previousCache =
-                dragGestureCacheReference.current ??
-                queryClient.getQueryData<BoardTasksCache>(
-                    taskKeys.board(projectId, boardId)
-                );
-
-            const result = moveTaskToColumnInMemory(
-                snapshot.tasks,
-                snapshot.columns,
-                activeId,
-                overId
-            );
-            if (!result) return;
-
-            if (
-                !persist &&
-                !dragGestureCacheReference.current &&
-                previousCache
-            ) {
-                dragGestureCacheReference.current = previousCache;
-            }
-
-            const previous = snapshot.tasks.find(
-                (task) => task.id === activeId
-            );
-            const next = result.tasks.find((task) => task.id === activeId);
-            let activity:
-                undefined | { changes: TaskActivityChange[]; taskId: string };
-            if (previous && next && previous.status !== next.status) {
-                const before = toTaskActivitySnapshot(previous, {
-                    labelNames: resolveLabelNames(
-                        snapshot.labels,
-                        previous.labelIds
-                    ),
-                    statusName: resolveStatusName(
-                        snapshot.columns,
-                        previous.status
-                    ),
-                });
-                const after = {
-                    ...before,
-                    status: {
-                        id: next.status,
-                        name: resolveStatusName(snapshot.columns, next.status),
-                    },
-                };
-                activity = {
-                    changes: buildTaskActivityChanges(before, after),
-                    taskId: activeId,
-                };
-            }
-
-            setTasksCache(queryClient, projectId, boardId, (current) =>
-                applyTaskUpdates(current, result.updates, result.tasks)
-            );
-
-            if (!persist) return;
-
-            moveTaskMutation.mutate({
-                activity,
-                previousCache,
-                updates: result.updates,
-            });
-            dragGestureCacheReference.current = null;
+            moveTasksToColumn([activeId], overId, options);
         },
         moveTaskToOtherBoard: async (
             taskId: string,
@@ -717,7 +741,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
         reorderTaskWithin: (
             activeId: string,
             overId: string,
-            options?: { persist?: boolean }
+            options?: {
+                persist?: boolean;
+                visibleColumnTaskIds?: readonly string[];
+            }
         ) => {
             const persist = options?.persist ?? true;
             const cache = queryClient.getQueryData<BoardTasksCache>(
@@ -725,7 +752,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
             if (!cache) return;
 
-            const result = reorderTasksInMemory(cache.tasks, activeId, overId);
+            const result = reorderTasksInMemory(
+                cache.tasks,
+                activeId,
+                overId,
+                options?.visibleColumnTaskIds
+            );
             if (!result) return;
 
             if (!persist && !dragGestureCacheReference.current) {
@@ -784,6 +816,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     assignee: details.assignee,
                     branchName: details.branchName,
                     deadline: details.deadline,
+                    estimate: details.estimate,
                     labelNames:
                         details.labelIds === undefined
                             ? undefined
@@ -813,6 +846,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         branchName: nextBranch,
                         deadline: nextDeadline,
                         description: nextDescription,
+                        estimate: nextEstimate,
                         labelIds: nextLabelIds,
                         pr: nextPr,
                         priority: nextPriority,
@@ -838,6 +872,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
                             : {
                                   description: nextDescription ?? undefined,
                               }),
+                        ...(nextEstimate === undefined
+                            ? {}
+                            : { estimate: nextEstimate ?? undefined }),
                         ...(nextLabelIds === undefined
                             ? {}
                             : {
@@ -987,61 +1024,6 @@ function isIdNameSnapshot(value: unknown): value is IdNameSnapshot {
     if (!value || typeof value !== "object") return false;
     const snapshot = value as { id?: unknown; name?: unknown };
     return typeof snapshot.id === "string" && typeof snapshot.name === "string";
-}
-
-function moveTaskToColumnInMemory(
-    tasks: Task[],
-    columns: BoardColumn[],
-    activeId: string,
-    overId: string
-): undefined | { tasks: Task[]; updates: TaskMoveUpdate[] } {
-    const activeIndex = tasks.findIndex((task) => task.id === activeId);
-    if (activeIndex === -1) return undefined;
-
-    const activeTask = tasks[activeIndex]!;
-    const overTask = tasks.find((task) => task.id === overId);
-    const overIsColumn = columns.some((column) => column.id === overId);
-    if (!overTask && !overIsColumn) return undefined;
-
-    const targetStatus = overTask ? overTask.status : overId;
-    if (activeTask.status === targetStatus) return undefined;
-
-    const withoutActive = tasks.filter((task) => task.id !== activeId);
-    const updatedTask = { ...activeTask, status: targetStatus };
-
-    let insertIndex: number;
-    if (overTask) {
-        insertIndex = withoutActive.findIndex((task) => task.id === overId);
-        if (insertIndex === -1) insertIndex = withoutActive.length;
-    } else {
-        let lastIndex = -1;
-        for (const [index, task] of withoutActive.entries()) {
-            if (task.status === targetStatus) lastIndex = index;
-        }
-        insertIndex = lastIndex + 1;
-    }
-
-    const next = [...withoutActive];
-    next.splice(insertIndex, 0, updatedTask);
-
-    const affectedStatuses = new Set<TaskStatus>([
-        activeTask.status,
-        targetStatus,
-    ]);
-    const updates: TaskMoveUpdate[] = [];
-
-    for (const status of affectedStatuses) {
-        const columnTasks = next.filter((task) => task.status === status);
-        for (const [position, task] of columnTasks.entries()) {
-            updates.push({
-                id: task.id,
-                position,
-                status,
-            });
-        }
-    }
-
-    return { tasks: next, updates };
 }
 
 async function notifyBoardMoveBestEffort(input: {

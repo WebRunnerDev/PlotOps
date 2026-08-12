@@ -10,6 +10,7 @@ import type { Task, TaskStatus, TaskType } from "@/features/tasks/model/types";
  */
 export type TasksProvider = {
     archiveTaskRecord(taskId: string): Promise<void>;
+    archiveTaskRecords(taskIds: string[]): Promise<{ archivedCount: number }>;
     createTaskRecord(
         projectId: string,
         boardId: string,
@@ -21,7 +22,10 @@ export type TasksProvider = {
     deleteTaskRecord(taskId: string): Promise<void>;
     fetchArchivedTasks(boardId: string): Promise<Task[]>;
     fetchBoardTasks(boardId: string): Promise<BoardTasksCache>;
-    fetchProjectTasks(projectId: string): Promise<Task[]>;
+    fetchProjectTasks(
+        projectId: string,
+        options?: { includeArchived?: boolean }
+    ): Promise<Task[]>;
     moveTaskToBoard(
         taskId: string,
         targetBoardId: string,

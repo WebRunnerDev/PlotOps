@@ -28,6 +28,13 @@ export const guestTeamsProvider: TeamsProvider = {
         };
     },
 
+    async deleteTeam() {
+        return {
+            data: null,
+            error: new Error("Deleting teams is not available in Guest Mode"),
+        };
+    },
+
     async fetchTeam(teamId) {
         const sandbox = getGuestSandbox();
         if (!sandbox) {

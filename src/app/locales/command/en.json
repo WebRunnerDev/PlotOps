@@ -1,17 +1,29 @@
 {
     "actions": "Actions",
+    "archivedBadge": "Archived",
     "columnsLoading": "Loading board columns…",
     "columnsLoadFailed": "Could not load board columns",
+    "createBugWithTitle": "Create bug “{{title}}”",
+    "createFeatureWithTitle": "Create feature “{{title}}”",
     "createTaskFailed": "Could not create task",
     "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
     "empty": "No results found.",
     "guestCreateReminder": "Demo account — changes may be reset on the shared demo.",
+    "includeArchived": "Include archived",
+    "members": "Members",
+    "navigate": {
+        "backlog": "Go to Backlog",
+        "board": "Go to Board",
+        "cicd": "Go to CI/CD",
+        "settings": "Go to Settings"
+    },
     "open": "Open command palette",
     "placeholder": "Type a command or search…",
     "projects": "Projects",
     "shortcut": "Ctrl K",
     "shortcutMac": "⌘K",
     "tasks": "Tasks",
-    "title": "Command palette"
+    "title": "Command palette",
+    "unknownMember": "Unknown user"
 }

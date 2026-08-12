@@ -118,6 +118,7 @@ function isActivityField(value: unknown): value is TaskActivityChange["field"] {
         value === "board" ||
         value === "branch" ||
         value === "deadline" ||
+        value === "estimate" ||
         value === "labels" ||
         value === "pr" ||
         value === "priority" ||

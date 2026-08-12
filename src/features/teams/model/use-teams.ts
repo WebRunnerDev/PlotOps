@@ -22,6 +22,22 @@ export function useCreateTeam() {
     });
 }
 
+export function useDeleteTeam() {
+    const queryClient = useQueryClient();
+    const provider = resolveTeamsProvider(isGuest());
+
+    return useMutation({
+        mutationFn: async (teamId: string) => {
+            const { error } = await provider.deleteTeam(teamId);
+            if (error) throw error;
+        },
+        onSuccess: (_data, teamId) => {
+            queryClient.removeQueries({ queryKey: teamKeys.detail(teamId) });
+            queryClient.invalidateQueries({ queryKey: teamKeys.list() });
+        },
+    });
+}
+
 export function useTeams() {
     const provider = resolveTeamsProvider(isGuest());
 

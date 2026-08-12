@@ -16,6 +16,7 @@ describe("ProjectCard delete gating seam", () => {
         expect(card).toMatch(/useProjectAccess/);
         expect(card).toMatch(/canDeleteProject/);
         expect(card).toMatch(/isSettled/);
+        expect(card).toMatch(/Boolean\(onRemove\)/);
         expect(card).toMatch(/canDelete\s*\?|canDelete\s*&&|\{canDelete\b/);
     });
 });

@@ -71,7 +71,7 @@ export async function fetchBoardColumns(
 
     const { data, error } = await supabase
         .from("board_columns")
-        .select("id, project_id, board_id, name, position")
+        .select("id, project_id, board_id, name, position, is_done")
         .eq("board_id", boardId)
         .order("position", { ascending: true });
 
@@ -87,13 +87,14 @@ export async function fetchBoardColumnSummaries(
 ): Promise<BoardColumn[]> {
     const { data, error } = await supabase
         .from("board_columns")
-        .select("id, name")
+        .select("id, name, is_done")
         .eq("board_id", boardId)
         .order("position", { ascending: true });
 
     if (error) throw error;
     return (data ?? []).map((row) => ({
         id: row.id as string,
+        isDone: Boolean(row.is_done),
         name: row.name as string,
     }));
 }
@@ -124,6 +125,22 @@ export async function reorderBoardColumns(
     if (error) throw error;
 }
 
+/**
+ * Marks `columnId` as the board’s Done column (clears any previous).
+ * Pass `null` to clear Done (Close falls back to the rightmost column).
+ */
+export async function setBoardDoneColumn(
+    boardId: string,
+    columnId: null | string
+) {
+    const { error } = await supabase.rpc("set_board_done_column", {
+        p_board_id: boardId,
+        p_column_id: columnId,
+    });
+
+    if (error) throw error;
+}
+
 async function ensureDefaultColumns(projectId: string, boardId: string) {
     const { count, error } = await supabase
         .from("board_columns")
@@ -136,6 +153,7 @@ async function ensureDefaultColumns(projectId: string, boardId: string) {
     const rows = DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
         board_id: boardId,
         id: column.id,
+        is_done: column.isDone,
         name: column.name,
         position: index,
         project_id: projectId,

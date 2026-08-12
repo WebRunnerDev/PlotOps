@@ -165,7 +165,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
     if (awaitingConfirmation) {
         return (
-            <Card className="mx-auto w-full max-w-sm">
+            <Card className="mx-auto w-full min-w-0 max-w-sm">
                 <CardHeader className="text-center">
                     <CardTitle>{t("checkEmail.title")}</CardTitle>
                     <CardDescription>
@@ -190,6 +190,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                         className="w-full"
                         disabled={isResending}
                         onClick={() => void handleResend()}
+                        size="lg"
                         type="button"
                         variant="outline"
                     >
@@ -212,7 +213,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     }
 
     return (
-        <Card className="mx-auto w-full max-w-sm">
+        <Card className="mx-auto w-full min-w-0 max-w-sm">
             <CardHeader className="text-center">
                 <CardTitle>{t("signUpTitle")}</CardTitle>
                 <CardDescription>{t("signUpSubtitle")}</CardDescription>
@@ -311,6 +312,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                     <Button
                         className="w-full"
                         disabled={isLoading}
+                        size="lg"
                         type="submit"
                     >
                         {isLoading ? t("signUpLoading") : t("signUp")}

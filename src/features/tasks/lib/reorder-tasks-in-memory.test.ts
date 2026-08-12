@@ -11,6 +11,7 @@ function task(
 ): Task {
     return {
         boardId: "board",
+        createdAt: "2026-01-01T00:00:00.000Z",
         id,
         key: id,
         status,
@@ -52,5 +53,31 @@ describe("reorderTasksInMemory", () => {
     it("no-ops across columns", () => {
         const tasks = [task("a", "todo"), task("b", "done")];
         expect(reorderTasksInMemory(tasks, "a", "b")).toBeUndefined();
+    });
+
+    it("reorders only visible cards when a filtered subset is provided", () => {
+        const tasks = [
+            task("todo-a", "todo"),
+            task("todo-hidden", "todo"),
+            task("todo-c", "todo"),
+            task("todo-e", "todo"),
+        ];
+
+        const result = reorderTasksInMemory(tasks, "todo-e", "todo-c", [
+            "todo-a",
+            "todo-c",
+            "todo-e",
+        ]);
+        expect(result).toBeDefined();
+
+        const todoOrder = result!.tasks
+            .filter((item) => item.status === "todo")
+            .map((item) => item.id);
+        expect(todoOrder).toEqual([
+            "todo-a",
+            "todo-hidden",
+            "todo-e",
+            "todo-c",
+        ]);
     });
 });

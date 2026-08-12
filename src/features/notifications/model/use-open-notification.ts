@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -9,9 +9,11 @@ import { fetchTaskNavigation } from "@/features/notifications/api/notifications-
 import { focusCommentIdFromNotification } from "@/features/notifications/lib/focus-comment-from-notification";
 import { useMarkNotificationRead } from "@/features/notifications/model/use-notifications";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { waitForActiveViewTransition } from "@/shared/lib/page-transitions";
 
 export function useOpenNotification() {
     const navigate = useNavigate();
+    const parameters = useParams({ strict: false });
     const { t } = useTranslation("common");
     const clearSelectedTask = useTasksUiStore(
         (state) => state.clearSelectedTask
@@ -23,23 +25,38 @@ export function useOpenNotification() {
         notification: Notification,
         options?: {
             onFallback?: () => Promise<void> | void;
-            onNavigate?: () => void;
+            /** Runs before navigation (e.g. await notification drawer close). */
+            onNavigate?: () => Promise<void> | void;
         }
     ) {
         try {
+            // Close the notification drawer first so its exit animation is not
+            // stacked under the page view-transition + task drawer open.
+            await options?.onNavigate?.();
+
             const nav = isGuest()
                 ? resolveGuestTaskNavigation(notification.taskId)
                 : await fetchTaskNavigation({
                       taskId: notification.taskId,
                   });
-            options?.onNavigate?.();
-            await navigate({
-                params: {
-                    boardId: nav.boardId,
-                    projectId: nav.projectId,
-                },
-                to: "/projects/$projectId/boards/$boardId",
-            });
+
+            const alreadyOnBoard =
+                parameters.projectId === nav.projectId &&
+                parameters.boardId === nav.boardId;
+
+            if (!alreadyOnBoard) {
+                await navigate({
+                    params: {
+                        boardId: nav.boardId,
+                        projectId: nav.projectId,
+                    },
+                    to: "/projects/$projectId/boards/$boardId",
+                });
+                // Router resolves navigate when the VT DOM update runs, not when
+                // fade/slide CSS finishes — wait so the task drawer opens cleanly.
+                await waitForActiveViewTransition();
+            }
+
             selectTask(notification.taskId, {
                 focusCommentId: focusCommentIdFromNotification(notification),
             });

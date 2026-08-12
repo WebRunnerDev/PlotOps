@@ -47,7 +47,7 @@ export function stripLabelIdFromTaskCaches(
     );
 
     queryClient.setQueriesData<Task[]>(
-        { queryKey: taskKeys.project(projectId) },
+        { queryKey: [...taskKeys.all, "project", projectId] },
         (current) => current?.map((task) => stripFromTask(task))
     );
 }

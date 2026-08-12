@@ -32,6 +32,7 @@ import {
     parseIsoDate,
     toIsoDate,
 } from "@/features/tasks/lib/format-deadline";
+import { TASK_ESTIMATE_VALUES } from "@/features/tasks/lib/task-estimate";
 import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
@@ -91,8 +92,10 @@ import {
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
 
+/** Mobile: bottom sheet (swipe down + snap). Desktop: same shell, two-column body at md+. */
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
 const PRIORITY_NONE = "__none__";
+const ESTIMATE_NONE = "__none__";
 const FIELD_LABEL_CLASS = "text-meta text-muted-foreground";
 const FIELD_CONTROL_CLASS = "w-full font-mono text-code";
 
@@ -133,8 +136,13 @@ export function TaskDrawer({
     const { data: boards = [] } = useProjectBoards(projectId);
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
-    const { canDeleteTasks, canEditTasks, canManageBoard, isSettled } =
-        useProjectAccess(projectId);
+    const {
+        canDeleteTasks,
+        canEditEstimate,
+        canEditTasks,
+        canManageBoard,
+        isSettled,
+    } = useProjectAccess(projectId);
     const people = useProjectPeople(projectId);
     const mentionCandidates = useMemo<MentionCandidate[]>(
         () => people.map((person) => ({ id: person.id, label: person.name })),
@@ -154,6 +162,7 @@ export function TaskDrawer({
         boardTask ?? archivedTasks.find((item) => item.id === selectedTaskId);
     const isArchived = Boolean(task?.archivedAt);
     const canEdit = isSettled && canEditTasks && !isArchived;
+    const canSetEstimate = isSettled && canEditEstimate && !isArchived;
     const canDelete = isSettled && canDeleteTasks;
     const allowCreateLabels = isSettled && canManageBoard;
 
@@ -320,6 +329,7 @@ export function TaskDrawer({
                 columnId: (sameName?.id ?? targetColumns[0]!.id) as TaskStatus,
                 columns: targetColumns.map((column) => ({
                     id: column.id as TaskStatus,
+                    isDone: column.isDone,
                     name: column.name,
                 })),
             });
@@ -377,7 +387,7 @@ export function TaskDrawer({
                         <>
                             <DrawerHeader
                                 className={cn(
-                                    `border-b border-border p-4 text-left`,
+                                    "shrink-0 border-b border-border p-4 text-left",
                                     isArchived &&
                                         "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
                                 )}
@@ -398,7 +408,7 @@ export function TaskDrawer({
                                 </DrawerDescription>
                             </DrawerHeader>
 
-                            <div className="scrollbar-board mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
+                            <div className="scrollbar-board mx-auto flex min-h-0 w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
                                 {/* Title and Description */}
                                 <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
                                     <div className="flex flex-col gap-2">
@@ -409,7 +419,7 @@ export function TaskDrawer({
                                             {t("fields.title")}
                                         </Label>
                                         <Input
-                                            className="h-auto text-h3 font-semibold"
+                                            className="h-auto min-w-0 text-h3 font-semibold"
                                             disabled={!canEdit}
                                             id="task-title"
                                             maxLength={TASK_TITLE_MAX_LENGTH}
@@ -485,7 +495,7 @@ export function TaskDrawer({
                                 />
                                 {/* Type, Status, Priority, Deadline */}
                                 <div className="flex min-w-0 flex-[1_1_0%] flex-col gap-5">
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid min-w-0 grid-cols-2 gap-3">
                                         <div className="flex flex-col gap-1.5">
                                             <Label
                                                 className={FIELD_LABEL_CLASS}
@@ -735,6 +745,85 @@ export function TaskDrawer({
                                         <div className="flex flex-col gap-1.5">
                                             <Label
                                                 className={FIELD_LABEL_CLASS}
+                                                htmlFor="task-estimate"
+                                            >
+                                                {t("fields.estimate")}
+                                            </Label>
+                                            <Select
+                                                disabled={!canSetEstimate}
+                                                onValueChange={(value) => {
+                                                    if (
+                                                        typeof value !==
+                                                        "string"
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    updateTaskDetails(task.id, {
+                                                        estimate:
+                                                            value ===
+                                                            ESTIMATE_NONE
+                                                                ? null
+                                                                : (Number(
+                                                                      value
+                                                                  ) as (typeof TASK_ESTIMATE_VALUES)[number]),
+                                                    });
+                                                }}
+                                                value={
+                                                    task.estimate === undefined
+                                                        ? ESTIMATE_NONE
+                                                        : String(task.estimate)
+                                                }
+                                            >
+                                                <SelectTrigger
+                                                    className={
+                                                        FIELD_CONTROL_CLASS
+                                                    }
+                                                    id="task-estimate"
+                                                >
+                                                    <span>
+                                                        {task.estimate ===
+                                                        undefined
+                                                            ? t("estimate.none")
+                                                            : t(
+                                                                  "estimate.points",
+                                                                  {
+                                                                      count: task.estimate,
+                                                                  }
+                                                              )}
+                                                    </span>
+                                                </SelectTrigger>
+                                                <SelectContent
+                                                    alignItemWithTrigger={false}
+                                                >
+                                                    <SelectItem
+                                                        value={ESTIMATE_NONE}
+                                                    >
+                                                        {t("estimate.none")}
+                                                    </SelectItem>
+                                                    {TASK_ESTIMATE_VALUES.map(
+                                                        (points) => (
+                                                            <SelectItem
+                                                                key={points}
+                                                                value={String(
+                                                                    points
+                                                                )}
+                                                            >
+                                                                {t(
+                                                                    "estimate.points",
+                                                                    {
+                                                                        count: points,
+                                                                    }
+                                                                )}
+                                                            </SelectItem>
+                                                        )
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <Label
+                                                className={FIELD_LABEL_CLASS}
                                                 htmlFor="task-deadline"
                                             >
                                                 {t("fields.deadline")}
@@ -846,6 +935,7 @@ export function TaskDrawer({
                                                     pr,
                                                 });
                                             }}
+                                            projectId={projectId}
                                             repoFullName={repoFullName}
                                             task={task}
                                         />

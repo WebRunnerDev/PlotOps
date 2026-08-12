@@ -1,12 +1,24 @@
 import type { TeamsProvider } from "@/features/teams/api/teams-provider";
 
 import { fetchTeam } from "@/features/teams/api/team-members-api";
-import { createTeam, fetchTeams } from "@/features/teams/api/teams-api";
+import {
+    createTeam,
+    deleteTeam,
+    fetchTeams,
+} from "@/features/teams/api/teams-api";
 
 /** Real-account Teams adapter — delegates to existing Supabase APIs. */
 export const supabaseTeamsProvider: TeamsProvider = {
     async createTeam(name) {
         const result = await createTeam(name);
+        return {
+            data: result.data,
+            error: result.error ? new Error(result.error.message) : null,
+        };
+    },
+
+    async deleteTeam(teamId) {
+        const result = await deleteTeam(teamId);
         return {
             data: result.data,
             error: result.error ? new Error(result.error.message) : null,

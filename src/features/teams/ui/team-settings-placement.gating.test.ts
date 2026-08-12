@@ -20,6 +20,11 @@ describe("Team settings placement seam", () => {
         expect(route).not.toMatch(/ProjectMembersSettings/);
     });
 
+    it("Team settings route includes danger-zone delete for owners", () => {
+        const route = read("src/routes/(main)/teams/$teamId/settings.tsx");
+        expect(route).toMatch(/TeamDangerZone/);
+    });
+
     it("Project settings no longer owns Members/Invites UI", () => {
         const route = read(
             "src/routes/(main)/projects/$projectId/settings.tsx"

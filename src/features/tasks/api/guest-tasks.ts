@@ -13,6 +13,7 @@ import {
     updateGuestSandbox,
 } from "@/features/guest-mode";
 import { sortTasksByPosition } from "@/features/tasks/api/board-mappers";
+import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
@@ -33,6 +34,15 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     }
     if (patch.priority !== undefined) {
         task.priority = (patch.priority as null | TaskPriority) ?? undefined;
+    }
+    if (patch.estimate !== undefined) {
+        if (patch.estimate === null) {
+            task.estimate = undefined;
+        } else if (isTaskEstimate(patch.estimate)) {
+            task.estimate = patch.estimate;
+        } else {
+            throw new Error("Estimate must be a Fibonacci story point");
+        }
     }
     if (patch.deadline !== undefined) {
         task.deadline = patch.deadline ?? undefined;
@@ -112,8 +122,10 @@ function mapGuestTask(task: GuestTask): Task {
         author: task.author,
         boardId: task.boardId,
         branchName: task.branchName,
+        createdAt: task.createdAt,
         deadline: task.deadline,
         description: task.description,
+        estimate: task.estimate,
         id: task.id,
         key: task.key,
         labelIds: task.labelIds,
@@ -179,13 +191,22 @@ function normalizeTaskTitle(title: string): string {
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */
 export const guestTasksProvider: TasksProvider = {
     async archiveTaskRecord(taskId) {
+        await guestTasksProvider.archiveTaskRecords([taskId]);
+    },
+
+    async archiveTaskRecords(taskIds) {
+        const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+        let archivedCount = 0;
         updateGuestSandbox((sandbox) => {
-            const task = findTaskOrThrow(sandbox.tasks, taskId);
-            if (task.archivedAt) {
-                return;
+            const now = new Date().toISOString();
+            for (const taskId of uniqueIds) {
+                const task = sandbox.tasks.find((item) => item.id === taskId);
+                if (!task || task.archivedAt) continue;
+                task.archivedAt = now;
+                archivedCount += 1;
             }
-            task.archivedAt = new Date().toISOString();
         });
+        return { archivedCount };
     },
 
     async createTaskRecord(
@@ -219,6 +240,7 @@ export const guestTasksProvider: TasksProvider = {
             created = {
                 author: ACTOR,
                 boardId,
+                createdAt: new Date().toISOString(),
                 id: crypto.randomUUID(),
                 key: nextTaskKey(sandbox.tasks, taskType),
                 position: maxPosition + 1,
@@ -295,14 +317,17 @@ export const guestTasksProvider: TasksProvider = {
         };
     },
 
-    async fetchProjectTasks(projectId) {
+    async fetchProjectTasks(projectId, options) {
         const sandbox = getGuestSandbox();
         if (!sandbox) {
             throw new Error("No Guest Session");
         }
+        const includeArchived = options?.includeArchived === true;
         return sandbox.tasks
             .filter(
-                (task) => task.projectId === projectId && isActiveTask(task)
+                (task) =>
+                    task.projectId === projectId &&
+                    (includeArchived || isActiveTask(task))
             )
             .map((task) => mapGuestTask(task));
     },

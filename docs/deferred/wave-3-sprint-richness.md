@@ -3,7 +3,7 @@
 **Dependency chain — do not jump to burndown/KPI first.**  
 Each step: size, when to write a deeper plan, and acceptance sketch.
 
-Sprints baseline: ADR 0008 · `features/sprints` · Close already supports one carryover target for all incomplete ([`sprint-lifecycle-dialogs.tsx`](../../src/features/sprints/ui/sprint-lifecycle-dialogs.tsx)).
+Sprints baseline: ADR 0008 · `features/sprints` · Close supports per-task carryover targets ([`sprint-lifecycle-dialogs.tsx`](../../src/features/sprints/ui/sprint-lifecycle-dialogs.tsx); wave 3.2).
 
 ```mermaid
 flowchart LR
@@ -37,9 +37,9 @@ Mark which column(s) count as Done on Close instead of “last column only”.
 
 ### Acceptance
 
-- [ ] Close recommends `is_done` columns even if not rightmost.
-- [ ] Existing Boards get sensible backfill.
-- [ ] SPEC Deferred row cleared.
+- [x] Close recommends `is_done` columns even if not rightmost.
+- [x] Existing Boards get sensible backfill.
+- [x] SPEC Deferred row cleared.
 
 ---
 
@@ -57,9 +57,9 @@ MVP today: one target for all incomplete (Backlog or chosen Draft). Lift to per-
 
 ### Acceptance
 
-- [ ] Two incomplete Tasks can go to different Drafts in one Close.
-- [ ] Failure rolls back; no partial Close.
-- [ ] SPEC Deferred row cleared.
+- [x] Two incomplete Tasks can go to different Drafts in one Close.
+- [x] Failure rolls back; no partial Close.
+- [x] SPEC Deferred row cleared.
 
 ---
 
@@ -79,9 +79,9 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 ### Acceptance
 
-- [ ] Estimate editable and visible where planned.
-- [ ] Reports use points when present without breaking count view.
-- [ ] SPEC Deferred row cleared.
+- [x] Estimate editable and visible where planned.
+- [x] Reports use points when present without breaking count view.
+- [x] SPEC Deferred row cleared.
 
 **Do not** start burndown until estimate semantics locked.
 
@@ -101,9 +101,9 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 ### Acceptance
 
-- [ ] Active/closed Sprint shows readable burndown from commitment.
-- [ ] Empty/unestimated state explained.
-- [ ] SPEC Deferred row cleared.
+- [x] Active/closed Sprint shows readable burndown from commitment.
+- [x] Empty/unestimated state explained.
+- [x] SPEC Deferred row cleared.
 
 ---
 
@@ -121,15 +121,15 @@ Optional estimate field; Sprint metrics can become points-based. MVP today is co
 
 ### Acceptance
 
-- [ ] At least one velocity + one quality metric shipped with i18n.
-- [ ] Does not imply corporate SSO/reporting export.
-- [ ] SPEC Deferred row cleared.
+- [x] At least one velocity + one quality metric shipped with i18n.
+- [x] Does not imply corporate SSO/reporting export.
+- [x] SPEC Deferred row cleared.
 
 ---
 
 ## Wave 3 pull checklist
 
-- [ ] Ship **3.1** before treating Close as accurate.
-- [ ] Ship **3.2** and/or **3.3** next (independent after 3.1).
-- [ ] **3.4** only after points (or alternate) locked.
-- [ ] **3.5** last.
+- [x] Ship **3.1** before treating Close as accurate.
+- [x] Ship **3.2** and/or **3.3** next (independent after 3.1).
+- [x] **3.4** only after points (or alternate) locked.
+- [x] **3.5** last.

@@ -62,7 +62,7 @@ export function TaskActivitySection({
                             {t("activity.empty")}
                         </p>
                     ) : (
-                        <ul className="flex flex-col gap-2">
+                        <ul className="flex max-h-[min(20rem,35dvh)] flex-col gap-2 overflow-y-auto pr-1">
                             {events.map((event) => (
                                 <li key={event.id}>
                                     <ActivityEventItem
@@ -211,6 +211,13 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
             });
         }
         case "deadline": {
+            return t("activity.change.fromTo", {
+                field: fieldLabel,
+                from: displayScalar(change.from, none),
+                to: displayScalar(change.to, none),
+            });
+        }
+        case "estimate": {
             return t("activity.change.fromTo", {
                 field: fieldLabel,
                 from: displayScalar(change.from, none),

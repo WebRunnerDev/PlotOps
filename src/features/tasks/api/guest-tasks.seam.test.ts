@@ -55,6 +55,7 @@ describe("guest tasks provider happy path", () => {
 
         await provider.updateTaskDetails(created.id, {
             description: "Edited in sandbox",
+            estimate: 5,
             priority: "high",
             title: "Guest happy-path task (edited)",
         });
@@ -82,6 +83,7 @@ describe("guest tasks provider happy path", () => {
         expect(task!.title).toBe("Guest happy-path task (edited)");
         expect(task!.description).toBe("Edited in sandbox");
         expect(task!.priority).toBe("high");
+        expect(task!.estimate).toBe(5);
         expect(task!.status).toBe(columnIds[1]);
 
         const boardCache = await resolveAgain(true).fetchBoardTasks(boardId);
@@ -90,6 +92,45 @@ describe("guest tasks provider happy path", () => {
                 (item) => item.id === created.id && item.status === columnIds[1]
             )
         ).toBe(true);
+    });
+
+    it("bulk archiveTaskRecords archives multiple guest tasks", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const boardId = board.id;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const a = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Bulk A"
+        );
+        const b = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Bulk B"
+        );
+
+        const { archivedCount } = await provider.archiveTaskRecords([
+            a.id,
+            b.id,
+        ]);
+        expect(archivedCount).toBe(2);
+
+        const boardAfter = await provider.fetchBoardTasks(boardId);
+        expect(boardAfter.tasks.some((task) => task.id === a.id)).toBe(false);
+        expect(boardAfter.tasks.some((task) => task.id === b.id)).toBe(false);
+
+        const archived = await provider.fetchArchivedTasks(boardId);
+        expect(archived.some((task) => task.id === a.id)).toBe(true);
+        expect(archived.some((task) => task.id === b.id)).toBe(true);
     });
 
     it("archive / delete persisted archived task without Supabase", async () => {
@@ -174,5 +215,24 @@ describe("guest tasks provider happy path", () => {
         expect(stillArchived.some((item) => item.id === created.id)).toBe(
             false
         );
+    });
+
+    it("exposes createdAt on Board fetches for Created Board sort", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const boardId = getGuestSandbox()!.boards[0]!.id;
+        const { tasks } =
+            await resolveTasksProvider(true).fetchBoardTasks(boardId);
+
+        expect(tasks.length).toBeGreaterThan(0);
+        expect(
+            tasks.every(
+                (task) =>
+                    typeof task.createdAt === "string" &&
+                    task.createdAt.length > 0
+            )
+        ).toBe(true);
     });
 });

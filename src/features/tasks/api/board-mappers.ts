@@ -6,6 +6,7 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
+import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 
 export type DatabaseProfile = {
     avatar_url: null | string;
@@ -28,6 +29,7 @@ export type DatabaseTask = {
     created_at: string;
     deadline: null | string;
     description: null | string;
+    estimate: null | number;
     id: string;
     position: number;
     pr_number: null | number;
@@ -72,8 +74,10 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         author: toTaskPerson(author),
         boardId: row.board_id,
         branchName: row.branch_name ?? undefined,
+        createdAt: row.created_at,
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
+        estimate: isTaskEstimate(row.estimate) ? row.estimate : undefined,
         id: row.id,
         key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,

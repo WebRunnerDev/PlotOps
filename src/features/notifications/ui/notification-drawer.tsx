@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 
 import { formatNotificationContext } from "@/features/notifications/lib/format-notification-context";
+import { useAwaitableDrawerClose } from "@/features/notifications/model/use-awaitable-drawer-close";
 import {
     useMarkAllNotificationsRead,
     useNotificationsList,
@@ -31,6 +32,10 @@ export function NotificationDrawer() {
     const parameters = useParams({ strict: false });
     const openNotification = useOpenNotification();
     const [open, setOpen] = useState(false);
+    const { closeAndWait, onOpenChangeComplete } = useAwaitableDrawerClose(
+        open,
+        setOpen
+    );
 
     const projectId =
         typeof parameters.projectId === "string"
@@ -72,7 +77,12 @@ export function NotificationDrawer() {
                 ) : null}
             </Button>
 
-            <Drawer onOpenChange={setOpen} open={open} swipeDirection="right">
+            <Drawer
+                onOpenChange={setOpen}
+                onOpenChangeComplete={onOpenChangeComplete}
+                open={open}
+                swipeDirection="right"
+            >
                 <DrawerContent>
                     <DrawerHeader className="border-b border-border p-4 text-left">
                         <DrawerTitle>{t("nav.notifications")}</DrawerTitle>
@@ -193,8 +203,8 @@ export function NotificationDrawer() {
                                                                 navigate({
                                                                     to: "/notifications",
                                                                 }),
-                                                            onNavigate: () =>
-                                                                setOpen(false),
+                                                            onNavigate:
+                                                                closeAndWait,
                                                         }
                                                     );
                                                 }}

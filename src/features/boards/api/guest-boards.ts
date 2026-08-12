@@ -64,6 +64,7 @@ export const guestBoardsProvider: BoardsProvider = {
                 baseBranch: baseBranch.trim() || "main",
                 columns: DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
                     id: column.id,
+                    isDone: column.isDone,
                     name: column.name,
                     position: index,
                 })),
@@ -97,6 +98,7 @@ export const guestBoardsProvider: BoardsProvider = {
             }
             board.columns.push({
                 id,
+                isDone: false,
                 name,
                 position: maxPosition + 1,
             });
@@ -170,6 +172,7 @@ export const guestBoardsProvider: BoardsProvider = {
         return sortedColumns(requireBoard(boardId)).map(
             (column): BoardColumn => ({
                 id: column.id,
+                isDone: Boolean(column.isDone),
                 name: column.name,
             })
         );
@@ -223,6 +226,24 @@ export const guestBoardsProvider: BoardsProvider = {
                 ...byId.get(id)!,
                 position: index,
             }));
+        });
+    },
+
+    async setBoardDoneColumn(boardId, columnId) {
+        updateGuestSandbox((sandbox) => {
+            const board = sandbox.boards.find((item) => item.id === boardId);
+            if (!board) {
+                throw new Error("Board not found");
+            }
+            if (
+                columnId !== null &&
+                !board.columns.some((column) => column.id === columnId)
+            ) {
+                throw new Error("Column not found");
+            }
+            for (const column of board.columns) {
+                column.isDone = column.id === columnId;
+            }
         });
     },
 

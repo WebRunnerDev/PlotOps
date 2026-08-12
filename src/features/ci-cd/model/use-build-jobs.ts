@@ -13,7 +13,8 @@ import { isGuest } from "@/features/guest-mode";
 export function useBuildJobs(
     projectId: string,
     buildId: string | undefined,
-    enabled: boolean
+    enabled: boolean,
+    githubRepoId: null | number | undefined
 ) {
     const { githubAccessToken } = useAuth();
     const guest = isGuest();
@@ -25,6 +26,7 @@ export function useBuildJobs(
             Boolean(buildId) &&
             canFetchProjectBuilds({
                 githubAccessToken,
+                githubRepoId,
                 isGuest: guest,
                 projectId,
             }),

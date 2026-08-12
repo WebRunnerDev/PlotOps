@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import type {
     InviteTtlValue,
@@ -16,6 +18,8 @@ import {
     fetchTeamMembers,
     removeTeamMember,
     revokeTeamInvite,
+    sendTeamInviteEmail,
+    type TeamInviteKind,
     transferTeamOwnership,
     updateTeamMemberRole,
 } from "@/features/teams/api/team-members-api";
@@ -52,22 +56,42 @@ export function useConfirmTeamInvite(teamId: string) {
 export function useCreateTeamInvite(teamId: string) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
+    const { t } = useTranslation("board");
 
     return useMutation({
         mutationFn: async (input: {
-            email: string;
+            email?: string;
+            kind?: TeamInviteKind;
             role: ProjectMemberRole;
             ttl: InviteTtlValue;
         }) => {
             if (!user?.id) throw new Error("Not authenticated");
+            const kind = input.kind ?? "email";
+            if (kind === "email" && !input.email?.trim()) {
+                throw new Error("Email is required");
+            }
             const { data, error } = await createTeamInvite({
                 email: input.email,
                 invitedBy: user.id,
+                kind,
                 role: input.role,
                 teamId,
                 ttl: input.ttl,
             });
             if (error) throw error;
+            if (kind === "email" && data?.id) {
+                const { data: sendData, error: sendError } =
+                    await sendTeamInviteEmail(data.id);
+                const sendFailed =
+                    Boolean(sendError) ||
+                    (sendData !== null &&
+                        typeof sendData === "object" &&
+                        "error" in sendData &&
+                        Boolean((sendData as { error?: unknown }).error));
+                if (sendFailed) {
+                    toast.message(t("members.inviteEmailDelayed"));
+                }
+            }
             return data;
         },
         onSuccess: () => {

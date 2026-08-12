@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import {
     Check,
     Copy,
@@ -15,12 +16,27 @@ import { toast } from "sonner";
 
 import type { Task, TaskPullRequest } from "@/features/tasks/model/types";
 
+import { useAuth } from "@/features/auth";
 import { matchesAllowedHeadPatterns } from "@/features/boards";
 import {
     fetchPullRequest,
+    gitHubWriteErrorKind,
+    type GitMergeMethod,
     isGitHubApiError,
 } from "@/features/git-integration/api/github-git-api";
+import { canWriteGithubPr } from "@/features/git-integration/lib/can-write-github-pr";
+import { defaultPullRequestTitle } from "@/features/git-integration/lib/default-pull-request-title";
+import {
+    useCreatePullRequest,
+    useMergePullRequest,
+} from "@/features/git-integration/model/use-github-pr-writes";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
+import { isGuest } from "@/features/guest-mode";
+import {
+    githubPanelNeedsRepo,
+    resolveProjectConnectHash,
+} from "@/features/projects/model/project-github-gate";
+import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
     generateBranchName,
     isSharedBranch,
@@ -40,6 +56,12 @@ import {
 } from "@/shared/shadcn/ui/alert-dialog";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 const PR_STATE_CLASS: Record<NonNullable<Task["pr"]>["state"], string> = {
@@ -47,6 +69,8 @@ const PR_STATE_CLASS: Record<NonNullable<Task["pr"]>["state"], string> = {
     merged: "text-purple-500",
     open: "text-emerald-500",
 };
+
+const MERGE_METHODS: GitMergeMethod[] = ["squash", "merge", "rebase"];
 
 type TaskGithubPanelProperties = {
     allowedHeadPatterns: string[];
@@ -56,6 +80,8 @@ type TaskGithubPanelProperties = {
     githubToken: null | string;
     onBranchChange: (branchName: null | string) => void;
     onPrChange: (pr: null | TaskPullRequest) => void;
+    /** Project id for connect deep-link when repo is missing. */
+    projectId: string;
     repoFullName: string | undefined;
     task: Task;
 };
@@ -67,10 +93,16 @@ export function TaskGithubPanel({
     githubToken,
     onBranchChange,
     onPrChange,
+    projectId,
     repoFullName,
     task,
 }: TaskGithubPanelProperties) {
     const { t } = useTranslation("board");
+    const { user } = useAuth();
+    const { isSettled, role } = useProjectAccess(projectId);
+    const createPr = useCreatePullRequest();
+    const mergePr = useMergePullRequest();
+
     const [copied, setCopied] = useState(false);
     const [linkingBranch, setLinkingBranch] = useState(false);
     const [branchDraft, setBranchDraft] = useState("");
@@ -79,8 +111,19 @@ export function TaskGithubPanel({
     const [prLoading, setPrLoading] = useState(false);
     const [diffOpen, setDiffOpen] = useState(false);
     const [pendingBranch, setPendingBranch] = useState<null | string>(null);
+    const [mergeOpen, setMergeOpen] = useState(false);
+    const [mergeMethod, setMergeMethod] = useState<GitMergeMethod>("squash");
     const prLinkAbort = useRef<AbortController | undefined>(undefined);
     const prLinkGeneration = useRef(0);
+
+    const canWritePr =
+        isSettled &&
+        canWriteGithubPr({
+            isGuest: isGuest(),
+            role,
+            task,
+            userId: user?.id,
+        });
 
     useEffect(() => {
         prLinkAbort.current?.abort();
@@ -94,6 +137,8 @@ export function TaskGithubPanel({
         setPrLoading(false);
         setDiffOpen(false);
         setPendingBranch(null);
+        setMergeOpen(false);
+        setMergeMethod("squash");
     }, [task.id]);
 
     const branchName = task.branchName;
@@ -101,6 +146,71 @@ export function TaskGithubPanel({
         ? `git checkout ${branchName}`
         : undefined;
     const canFetchGithub = Boolean(githubToken && repoFullName);
+    const headIsShared = Boolean(branchName && isSharedBranch(branchName));
+    const canOpenPr =
+        canWritePr &&
+        canFetchGithub &&
+        Boolean(branchName) &&
+        !task.pr &&
+        !headIsShared;
+    const canMergePr =
+        canWritePr &&
+        canFetchGithub &&
+        task.pr?.state === "open" &&
+        !createPr.isPending &&
+        !mergePr.isPending;
+
+    if (githubPanelNeedsRepo(repoFullName)) {
+        return (
+            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-meta text-muted-foreground">
+                        {t("github.title")}
+                    </p>
+                    <p className="text-ui text-muted-foreground">
+                        {t("github.connectRepo")}
+                    </p>
+                </div>
+                {branchName ? (
+                    <p className="min-w-0 truncate font-mono text-code text-muted-foreground">
+                        {branchName}
+                    </p>
+                ) : undefined}
+                {task.pr ? (
+                    <p className="min-w-0 truncate text-ui text-muted-foreground">
+                        {t("github.prLink", {
+                            number: task.pr.number,
+                            state: t(`prState.${task.pr.state}`),
+                        })}
+                    </p>
+                ) : undefined}
+                <Button
+                    className="self-start"
+                    nativeButton={false}
+                    render={
+                        <Link
+                            hash={resolveProjectConnectHash()}
+                            params={{ projectId }}
+                            to="/projects/$projectId/settings"
+                        />
+                    }
+                    size="xs"
+                    variant="outline"
+                >
+                    {t("github.connectRepoAction")}
+                </Button>
+            </div>
+        );
+    }
+
+    const toastWriteFailure = (error: unknown, fallbackKey: string) => {
+        const kind = gitHubWriteErrorKind(error);
+        if (kind === "unknown") {
+            toast.error(t(fallbackKey));
+            return;
+        }
+        toast.error(t(`github.writeError.${kind}`));
+    };
 
     const handleCopyCheckout = async () => {
         if (!checkoutCommand) return;
@@ -150,6 +260,52 @@ export function TaskGithubPanel({
         if (!canEdit) return;
         setLinkingBranch(false);
         onBranchChange(null);
+    };
+
+    const handleOpenPr = async () => {
+        if (!canOpenPr || !githubToken || !repoFullName || !branchName) return;
+
+        try {
+            const remote = await createPr.mutateAsync({
+                base: baseBranch,
+                head: branchName,
+                repoFullName,
+                title: defaultPullRequestTitle(task),
+                token: githubToken,
+            });
+            const pr: TaskPullRequest = {
+                number: remote.number,
+                state: remote.merged_at ? "merged" : remote.state,
+                url: remote.url,
+            };
+            onPrChange(pr);
+            toast.success(t("github.openPrToast", { number: pr.number }));
+        } catch (error) {
+            toastWriteFailure(error, "github.openPrFailed");
+        }
+    };
+
+    const handleMergeConfirm = async () => {
+        if (!canMergePr || !githubToken || !repoFullName || !task.pr) return;
+
+        try {
+            await mergePr.mutateAsync({
+                commitTitle: defaultPullRequestTitle(task),
+                headBranchName: branchName,
+                mergeMethod,
+                prNumber: task.pr.number,
+                repoFullName,
+                token: githubToken,
+            });
+            onPrChange({
+                ...task.pr,
+                state: "merged",
+            });
+            setMergeOpen(false);
+            toast.success(t("github.mergePrToast", { number: task.pr.number }));
+        } catch (error) {
+            toastWriteFailure(error, "github.mergePrFailed");
+        }
     };
 
     const handleLinkPrConfirm = async () => {
@@ -232,6 +388,20 @@ export function TaskGithubPanel({
         setDiffOpen(false);
     };
 
+    const mergeMethodLabel = (method: GitMergeMethod) => {
+        switch (method) {
+            case "merge": {
+                return t("github.mergeMethodMerge");
+            }
+            case "rebase": {
+                return t("github.mergeMethodRebase");
+            }
+            case "squash": {
+                return t("github.mergeMethodSquash");
+            }
+        }
+    };
+
     const prSection = task.pr ? (
         <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
@@ -265,28 +435,43 @@ export function TaskGithubPanel({
                     </Button>
                 ) : undefined}
             </div>
-            {canFetchGithub ? (
-                <Button
-                    className="self-start"
-                    onClick={() => setDiffOpen(true)}
-                    size="xs"
-                    type="button"
-                    variant="outline"
-                >
-                    {t("git.viewDiff")}
-                </Button>
-            ) : undefined}
+            <div className="flex flex-wrap items-center gap-2">
+                {canFetchGithub ? (
+                    <Button
+                        onClick={() => setDiffOpen(true)}
+                        size="xs"
+                        type="button"
+                        variant="outline"
+                    >
+                        {t("git.viewDiff")}
+                    </Button>
+                ) : undefined}
+                {canMergePr ? (
+                    <Button
+                        disabled={mergePr.isPending}
+                        onClick={() => setMergeOpen(true)}
+                        size="xs"
+                        type="button"
+                        variant="default"
+                    >
+                        {mergePr.isPending ? (
+                            <Spinner className="size-3.5" />
+                        ) : undefined}
+                        {t("github.mergePr")}
+                    </Button>
+                ) : undefined}
+            </div>
         </div>
     ) : linkingPr && canEdit ? (
         <div className="flex flex-col gap-2">
             <p className="text-ui text-muted-foreground">
                 {t("github.linkPrHint")}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                 <Input
                     aria-label={t("github.linkPrPlaceholder")}
                     autoFocus
-                    className="font-mono text-code"
+                    className="min-w-0 font-mono text-code"
                     disabled={prLoading}
                     onChange={(event) => setPrDraft(event.target.value)}
                     onKeyDown={(event) => {
@@ -334,28 +519,49 @@ export function TaskGithubPanel({
             <p className="text-ui text-muted-foreground">
                 {branchName ? t("github.noPr") : t("github.noPrSkipped")}
             </p>
-            {canEdit ? (
-                <Button
-                    className="self-start"
-                    disabled={!canFetchGithub}
-                    onClick={() => setLinkingPr(true)}
-                    size="xs"
-                    title={
-                        canFetchGithub ? undefined : t("github.prNeedsGithub")
-                    }
-                    type="button"
-                    variant="outline"
-                >
-                    <GitPullRequest aria-hidden className="size-4" />
-                    {t("github.linkPr")}
-                </Button>
-            ) : undefined}
+            <div className="flex flex-wrap items-center gap-2">
+                {canOpenPr ? (
+                    <Button
+                        disabled={createPr.isPending}
+                        onClick={() => {
+                            void handleOpenPr();
+                        }}
+                        size="xs"
+                        type="button"
+                        variant="default"
+                    >
+                        {createPr.isPending ? (
+                            <Spinner className="size-3.5" />
+                        ) : (
+                            <GitPullRequest aria-hidden className="size-4" />
+                        )}
+                        {t("github.openPr")}
+                    </Button>
+                ) : undefined}
+                {canEdit ? (
+                    <Button
+                        disabled={!canFetchGithub}
+                        onClick={() => setLinkingPr(true)}
+                        size="xs"
+                        title={
+                            canFetchGithub
+                                ? undefined
+                                : t("github.prNeedsGithub")
+                        }
+                        type="button"
+                        variant="outline"
+                    >
+                        <Link2 aria-hidden className="size-4" />
+                        {t("github.linkPr")}
+                    </Button>
+                ) : undefined}
+            </div>
         </div>
     );
 
     return (
         <>
-            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+            <div className="flex min-w-0 flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
                 <div className="flex flex-col gap-0.5">
                     <p className="text-meta text-muted-foreground">
                         {t("github.title")}
@@ -388,7 +594,7 @@ export function TaskGithubPanel({
                                     </Button>
                                 ) : undefined}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                                 <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
                                     {checkoutCommand}
                                 </code>
@@ -421,13 +627,13 @@ export function TaskGithubPanel({
                                 <p className="text-ui text-muted-foreground">
                                     {t("github.linkBranchHint")}
                                 </p>
-                                <div className="flex items-center gap-2">
+                                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                                     <Input
                                         aria-label={t(
                                             "github.linkBranchPlaceholder"
                                         )}
                                         autoFocus
-                                        className="font-mono text-code"
+                                        className="min-w-0 font-mono text-code"
                                         onChange={(event) =>
                                             setBranchDraft(event.target.value)
                                         }
@@ -566,6 +772,71 @@ export function TaskGithubPanel({
                             }}
                         >
                             {t("github.patternMismatchConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open && !mergePr.isPending) setMergeOpen(false);
+                }}
+                open={mergeOpen}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("github.mergePrTitle", {
+                                number: task.pr?.number ?? 0,
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("github.mergePrBody", { base: baseBranch })}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="flex flex-col gap-2 px-4 sm:px-6">
+                        <p className="text-meta text-muted-foreground">
+                            {t("github.mergeMethod")}
+                        </p>
+                        <Select
+                            onValueChange={(value) => {
+                                if (
+                                    value === "squash" ||
+                                    value === "merge" ||
+                                    value === "rebase"
+                                ) {
+                                    setMergeMethod(value);
+                                }
+                            }}
+                            value={mergeMethod}
+                        >
+                            <SelectTrigger className="w-full font-mono text-code">
+                                <span>{mergeMethodLabel(mergeMethod)}</span>
+                            </SelectTrigger>
+                            <SelectContent alignItemWithTrigger={false}>
+                                {MERGE_METHODS.map((method) => (
+                                    <SelectItem key={method} value={method}>
+                                        {mergeMethodLabel(method)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={mergePr.isPending}>
+                            {t("github.mergePrCancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={mergePr.isPending}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                void handleMergeConfirm();
+                            }}
+                        >
+                            {mergePr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.mergePrConfirm")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

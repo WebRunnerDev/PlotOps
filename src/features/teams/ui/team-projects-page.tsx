@@ -80,10 +80,8 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
     );
 
     const isLoading = teamLoading || accessLoading || projectsLoading;
-    const canAddFromGitHub = Boolean(
-        !guest && canCreateProject && githubAccessToken && user
-    );
-    const showGitHubReconnect = !guest && canCreateProject && !canAddFromGitHub;
+    const canAddProject = Boolean(!guest && canCreateProject && user);
+    const showGitHubReconnect = Boolean(canAddProject && !githubAccessToken);
 
     const handleConfirmRemove = async () => {
         if (!projectToRemove) return;
@@ -102,7 +100,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                     <Skeleton width={220} />
                     <Skeleton width={160} />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {Array.from(
                         { length: PROJECT_SKELETON_COUNT },
                         (_, index) => (
@@ -156,7 +154,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                         </Alert>
                     ) : null}
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                        {canAddFromGitHub ? (
+                        {canAddProject ? (
                             <Button
                                 onClick={() => setIsAddOpen(true)}
                                 type="button"
@@ -208,7 +206,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                             {t("teamEmptyProjectsDescription")}
                         </EmptyDescription>
                     </EmptyHeader>
-                    {canAddFromGitHub ? (
+                    {canAddProject ? (
                         <EmptyContent>
                             <Button
                                 onClick={() => setIsAddOpen(true)}
@@ -224,7 +222,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
             )}
 
             {projects.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     {projects.map((project) => (
                         <ProjectCard
                             isRemoving={
@@ -278,7 +276,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {user && githubAccessToken && canCreateProject ? (
+            {user && canCreateProject ? (
                 <AddProjectDialog
                     accessToken={githubAccessToken}
                     connectedProjects={projects}
