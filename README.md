@@ -1,6 +1,6 @@
 # PlotOps
 
-![PlotOps](/public/PlotOps.png)
+<img src="/public/PlotOps.png" width=350 height=350>
 
 [![CI](https://github.com/WebRunnerDev/PlotOps/actions/workflows/main.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
