@@ -225,11 +225,11 @@ No new `VITE_*` keys. Resend secrets belong only on Edge Function `send-team-inv
 
 ### Secrets (2.2)
 
-| Secret              | Required for send? | Notes                                                                 |
-| ------------------- | ------------------ | --------------------------------------------------------------------- |
-| `RESEND_API_KEY`    | Yes                | Resend API key. Unset → EF `200` + `{ skipped: true }` (local-safe). |
-| `INVITE_FROM_EMAIL` | Yes                | Verified Resend from, e.g. `PlotOps <invites@yourdomain.com>`.        |
-| `INVITE_APP_ORIGIN` | Optional           | Canonical app origin for invite URLs; else request `Origin` from SPA. |
+| Secret              | Required for send? | Notes                                                                        |
+| ------------------- | ------------------ | ---------------------------------------------------------------------------- |
+| `RESEND_API_KEY`    | Yes                | Resend API key. Unset → EF `200` + `{ skipped: true }` (local-safe).         |
+| `INVITE_FROM_EMAIL` | Yes                | Verified Resend from, e.g. `PlotOps <invites@yourdomain.com>`.               |
+| `INVITE_APP_ORIGIN` | Yes                | Canonical app origin for invite URLs. Required with Resend — never from SPA. |
 
 **Remote (PlotOps):**
 
