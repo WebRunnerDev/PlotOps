@@ -22,6 +22,7 @@ export { filterLiveBoardTasks } from "./model/filter-live-board-tasks";
 export { invalidateSprintBoardCaches } from "./model/invalidate-sprint-board";
 export { sprintKeys } from "./model/query-keys";
 export { resolveCreateTaskSprintId } from "./model/resolve-create-task-sprint-id";
+export { resolveEffectiveBoardSprintScope } from "./model/resolve-effective-board-sprint-scope";
 export type {
     BoardSprintScope,
     Sprint,

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { resolveEffectiveBoardSprintScope } from "@/features/sprints/model/resolve-effective-board-sprint-scope";
 import { useBoardSprints } from "@/features/sprints/model/use-sprints";
 import { useSprintsUiStore } from "@/features/sprints/model/use-sprints-ui-store";
 import { StartSprintDialog } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
@@ -48,8 +49,10 @@ export function BoardSprintControls({
         ? tasks.filter((task) => task.sprintId === startCandidate.id).length
         : 0;
 
-    const effectiveScope =
-        boardSprintScope === "active" && !active ? "entire" : boardSprintScope;
+    const effectiveScope = resolveEffectiveBoardSprintScope({
+        boardSprintScope,
+        hasActiveSprint: active !== undefined,
+    });
 
     const showStart = canManage && !active && Boolean(startCandidate);
 

@@ -23,6 +23,7 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
     filterLiveBoardTasks,
     resolveCreateTaskSprintId,
+    resolveEffectiveBoardSprintScope,
     useBoardSprints,
     useSprintsUiStore,
 } from "@/features/sprints";
@@ -129,9 +130,13 @@ export function KanbanBoard({
         (state) => state.clearSelection
     );
     const activeSprint = sprints.find((sprint) => sprint.state === "active");
+    const effectiveBoardSprintScope = resolveEffectiveBoardSprintScope({
+        boardSprintScope,
+        hasActiveSprint: activeSprint !== undefined,
+    });
     const createSprintId = resolveCreateTaskSprintId({
         activeSprintId: activeSprint?.id,
-        boardSprintScope,
+        boardSprintScope: effectiveBoardSprintScope,
     });
     const selectedIds = useBoardTaskSelectionStore(
         (state) => state.selectedIds
@@ -214,12 +219,12 @@ export function KanbanBoard({
     const filteredTasks = useMemo(() => {
         const scoped = filterLiveBoardTasks({
             activeSprintId: activeSprint?.id,
-            scope: boardSprintScope,
+            scope: effectiveBoardSprintScope,
             sprints,
             tasks,
         });
         return filterTasks(scoped, filters);
-    }, [activeSprint?.id, boardSprintScope, filters, sprints, tasks]);
+    }, [activeSprint?.id, effectiveBoardSprintScope, filters, sprints, tasks]);
 
     const displayedTasks = useMemo(
         () => sortTasksByBoardSort(filteredTasks, boardSort),
