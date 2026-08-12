@@ -97,7 +97,9 @@ export function ProjectSectionNav({
     return (
         <nav
             aria-label={t("nav.projectSections")}
-            className="flex min-w-0 max-w-full items-center gap-0.5 overflow-x-auto overflow-y-hidden py-0.5"
+            // overflow-x-auto + scrollbar-none: scrollable on mobile without
+            // showing a native scrollbar; touch-auto enables iOS momentum scroll.
+            className="flex min-w-0 max-w-full items-center gap-0.5 overflow-x-auto overflow-y-hidden touch-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
             {items.map((item) => {
                 const isActive = active === item.id;

@@ -112,8 +112,9 @@ export function TopBar() {
             </div>
 
             {projectId ? (
-                <div className="col-span-2 row-start-2 min-w-0 overflow-x-auto overflow-y-hidden sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-self-stretch">
-                    <div className="flex min-w-0 justify-center">
+                <div className="col-span-2 row-start-2 min-w-0 overflow-hidden sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:justify-self-stretch">
+                    {/* On sm+ center the nav; on mobile let it scroll from the left. */}
+                    <div className="flex min-w-0 sm:justify-center">
                         <ProjectSectionNav
                             boardId={boardId}
                             projectId={projectId}
