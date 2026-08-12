@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useTeamAccess } from "@/features/teams/model/use-team-access";
@@ -15,7 +16,9 @@ export const Route = createFileRoute("/(main)/teams/$teamId/settings")({
 
 function TeamSettingsRoute() {
     const { teamId } = Route.useParams();
+    const router = useRouter();
     const { t } = useTranslation("board");
+    const { t: tCommon } = useTranslation("common");
     const { data: team, error, isLoading } = useTeam(teamId);
     const {
         canManageMembers,
@@ -62,9 +65,21 @@ function TeamSettingsRoute() {
     return (
         <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 overflow-y-auto px-4 py-4">
             <header className="flex flex-col gap-1 border-b border-border pb-3">
-                <h1 className="text-sm font-semibold">
-                    {t("teamSettings.title")}
-                </h1>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Button
+                        className="shrink-0 text-muted-foreground"
+                        onClick={() => router.history.back()}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                    >
+                        <ArrowLeft data-icon="inline-start" />
+                        {tCommon("back")}
+                    </Button>
+                    <h1 className="text-sm font-semibold">
+                        {t("teamSettings.title")}
+                    </h1>
+                </div>
                 <p className="truncate font-mono text-meta text-muted-foreground">
                     {team.name}
                 </p>
