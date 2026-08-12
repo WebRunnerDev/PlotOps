@@ -1,6 +1,6 @@
 # PlotOps
 
-![PlotOps](/public/PlotOps.png)
+<img src="/public/PlotOps.png" width=350 height=350>
 
 [![Migrate check](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate-check.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate-check.yml)
 [![Migrate + deploy](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate.yml)
