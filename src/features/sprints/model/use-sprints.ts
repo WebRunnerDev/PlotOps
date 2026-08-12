@@ -1,9 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
+
+import type { BoardTasksCache } from "@/features/tasks/api/tasks-api";
 
 import { isGuest } from "@/features/guest-mode";
 import { resolveSprintsProvider } from "@/features/sprints/api/resolve-sprints-provider";
+import { createMutationQueue } from "@/features/sprints/model/create-mutation-queue";
 import { invalidateSprintBoardCaches } from "@/features/sprints/model/invalidate-sprint-board";
+import {
+    applySprintMembershipUpdates,
+    planSprintMembershipMove,
+} from "@/features/sprints/model/plan-sprint-membership-move";
 import { sprintKeys } from "@/features/sprints/model/query-keys";
+import { setTasksCache } from "@/features/tasks/model/board-query-cache";
+import { taskKeys } from "@/features/tasks/model/query-keys";
 
 export function useBoardSprints(boardId: string) {
     const provider = resolveSprintsProvider(isGuest());
@@ -28,6 +38,7 @@ export function useSprintEvents(sprintId: string | undefined) {
 export function useSprintMutations(projectId: string, boardId: string) {
     const queryClient = useQueryClient();
     const provider = resolveSprintsProvider(isGuest());
+    const moveQueueReference = useRef(createMutationQueue());
 
     const createDraft = useMutation({
         mutationFn: ({ goal, name }: { goal?: string; name: string }) =>
@@ -81,17 +92,63 @@ export function useSprintMutations(projectId: string, boardId: string) {
             invalidateSprintBoardCaches(queryClient, projectId, boardId),
     });
 
-    const moveTasks = useMutation({
-        mutationFn: (
-            updates: Array<{
-                sprintId: null | string;
-                sprintPosition: null | number;
-                taskId: string;
-            }>
-        ) => provider.assignTasksToSprint(updates),
-        onSuccess: () =>
-            invalidateSprintBoardCaches(queryClient, projectId, boardId),
+    const moveTasks = useMutation<
+        void,
+        Error,
+        Array<{
+            sprintId: null | string;
+            sprintPosition: null | number;
+            taskId: string;
+        }>,
+        { previous?: BoardTasksCache }
+    >({
+        mutationFn: (updates) => provider.assignTasksToSprint(updates),
+        onError: (_error, _updates, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(
+                    taskKeys.board(projectId, boardId),
+                    context.previous
+                );
+            }
+        },
+        onMutate: async (updates) => {
+            await queryClient.cancelQueries({
+                queryKey: taskKeys.board(projectId, boardId),
+            });
+            const previous = queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
+            );
+            setTasksCache(queryClient, projectId, boardId, (current) => ({
+                ...current,
+                tasks: applySprintMembershipUpdates(current.tasks, updates),
+            }));
+            return { previous };
+        },
+        onSettled: () => {
+            invalidateSprintBoardCaches(queryClient, projectId, boardId);
+        },
     });
+
+    const moveTasksToSprint = (
+        taskIds: readonly string[],
+        targetSprintId: null | string
+    ) =>
+        moveQueueReference.current.enqueue(async () => {
+            const cache = queryClient.getQueryData<BoardTasksCache>(
+                taskKeys.board(projectId, boardId)
+            );
+            if (!cache) return [];
+
+            const updates = planSprintMembershipMove({
+                targetSprintId,
+                taskIds,
+                tasks: cache.tasks,
+            });
+            if (updates.length === 0) return [];
+
+            await moveTasks.mutateAsync(updates);
+            return updates;
+        });
 
     const start = useMutation({
         mutationFn: ({
@@ -142,6 +199,7 @@ export function useSprintMutations(projectId: string, boardId: string) {
         createDraft,
         moveTask,
         moveTasks,
+        moveTasksToSprint,
         removeDraft,
         removePast,
         renameDraft,

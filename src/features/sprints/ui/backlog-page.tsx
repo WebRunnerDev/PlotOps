@@ -141,7 +141,10 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         (Boolean(columnsApi.error) && !columnsApi.columnsReady) ||
         (Boolean(tasksApi.error) && !tasksApi.tasksReady);
     const isLoading = columnsApi.isLoading || tasksApi.isLoading;
-    const { createDraft, moveTasks } = useSprintMutations(projectId, boardId);
+    const { createDraft, moveTasks, moveTasksToSprint } = useSprintMutations(
+        projectId,
+        boardId
+    );
     const [newName, setNewName] = useState("");
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [draggingTasks, setDraggingTasks] = useState<Task[]>([]);
@@ -235,38 +238,11 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         taskIds: string[],
         targetSprintId: null | string
     ) => {
-        if (moveTasks.isPending) return;
-
-        const uniqueIds = [...new Set(taskIds)];
-        if (uniqueIds.length === 0) return;
-
-        const targetSiblings = targetSprintId
-            ? tasks.filter((task) => task.sprintId === targetSprintId)
-            : tasks.filter((task) => !task.sprintId);
-        const movingIds = uniqueIds.filter((id) => {
-            const task = tasks.find((item) => item.id === id);
-            if (!task) return false;
-            const current = task.sprintId ?? null;
-            return current !== targetSprintId;
-        });
-
-        if (movingIds.length === 0) return;
-
-        let maxPosition = -1;
-        for (const task of targetSiblings) {
-            if (!movingIds.includes(task.id)) {
-                maxPosition = Math.max(maxPosition, task.sprintPosition ?? -1);
-            }
-        }
-
-        const updates = movingIds.map((taskId, index) => ({
-            sprintId: targetSprintId,
-            sprintPosition: maxPosition + 1 + index,
-            taskId,
-        }));
-
         try {
-            await moveTasks.mutateAsync(updates);
+            const updates = await moveTasksToSprint(taskIds, targetSprintId);
+            if (updates.length === 0) return;
+
+            const movingIds = updates.map((update) => update.taskId);
             setRowSelection((previous) => {
                 const next = { ...previous };
                 for (const id of movingIds) {
@@ -277,7 +253,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             setBulkMoveValue(undefined);
         } catch {
             toast.error(
-                movingIds.length > 1
+                taskIds.length > 1
                     ? t("sprints.moveManyFailed")
                     : t("sprints.moveFailed")
             );
@@ -313,7 +289,6 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             BacklogTaskDragData | undefined;
         setDraggingTasks([]);
         if (data?.type !== "backlog-task") return;
-        if (moveTasks.isPending) return;
 
         const target = parseDropTarget(event.over?.id);
         if (!target) return;
