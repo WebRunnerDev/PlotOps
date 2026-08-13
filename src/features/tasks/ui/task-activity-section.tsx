@@ -171,6 +171,12 @@ function asStringList(value: unknown): null | string[] {
     return value;
 }
 
+function asTaskKey(value: unknown): null | { key: string } {
+    if (!value || typeof value !== "object") return null;
+    const key = (value as { key?: unknown }).key;
+    return typeof key === "string" ? { key } : null;
+}
+
 function displayScalar(value: unknown, emptyLabel: string): string {
     if (value === null || value === undefined || value === "") {
         return emptyLabel;
@@ -232,6 +238,13 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
             const to = toList && toList.length > 0 ? toList.join(", ") : none;
             return t("activity.change.fromTo", { field: fieldLabel, from, to });
         }
+        case "parent": {
+            return t("activity.change.fromTo", {
+                field: fieldLabel,
+                from: asTaskKey(change.from)?.key ?? none,
+                to: asTaskKey(change.to)?.key ?? none,
+            });
+        }
         case "pr": {
             const fromPr = asPr(change.from);
             const toPr = asPr(change.to);
@@ -268,6 +281,13 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
             const from = asStatus(change.from)?.name ?? none;
             const to = asStatus(change.to)?.name ?? none;
             return t("activity.change.fromTo", { field: fieldLabel, from, to });
+        }
+        case "subtask": {
+            return t("activity.change.fromTo", {
+                field: fieldLabel,
+                from: asTaskKey(change.from)?.key ?? none,
+                to: asTaskKey(change.to)?.key ?? none,
+            });
         }
         case "title": {
             return t("activity.change.fromTo", {

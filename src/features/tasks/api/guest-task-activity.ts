@@ -15,9 +15,11 @@ const ACTIVITY_FIELDS = new Set<TaskActivityField>([
     "deadline",
     "estimate",
     "labels",
+    "parent",
     "pr",
     "priority",
     "status",
+    "subtask",
     "title",
     "type",
 ]);

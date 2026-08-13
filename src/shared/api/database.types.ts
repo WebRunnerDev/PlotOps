@@ -137,6 +137,7 @@ export type Database = {
         }
       }
       cleanup_notifications_for_user: { Args: never; Returns: undefined }
+      clear_task_parent: { Args: { p_task_id: string }; Returns: undefined }
       close_sprint: {
         Args: {
           p_carryover_by_task_id?: Json
@@ -242,6 +243,15 @@ export type Database = {
           p_task_id: string
         }
         Returns: undefined
+      }
+      create_subtask: {
+        Args: {
+          p_parent_id: string
+          p_sprint_id?: null | string
+          p_task_type?: Database["public"]["Enums"]["task_type"] | null
+          p_title: string
+        }
+        Returns: string
       }
       create_task_notifications: {
         Args: { p_events: Json; p_project_id: string; p_task_id: string }
@@ -1042,6 +1052,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          parent_id?: null | string
           position?: number
           pr_number?: null | number
           pr_state?: null | string
@@ -1085,6 +1096,13 @@ export type Database = {
             referencedRelation: "boards"
           },
           {
+            columns: ["parent_id"]
+            foreignKeyName: "tasks_parent_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+          {
             columns: ["project_id"]
             foreignKeyName: "tasks_project_id_fkey"
             isOneToOne: false
@@ -1111,6 +1129,7 @@ export type Database = {
           description: null | string
           estimate: null | number
           id: string
+          parent_id: null | string
           position: number
           pr_number: null | number
           pr_state: null | string
@@ -1136,6 +1155,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          parent_id?: null | string
           position?: number
           pr_number?: null | number
           pr_state?: null | string

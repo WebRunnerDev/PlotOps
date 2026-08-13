@@ -47,6 +47,7 @@ import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
 import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
 import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
+import { TaskSubtasksSection } from "@/features/tasks/ui/task-subtasks-section";
 import { Separator } from "@/shared";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -126,6 +127,7 @@ export function TaskDrawer({
     const { labels } = useProjectLabels(projectId);
     const {
         archiveTask,
+        clearTaskParent,
         deleteTask,
         moveTaskToOtherBoard,
         restoreTask,
@@ -137,6 +139,7 @@ export function TaskDrawer({
     const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
     const {
+        canCreateTasks,
         canDeleteTasks,
         canEditEstimate,
         canEditTasks,
@@ -151,6 +154,7 @@ export function TaskDrawer({
     const clearSelectedTask = useTasksUiStore(
         (state) => state.clearSelectedTask
     );
+    const selectTask = useTasksUiStore((state) => state.selectTask);
 
     const boardTask = tasks.find((item) => item.id === selectedTaskId);
     const { data: archivedTasks = [] } = useArchivedTasks(
@@ -165,6 +169,12 @@ export function TaskDrawer({
     const canSetEstimate = isSettled && canEditEstimate && !isArchived;
     const canDelete = isSettled && canDeleteTasks;
     const allowCreateLabels = isSettled && canManageBoard;
+    const canAddSubtask = canEdit && task?.parentId == undefined;
+    const canRemoveParent =
+        isSettled &&
+        canCreateTasks &&
+        !isArchived &&
+        task?.parentId != undefined;
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -392,8 +402,60 @@ export function TaskDrawer({
                                         "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
                                 )}
                             >
-                                <p className="text-meta text-muted-foreground">
-                                    {task.key}
+                                <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
+                                    <span>{task.key}</span>
+                                    {task.parentKey && task.parentId ? (
+                                        <button
+                                            aria-label={t(
+                                                "subtasks.openParent",
+                                                {
+                                                    key: task.parentKey,
+                                                }
+                                            )}
+                                            className="truncate font-mono outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                                            onClick={() => {
+                                                selectTask(task.parentId!);
+                                            }}
+                                            type="button"
+                                        >
+                                            {t("subtasks.parentBadge", {
+                                                key: task.parentKey,
+                                            })}
+                                        </button>
+                                    ) : undefined}
+                                    {canRemoveParent ? (
+                                        <Button
+                                            className="h-7 px-2 text-meta"
+                                            onClick={() => {
+                                                void (async () => {
+                                                    try {
+                                                        await clearTaskParent(
+                                                            task.id
+                                                        );
+                                                        toast.success(
+                                                            t(
+                                                                "subtasks.removedParent",
+                                                                {
+                                                                    key: task.key,
+                                                                }
+                                                            )
+                                                        );
+                                                    } catch {
+                                                        toast.error(
+                                                            t(
+                                                                "subtasks.removeParentFailed"
+                                                            )
+                                                        );
+                                                    }
+                                                })();
+                                            }}
+                                            size="sm"
+                                            type="button"
+                                            variant="ghost"
+                                        >
+                                            {t("subtasks.removeParent")}
+                                        </Button>
+                                    ) : undefined}
                                     {isArchived
                                         ? ` · ${t("archive.badge")}`
                                         : undefined}
@@ -408,7 +470,7 @@ export function TaskDrawer({
                                 </DrawerDescription>
                             </DrawerHeader>
 
-                            <div className="scrollbar-board mx-auto flex min-h-0 w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 overflow-y-auto p-4 md:flex-row md:gap-8">
+                            <div className="scrollbar-board mx-auto flex min-h-0 w-full min-w-0 max-w-7xl flex-1 flex-col gap-6 overflow-y-auto px-4 pt-4 pb-8 md:flex-row md:gap-8">
                                 {/* Title and Description */}
                                 <div className="flex min-w-0 flex-[2_1_0%] flex-col gap-6">
                                     <div className="flex flex-col gap-2">
@@ -476,6 +538,15 @@ export function TaskDrawer({
                                             value={description}
                                         />
                                     </div>
+
+                                    {task.parentId == undefined ? (
+                                        <TaskSubtasksSection
+                                            boardId={boardId}
+                                            canAdd={canAddSubtask}
+                                            parent={task}
+                                            projectId={projectId}
+                                        />
+                                    ) : undefined}
 
                                     <TaskCommentsSection
                                         projectId={projectId}

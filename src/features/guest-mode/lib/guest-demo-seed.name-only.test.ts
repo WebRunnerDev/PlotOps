@@ -55,4 +55,25 @@ describe("GUEST_DEMO_SEED name-only project", () => {
         );
         expect(canonical!.name).not.toBe("Mutated");
     });
+
+    it("seeds a Parent Task with Subtasks on the Git demo Board", () => {
+        const children = GUEST_DEMO_SEED.tasks.filter((task) => task.parentId);
+        expect(children.length).toBeGreaterThanOrEqual(2);
+
+        const parentIds = new Set(children.map((task) => task.parentId));
+        expect(parentIds.size).toBeGreaterThanOrEqual(1);
+
+        for (const parentId of parentIds) {
+            const parent = GUEST_DEMO_SEED.tasks.find(
+                (task) => task.id === parentId
+            );
+            expect(parent).toBeDefined();
+            expect(parent!.parentId).toBeUndefined();
+            expect(parent!.projectId).toBe(children[0]!.projectId);
+        }
+
+        const statuses = new Set(children.map((task) => task.status));
+        expect(statuses.has("done")).toBe(true);
+        expect(statuses.has("todo") || statuses.has("in_progress")).toBe(true);
+    });
 });

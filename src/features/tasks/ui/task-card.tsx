@@ -30,6 +30,7 @@ import {
 } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
+import { Badge } from "@/shared/shadcn/ui/badge";
 import {
     Card,
     CardContent,
@@ -135,6 +136,17 @@ export function TaskCard({ labels, selection, task }: TaskCardProperties) {
                         <span className="truncate text-meta text-muted-foreground">
                             {task.key}
                         </span>
+                        {task.parentKey ? (
+                            <Badge
+                                className="max-w-28 shrink-0 truncate rounded-sm font-mono text-[0.625rem]"
+                                title={t("subtasks.parentBadge", {
+                                    key: task.parentKey,
+                                })}
+                                variant="outline"
+                            >
+                                {task.parentKey}
+                            </Badge>
+                        ) : undefined}
                         {task.estimate === undefined ? undefined : (
                             <span
                                 className="shrink-0 text-meta font-medium text-foreground/80"

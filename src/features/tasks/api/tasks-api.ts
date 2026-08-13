@@ -97,6 +97,10 @@ const TASK_SELECT = `
   ),
   task_labels (
     label_id
+  ),
+  parent_id,
+  parent:tasks!tasks_parent_id_fkey (
+    task_key
   )
 `;
 
@@ -141,6 +145,46 @@ export async function archiveTaskRecords(taskIds: string[]) {
 
     if (error) throw error;
     return { archivedCount: typeof data === "number" ? data : 0 };
+}
+
+export async function clearTaskParent(taskId: string) {
+    const { error } = await supabase.rpc("clear_task_parent", {
+        p_task_id: taskId,
+    });
+    if (error) throw error;
+
+    const { data, error: fetchError } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", taskId)
+        .single();
+
+    if (fetchError) throw fetchError;
+    return mapDatabaseTask(data as DatabaseTask);
+}
+
+export async function createSubtaskRecord(
+    parentId: string,
+    title: string,
+    taskType?: TaskType,
+    sprintId?: string
+) {
+    const { data, error } = await supabase.rpc("create_subtask", {
+        p_parent_id: parentId,
+        p_sprint_id: sprintId ?? null,
+        p_task_type: taskType ?? null,
+        p_title: normalizeTaskTitle(title),
+    });
+    if (error) throw error;
+
+    const { data: row, error: fetchError } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", data)
+        .single();
+
+    if (fetchError) throw fetchError;
+    return mapDatabaseTask(row as DatabaseTask);
 }
 
 export async function createTaskRecord(
