@@ -1,6 +1,4 @@
 import {
-    closestCorners,
-    type CollisionDetection,
     defaultDropAnimationSideEffects,
     DndContext,
     type DragEndEvent,
@@ -8,11 +6,13 @@ import {
     DragOverlay,
     type DragStartEvent,
     type DropAnimation,
-    pointerWithin,
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
-import { rectSortingStrategy, SortableContext } from "@dnd-kit/sortable";
+import {
+    horizontalListSortingStrategy,
+    SortableContext,
+} from "@dnd-kit/sortable";
 import { Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { type BoardColumn, useBoardColumns } from "@/features/boards";
 import { type ProjectLabel, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import {
     filterLiveBoardTasks,
     resolveCreateTaskSprintId,
@@ -46,6 +47,7 @@ import {
 } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import { boardCollisionDetection } from "@/widgets/kanban-board/model/board-collision-detection";
 import {
     BoardMouseSensor,
     BoardTouchSensor,
@@ -72,26 +74,6 @@ const dropAnimation: DropAnimation = {
     }),
 };
 
-// While dragging a column, only consider other columns as drop targets so the
-// sort strategy opens a gap between columns (task cards would otherwise win the
-// collision and no column preview would show). Resolve by the pointer position
-// rather than the dragged rect's center — a wide column overlay would otherwise
-// bias the collision to the neighbor on its right. Tasks keep the corner-based
-// detection for accurate cross-column placement.
-const collisionDetection: CollisionDetection = (arguments_) => {
-    if (arguments_.active.data.current?.type === "column") {
-        const columnContainers = arguments_.droppableContainers.filter(
-            (container) => container.data.current?.type === "column"
-        );
-        const pointerCollisions = pointerWithin({
-            ...arguments_,
-            droppableContainers: columnContainers,
-        });
-        if (pointerCollisions.length > 0) return pointerCollisions;
-    }
-    return closestCorners(arguments_);
-};
-
 type KanbanBoardProperties = {
     boardId: string;
     githubToken: null | string;
@@ -111,6 +93,7 @@ export function KanbanBoard({
     const { t } = useTranslation("board");
     const columnsApi = useBoardColumns(projectId, boardId);
     const labelsApi = useProjectLabels(projectId);
+    const people = useProjectPeople(projectId);
     const tasksApi = useBoardTasks(projectId, boardId);
     const { canEditTasks, canManageBoard, isSettled } =
         useProjectAccess(projectId);
@@ -338,14 +321,9 @@ export function KanbanBoard({
 
         const activeType = active.data.current?.type as DragType | undefined;
 
-        if (activeType === "column") {
-            if (!canManage) return;
-            // Live preview only — persist once on drag end.
-            columnsApi.reorderColumns(String(active.id), String(over.id), {
-                persist: false,
-            });
-            return;
-        }
+        // Columns: visual gap only via horizontalListSortingStrategy — live
+        // reorder on every dragOver thrash with collision and flicker the preview.
+        if (activeType === "column") return;
 
         if (activeType !== "task") return;
         if (!canEdit) return;
@@ -377,11 +355,18 @@ export function KanbanBoard({
         const activeType = active.data.current?.type as DragType | undefined;
 
         if (activeType === "column") {
+            if (!canManage) {
+                columnsApi.rollbackColumnDragGesture();
+                return;
+            }
             if (!over || active.id === over.id) {
                 columnsApi.rollbackColumnDragGesture();
                 return;
             }
-            columnsApi.commitColumnDragGesture();
+            // Single persist on drop — preview came from the sort strategy.
+            columnsApi.reorderColumns(String(active.id), String(over.id), {
+                persist: true,
+            });
             return;
         }
 
@@ -470,6 +455,7 @@ export function KanbanBoard({
                     filters={filters}
                     labels={projectLabels}
                     onChange={setFilters}
+                    people={people}
                 />
                 <BoardSortControl
                     onChange={(sort) => {
@@ -480,7 +466,7 @@ export function KanbanBoard({
             </div>
 
             <DndContext
-                collisionDetection={collisionDetection}
+                collisionDetection={boardCollisionDetection}
                 onDragCancel={handleDragCancel}
                 onDragEnd={handleDragEnd}
                 onDragOver={handleDragOver}
@@ -489,7 +475,7 @@ export function KanbanBoard({
             >
                 <SortableContext
                     items={columnIds}
-                    strategy={rectSortingStrategy}
+                    strategy={horizontalListSortingStrategy}
                 >
                     <div className="flex min-h-0 min-w-full w-max flex-1 gap-0">
                         {columns.map((column) => (

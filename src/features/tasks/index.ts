@@ -6,6 +6,7 @@ export {
     filterTasks,
     isBoardFiltersActive,
     toggleFilterValue,
+    UNASSIGNED_ASSIGNEE_FILTER,
 } from "./lib/filter-tasks";
 export type {
     BoardTaskFilters,

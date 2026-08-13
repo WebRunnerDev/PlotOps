@@ -2,22 +2,24 @@ import type { Task, TaskPriority } from "../model/types";
 
 import { isDeadlineOverdue } from "./format-deadline";
 
+/** Sentinel in `assigneeIds` for tasks with no assignee. */
+export const UNASSIGNED_ASSIGNEE_FILTER = "none";
+
 export type BoardTaskFilters = {
+    /** Profile ids and/or {@link UNASSIGNED_ASSIGNEE_FILTER}. */
+    assigneeIds: string[];
     deadlines: DeadlineFilterValue[];
     labelIds: string[];
     priorities: PriorityFilterValue[];
 };
 
 export type DeadlineFilterValue =
-    | "later"
-    | "none"
-    | "overdue"
-    | "thisWeek"
-    | "today";
+    "later" | "none" | "overdue" | "thisWeek" | "today";
 
 export type PriorityFilterValue = "none" | TaskPriority;
 
 export const EMPTY_BOARD_FILTERS: BoardTaskFilters = {
+    assigneeIds: [],
     deadlines: [],
     labelIds: [],
     priorities: [],
@@ -35,7 +37,7 @@ export const DEADLINE_FILTER_VALUES: DeadlineFilterValue[] = [
 export function filterTasks(
     tasks: Task[],
     filters: BoardTaskFilters,
-    now = new Date(),
+    now = new Date()
 ): Task[] {
     if (!isBoardFiltersActive(filters)) return tasks;
     return tasks.filter((task) => matchesTaskFilters(task, filters, now));
@@ -43,6 +45,7 @@ export function filterTasks(
 
 export function isBoardFiltersActive(filters: BoardTaskFilters): boolean {
     return (
+        filters.assigneeIds.length > 0 ||
         filters.deadlines.length > 0 ||
         filters.labelIds.length > 0 ||
         filters.priorities.length > 0
@@ -52,7 +55,7 @@ export function isBoardFiltersActive(filters: BoardTaskFilters): boolean {
 export function matchesTaskFilters(
     task: Task,
     filters: BoardTaskFilters,
-    now = new Date(),
+    now = new Date()
 ): boolean {
     if (
         filters.priorities.length > 0 &&
@@ -68,9 +71,13 @@ export function matchesTaskFilters(
         return false;
     }
 
+    if (filters.labelIds.length > 0 && !matchesLabels(task, filters.labelIds)) {
+        return false;
+    }
+
     if (
-        filters.labelIds.length > 0 &&
-        !matchesLabels(task, filters.labelIds)
+        filters.assigneeIds.length > 0 &&
+        !matchesAssignees(task, filters.assigneeIds)
     ) {
         return false;
     }
@@ -80,7 +87,7 @@ export function matchesTaskFilters(
 
 export function toggleFilterValue<T extends string>(
     values: T[],
-    value: T,
+    value: T
 ): T[] {
     return values.includes(value)
         ? values.filter((item) => item !== value)
@@ -104,10 +111,19 @@ function isDeadlineToday(isoDate: string, now: Date): boolean {
     return isoDate === toIsoDate(now);
 }
 
+function matchesAssignees(task: Task, assigneeIds: string[]): boolean {
+    return assigneeIds.some((id) => {
+        if (id === UNASSIGNED_ASSIGNEE_FILTER) {
+            return task.assignee === undefined;
+        }
+        return task.assignee?.id === id;
+    });
+}
+
 function matchesDeadline(
     task: Task,
     deadlines: DeadlineFilterValue[],
-    now: Date,
+    now: Date
 ): boolean {
     return deadlines.some((filter) => matchesDeadlineFilter(task, filter, now));
 }
@@ -115,7 +131,7 @@ function matchesDeadline(
 function matchesDeadlineFilter(
     task: Task,
     filter: DeadlineFilterValue,
-    now: Date,
+    now: Date
 ): boolean {
     if (filter === "none") return task.deadline === undefined;
 
@@ -144,7 +160,7 @@ function matchesLabels(task: Task, labelIds: string[]): boolean {
 
 function matchesPriority(
     task: Task,
-    priorities: PriorityFilterValue[],
+    priorities: PriorityFilterValue[]
 ): boolean {
     const value: PriorityFilterValue = task.priority ?? "none";
     return priorities.includes(value);

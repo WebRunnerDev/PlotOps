@@ -1,15 +1,17 @@
 import type { ReactNode } from "react";
 
-import { Calendar, Flag, ListFilter, Tag, X } from "lucide-react";
+import { Calendar, Flag, ListFilter, Tag, User, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { getLabelDotProperties, type ProjectLabel } from "@/features/labels";
 import {
     type BoardTaskFilters,
     DEADLINE_FILTER_VALUES,
+    EMPTY_BOARD_FILTERS,
     isBoardFiltersActive,
     type PriorityFilterValue,
     toggleFilterValue,
+    UNASSIGNED_ASSIGNEE_FILTER,
 } from "@/features/tasks/lib/filter-tasks";
 import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
@@ -21,13 +23,21 @@ import {
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/shared/shadcn/ui/dropdown-menu";
+
+export type BoardFilterPerson = {
+    avatarUrl?: string;
+    id: string;
+    name: string;
+};
 
 type BoardTaskFiltersBarProperties = {
     filters: BoardTaskFilters;
     labels: ProjectLabel[];
     onChange: (filters: BoardTaskFilters) => void;
+    people: BoardFilterPerson[];
 };
 
 const PRIORITY_FILTER_VALUES: PriorityFilterValue[] = [
@@ -39,16 +49,19 @@ export function BoardTaskFiltersBar({
     filters,
     labels,
     onChange,
+    people,
 }: BoardTaskFiltersBarProperties) {
     const { t } = useTranslation("board");
     const active = isBoardFiltersActive(filters);
 
+    const assigneeOptions = [
+        UNASSIGNED_ASSIGNEE_FILTER,
+        ...people.map((person) => person.id),
+    ];
+    const labelOptions = labels.map((label) => label.id);
+
     const clearFilters = () => {
-        onChange({
-            deadlines: [],
-            labelIds: [],
-            priorities: [],
-        });
+        onChange(EMPTY_BOARD_FILTERS);
     };
 
     return (
@@ -67,6 +80,14 @@ export function BoardTaskFiltersBar({
                     <DropdownMenuLabel>
                         {t("fields.priority")}
                     </DropdownMenuLabel>
+                    <SelectAllCheckboxItem
+                        allValues={PRIORITY_FILTER_VALUES}
+                        onChange={(next) => {
+                            onChange({ ...filters, priorities: next });
+                        }}
+                        selected={filters.priorities}
+                    />
+                    <DropdownMenuSeparator />
                     {PRIORITY_FILTER_VALUES.map((priority) => (
                         <DropdownMenuCheckboxItem
                             checked={filters.priorities.includes(priority)}
@@ -88,6 +109,67 @@ export function BoardTaskFiltersBar({
             </FilterMenu>
 
             <FilterMenu
+                activeCount={filters.assigneeIds.length}
+                icon={<User className="size-3.5" />}
+                label={t("fields.assignee")}
+            >
+                <DropdownMenuGroup>
+                    <DropdownMenuLabel>
+                        {t("fields.assignee")}
+                    </DropdownMenuLabel>
+                    <SelectAllCheckboxItem
+                        allValues={assigneeOptions}
+                        onChange={(next) => {
+                            onChange({ ...filters, assigneeIds: next });
+                        }}
+                        selected={filters.assigneeIds}
+                    />
+                    <DropdownMenuSeparator />
+                    <DropdownMenuCheckboxItem
+                        checked={filters.assigneeIds.includes(
+                            UNASSIGNED_ASSIGNEE_FILTER
+                        )}
+                        onCheckedChange={() => {
+                            onChange({
+                                ...filters,
+                                assigneeIds: toggleFilterValue(
+                                    filters.assigneeIds,
+                                    UNASSIGNED_ASSIGNEE_FILTER
+                                ),
+                            });
+                        }}
+                    >
+                        {t("fields.memberNone")}
+                    </DropdownMenuCheckboxItem>
+                    {people.length === 0 ? (
+                        <p className="px-1.5 py-2 text-sm text-muted-foreground">
+                            {t("filters.assigneesEmpty")}
+                        </p>
+                    ) : (
+                        people.map((person) => (
+                            <DropdownMenuCheckboxItem
+                                checked={filters.assigneeIds.includes(
+                                    person.id
+                                )}
+                                key={person.id}
+                                onCheckedChange={() => {
+                                    onChange({
+                                        ...filters,
+                                        assigneeIds: toggleFilterValue(
+                                            filters.assigneeIds,
+                                            person.id
+                                        ),
+                                    });
+                                }}
+                            >
+                                {person.name}
+                            </DropdownMenuCheckboxItem>
+                        ))
+                    )}
+                </DropdownMenuGroup>
+            </FilterMenu>
+
+            <FilterMenu
                 activeCount={filters.deadlines.length}
                 icon={<Calendar className="size-3.5" />}
                 label={t("fields.deadline")}
@@ -96,6 +178,14 @@ export function BoardTaskFiltersBar({
                     <DropdownMenuLabel>
                         {t("fields.deadline")}
                     </DropdownMenuLabel>
+                    <SelectAllCheckboxItem
+                        allValues={DEADLINE_FILTER_VALUES}
+                        onChange={(next) => {
+                            onChange({ ...filters, deadlines: next });
+                        }}
+                        selected={filters.deadlines}
+                    />
+                    <DropdownMenuSeparator />
                     {DEADLINE_FILTER_VALUES.map((deadline) => (
                         <DropdownMenuCheckboxItem
                             checked={filters.deadlines.includes(deadline)}
@@ -129,36 +219,46 @@ export function BoardTaskFiltersBar({
                             {t("filters.labelsEmpty")}
                         </p>
                     ) : (
-                        labels.map((label) => {
-                            const dot = getLabelDotProperties(label);
-                            return (
-                                <DropdownMenuCheckboxItem
-                                    checked={filters.labelIds.includes(
-                                        label.id
-                                    )}
-                                    key={label.id}
-                                    onCheckedChange={() => {
-                                        onChange({
-                                            ...filters,
-                                            labelIds: toggleFilterValue(
-                                                filters.labelIds,
-                                                label.id
-                                            ),
-                                        });
-                                    }}
-                                >
-                                    <span
-                                        aria-hidden
-                                        className={cn(
-                                            "size-2 shrink-0 rounded-full",
-                                            dot.className
+                        <>
+                            <SelectAllCheckboxItem
+                                allValues={labelOptions}
+                                onChange={(next) => {
+                                    onChange({ ...filters, labelIds: next });
+                                }}
+                                selected={filters.labelIds}
+                            />
+                            <DropdownMenuSeparator />
+                            {labels.map((label) => {
+                                const dot = getLabelDotProperties(label);
+                                return (
+                                    <DropdownMenuCheckboxItem
+                                        checked={filters.labelIds.includes(
+                                            label.id
                                         )}
-                                        style={dot.style}
-                                    />
-                                    {label.name}
-                                </DropdownMenuCheckboxItem>
-                            );
-                        })
+                                        key={label.id}
+                                        onCheckedChange={() => {
+                                            onChange({
+                                                ...filters,
+                                                labelIds: toggleFilterValue(
+                                                    filters.labelIds,
+                                                    label.id
+                                                ),
+                                            });
+                                        }}
+                                    >
+                                        <span
+                                            aria-hidden
+                                            className={cn(
+                                                "size-2 shrink-0 rounded-full",
+                                                dot.className
+                                            )}
+                                            style={dot.style}
+                                        />
+                                        {label.name}
+                                    </DropdownMenuCheckboxItem>
+                                );
+                            })}
+                        </>
                     )}
                 </DropdownMenuGroup>
             </FilterMenu>
@@ -215,5 +315,31 @@ function FilterMenu({
                 {children}
             </DropdownMenuContent>
         </DropdownMenu>
+    );
+}
+
+function SelectAllCheckboxItem<T extends string>({
+    allValues,
+    onChange,
+    selected,
+}: {
+    allValues: readonly T[];
+    onChange: (next: T[]) => void;
+    selected: readonly T[];
+}) {
+    const { t } = useTranslation("board");
+    if (allValues.length === 0) return null;
+
+    const allSelected = allValues.every((value) => selected.includes(value));
+
+    return (
+        <DropdownMenuCheckboxItem
+            checked={allSelected}
+            onCheckedChange={(checked) => {
+                onChange(checked ? [...allValues] : []);
+            }}
+        >
+            {allSelected ? t("filters.deselectAll") : t("filters.selectAll")}
+        </DropdownMenuCheckboxItem>
     );
 }
