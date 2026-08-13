@@ -51,3 +51,31 @@ describe("tasks API Subtask hierarchy RPC seam", () => {
         expect(source).not.toMatch(/\.insert\([\s\S]{0,200}parent_id:/);
     });
 });
+
+describe("tasks API Parent Task lifecycle RPC seam", () => {
+    it("extends persist_task_moves, archive, and delete with Parent Task gates", () => {
+        const source = readApi("tasks-api.ts");
+        const migration = readFileSync(
+            path.join(
+                dirname,
+                "../../../../supabase/migrations/20260813125841_parent_task_lifecycle_gates.sql"
+            ),
+            "utf8"
+        );
+
+        expect(source).toMatch(/rpc\(\s*["']persist_task_moves["']/);
+        expect(source).toMatch(/rpc\(\s*["']archive_tasks["']/);
+        expect(migration).toMatch(/assert_parent_task_may_enter_done/);
+        expect(migration).toMatch(/assert_parent_task_may_archive/);
+        expect(migration).toMatch(/assert_parent_task_may_delete/);
+        expect(migration).toMatch(
+            "A Parent Task cannot enter Done while Subtasks are not Done"
+        );
+        expect(migration).toMatch(
+            "A Parent Task cannot be archived while Subtasks are still active"
+        );
+        expect(migration).toMatch(
+            "A Parent Task cannot be deleted while Subtasks exist"
+        );
+    });
+});

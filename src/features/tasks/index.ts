@@ -32,12 +32,25 @@ export type {
 export { isTaskEstimate, TASK_ESTIMATE_VALUES } from "./lib/task-estimate";
 export type { TaskEstimate } from "./lib/task-estimate";
 export {
+    assertParentArchiveLegal,
+    assertParentDeleteLegal,
+    assertParentDoneLegal,
     assertParentLinkLegal,
+    PARENT_GATE_ERROR,
+    PARENT_GATE_TOAST_KEY,
     PARENT_LINK_ERROR,
+    parentArchiveRefusal,
+    parentDeleteRefusal,
+    parentDoneRefusal,
+    parentGateRefusalFromError,
     parentLinkRefusal,
     subtasksOf,
 } from "./lib/task-structure";
 export type {
+    ParentArchiveRefusal,
+    ParentDeleteRefusal,
+    ParentDoneRefusal,
+    ParentGateTask,
     ParentLinkRefusal,
     ProposedChild,
     TaskStructureNode,

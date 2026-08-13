@@ -342,4 +342,88 @@ describe("guest tasks provider happy path", () => {
         expect(listed?.parentId).toBeUndefined();
         expect(listed?.title).toBe("Soon a root");
     });
+
+    it("refuses moving a Parent Task into Done while a Subtask is not Done", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) =>
+            sandbox.tasks.some(
+                (child) =>
+                    child.parentId === task.id &&
+                    child.status !== "done" &&
+                    child.archivedAt == undefined
+            )
+        )!;
+        const board = sandbox.boards.find(
+            (item) => item.id === parent.boardId
+        )!;
+        const doneColumn = board.columns.find((column) => column.isDone)!;
+        const provider = resolveTasksProvider(true);
+
+        await expect(
+            provider.persistTaskMoves(parent.boardId, [
+                { id: parent.id, position: 0, status: doneColumn.id },
+            ])
+        ).rejects.toThrow(
+            "A Parent Task cannot enter Done while Subtasks are not Done"
+        );
+
+        expect(
+            getGuestSandbox()!.tasks.find((task) => task.id === parent.id)
+                ?.status
+        ).toBe(parent.status);
+    });
+
+    it("refuses archive of a Parent Task while a Subtask is still active", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) =>
+            sandbox.tasks.some(
+                (child) =>
+                    child.parentId === task.id && child.archivedAt == undefined
+            )
+        )!;
+        const provider = resolveTasksProvider(true);
+
+        await expect(provider.archiveTaskRecords([parent.id])).rejects.toThrow(
+            "A Parent Task cannot be archived while Subtasks are still active"
+        );
+
+        expect(
+            getGuestSandbox()!.tasks.find((task) => task.id === parent.id)
+                ?.archivedAt
+        ).toBeUndefined();
+    });
+
+    it("refuses hard-delete of a Parent Task while a Subtask exists", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) =>
+            sandbox.tasks.some((child) => child.parentId === task.id)
+        )!;
+        const provider = resolveTasksProvider(true);
+
+        for (const child of sandbox.tasks.filter(
+            (task) => task.parentId === parent.id
+        )) {
+            await provider.archiveTaskRecord(child.id);
+        }
+
+        await expect(provider.deleteTaskRecord(parent.id)).rejects.toThrow(
+            "A Parent Task cannot be deleted while Subtasks exist"
+        );
+
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === parent.id)
+        ).toBe(true);
+    });
 });

@@ -34,6 +34,10 @@ import {
 } from "@/features/tasks/lib/format-deadline";
 import { TASK_ESTIMATE_VALUES } from "@/features/tasks/lib/task-estimate";
 import {
+    PARENT_GATE_TOAST_KEY,
+    parentGateRefusalFromError,
+} from "@/features/tasks/lib/task-structure";
+import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
     TASK_TITLE_MAX_LENGTH,
@@ -266,8 +270,13 @@ export function TaskDrawer({
         try {
             await archiveTask(id);
             toast.success(t("archive.archived", { key }));
-        } catch {
-            toast.error(t("archive.archiveFailed"));
+        } catch (error) {
+            const reason = parentGateRefusalFromError(error);
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : t("archive.archiveFailed")
+            );
         } finally {
             setIsArchiving(false);
         }
@@ -296,8 +305,13 @@ export function TaskDrawer({
             setDeleteTarget(null);
             clearSelectedTask();
             toast.success(t("tasks.deleted", { key }));
-        } catch {
-            toast.error(t("tasks.deleteFailed"));
+        } catch (error) {
+            const reason = parentGateRefusalFromError(error);
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : t("tasks.deleteFailed")
+            );
         } finally {
             setIsDeleting(false);
         }
@@ -371,8 +385,13 @@ export function TaskDrawer({
                 },
                 to: "/projects/$projectId/boards/$boardId",
             });
-        } catch {
-            toast.error(t("boards.taskMoveFailed"));
+        } catch (error) {
+            const reason = parentGateRefusalFromError(error);
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : t("boards.taskMoveFailed")
+            );
         } finally {
             setIsMoving(false);
         }

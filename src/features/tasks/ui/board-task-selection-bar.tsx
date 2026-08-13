@@ -5,6 +5,10 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import {
+    PARENT_GATE_TOAST_KEY,
+    parentGateRefusalFromError,
+} from "@/features/tasks/lib/task-structure";
 import { useBoardTaskSelectionStore } from "@/features/tasks/model/use-board-task-selection-store";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import {
@@ -60,8 +64,13 @@ export function BoardTaskSelectionBar({
             await archiveTasks(taskIds);
             clearSelection();
             toast.success(t("selection.archived", { count: taskIds.length }));
-        } catch {
-            toast.error(t("selection.archiveFailed"));
+        } catch (error) {
+            const reason = parentGateRefusalFromError(error);
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : t("selection.archiveFailed")
+            );
         } finally {
             setIsArchiving(false);
             setConfirmOpen(false);

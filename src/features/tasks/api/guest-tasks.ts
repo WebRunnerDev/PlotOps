@@ -19,8 +19,12 @@ import {
 import { sortTasksByPosition } from "@/features/tasks/api/board-mappers";
 import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
+    assertParentArchiveLegal,
+    assertParentDeleteLegal,
+    assertParentDoneLegal,
     assertParentLinkLegal,
     PARENT_LINK_ERROR,
+    type ParentGateTask,
 } from "@/features/tasks/lib/task-structure";
 import {
     DEFAULT_TASK_PRIORITY,
@@ -140,6 +144,21 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     }
 }
 
+function assertDoneMoveLegal(
+    sandbox: GuestSandbox,
+    taskId: string,
+    nextStatus: string,
+    boardId: string
+): void {
+    const board = sandbox.boards.find((item) => item.id === boardId);
+    const isDoneColumn =
+        board?.columns.some(
+            (column) => column.id === nextStatus && column.isDone
+        ) === true;
+    if (!isDoneColumn) return;
+    assertParentDoneLegal(taskId, parentGateTasks(sandbox));
+}
+
 function findTaskOrThrow(tasks: GuestTask[], taskId: string): GuestTask {
     const task = tasks.find((item) => item.id === taskId);
     if (!task) {
@@ -243,6 +262,26 @@ function normalizeTaskTitle(title: string): string {
     return trimmed;
 }
 
+function parentGateTasks(sandbox: GuestSandbox): ParentGateTask[] {
+    const doneByBoard = new Map<string, Set<string>>();
+    for (const board of sandbox.boards) {
+        doneByBoard.set(
+            board.id,
+            new Set(
+                board.columns
+                    .filter((column) => column.isDone)
+                    .map((column) => column.id)
+            )
+        );
+    }
+    return sandbox.tasks.map((task) => ({
+        archivedAt: task.archivedAt,
+        id: task.id,
+        isDone: doneByBoard.get(task.boardId)?.has(task.status) === true,
+        parentId: task.parentId,
+    }));
+}
+
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */
 export const guestTasksProvider: TasksProvider = {
     async archiveTaskRecord(taskId) {
@@ -253,6 +292,12 @@ export const guestTasksProvider: TasksProvider = {
         const uniqueIds = [...new Set(taskIds.filter(Boolean))];
         let archivedCount = 0;
         updateGuestSandbox((sandbox) => {
+            const gates = parentGateTasks(sandbox);
+            for (const taskId of uniqueIds) {
+                const task = sandbox.tasks.find((item) => item.id === taskId);
+                if (!task || task.archivedAt) continue;
+                assertParentArchiveLegal(taskId, gates);
+            }
             const now = new Date().toISOString();
             for (const taskId of uniqueIds) {
                 const task = sandbox.tasks.find((item) => item.id === taskId);
@@ -449,6 +494,7 @@ export const guestTasksProvider: TasksProvider = {
     async deleteTaskRecord(taskId) {
         updateGuestSandbox((sandbox) => {
             findTaskOrThrow(sandbox.tasks, taskId);
+            assertParentDeleteLegal(taskId, parentGateTasks(sandbox));
             sandbox.tasks = sandbox.tasks.filter((task) => task.id !== taskId);
             sandbox.comments = sandbox.comments.filter(
                 (comment) => comment.taskId !== taskId
@@ -535,6 +581,7 @@ export const guestTasksProvider: TasksProvider = {
             }
 
             const task = findTaskOrThrow(sandbox.tasks, taskId);
+            assertDoneMoveLegal(sandbox, taskId, targetStatus, targetBoardId);
             const columnTasks = sandbox.tasks.filter(
                 (item) =>
                     item.boardId === targetBoardId &&
@@ -559,6 +606,14 @@ export const guestTasksProvider: TasksProvider = {
                 const task = findTaskOrThrow(sandbox.tasks, update.id);
                 if (task.boardId !== boardId) {
                     throw new Error("Task is not on this board");
+                }
+                if (task.status !== update.status) {
+                    assertDoneMoveLegal(
+                        sandbox,
+                        update.id,
+                        update.status,
+                        boardId
+                    );
                 }
                 task.status = update.status;
                 task.position = update.position;
@@ -609,6 +664,14 @@ export const guestTasksProvider: TasksProvider = {
     async updateTaskRecord(taskId, patch) {
         updateGuestSandbox((sandbox) => {
             const task = findTaskOrThrow(sandbox.tasks, taskId);
+            if (patch.status !== undefined && patch.status !== task.status) {
+                assertDoneMoveLegal(
+                    sandbox,
+                    taskId,
+                    patch.status,
+                    task.boardId
+                );
+            }
             applyPatch(task, patch);
         });
     },

@@ -4,6 +4,10 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import {
+    PARENT_GATE_TOAST_KEY,
+    parentGateRefusalFromError,
+} from "@/features/tasks/lib/task-structure";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
@@ -80,8 +84,13 @@ export function BoardArchiveDialog({
             await deleteTask(id);
             setDeleteTarget(null);
             toast.success(t("tasks.deleted", { key }));
-        } catch {
-            toast.error(t("tasks.deleteFailed"));
+        } catch (error) {
+            const reason = parentGateRefusalFromError(error);
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : t("tasks.deleteFailed")
+            );
         } finally {
             setIsDeleting(false);
         }
