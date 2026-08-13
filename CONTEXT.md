@@ -53,7 +53,7 @@ A glob-like rule on a Board that describes which task head-branch names fit that
 _Avoid_: branch filter, branch whitelist (implies hard deny)
 
 **Task**:
-A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
+A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally be a Subtask of one Parent Task in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
 
 **Priority**:
@@ -71,6 +71,32 @@ _Avoid_: filter (filters hide Tasks; Board sort only reorders), Manual order, co
 **Label**:
 A Project-scoped tag attachable to any Task in the Project, regardless of Board. Not owned by a Board.
 _Avoid_: Board label, tag (prefer Label)
+
+### Structure
+
+**Parent Task**:
+A root Task (no `parent_id`) that has one or more Subtasks. At most one hierarchy level — a Parent Task cannot itself be a Subtask. A Parent Task cannot be moved to the Board's Done column, archived, or hard-deleted while any of its Subtasks are not Done or still exist, respectively. Distinct from a Task Link — hierarchy is parent/child, not peer blocking.
+_Avoid_: Epic (no separate Epic type in MVP), issue (Jira term)
+
+**Subtask**:
+A full Task that belongs to exactly one Parent Task within the same Project. Created on the Parent's Board by default; may later be moved to another Board in the Project like any Task. Has its own column status, Assignee, Sprint membership, Estimate, and Git branch/PR. Appears on the Kanban as a normal card with a Parent reference badge; viewers may hide Subtasks via a per-viewer Board preference (default: visible). Cannot have its own Subtasks.
+_Avoid_: checklist item, sub-issue (UI-only), child issue (prefer Subtask)
+
+**Subtask visibility**:
+A per-viewer Board display preference: show Subtasks on the Kanban (default) or hide them so only root Tasks appear. Does not alter Manual order, Sprint membership, or server state.
+_Avoid_: Board filter (field-based filters are separate), collapse (UI gesture only)
+
+**Task Link**:
+A directed peer relationship between two Tasks in the same Project (any Boards). Stored once; the inverse label is derived in the UI (e.g. A **blocks** B ⇒ B **is blocked by** A). MVP kinds: **blocks** and **relates to**. Self-links and links between a Parent Task and its Subtask are forbidden. Cyclic **blocks** chains are rejected at write time. **blocks** is enforced on the server: a Task cannot enter the Done column while any open blocker exists; the client mirrors the rule before drag/submit.
+_Avoid_: dependency (ambiguous with git/CI), issue link (Jira UI term), parent/child (hierarchy is separate)
+
+**blocks**:
+A Task Link kind meaning the source Task must be Done before the target Task may enter the Done column. Open blockers surface as a badge on the target's Kanban card.
+_Avoid_: blocked by (that is the inverse view of the same link), depends on (passive voice; store **blocks** direction)
+
+**relates to**:
+A Task Link kind with no lifecycle enforcement — contextual association only. Symmetric in meaning; one stored direction, both Tasks show the link.
+_Avoid_: linked issue (too generic), see also (wiki term)
 
 ### Planning
 
@@ -133,7 +159,7 @@ A Role that manages Members, Invites, Team settings, creating Projects, and Git 
 A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, Estimates (Fibonacci story points), and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
 
 **Contributor**:
-A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, Estimates, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May view Sprints and Sprint reports.
+A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete root Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, Estimates, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May create Subtasks under an existing Parent Task and create or remove Task Links (including **blocks**). May view Sprints and Sprint reports.
 _Avoid_: Developer, Member (too vague), Executor
 
 **Viewer**:
@@ -171,5 +197,5 @@ The user targeted by a Mention.
 _Avoid_: mentioned user, tagged user
 
 **Notification**:
-An in-app inbox item addressed to one user about a Task event. Watcher kinds: status change, Board move, priority change, Assignee set/reassign, Author change. Always-on kinds (independent of Watch): assignment to the new Assignee, Assignee reassign to the previous Assignee (`assignee_change`), Author transfer to the new Author, and Mention to the Mentionee. On person-field changes, Watchers also receive the corresponding Watcher kind; a recipient who would get both always-on and Watcher delivery for the same change gets a single Notification row. A Board move that also remaps status produces one `board_move` Notification (status included in context), not a separate `status_change`. A single Task save that changes several structural fields produces one Notification per changed kind (not one summary row). Never created for the actor of the change. Clearing Assignee creates none. Watcher kinds are not created for description, title, Labels, Sprint membership, git fields, archive/restore, or Comments without Mentions. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Team does not delete existing Notification rows for that Team's Projects; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
+An in-app inbox item addressed to one user about a Task event. Watcher kinds: status change, Board move, priority change, Assignee set/reassign, Author change, Subtask created or closed on a Parent Task the user Watches (`subtask_change`). Always-on kinds (independent of Watch): assignment to the new Assignee, Assignee reassign to the previous Assignee (`assignee_change`), Author transfer to the new Author, and Mention to the Mentionee. On person-field changes, Watchers also receive the corresponding Watcher kind; a recipient who would get both always-on and Watcher delivery for the same change gets a single Notification row. A Board move that also remaps status produces one `board_move` Notification (status included in context), not a separate `status_change`. A single Task save that changes several structural fields produces one Notification per changed kind (not one summary row). Never created for the actor of the change. Clearing Assignee creates none. Watcher kinds are not created for description, title, Labels, Sprint membership, git fields, archive/restore, or Comments without Mentions. Global inbox with optional Project filter; unread until opened; bell in AppChrome opens a recent preview sheet; full history/search lives on `/notifications`. Delivered via Realtime to the recipient for badge/sheet freshness. Not email or push in the MVP. Read Notifications older than 30 days may be purged. Unread Notifications may be kept for up to 90 days, then deleted. UI soft-caps the sheet and paginates the page. Leaving a Team does not delete existing Notification rows for that Team's Projects; opening one without access fails safely and may still mark read. Distinct from Activity (per-Task drawer history shared by all viewers).
 _Avoid_: alert, toast (transient UI only), activity event
