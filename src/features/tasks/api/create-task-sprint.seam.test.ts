@@ -13,4 +13,12 @@ describe("createTaskRecord sprint assign seam", () => {
         expect(source).toMatch(/sprint_id:\s*sprintId/);
         expect(source).toMatch(/sprint_position:\s*sprintPosition/);
     });
+
+    it("resolves omitted taskType from boards.default_task_type", () => {
+        const source = readFileSync(path.join(dirname, "tasks-api.ts"), "utf8");
+
+        expect(source).toMatch(/taskType\?:\s*TaskType/);
+        expect(source).toMatch(/default_task_type/);
+        expect(source).toMatch(/task_type:\s*resolvedType/);
+    });
 });

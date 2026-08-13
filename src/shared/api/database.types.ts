@@ -190,6 +190,7 @@ export type Database = {
           allowed_head_patterns: string[]
           base_branch: string
           created_at: string
+          default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
           name: string
           position: number
@@ -534,6 +535,7 @@ export type Database = {
           allowed_head_patterns?: string[]
           base_branch?: string
           created_at?: string
+          default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
           name: string
           position?: number
@@ -552,6 +554,7 @@ export type Database = {
           allowed_head_patterns: string[]
           base_branch: string
           created_at: string
+          default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
           name: string
           position: number
@@ -561,6 +564,7 @@ export type Database = {
           allowed_head_patterns?: string[]
           base_branch?: string
           created_at?: string
+          default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
           name?: string
           position?: number

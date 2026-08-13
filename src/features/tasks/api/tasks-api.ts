@@ -192,9 +192,24 @@ export async function createTaskRecord(
     boardId: string,
     status: TaskStatus,
     title: string,
-    taskType: TaskType = "task",
+    taskType?: TaskType,
     sprintId?: string
 ) {
+    let resolvedType: TaskType = taskType ?? "task";
+    if (taskType === undefined) {
+        const { data: boardRow, error: boardError } = await supabase
+            .from("boards")
+            .select("default_task_type")
+            .eq("id", boardId)
+            .single();
+
+        if (boardError) throw boardError;
+        const raw = boardRow?.default_task_type;
+        if (raw === "bug" || raw === "feature" || raw === "task") {
+            resolvedType = raw;
+        }
+    }
+
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
         .select("position")
@@ -239,7 +254,7 @@ export async function createTaskRecord(
                 ? { sprint_id: sprintId, sprint_position: sprintPosition }
                 : {}),
             status,
-            task_type: taskType,
+            task_type: resolvedType,
             title: normalizeTaskTitle(title),
         } as Database["public"]["Tables"]["tasks"]["Insert"])
         .select(TASK_SELECT)

@@ -23,6 +23,7 @@ export type GuestBoard = {
     allowedHeadPatterns: string[];
     baseBranch: string;
     columns: GuestBoardColumn[];
+    defaultTaskType: "bug" | "feature" | "task";
     id: string;
     name: string;
     position: number;

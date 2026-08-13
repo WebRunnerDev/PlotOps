@@ -12,6 +12,7 @@ function mapBoard(board: GuestBoard): ProjectBoardRecord {
     return {
         allowedHeadPatterns: [...board.allowedHeadPatterns],
         baseBranch: board.baseBranch,
+        defaultTaskType: board.defaultTaskType ?? "task",
         id: board.id,
         name: board.name,
         position: board.position,
@@ -68,6 +69,7 @@ export const guestBoardsProvider: BoardsProvider = {
                     name: column.name,
                     position: index,
                 })),
+                defaultTaskType: "task",
                 id: crypto.randomUUID(),
                 name: name.trim() || "Board",
                 position: maxPosition + 1,
@@ -263,6 +265,9 @@ export const guestBoardsProvider: BoardsProvider = {
             }
             if (patch.allowed_head_patterns !== undefined) {
                 board.allowedHeadPatterns = [...patch.allowed_head_patterns];
+            }
+            if (patch.default_task_type !== undefined) {
+                board.defaultTaskType = patch.default_task_type;
             }
             if (patch.position !== undefined) {
                 board.position = patch.position;

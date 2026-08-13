@@ -39,6 +39,8 @@
         "newTask": "New Task",
         "addPlaceholder": "Task title…",
         "createFailed": "Could not create task",
+        "draft": "Draft",
+        "unsaved": "Unsaved",
         "delete": "Delete task",
         "deleteTitle": "Delete {{key}}?",
         "deleteDescription": "“{{title}}” will be permanently removed. This cannot be undone.",
@@ -200,6 +202,9 @@
     "filters": {
         "label": "Filter",
         "clear": "Clear",
+        "selectAll": "Select all",
+        "deselectAll": "Deselect all",
+        "assigneesEmpty": "No members in this project.",
         "labelsEmpty": "No labels in this project.",
         "deadline": {
             "overdue": "Overdue",
@@ -338,6 +343,8 @@
         "namePlaceholder": "e.g. Frontend",
         "baseBranch": "Base branch",
         "baseBranchHint": "PRs merged here move tasks to Done.",
+        "defaultTaskType": "Default task type",
+        "defaultTaskTypeHint": "Used when creating tasks from the board (+ New Task). You can still change the type on the task afterward.",
         "allowedPatterns": "Allowed head patterns (one per line)",
         "allowedPatternsHint": "Branches not matching any pattern trigger a soft warning on the task.",
         "settingsTitle": "Boards",

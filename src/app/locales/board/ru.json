@@ -39,6 +39,8 @@
         "newTask": "Новая задача",
         "addPlaceholder": "Название задачи…",
         "createFailed": "Не удалось создать задачу",
+        "draft": "Черновик",
+        "unsaved": "Не сохранено",
         "delete": "Удалить задачу",
         "deleteTitle": "Удалить {{key}}?",
         "deleteDescription": "«{{title}}» будет удалена безвозвратно. Это действие нельзя отменить.",
@@ -200,6 +202,9 @@
     "filters": {
         "label": "Фильтр",
         "clear": "Сбросить",
+        "selectAll": "Выбрать все",
+        "deselectAll": "Снять выбор",
+        "assigneesEmpty": "В этом проекте нет участников.",
         "labelsEmpty": "В проекте пока нет меток.",
         "deadline": {
             "overdue": "Просрочено",
@@ -338,6 +343,8 @@
         "namePlaceholder": "например Frontend",
         "baseBranch": "Base branch",
         "baseBranchHint": "PR, смерженные сюда, переводят задачи в Done.",
+        "defaultTaskType": "Тип задачи по умолчанию",
+        "defaultTaskTypeHint": "Используется при создании задач с доски (+ New Task). Тип на самой задаче можно сменить позже.",
         "allowedPatterns": "Разрешённые head-паттерны (по одному в строке)",
         "allowedPatternsHint": "Ветки вне паттернов дают мягкое предупреждение на задаче.",
         "settingsTitle": "Доски",

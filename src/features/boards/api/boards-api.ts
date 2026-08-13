@@ -1,15 +1,24 @@
-import type { ProjectBoardRecord } from "@/features/boards/model/types";
+import type {
+    BoardDefaultTaskType,
+    ProjectBoardRecord,
+} from "@/features/boards/model/types";
 
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseBoard = {
     allowed_head_patterns: null | string[];
     base_branch: string;
+    default_task_type: null | string;
     id: string;
     name: string;
     position: number;
     project_id: string;
 };
+
+const BOARD_SELECT =
+    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type";
+
+const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
 
 export async function boardHasTasks(boardId: string): Promise<boolean> {
     const { count, error } = await supabase
@@ -50,9 +59,7 @@ export async function deleteBoard(boardId: string) {
 export async function fetchBoard(boardId: string): Promise<ProjectBoardRecord> {
     const { data, error } = await supabase
         .from("boards")
-        .select(
-            "id, project_id, name, position, base_branch, allowed_head_patterns"
-        )
+        .select(BOARD_SELECT)
         .eq("id", boardId)
         .single();
 
@@ -65,9 +72,7 @@ export async function fetchProjectBoards(
 ): Promise<ProjectBoardRecord[]> {
     const { data, error } = await supabase
         .from("boards")
-        .select(
-            "id, project_id, name, position, base_branch, allowed_head_patterns"
-        )
+        .select(BOARD_SELECT)
         .eq("project_id", projectId)
         .order("position", { ascending: true });
 
@@ -80,6 +85,7 @@ export async function updateBoard(
     patch: {
         allowed_head_patterns?: string[];
         base_branch?: string;
+        default_task_type?: BoardDefaultTaskType;
         name?: string;
         position?: number;
     }
@@ -88,9 +94,7 @@ export async function updateBoard(
         .from("boards")
         .update(patch)
         .eq("id", boardId)
-        .select(
-            "id, project_id, name, position, base_branch, allowed_head_patterns"
-        )
+        .select(BOARD_SELECT)
         .single();
 
     if (error) throw error;
@@ -101,9 +105,17 @@ function mapDatabaseBoard(row: DatabaseBoard): ProjectBoardRecord {
     return {
         allowedHeadPatterns: row.allowed_head_patterns ?? [],
         baseBranch: row.base_branch,
+        defaultTaskType: toDefaultTaskType(row.default_task_type),
         id: row.id,
         name: row.name,
         position: row.position,
         projectId: row.project_id,
     };
+}
+
+function toDefaultTaskType(
+    value: null | string | undefined
+): BoardDefaultTaskType {
+    if (!value || !TASK_TYPES.has(value)) return "task";
+    return value as BoardDefaultTaskType;
 }

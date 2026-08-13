@@ -445,13 +445,20 @@ export const guestTasksProvider: TasksProvider = {
         boardId,
         status,
         title,
-        taskType = "task",
+        taskType,
         sprintId
     ) {
         const normalizedTitle = normalizeTaskTitle(title);
         let created: GuestTask | undefined;
 
         updateGuestSandbox((sandbox) => {
+            const board = sandbox.boards.find((item) => item.id === boardId);
+            if (!board) {
+                throw new Error("Board not found");
+            }
+            const resolvedType =
+                taskType ?? board.defaultTaskType ?? ("task" as const);
+
             const columnTasks = sandbox.tasks.filter(
                 (task) =>
                     task.boardId === boardId &&
@@ -473,14 +480,14 @@ export const guestTasksProvider: TasksProvider = {
                 boardId,
                 createdAt: new Date().toISOString(),
                 id: crypto.randomUUID(),
-                key: nextTaskKey(sandbox.tasks, taskType),
+                key: nextTaskKey(sandbox.tasks, resolvedType),
                 position: maxPosition + 1,
                 priority: DEFAULT_TASK_PRIORITY,
                 projectId,
                 ...(sprintId ? { sprintId, sprintPosition } : {}),
                 status,
                 title: normalizedTitle,
-                type: taskType,
+                type: resolvedType,
             };
             sandbox.tasks.push(created);
         });

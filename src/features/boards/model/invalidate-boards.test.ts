@@ -56,6 +56,7 @@ describe("boards feature query seam", () => {
             {
                 allowedHeadPatterns: [],
                 baseBranch: "main",
+                defaultTaskType: "task",
                 id: boardId,
                 name: "Main",
                 position: 0,

@@ -1,4 +1,4 @@
-import type { BoardColumn } from "./types";
+import type { BoardColumn, BoardDefaultTaskType } from "./types";
 
 /** Default statuses — each is a kanban column. Names are editable on the board. */
 export const DEFAULT_KANBAN_COLUMNS: BoardColumn[] = [
@@ -9,3 +9,10 @@ export const DEFAULT_KANBAN_COLUMNS: BoardColumn[] = [
 ];
 
 export const KANBAN_COLUMNS = DEFAULT_KANBAN_COLUMNS;
+
+/** Options for boards.default_task_type (mirrors tasks.TaskType). */
+export const BOARD_DEFAULT_TASK_TYPES: BoardDefaultTaskType[] = [
+    "task",
+    "bug",
+    "feature",
+];
