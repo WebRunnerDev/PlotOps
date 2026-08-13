@@ -955,7 +955,12 @@ export function RichTextEditor({
                         ? "[&_.ProseMirror]:min-h-24"
                         : "[&_.ProseMirror]:min-h-40",
                     "[&_.ProseMirror]:w-full [&_.ProseMirror]:max-w-full [&_.ProseMirror]:overflow-x-hidden [&_.ProseMirror]:outline-none [&_.ProseMirror]:wrap-anywhere",
-                    "[&_.ProseMirror_*]:max-w-full",
+                    "[&_.ProseMirror>*]:max-w-full",
+                    "[&_.ProseMirror_p]:max-w-full [&_.ProseMirror_h1]:max-w-full [&_.ProseMirror_h2]:max-w-full [&_.ProseMirror_h3]:max-w-full",
+                    "[&_.ProseMirror_ul]:max-w-full [&_.ProseMirror_ol]:max-w-full [&_.ProseMirror_blockquote]:max-w-full",
+                    "[&_.ProseMirror_pre]:max-w-full [&_.ProseMirror_hr]:max-w-full",
+                    "[&_.ProseMirror_img]:max-w-full [&_.ProseMirror_table]:max-w-full",
+                    // Image toolbar is wider than a narrow bitmap — do not inherit max-w-full.
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
