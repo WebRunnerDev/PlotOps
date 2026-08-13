@@ -11,6 +11,13 @@ import type { Task, TaskStatus, TaskType } from "@/features/tasks/model/types";
 export type TasksProvider = {
     archiveTaskRecord(taskId: string): Promise<void>;
     archiveTaskRecords(taskIds: string[]): Promise<{ archivedCount: number }>;
+    clearTaskParent(taskId: string): Promise<Task>;
+    createSubtaskRecord(
+        parentId: string,
+        title: string,
+        taskType?: TaskType,
+        sprintId?: string
+    ): Promise<Task>;
     createTaskRecord(
         projectId: string,
         boardId: string,

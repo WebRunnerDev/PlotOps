@@ -31,6 +31,17 @@ export type {
 } from "./lib/sort-tasks-by-board-sort";
 export { isTaskEstimate, TASK_ESTIMATE_VALUES } from "./lib/task-estimate";
 export type { TaskEstimate } from "./lib/task-estimate";
+export {
+    assertParentLinkLegal,
+    PARENT_LINK_ERROR,
+    parentLinkRefusal,
+    subtasksOf,
+} from "./lib/task-structure";
+export type {
+    ParentLinkRefusal,
+    ProposedChild,
+    TaskStructureNode,
+} from "./lib/task-structure";
 export { useBoardSortStore } from "./model/board-sort-store";
 export {
     columnAccentClass,

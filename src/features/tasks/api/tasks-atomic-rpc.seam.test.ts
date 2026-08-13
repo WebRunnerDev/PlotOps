@@ -41,3 +41,13 @@ describe("tasks API atomic details + labels seam", () => {
         );
     });
 });
+
+describe("tasks API Subtask hierarchy RPC seam", () => {
+    it("creates a Subtask and clears Parent via RPCs, not ad-hoc parent_id patches", () => {
+        const source = readApi("tasks-api.ts");
+
+        expect(source).toMatch(/rpc\(\s*["']create_subtask["']/);
+        expect(source).toMatch(/rpc\(\s*["']clear_task_parent["']/);
+        expect(source).not.toMatch(/\.insert\([\s\S]{0,200}parent_id:/);
+    });
+});

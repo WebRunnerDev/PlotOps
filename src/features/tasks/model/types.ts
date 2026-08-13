@@ -21,6 +21,10 @@ export type Task = {
     /** Human-readable key, e.g. TASK-1, BUG-5, FEAT-12. Set by DB trigger on insert. */
     key: string;
     labelIds?: string[];
+    /** Present when this Task is a Subtask of a Parent Task in the same Project. */
+    parentId?: string;
+    /** Parent Task key for card/drawer badge; set when parentId is set. */
+    parentKey?: string;
     pr?: TaskPullRequest;
     priority?: TaskPriority;
     /** Board Sprint membership; absent ⇒ Backlog. */
@@ -56,9 +60,11 @@ export type TaskActivityField =
     | "deadline"
     | "estimate"
     | "labels"
+    | "parent"
     | "pr"
     | "priority"
     | "status"
+    | "subtask"
     | "title"
     | "type";
 

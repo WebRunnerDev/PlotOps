@@ -141,6 +141,8 @@ export type GuestTask = {
     id: string;
     key: string;
     labelIds?: string[];
+    /** Present when this Task is a Subtask of a Parent Task. */
+    parentId?: string;
     position: number;
     pr?: GuestPullRequest;
     priority?: "high" | "low" | "medium" | "urgent";

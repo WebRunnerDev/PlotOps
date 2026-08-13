@@ -1,4 +1,8 @@
-import type { GuestPerson, GuestTask } from "@/features/guest-mode";
+import type {
+    GuestPerson,
+    GuestSandbox,
+    GuestTask,
+} from "@/features/guest-mode";
 import type { TaskRecordPatch } from "@/features/tasks/api/tasks-api";
 import type { TasksProvider } from "@/features/tasks/api/tasks-provider";
 import type {
@@ -15,6 +19,10 @@ import {
 import { sortTasksByPosition } from "@/features/tasks/api/board-mappers";
 import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
+    assertParentLinkLegal,
+    PARENT_LINK_ERROR,
+} from "@/features/tasks/lib/task-structure";
+import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
 } from "@/features/tasks/model/constants";
@@ -24,6 +32,35 @@ const ACTOR: GuestPerson = {
     id: GUEST_SEED_ACTOR_ID,
     name: "Demo Guest",
 };
+
+function appendParentActivity(
+    sandbox: { activity: GuestSandbox["activity"] },
+    input: {
+        field: "parent" | "subtask";
+        from: null | { key: string };
+        projectId: string;
+        taskId: string;
+        to: null | { key: string };
+    }
+) {
+    sandbox.activity.push({
+        action: "updated",
+        createdAt: new Date().toISOString(),
+        id: crypto.randomUUID(),
+        metadata: {
+            changes: [
+                {
+                    field: input.field,
+                    from: input.from,
+                    to: input.to,
+                },
+            ],
+        },
+        projectId: input.projectId,
+        taskId: input.taskId,
+        user: ACTOR,
+    });
+}
 
 function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     if (patch.title !== undefined) {
@@ -111,11 +148,27 @@ function findTaskOrThrow(tasks: GuestTask[], taskId: string): GuestTask {
     return task;
 }
 
+function firstColumnId(board: {
+    columns: Array<{ id: string; position: number }>;
+}) {
+    const ordered = [...board.columns].toSorted(
+        (left, right) => left.position - right.position
+    );
+    const column = ordered[0];
+    if (!column) {
+        throw new Error("Board has no columns");
+    }
+    return column.id;
+}
+
 function isActiveTask(task: GuestTask): boolean {
     return task.archivedAt == undefined;
 }
 
-function mapGuestTask(task: GuestTask): Task {
+function mapGuestTask(task: GuestTask, tasks: GuestTask[]): Task {
+    const parent = task.parentId
+        ? tasks.find((item) => item.id === task.parentId)
+        : undefined;
     return {
         archivedAt: task.archivedAt,
         assignee: task.assignee,
@@ -129,6 +182,8 @@ function mapGuestTask(task: GuestTask): Task {
         id: task.id,
         key: task.key,
         labelIds: task.labelIds,
+        parentId: task.parentId,
+        parentKey: parent?.key,
         pr: task.pr,
         priority: task.priority,
         sprintId: task.sprintId,
@@ -209,6 +264,137 @@ export const guestTasksProvider: TasksProvider = {
         return { archivedCount };
     },
 
+    async clearTaskParent(taskId) {
+        let updated: GuestTask | undefined;
+
+        updateGuestSandbox((sandbox) => {
+            const task = findTaskOrThrow(sandbox.tasks, taskId);
+            const previousParentId = task.parentId;
+            if (previousParentId == undefined) {
+                updated = task;
+                return;
+            }
+
+            const parent = sandbox.tasks.find(
+                (item) => item.id === previousParentId
+            );
+            const parentKey = parent?.key;
+            const childKey = task.key;
+            delete task.parentId;
+
+            if (parent && parentKey) {
+                appendParentActivity(sandbox, {
+                    field: "subtask",
+                    from: { key: childKey },
+                    projectId: parent.projectId,
+                    taskId: parent.id,
+                    to: null,
+                });
+            }
+            appendParentActivity(sandbox, {
+                field: "parent",
+                from: parentKey ? { key: parentKey } : null,
+                projectId: task.projectId,
+                taskId: task.id,
+                to: null,
+            });
+            updated = task;
+        });
+
+        if (!updated) {
+            throw new Error("Task not found");
+        }
+        return mapGuestTask(updated, getGuestSandbox()!.tasks);
+    },
+
+    async createSubtaskRecord(parentId, title, taskType, sprintId) {
+        const normalizedTitle = normalizeTaskTitle(title);
+        let created: GuestTask | undefined;
+
+        updateGuestSandbox((sandbox) => {
+            const parent = findTaskOrThrow(sandbox.tasks, parentId);
+            if (parent.archivedAt) {
+                throw new Error(PARENT_LINK_ERROR.parent_missing);
+            }
+
+            assertParentLinkLegal(
+                { projectId: parent.projectId },
+                {
+                    id: parent.id,
+                    parentId: parent.parentId,
+                    projectId: parent.projectId,
+                },
+                sandbox.tasks.map((task) => ({
+                    id: task.id,
+                    parentId: task.parentId,
+                    projectId: task.projectId,
+                }))
+            );
+
+            const board = sandbox.boards.find(
+                (item) => item.id === parent.boardId
+            );
+            if (!board) {
+                throw new Error("Board not found");
+            }
+
+            const status = firstColumnId(board);
+            const resolvedType = taskType ?? "task";
+            const columnTasks = sandbox.tasks.filter(
+                (task) =>
+                    task.boardId === parent.boardId &&
+                    task.status === status &&
+                    isActiveTask(task)
+            );
+            const maxPosition = maxPositionAmong(columnTasks);
+
+            let sprintPosition: number | undefined;
+            if (sprintId) {
+                const sprintTasks = sandbox.tasks.filter(
+                    (task) => task.sprintId === sprintId && isActiveTask(task)
+                );
+                sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
+            }
+
+            created = {
+                author: ACTOR,
+                boardId: parent.boardId,
+                createdAt: new Date().toISOString(),
+                id: crypto.randomUUID(),
+                key: nextTaskKey(sandbox.tasks, resolvedType),
+                parentId: parent.id,
+                position: maxPosition + 1,
+                priority: DEFAULT_TASK_PRIORITY,
+                projectId: parent.projectId,
+                ...(sprintId ? { sprintId, sprintPosition } : {}),
+                status,
+                title: normalizedTitle,
+                type: resolvedType,
+            };
+            sandbox.tasks.push(created);
+
+            appendParentActivity(sandbox, {
+                field: "subtask",
+                from: null,
+                projectId: parent.projectId,
+                taskId: parent.id,
+                to: { key: created.key },
+            });
+            appendParentActivity(sandbox, {
+                field: "parent",
+                from: null,
+                projectId: parent.projectId,
+                taskId: created.id,
+                to: { key: parent.key },
+            });
+        });
+
+        if (!created) {
+            throw new Error("Failed to create task");
+        }
+        return mapGuestTask(created, getGuestSandbox()!.tasks);
+    },
+
     async createTaskRecord(
         projectId,
         boardId,
@@ -257,7 +443,7 @@ export const guestTasksProvider: TasksProvider = {
         if (!created) {
             throw new Error("Failed to create task");
         }
-        return mapGuestTask(created);
+        return mapGuestTask(created, getGuestSandbox()!.tasks);
     },
 
     async deleteTaskRecord(taskId) {
@@ -296,7 +482,7 @@ export const guestTasksProvider: TasksProvider = {
                 const bTime = Date.parse(b.archivedAt!);
                 return bTime - aTime;
             })
-            .map((task) => mapGuestTask(task));
+            .map((task) => mapGuestTask(task, sandbox.tasks));
     },
 
     async fetchBoardTasks(boardId) {
@@ -307,7 +493,9 @@ export const guestTasksProvider: TasksProvider = {
         const boardTasks = sandbox.tasks.filter(
             (task) => task.boardId === boardId && isActiveTask(task)
         );
-        const tasks = boardTasks.map((task) => mapGuestTask(task));
+        const tasks = boardTasks.map((task) =>
+            mapGuestTask(task, sandbox.tasks)
+        );
         const taskPositions = new Map(
             boardTasks.map((task) => [task.id, task.position] as const)
         );
@@ -329,7 +517,7 @@ export const guestTasksProvider: TasksProvider = {
                     task.projectId === projectId &&
                     (includeArchived || isActiveTask(task))
             )
-            .map((task) => mapGuestTask(task));
+            .map((task) => mapGuestTask(task, sandbox.tasks));
     },
 
     async moveTaskToBoard(taskId, targetBoardId, targetStatus) {

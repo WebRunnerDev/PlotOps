@@ -416,6 +416,74 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
     });
 
+    const createSubtaskMutation = useMutation({
+        mutationFn: ({
+            parentId,
+            sprintId,
+            taskType,
+            title,
+        }: {
+            parentId: string;
+            sprintId?: string;
+            taskType?: TaskType;
+            title: string;
+        }) =>
+            tasksProvider.createSubtaskRecord(
+                parentId,
+                title,
+                taskType,
+                sprintId
+            ),
+        onSuccess: (task) => {
+            if (task.boardId === boardId) {
+                setTasksCache(queryClient, projectId, boardId, (current) => ({
+                    taskPositions: new Map([
+                        ...current.taskPositions,
+                        [task.id, current.taskPositions.get(task.id) ?? 0],
+                    ]),
+                    tasks: [...current.tasks, task],
+                }));
+            }
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            if (task.parentId) {
+                void queryClient.invalidateQueries({
+                    queryKey: activityKey(task.parentId),
+                });
+            }
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(task.id),
+            });
+        },
+    });
+
+    const clearTaskParentMutation = useMutation({
+        mutationFn: (taskId: string) => tasksProvider.clearTaskParent(taskId),
+        onSuccess: (task, taskId) => {
+            const previousParentId = queryClient
+                .getQueryData<BoardTasksCache>(
+                    taskKeys.board(projectId, boardId)
+                )
+                ?.tasks.find((item) => item.id === taskId)?.parentId;
+            setTasksCache(queryClient, projectId, boardId, (current) => ({
+                taskPositions: current.taskPositions,
+                tasks: current.tasks.map((item) =>
+                    item.id === task.id
+                        ? { ...item, parentId: undefined, parentKey: undefined }
+                        : item
+                ),
+            }));
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(taskId),
+            });
+            if (previousParentId) {
+                void queryClient.invalidateQueries({
+                    queryKey: activityKey(previousParentId),
+                });
+            }
+        },
+    });
+
     const deleteTaskMutation = useMutation({
         mutationFn: (taskId: string) => tasksProvider.deleteTaskRecord(taskId),
         onError: () => {
@@ -592,6 +660,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
         archiveTasks,
         boardId,
+        clearTaskParent: (taskId: string) =>
+            clearTaskParentMutation.mutateAsync(taskId),
         /**
          * Persist the board task cache vs the in-progress drag gesture snapshot.
          * No-op when no live preview ran (same-column-only drags).
@@ -654,6 +724,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 updates,
             });
         },
+        createSubtask: (
+            parentId: string,
+            title: string,
+            options?: { sprintId?: string; taskType?: TaskType }
+        ) =>
+            createSubtaskMutation.mutateAsync({
+                parentId,
+                sprintId: options?.sprintId,
+                taskType: options?.taskType,
+                title,
+            }),
         createTask: (
             status: TaskStatus,
             title: string,

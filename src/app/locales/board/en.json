@@ -134,6 +134,22 @@
         "deleteFailed": "Could not delete comment",
         "edited": "edited"
     },
+    "subtasks": {
+        "title": "Subtasks",
+        "empty": "No Subtasks yet.",
+        "add": "Add",
+        "addPlaceholder": "Subtask title…",
+        "created": "Subtask {{key}} created",
+        "createFailed": "Could not create Subtask",
+        "nestedRefused": "A Subtask cannot have Subtasks",
+        "parentAsChildRefused": "A Parent Task cannot become a Subtask",
+        "differentProject": "Parent Task and Subtask must be in the same Project",
+        "parentBadge": "Parent {{key}}",
+        "openParent": "Open Parent Task {{key}}",
+        "removeParent": "Remove parent",
+        "removedParent": "{{key}} is now a root Task",
+        "removeParentFailed": "Could not remove the Parent relationship"
+    },
     "activity": {
         "title": "Activity",
         "empty": "No activity yet.",
@@ -154,10 +170,12 @@
             "estimate": "Estimate",
             "assignee": "Assignee",
             "labels": "Labels",
+            "parent": "Parent",
             "branch": "Branch",
             "pr": "Pull request",
             "board": "Board",
-            "archived": "Archive"
+            "archived": "Archive",
+            "subtask": "Subtask"
         }
     },
     "taskType": {

@@ -31,6 +31,8 @@ export type DatabaseTask = {
     description: null | string;
     estimate: null | number;
     id: string;
+    parent?: Array<{ task_key: string }> | null | { task_key: string };
+    parent_id?: null | string;
     position: number;
     pr_number: null | number;
     pr_state: null | string;
@@ -81,6 +83,8 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         id: row.id,
         key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
+        parentId: row.parent_id ?? undefined,
+        parentKey: toParentKey(row),
         pr: toPullRequest(row),
         priority: toTaskPriority(row.priority),
         sprintId: row.sprint_id ?? undefined,
@@ -99,6 +103,11 @@ export function sortTasksByPosition(
         (left, right) =>
             (positions.get(left.id) ?? 0) - (positions.get(right.id) ?? 0)
     );
+}
+
+function toParentKey(row: DatabaseTask): string | undefined {
+    const parent = Array.isArray(row.parent) ? row.parent[0] : row.parent;
+    return parent?.task_key ?? undefined;
 }
 
 function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {

@@ -48,6 +48,8 @@ const T16 = "b0000000-0000-4000-8000-000000000116";
 const T17 = "b0000000-0000-4000-8000-000000000117";
 const T18 = "b0000000-0000-4000-8000-000000000118";
 const T19 = "b0000000-0000-4000-8000-000000000119";
+const T20 = "b0000000-0000-4000-8000-000000000120";
+const T21 = "b0000000-0000-4000-8000-000000000121";
 const LABEL_CONTENT = "b0000000-0000-4000-8000-000000000035";
 
 const DEFAULT_COLUMNS = [
@@ -163,6 +165,40 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             },
             projectId: PROJ_PLAIN_ID,
             taskId: T15,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T10:05:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000207",
+            metadata: {
+                changes: [
+                    {
+                        field: "subtask",
+                        from: null,
+                        to: { key: "TASK-20" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T06,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T10:05:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000208",
+            metadata: {
+                changes: [
+                    {
+                        field: "parent",
+                        from: null,
+                        to: { key: "TASK-6" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T20,
             user: ACTOR,
         },
     ],
@@ -741,6 +777,37 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_PLAIN_ID,
             status: "done",
             title: "Messaging pillars from interviews",
+            type: "task",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_GIT_ID,
+            createdAt: "2026-08-05T10:00:00.000Z",
+            description:
+                "<p>Hover and pressed states for the Demo chip on the Parent Task.</p>",
+            id: T20,
+            key: "TASK-20",
+            parentId: T06,
+            position: 3,
+            priority: "medium",
+            projectId: PROJ_GIT_ID,
+            status: "todo",
+            title: "Demo chip hover states",
+            type: "task",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_GIT_ID,
+            createdAt: "2026-08-05T11:00:00.000Z",
+            description: "<p>Tooltip copy for the Demo chip.</p>",
+            id: T21,
+            key: "TASK-21",
+            parentId: T06,
+            position: 2,
+            priority: "low",
+            projectId: PROJ_GIT_ID,
+            status: "done",
+            title: "Demo chip tooltip copy",
             type: "task",
         },
     ],

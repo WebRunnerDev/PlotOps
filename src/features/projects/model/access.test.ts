@@ -34,6 +34,19 @@ describe("Project Role access seam — Board affordances", () => {
         expect(caps.canManageBoard).toBe(false);
     });
 
+    it("Contributor Subtask create uses canEditTasks; root create stays Manager+", () => {
+        const contributor = capabilitiesForRole("contributor");
+        const viewer = capabilitiesForRole("viewer");
+        const manager = capabilitiesForRole("manager");
+
+        expect(contributor.canEditTasks).toBe(true);
+        expect(contributor.canCreateTasks).toBe(false);
+        expect(viewer.canEditTasks).toBe(false);
+        expect(viewer.canCreateTasks).toBe(false);
+        expect(manager.canEditTasks).toBe(true);
+        expect(manager.canCreateTasks).toBe(true);
+    });
+
     it.each([
         "owner",
         "admin",

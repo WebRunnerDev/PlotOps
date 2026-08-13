@@ -134,6 +134,22 @@
         "deleteFailed": "Не удалось удалить комментарий",
         "edited": "изменён"
     },
+    "subtasks": {
+        "title": "Подзадачи",
+        "empty": "Подзадач пока нет.",
+        "add": "Добавить",
+        "addPlaceholder": "Название подзадачи…",
+        "created": "Подзадача {{key}} создана",
+        "createFailed": "Не удалось создать подзадачу",
+        "nestedRefused": "У подзадачи не может быть своих подзадач",
+        "parentAsChildRefused": "Родительскую задачу нельзя сделать подзадачей",
+        "differentProject": "Родительская задача и подзадача должны быть в одном проекте",
+        "parentBadge": "Родитель {{key}}",
+        "openParent": "Открыть родительскую задачу {{key}}",
+        "removeParent": "Убрать родителя",
+        "removedParent": "{{key}} теперь корневая задача",
+        "removeParentFailed": "Не удалось убрать связь с родителем"
+    },
     "activity": {
         "title": "Активность",
         "empty": "Пока нет активности.",
@@ -154,10 +170,12 @@
             "estimate": "Оценка",
             "assignee": "Исполнитель",
             "labels": "Метки",
+            "parent": "Родитель",
             "branch": "Ветка",
             "pr": "Pull request",
             "board": "Доска",
-            "archived": "Архив"
+            "archived": "Архив",
+            "subtask": "Подзадача"
         }
     },
     "taskType": {

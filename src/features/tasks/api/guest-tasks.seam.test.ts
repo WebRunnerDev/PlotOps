@@ -235,4 +235,111 @@ describe("guest tasks provider happy path", () => {
             )
         ).toBe(true);
     });
+
+    it("createSubtaskRecord creates a full Task on the Parent Task's Board", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const provider = resolveTasksProvider(true);
+        const firstColumn = sandbox.boards.find(
+            (board) => board.id === parent.boardId
+        )!.columns[0]!;
+
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Guest Subtask"
+        );
+
+        expect(created.parentId).toBe(parent.id);
+        expect(created.parentKey).toBe(parent.key);
+        expect(created.boardId).toBe(parent.boardId);
+        expect(created.status).toBe(firstColumn.id);
+        expect(created.title).toBe("Guest Subtask");
+
+        const after = getGuestSandbox()!;
+        const stored = after.tasks.find((task) => task.id === created.id);
+        expect(stored?.parentId).toBe(parent.id);
+
+        const parentActivity = after.activity.filter(
+            (event) => event.taskId === parent.id
+        );
+        const childActivity = after.activity.filter(
+            (event) => event.taskId === created.id
+        );
+        expect(
+            parentActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "subtask" &&
+                        (change.to as { key?: string }).key === created.key
+                )
+            )
+        ).toBe(true);
+        expect(
+            childActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "parent" &&
+                        (change.to as { key?: string }).key === parent.key
+                )
+            )
+        ).toBe(true);
+    });
+
+    it("createSubtaskRecord refuses making a Subtask into a Parent Task", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Nested attempt parent"
+        );
+
+        await expect(
+            provider.createSubtaskRecord(child.id, "Nested child")
+        ).rejects.toThrow("A Subtask cannot have Subtasks");
+    });
+
+    it("clearTaskParent turns the Subtask into a root Task without deleting it", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Soon a root"
+        );
+
+        const cleared = await provider.clearTaskParent(created.id);
+        expect(cleared.parentId).toBeUndefined();
+        expect(cleared.parentKey).toBeUndefined();
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === created.id)
+        ).toBe(true);
+
+        vi.resetModules();
+        const refreshed = await import("@/features/guest-mode");
+        const { resolveTasksProvider: resolveAgain } =
+            await import("@/features/tasks/api/resolve-tasks-provider");
+        const after = refreshed.getGuestSandbox()!;
+        const task = after.tasks.find((item) => item.id === created.id);
+        expect(task?.parentId).toBeUndefined();
+
+        const boardCache = await resolveAgain(true).fetchBoardTasks(
+            parent.boardId
+        );
+        const listed = boardCache.tasks.find((item) => item.id === created.id);
+        expect(listed?.parentId).toBeUndefined();
+        expect(listed?.title).toBe("Soon a root");
+    });
 });

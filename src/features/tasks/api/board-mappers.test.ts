@@ -20,6 +20,8 @@ function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
         description: null,
         estimate: null,
         id: "task-1",
+        parent: null,
+        parent_id: null,
         position: 0,
         pr_number: null,
         pr_state: null,
@@ -51,5 +53,18 @@ describe("mapDatabaseTask", () => {
         expect(
             mapDatabaseTask(databaseTask({ estimate: null })).estimate
         ).toBeUndefined();
+    });
+
+    it("maps Parent id and key when the Task is a Subtask", () => {
+        const task = mapDatabaseTask(
+            databaseTask({
+                parent: { task_key: "FEAT-1" },
+                parent_id: "parent-1",
+            })
+        );
+
+        expect(task.parentId).toBe("parent-1");
+        expect(task.parentKey).toBe("FEAT-1");
+        expect(mapDatabaseTask(databaseTask()).parentId).toBeUndefined();
     });
 });
