@@ -254,6 +254,14 @@ export type Database = {
         }
         Returns: string
       }
+      create_task_link: {
+        Args: {
+          p_kind: string
+          p_source_task_id: string
+          p_target_task_id: string
+        }
+        Returns: string
+      }
       create_task_notifications: {
         Args: { p_events: Json; p_project_id: string; p_task_id: string }
         Returns: undefined
@@ -266,6 +274,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_task_link: { Args: { p_link_id: string }; Returns: undefined }
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -991,6 +1000,65 @@ export type Database = {
         Update: {
           label_id?: string
           task_id?: string
+        }
+      }
+      task_links: {
+        Insert: {
+          created_at?: string
+          created_by?: null | string
+          id?: string
+          kind: string
+          project_id: string
+          source_task_id: string
+          target_task_id: string
+        }
+        Relationships: [
+          {
+            columns: ["created_by"]
+            foreignKeyName: "task_links_created_by_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+          },
+          {
+            columns: ["project_id"]
+            foreignKeyName: "task_links_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["source_task_id"]
+            foreignKeyName: "task_links_source_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+          {
+            columns: ["target_task_id"]
+            foreignKeyName: "task_links_target_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+        ]
+        Row: {
+          created_at: string
+          created_by: null | string
+          id: string
+          kind: string
+          project_id: string
+          source_task_id: string
+          target_task_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: null | string
+          id?: string
+          kind?: string
+          project_id?: string
+          source_task_id?: string
+          target_task_id?: string
         }
       }
       task_watchers: {

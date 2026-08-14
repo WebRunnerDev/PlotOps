@@ -67,4 +67,50 @@ describe("mapDatabaseTask", () => {
         expect(task.parentKey).toBe("FEAT-1");
         expect(mapDatabaseTask(databaseTask()).parentId).toBeUndefined();
     });
+
+    it("maps relates to peers from outgoing and incoming Task Links", () => {
+        const task = mapDatabaseTask(
+            databaseTask({
+                incoming_links: [
+                    {
+                        id: "link-in",
+                        kind: "relates_to",
+                        source: {
+                            id: "task-0",
+                            task_key: "FEAT-1",
+                            title: "Incoming peer",
+                        },
+                    },
+                ],
+                outgoing_links: [
+                    {
+                        id: "link-out",
+                        kind: "relates_to",
+                        target: {
+                            id: "task-2",
+                            task_key: "FEAT-2",
+                            title: "Outgoing peer",
+                        },
+                    },
+                ],
+            })
+        );
+
+        expect(task.relatedTasks).toEqual([
+            {
+                id: "link-out",
+                kind: "relates_to",
+                otherId: "task-2",
+                otherKey: "FEAT-2",
+                otherTitle: "Outgoing peer",
+            },
+            {
+                id: "link-in",
+                kind: "relates_to",
+                otherId: "task-0",
+                otherKey: "FEAT-1",
+                otherTitle: "Incoming peer",
+            },
+        ]);
+    });
 });
