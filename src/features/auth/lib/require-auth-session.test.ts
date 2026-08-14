@@ -20,7 +20,7 @@ describe("requireAuthSession", () => {
     });
 
     it("redirects and clears local Auth when getUser has no user", async () => {
-        const signOutLocal = vi.fn().mockResolvedValue();
+        const signOutLocal = vi.fn().mockResolvedValue(undefined);
 
         await expect(
             requireAuthSession({
@@ -34,7 +34,7 @@ describe("requireAuthSession", () => {
     });
 
     it("redirects and clears local Auth when getUser errors (dead JWT)", async () => {
-        const signOutLocal = vi.fn().mockResolvedValue();
+        const signOutLocal = vi.fn().mockResolvedValue(undefined);
 
         await expect(
             requireAuthSession({

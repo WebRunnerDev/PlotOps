@@ -29,7 +29,8 @@ export const ResizableImage = Image.extend({
             ...this.parent?.(),
             align: {
                 default: "left",
-                parseHTML: (element) => parseAlignment(element.dataset.align),
+                parseHTML: (element) =>
+                    parseAlignment(element.dataset.align ?? null),
                 renderHTML: (attributes) =>
                     attributes.align && attributes.align !== "left"
                         ? { "data-align": attributes.align }
