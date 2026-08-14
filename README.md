@@ -2,6 +2,9 @@
 
 <img src="/public/PlotOps.png" width=350 height=350>
 
+**Live app:** [https://plotops.webrunner.dev](https://plotops.webrunner.dev) — production deploy (GitHub / email sign-in, real teams and boards). If you only want a look around, use **Try demo** on that page — no account, data stays in this browser session.
+
+[![Live](https://img.shields.io/badge/Live-plotops.webrunner.dev-0ea5e9)](https://plotops.webrunner.dev)
 [![Migrate check](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate-check.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate-check.yml)
 [![Migrate + deploy](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate.yml/badge.svg)](https://github.com/WebRunnerDev/PlotOps/actions/workflows/supabase-migrate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -78,9 +81,10 @@ Most trackers treat Git as an afterthought: you jump out to GitHub for the branc
 
 ### How to try it with friends
 
-1. Open the live app (or run locally) → **Try demo** for a no-signup sandbox (local Guest Session; nothing hits production DB).
-2. Or sign in with GitHub / email, create a **Team**, invite them, connect a repo, and use a real Board for one shared project.
-3. Tell them up front: pet project, expect rough edges, feedback welcome — delete-account path is documented in the Disclaimer.
+1. Open **[https://plotops.webrunner.dev](https://plotops.webrunner.dev)** and sign in with GitHub or email — that is the real app (teams, boards, GitHub-linked projects).
+2. For a no-signup walkthrough, use **Try demo** on the same site (Guest Session in this browser; nothing hits production DB). Same button locally via `npm run dev`.
+3. After sign-in, create a **Team**, invite people, connect a repo, and use a real Board for one shared project.
+4. Tell them up front: pet project, expect rough edges, feedback welcome — delete-account path is documented in the Disclaimer.
 
 ## Domain (MVP)
 
