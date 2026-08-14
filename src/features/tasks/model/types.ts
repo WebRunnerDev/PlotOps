@@ -27,6 +27,8 @@ export type Task = {
     parentKey?: string;
     pr?: TaskPullRequest;
     priority?: TaskPriority;
+    /** Peer Task Link summaries for the drawer (and later cards). */
+    relatedTasks?: TaskLinkPeer[];
     /** Board Sprint membership; absent ⇒ Backlog. */
     sprintId?: string;
     /** Order within the Sprint section or Backlog. */
@@ -65,6 +67,7 @@ export type TaskActivityField =
     | "priority"
     | "status"
     | "subtask"
+    | "task_link"
     | "title"
     | "type";
 
@@ -87,6 +90,16 @@ export type TaskComment = {
     id: string;
     taskId: string;
     updatedAt: string;
+};
+
+export type TaskLinkKind = "relates_to";
+
+export type TaskLinkPeer = {
+    id: string;
+    kind: TaskLinkKind;
+    otherId: string;
+    otherKey: string;
+    otherTitle: string;
 };
 
 export type TaskPriority = "high" | "low" | "medium" | "urgent";

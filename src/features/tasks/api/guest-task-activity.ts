@@ -20,6 +20,7 @@ const ACTIVITY_FIELDS = new Set<TaskActivityField>([
     "priority",
     "status",
     "subtask",
+    "task_link",
     "title",
     "type",
 ]);

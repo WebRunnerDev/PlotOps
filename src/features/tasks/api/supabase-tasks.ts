@@ -23,7 +23,13 @@ export const supabaseTasksProvider: TasksProvider = {
     archiveTaskRecords,
     clearTaskParent,
     createSubtaskRecord,
+    async createTaskLinkRecord() {
+        throw new Error("Task Links are not persisted yet");
+    },
     createTaskRecord,
+    async deleteTaskLinkRecord() {
+        throw new Error("Task Links are not persisted yet");
+    },
     deleteTaskRecord,
     fetchArchivedTasks,
     fetchBoardTasks,

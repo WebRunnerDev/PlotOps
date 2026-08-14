@@ -1,5 +1,6 @@
 /**
- * Task hierarchy rules (ADR 0023): one Parent/Subtask level, same Project.
+ * Task hierarchy and Task Link rules (ADR 0023): one Parent/Subtask level;
+ * peer `relates to` links stay in the same Project and are not Parent↔Subtask.
  * Guest sandbox and client UX call this; Postgres RPCs re-implement the same checks.
  */
 
@@ -30,6 +31,21 @@ export type ProposedChild = {
     projectId: string;
 };
 
+export type TaskLinkEdge = {
+    kind: TaskLinkKind;
+    sourceId: string;
+    targetId: string;
+};
+
+export type TaskLinkKind = "relates_to";
+
+export type TaskLinkRefusal =
+    | "different_project"
+    | "duplicate"
+    | "parent_subtask"
+    | "self"
+    | "task_missing";
+
 export type TaskStructureNode = {
     id: string;
     parentId?: string;
@@ -56,6 +72,15 @@ export const PARENT_GATE_TOAST_KEY: Record<
     active_subtasks: "subtasks.archiveRefused",
     incomplete_subtasks: "subtasks.doneRefused",
     subtasks_exist: "subtasks.deleteRefused",
+};
+
+export const TASK_LINK_ERROR: Record<TaskLinkRefusal, string> = {
+    different_project: "Task Links must stay inside the same Project",
+    duplicate: "These Tasks are already linked",
+    parent_subtask:
+        "A Task Link cannot connect a Parent Task and its own Subtask",
+    self: "A Task cannot relate to itself",
+    task_missing: "Task not found",
 };
 
 export const PARENT_LINK_ERROR: Record<ParentLinkRefusal, string> = {
@@ -104,6 +129,19 @@ export function assertParentLinkLegal(
     const reason = parentLinkRefusal(child, parent, tasks);
     if (reason) {
         throw new Error(PARENT_LINK_ERROR[reason]);
+    }
+}
+
+export function assertTaskLinkLegal(
+    sourceId: string,
+    targetId: string,
+    kind: TaskLinkKind,
+    tasks: readonly TaskStructureNode[],
+    existing: readonly TaskLinkEdge[]
+): void {
+    const reason = taskLinkRefusal(sourceId, targetId, kind, tasks, existing);
+    if (reason) {
+        throw new Error(TASK_LINK_ERROR[reason]);
     }
 }
 
@@ -194,6 +232,44 @@ export function subtasksOf<T extends { parentId?: string }>(
     tasks: readonly T[]
 ): T[] {
     return tasks.filter((task) => task.parentId === parentId);
+}
+
+export function taskLinkRefusal(
+    sourceId: string,
+    targetId: string,
+    kind: TaskLinkKind,
+    tasks: readonly TaskStructureNode[],
+    existing: readonly TaskLinkEdge[]
+): null | TaskLinkRefusal {
+    if (sourceId === targetId) {
+        return "self";
+    }
+
+    const source = tasks.find((task) => task.id === sourceId);
+    const target = tasks.find((task) => task.id === targetId);
+    if (!source || !target) {
+        return "task_missing";
+    }
+
+    if (source.projectId !== target.projectId) {
+        return "different_project";
+    }
+
+    if (source.parentId === target.id || target.parentId === source.id) {
+        return "parent_subtask";
+    }
+
+    const duplicate = existing.some(
+        (link) =>
+            link.kind === kind &&
+            ((link.sourceId === sourceId && link.targetId === targetId) ||
+                (link.sourceId === targetId && link.targetId === sourceId))
+    );
+    if (duplicate) {
+        return "duplicate";
+    }
+
+    return null;
 }
 
 function hasSubtasks(

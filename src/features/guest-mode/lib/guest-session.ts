@@ -50,6 +50,9 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!Array.isArray(sandbox.comments)) {
         sandbox.comments = [];
     }
+    if (!Array.isArray(sandbox.taskLinks)) {
+        sandbox.taskLinks = [];
+    }
     return sandbox;
 }
 
@@ -127,8 +130,11 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
     // Older sessions omit `comments` — treat as empty (migrate on read).
     const commentsOk =
         record.comments === undefined || Array.isArray(record.comments);
+    const taskLinksOk =
+        record.taskLinks === undefined || Array.isArray(record.taskLinks);
     return (
         commentsOk &&
+        taskLinksOk &&
         Array.isArray(record.teams) &&
         Array.isArray(record.projects) &&
         Array.isArray(record.boards) &&

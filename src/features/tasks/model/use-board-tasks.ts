@@ -15,6 +15,7 @@ import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
     TaskActivityChange,
+    TaskLinkKind,
     TaskPriority,
     TaskPullRequest,
     TaskStatus,
@@ -477,6 +478,43 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
     });
 
+    const createTaskLinkMutation = useMutation({
+        mutationFn: ({
+            kind,
+            sourceTaskId,
+            targetTaskId,
+        }: {
+            kind: TaskLinkKind;
+            sourceTaskId: string;
+            targetTaskId: string;
+        }) =>
+            tasksProvider.createTaskLinkRecord(
+                sourceTaskId,
+                targetTaskId,
+                kind
+            ),
+        onSuccess: (task, variables) => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(task.id),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(variables.targetTaskId),
+            });
+        },
+    });
+
+    const deleteTaskLinkMutation = useMutation({
+        mutationFn: (linkId: string) =>
+            tasksProvider.deleteTaskLinkRecord(linkId),
+        onSuccess: () => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: [...taskKeys.all, "activity"],
+            });
+        },
+    });
+
     const clearTaskParentMutation = useMutation({
         mutationFn: (taskId: string) => tasksProvider.clearTaskParent(taskId),
         onSuccess: (task, taskId) => {
@@ -800,6 +838,16 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskType: options?.taskType,
                 title,
             }),
+        createTaskLink: (
+            sourceTaskId: string,
+            targetTaskId: string,
+            kind: TaskLinkKind = "relates_to"
+        ) =>
+            createTaskLinkMutation.mutateAsync({
+                kind,
+                sourceTaskId,
+                targetTaskId,
+            }),
         deleteTask: async (taskId: string) => {
             assertParentDeleteLegal(
                 taskId,
@@ -820,6 +868,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
             await deleteTaskMutation.mutateAsync(taskId);
         },
+        deleteTaskLink: (linkId: string) =>
+            deleteTaskLinkMutation.mutateAsync(linkId),
         error: tasksQuery.error ?? null,
         isLoading: tasksQuery.isLoading,
         moveTasksToColumn,

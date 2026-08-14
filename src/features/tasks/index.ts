@@ -37,6 +37,7 @@ export {
     assertParentDeleteLegal,
     assertParentDoneLegal,
     assertParentLinkLegal,
+    assertTaskLinkLegal,
     PARENT_GATE_ERROR,
     PARENT_GATE_TOAST_KEY,
     PARENT_LINK_ERROR,
@@ -46,6 +47,8 @@ export {
     parentGateRefusalFromError,
     parentLinkRefusal,
     subtasksOf,
+    TASK_LINK_ERROR,
+    taskLinkRefusal,
 } from "./lib/task-structure";
 export type {
     ParentArchiveRefusal,
@@ -54,6 +57,9 @@ export type {
     ParentGateTask,
     ParentLinkRefusal,
     ProposedChild,
+    TaskLinkEdge,
+    TaskLinkKind,
+    TaskLinkRefusal,
     TaskStructureNode,
 } from "./lib/task-structure";
 export { useBoardSortStore } from "./model/board-sort-store";
@@ -68,7 +74,13 @@ export {
     TASK_TYPE_ICON_CLASS,
 } from "./model/constants";
 export { taskKeys } from "./model/query-keys";
-export type { Task, TaskPriority, TaskStatus, TaskType } from "./model/types";
+export type {
+    Task,
+    TaskLinkPeer,
+    TaskPriority,
+    TaskStatus,
+    TaskType,
+} from "./model/types";
 export { useBoardTaskSelectionStore } from "./model/use-board-task-selection-store";
 export { useBoardTasks } from "./model/use-board-tasks";
 export { useProjectTasks } from "./model/use-project-tasks";

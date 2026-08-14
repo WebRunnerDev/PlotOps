@@ -104,6 +104,7 @@ export type GuestSandbox = {
     notifications: GuestNotification[];
     projects: GuestProject[];
     sprints: GuestSprint[];
+    taskLinks: GuestTaskLink[];
     tasks: GuestTask[];
     teams: GuestTeam[];
 };
@@ -153,6 +154,13 @@ export type GuestTask = {
     status: string;
     title: string;
     type: "bug" | "feature" | "task";
+};
+
+export type GuestTaskLink = {
+    id: string;
+    kind: "relates_to";
+    sourceTaskId: string;
+    targetTaskId: string;
 };
 
 export type GuestTeam = {

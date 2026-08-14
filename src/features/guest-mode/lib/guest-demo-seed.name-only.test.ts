@@ -76,4 +76,41 @@ describe("GUEST_DEMO_SEED name-only project", () => {
         expect(statuses.has("done")).toBe(true);
         expect(statuses.has("todo") || statuses.has("in_progress")).toBe(true);
     });
+
+    it("seeds at least one relates to Task Link in the same Project", () => {
+        const links = GUEST_DEMO_SEED.taskLinks.filter(
+            (link) => link.kind === "relates_to"
+        );
+        expect(links.length).toBeGreaterThanOrEqual(1);
+
+        const link = links[0]!;
+        const source = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.sourceTaskId
+        );
+        const target = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.targetTaskId
+        );
+        expect(source).toBeDefined();
+        expect(target).toBeDefined();
+        expect(source!.projectId).toBe(target!.projectId);
+        expect(source!.id).not.toBe(target!.id);
+        expect(source!.parentId).not.toBe(target!.id);
+        expect(target!.parentId).not.toBe(source!.id);
+
+        const activityMentionsLink = GUEST_DEMO_SEED.activity.some((event) =>
+            event.metadata.changes.some(
+                (change) =>
+                    change.field === "task_link" &&
+                    (change.to as { key?: string; kind?: string }).kind ===
+                        "relates_to"
+            )
+        );
+        expect(activityMentionsLink).toBe(true);
+
+        expect(
+            GUEST_DEMO_SEED.notifications.every(
+                (row) => row.kind !== "task_link"
+            )
+        ).toBe(true);
+    });
 });

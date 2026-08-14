@@ -7,6 +7,7 @@ import type { TaskRecordPatch } from "@/features/tasks/api/tasks-api";
 import type { TasksProvider } from "@/features/tasks/api/tasks-provider";
 import type {
     Task,
+    TaskLinkPeer,
     TaskPriority,
     TaskType,
 } from "@/features/tasks/model/types";
@@ -23,8 +24,10 @@ import {
     assertParentDeleteLegal,
     assertParentDoneLegal,
     assertParentLinkLegal,
+    assertTaskLinkLegal,
     PARENT_LINK_ERROR,
     type ParentGateTask,
+    type TaskLinkKind,
 } from "@/features/tasks/lib/task-structure";
 import {
     DEFAULT_TASK_PRIORITY,
@@ -55,6 +58,34 @@ function appendParentActivity(
             changes: [
                 {
                     field: input.field,
+                    from: input.from,
+                    to: input.to,
+                },
+            ],
+        },
+        projectId: input.projectId,
+        taskId: input.taskId,
+        user: ACTOR,
+    });
+}
+
+function appendTaskLinkActivity(
+    sandbox: { activity: GuestSandbox["activity"] },
+    input: {
+        from: null | { key: string; kind: TaskLinkKind };
+        projectId: string;
+        taskId: string;
+        to: null | { key: string; kind: TaskLinkKind };
+    }
+) {
+    sandbox.activity.push({
+        action: "updated",
+        createdAt: new Date().toISOString(),
+        id: crypto.randomUUID(),
+        metadata: {
+            changes: [
+                {
+                    field: "task_link",
                     from: input.from,
                     to: input.to,
                 },
@@ -184,9 +215,12 @@ function isActiveTask(task: GuestTask): boolean {
     return task.archivedAt == undefined;
 }
 
-function mapGuestTask(task: GuestTask, tasks: GuestTask[]): Task {
+function mapGuestTask(
+    task: GuestTask,
+    sandbox: Pick<GuestSandbox, "taskLinks" | "tasks">
+): Task {
     const parent = task.parentId
-        ? tasks.find((item) => item.id === task.parentId)
+        ? sandbox.tasks.find((item) => item.id === task.parentId)
         : undefined;
     return {
         archivedAt: task.archivedAt,
@@ -205,6 +239,7 @@ function mapGuestTask(task: GuestTask, tasks: GuestTask[]): Task {
         parentKey: parent?.key,
         pr: task.pr,
         priority: task.priority,
+        relatedTasks: relatedPeersOf(task.id, sandbox),
         sprintId: task.sprintId,
         sprintPosition: task.sprintPosition,
         status: task.status,
@@ -282,6 +317,33 @@ function parentGateTasks(sandbox: GuestSandbox): ParentGateTask[] {
     }));
 }
 
+function relatedPeersOf(
+    taskId: string,
+    sandbox: Pick<GuestSandbox, "taskLinks" | "tasks">
+): TaskLinkPeer[] {
+    const peers: TaskLinkPeer[] = [];
+    for (const link of sandbox.taskLinks) {
+        if (link.kind !== "relates_to") continue;
+        const otherId =
+            link.sourceTaskId === taskId
+                ? link.targetTaskId
+                : link.targetTaskId === taskId
+                  ? link.sourceTaskId
+                  : undefined;
+        if (!otherId) continue;
+        const other = sandbox.tasks.find((item) => item.id === otherId);
+        if (!other) continue;
+        peers.push({
+            id: link.id,
+            kind: link.kind,
+            otherId: other.id,
+            otherKey: other.key,
+            otherTitle: other.title,
+        });
+    }
+    return peers;
+}
+
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */
 export const guestTasksProvider: TasksProvider = {
     async archiveTaskRecord(taskId) {
@@ -349,7 +411,7 @@ export const guestTasksProvider: TasksProvider = {
         if (!updated) {
             throw new Error("Task not found");
         }
-        return mapGuestTask(updated, getGuestSandbox()!.tasks);
+        return mapGuestTask(updated, getGuestSandbox()!);
     },
 
     async createSubtaskRecord(parentId, title, taskType, sprintId) {
@@ -437,7 +499,57 @@ export const guestTasksProvider: TasksProvider = {
         if (!created) {
             throw new Error("Failed to create task");
         }
-        return mapGuestTask(created, getGuestSandbox()!.tasks);
+        return mapGuestTask(created, getGuestSandbox()!);
+    },
+
+    async createTaskLinkRecord(sourceTaskId, targetTaskId, kind) {
+        let updated: GuestTask | undefined;
+
+        updateGuestSandbox((sandbox) => {
+            const source = findTaskOrThrow(sandbox.tasks, sourceTaskId);
+            const target = findTaskOrThrow(sandbox.tasks, targetTaskId);
+            assertTaskLinkLegal(
+                sourceTaskId,
+                targetTaskId,
+                kind,
+                sandbox.tasks.map((task) => ({
+                    id: task.id,
+                    parentId: task.parentId,
+                    projectId: task.projectId,
+                })),
+                sandbox.taskLinks.map((link) => ({
+                    kind: link.kind,
+                    sourceId: link.sourceTaskId,
+                    targetId: link.targetTaskId,
+                }))
+            );
+
+            sandbox.taskLinks.push({
+                id: crypto.randomUUID(),
+                kind,
+                sourceTaskId,
+                targetTaskId,
+            });
+
+            appendTaskLinkActivity(sandbox, {
+                from: null,
+                projectId: source.projectId,
+                taskId: source.id,
+                to: { key: target.key, kind },
+            });
+            appendTaskLinkActivity(sandbox, {
+                from: null,
+                projectId: target.projectId,
+                taskId: target.id,
+                to: { key: source.key, kind },
+            });
+            updated = source;
+        });
+
+        if (!updated) {
+            throw new Error("Task not found");
+        }
+        return mapGuestTask(updated, getGuestSandbox()!);
     },
 
     async createTaskRecord(
@@ -495,7 +607,39 @@ export const guestTasksProvider: TasksProvider = {
         if (!created) {
             throw new Error("Failed to create task");
         }
-        return mapGuestTask(created, getGuestSandbox()!.tasks);
+        return mapGuestTask(created, getGuestSandbox()!);
+    },
+
+    async deleteTaskLinkRecord(linkId) {
+        updateGuestSandbox((sandbox) => {
+            const link = sandbox.taskLinks.find((item) => item.id === linkId);
+            if (!link) {
+                throw new Error("Task Link not found");
+            }
+            const source = sandbox.tasks.find(
+                (task) => task.id === link.sourceTaskId
+            );
+            const target = sandbox.tasks.find(
+                (task) => task.id === link.targetTaskId
+            );
+            sandbox.taskLinks = sandbox.taskLinks.filter(
+                (item) => item.id !== linkId
+            );
+            if (source && target) {
+                appendTaskLinkActivity(sandbox, {
+                    from: { key: target.key, kind: link.kind },
+                    projectId: source.projectId,
+                    taskId: source.id,
+                    to: null,
+                });
+                appendTaskLinkActivity(sandbox, {
+                    from: { key: source.key, kind: link.kind },
+                    projectId: target.projectId,
+                    taskId: target.id,
+                    to: null,
+                });
+            }
+        });
     },
 
     async deleteTaskRecord(taskId) {
@@ -508,6 +652,10 @@ export const guestTasksProvider: TasksProvider = {
             );
             sandbox.activity = sandbox.activity.filter(
                 (event) => event.taskId !== taskId
+            );
+            sandbox.taskLinks = sandbox.taskLinks.filter(
+                (link) =>
+                    link.sourceTaskId !== taskId && link.targetTaskId !== taskId
             );
             sandbox.notifications = sandbox.notifications.filter(
                 (row) => row.taskId !== taskId
@@ -535,7 +683,7 @@ export const guestTasksProvider: TasksProvider = {
                 const bTime = Date.parse(b.archivedAt!);
                 return bTime - aTime;
             })
-            .map((task) => mapGuestTask(task, sandbox.tasks));
+            .map((task) => mapGuestTask(task, sandbox));
     },
 
     async fetchBoardTasks(boardId) {
@@ -546,9 +694,7 @@ export const guestTasksProvider: TasksProvider = {
         const boardTasks = sandbox.tasks.filter(
             (task) => task.boardId === boardId && isActiveTask(task)
         );
-        const tasks = boardTasks.map((task) =>
-            mapGuestTask(task, sandbox.tasks)
-        );
+        const tasks = boardTasks.map((task) => mapGuestTask(task, sandbox));
         const taskPositions = new Map(
             boardTasks.map((task) => [task.id, task.position] as const)
         );
@@ -570,7 +716,7 @@ export const guestTasksProvider: TasksProvider = {
                     task.projectId === projectId &&
                     (includeArchived || isActiveTask(task))
             )
-            .map((task) => mapGuestTask(task, sandbox.tasks));
+            .map((task) => mapGuestTask(task, sandbox));
     },
 
     async moveTaskToBoard(taskId, targetBoardId, targetStatus) {

@@ -18,6 +18,11 @@ export type TasksProvider = {
         taskType?: TaskType,
         sprintId?: string
     ): Promise<Task>;
+    createTaskLinkRecord(
+        sourceTaskId: string,
+        targetTaskId: string,
+        kind: "relates_to"
+    ): Promise<Task>;
     createTaskRecord(
         projectId: string,
         boardId: string,
@@ -26,6 +31,7 @@ export type TasksProvider = {
         taskType?: TaskType,
         sprintId?: string
     ): Promise<Task>;
+    deleteTaskLinkRecord(linkId: string): Promise<void>;
     deleteTaskRecord(taskId: string): Promise<void>;
     fetchArchivedTasks(boardId: string): Promise<Task[]>;
     fetchBoardTasks(boardId: string): Promise<BoardTasksCache>;

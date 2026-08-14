@@ -201,6 +201,40 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             taskId: T20,
             user: ACTOR,
         },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:00:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000209",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "FEAT-2", kind: "relates_to" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T01,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:00:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000210",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "FEAT-1", kind: "relates_to" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T02,
+            user: ACTOR,
+        },
     ],
     boards: [
         {
@@ -388,6 +422,14 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             name: "Sprint 15 — Polish",
             projectId: PROJ_GIT_ID,
             state: "draft",
+        },
+    ],
+    taskLinks: [
+        {
+            id: "c0000000-0000-4000-8000-000000000211",
+            kind: "relates_to",
+            sourceTaskId: T01,
+            targetTaskId: T02,
         },
     ],
     tasks: [

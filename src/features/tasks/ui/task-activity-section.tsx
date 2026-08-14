@@ -177,6 +177,14 @@ function asTaskKey(value: unknown): null | { key: string } {
     return typeof key === "string" ? { key } : null;
 }
 
+function asTaskLink(value: unknown): null | { key: string; kind: string } {
+    if (!value || typeof value !== "object") return null;
+    const key = (value as { key?: unknown }).key;
+    const kind = (value as { kind?: unknown }).kind;
+    if (typeof key !== "string" || typeof kind !== "string") return null;
+    return { key, kind };
+}
+
 function displayScalar(value: unknown, emptyLabel: string): string {
     if (value === null || value === undefined || value === "") {
         return emptyLabel;
@@ -287,6 +295,23 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
                 field: fieldLabel,
                 from: asTaskKey(change.from)?.key ?? none,
                 to: asTaskKey(change.to)?.key ?? none,
+            });
+        }
+        case "task_link": {
+            const fromLink = asTaskLink(change.from);
+            const toLink = asTaskLink(change.to);
+            return t("activity.change.fromTo", {
+                field: fieldLabel,
+                from: fromLink
+                    ? `${t(`taskLinks.kind.${fromLink.kind}`, {
+                          defaultValue: fromLink.kind,
+                      })} ${fromLink.key}`
+                    : none,
+                to: toLink
+                    ? `${t(`taskLinks.kind.${toLink.kind}`, {
+                          defaultValue: toLink.kind,
+                      })} ${toLink.key}`
+                    : none,
             });
         }
         case "title": {

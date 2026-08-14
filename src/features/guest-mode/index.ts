@@ -31,5 +31,6 @@ export type {
     GuestSandbox,
     GuestSprint,
     GuestTask,
+    GuestTaskLink,
     GuestTeam,
 } from "./model/types";

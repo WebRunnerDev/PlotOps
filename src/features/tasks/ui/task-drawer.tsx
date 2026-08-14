@@ -50,6 +50,7 @@ import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
 import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
 import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
+import { TaskLinksSection } from "@/features/tasks/ui/task-links-section";
 import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
 import { TaskSubtasksSection } from "@/features/tasks/ui/task-subtasks-section";
 import { Separator } from "@/shared";
@@ -564,6 +565,16 @@ export function TaskDrawer({
                                             canAdd={canAddSubtask}
                                             parent={task}
                                             projectId={projectId}
+                                        />
+                                    ) : undefined}
+
+                                    {isGuestSessionActive ||
+                                    (task.relatedTasks?.length ?? 0) > 0 ? (
+                                        <TaskLinksSection
+                                            boardId={boardId}
+                                            canEdit={canEdit}
+                                            projectId={projectId}
+                                            task={task}
                                         />
                                     ) : undefined}
 

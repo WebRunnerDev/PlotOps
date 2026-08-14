@@ -426,4 +426,228 @@ describe("guest tasks provider happy path", () => {
             getGuestSandbox()!.tasks.some((task) => task.id === parent.id)
         ).toBe(true);
     });
+
+    it("createTaskLinkRecord adds a relates to link both Tasks can see", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Link source"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Link target"
+        );
+
+        const updated = await provider.createTaskLinkRecord(
+            source.id,
+            target.id,
+            "relates_to"
+        );
+
+        expect(updated.relatedTasks).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "relates_to",
+                    otherId: target.id,
+                    otherKey: target.key,
+                }),
+            ])
+        );
+
+        const after = getGuestSandbox()!;
+        expect(
+            after.taskLinks.some(
+                (link) =>
+                    link.kind === "relates_to" &&
+                    link.sourceTaskId === source.id &&
+                    link.targetTaskId === target.id
+            )
+        ).toBe(true);
+
+        const sourceActivity = after.activity.filter(
+            (event) => event.taskId === source.id
+        );
+        const targetActivity = after.activity.filter(
+            (event) => event.taskId === target.id
+        );
+        expect(
+            sourceActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "task_link" &&
+                        (change.to as { key?: string; kind?: string }).kind ===
+                            "relates_to" &&
+                        (change.to as { key?: string }).key === target.key
+                )
+            )
+        ).toBe(true);
+        expect(
+            targetActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "task_link" &&
+                        (change.to as { key?: string; kind?: string }).kind ===
+                            "relates_to" &&
+                        (change.to as { key?: string }).key === source.key
+                )
+            )
+        ).toBe(true);
+        expect(
+            after.notifications.every(
+                (row) => row.taskId !== source.id && row.taskId !== target.id
+            )
+        ).toBe(true);
+
+        const listed = await provider.fetchBoardTasks(board.id);
+        const listedSource = listed.tasks.find((task) => task.id === source.id);
+        expect(
+            listedSource?.relatedTasks?.some(
+                (peer) => peer.otherId === target.id
+            )
+        ).toBe(true);
+    });
+
+    it("deleteTaskLinkRecord removes the relates to link from the session", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Unlink source"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Unlink target"
+        );
+        await provider.createTaskLinkRecord(source.id, target.id, "relates_to");
+        const link = getGuestSandbox()!.taskLinks.find(
+            (item) =>
+                item.sourceTaskId === source.id &&
+                item.targetTaskId === target.id
+        )!;
+
+        await provider.deleteTaskLinkRecord(link.id);
+
+        const after = getGuestSandbox()!;
+        expect(after.taskLinks.some((item) => item.id === link.id)).toBe(false);
+        const listed = await provider.fetchBoardTasks(board.id);
+        expect(
+            listed.tasks
+                .find((task) => task.id === source.id)
+                ?.relatedTasks?.some((peer) => peer.otherId === target.id)
+        ).toBeFalsy();
+        expect(
+            after.activity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "task_link" &&
+                        change.to === null &&
+                        (change.from as { key?: string }).key === target.key
+                )
+            )
+        ).toBe(true);
+    });
+
+    it("createTaskLinkRecord refuses self, Parent↔Subtask, and cross-Project links", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const gitBoard = sandbox.boards.find(
+            (board) => board.projectId === sandbox.projects[0]!.id
+        )!;
+        const otherProjectBoard = sandbox.boards.find(
+            (board) => board.projectId !== gitBoard.projectId
+        )!;
+        const parent = sandbox.tasks.find(
+            (task) =>
+                task.projectId === gitBoard.projectId &&
+                sandbox.tasks.some((child) => child.parentId === task.id)
+        )!;
+        const child = sandbox.tasks.find(
+            (task) => task.parentId === parent.id
+        )!;
+        const foreign = sandbox.tasks.find(
+            (task) => task.projectId === otherProjectBoard.projectId
+        )!;
+
+        await expect(
+            provider.createTaskLinkRecord(parent.id, parent.id, "relates_to")
+        ).rejects.toThrow("A Task cannot relate to itself");
+        await expect(
+            provider.createTaskLinkRecord(parent.id, child.id, "relates_to")
+        ).rejects.toThrow(
+            "A Task Link cannot connect a Parent Task and its own Subtask"
+        );
+        await expect(
+            provider.createTaskLinkRecord(parent.id, foreign.id, "relates_to")
+        ).rejects.toThrow("Task Links must stay inside the same Project");
+    });
+
+    it("createTaskLinkRecord allows relates to across Boards in the same Project", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const extraBoardId = "b0000000-0000-4000-8000-000000000099";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: board.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: extraBoardId,
+                name: "Frontend",
+                position: 1,
+                projectId: board.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Same-project source"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            extraBoardId,
+            board.columns[0]!.id,
+            "Other-board target"
+        );
+
+        const updated = await provider.createTaskLinkRecord(
+            source.id,
+            target.id,
+            "relates_to"
+        );
+        expect(
+            updated.relatedTasks?.some((peer) => peer.otherId === target.id)
+        ).toBe(true);
+    });
 });

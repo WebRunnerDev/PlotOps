@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
     assertParentLinkLegal,
+    assertTaskLinkLegal,
     parentArchiveRefusal,
     parentDeleteRefusal,
     parentDoneRefusal,
     type ParentGateTask,
     parentLinkRefusal,
     subtasksOf,
+    taskLinkRefusal,
     type TaskStructureNode,
 } from "./task-structure";
 
@@ -191,6 +193,84 @@ describe("parentDeleteRefusal — Parent Task cannot be deleted while a Subtask 
         const child = gate("child", { parentId: "parent" });
         expect(parentDeleteRefusal("parent", [parent, child])).toBe(
             "subtasks_exist"
+        );
+    });
+});
+
+describe("taskLinkRefusal — relates to is Project-scoped and not hierarchy", () => {
+    const rootA = node("root-a");
+    const rootB = node("root-b");
+    const child = node("child", { parentId: "root-a" });
+    const otherBoard = node("other-board");
+    const otherProject = node("foreign", { projectId: "proj-b" });
+    const tasks = [rootA, rootB, child, otherBoard, otherProject];
+
+    it("allows relates to between two Tasks in the same Project", () => {
+        expect(
+            taskLinkRefusal("root-a", "root-b", "relates_to", tasks, [])
+        ).toBeNull();
+    });
+
+    it("allows relates to across Boards in the same Project", () => {
+        expect(
+            taskLinkRefusal("root-a", "other-board", "relates_to", tasks, [])
+        ).toBeNull();
+    });
+
+    it("refuses a Task linking to itself", () => {
+        expect(
+            taskLinkRefusal("root-a", "root-a", "relates_to", tasks, [])
+        ).toBe("self");
+    });
+
+    it("refuses a Task Link between a Parent Task and its Subtask", () => {
+        expect(
+            taskLinkRefusal("root-a", "child", "relates_to", tasks, [])
+        ).toBe("parent_subtask");
+        expect(
+            taskLinkRefusal("child", "root-a", "relates_to", tasks, [])
+        ).toBe("parent_subtask");
+    });
+
+    it("refuses a Task Link across Projects", () => {
+        expect(
+            taskLinkRefusal("root-a", "foreign", "relates_to", tasks, [])
+        ).toBe("different_project");
+    });
+
+    it("refuses when either Task is missing", () => {
+        expect(
+            taskLinkRefusal("root-a", "missing", "relates_to", tasks, [])
+        ).toBe("task_missing");
+        expect(
+            taskLinkRefusal("missing", "root-b", "relates_to", tasks, [])
+        ).toBe("task_missing");
+    });
+
+    it("refuses a duplicate relates to pair in either direction", () => {
+        const existing = [
+            {
+                kind: "relates_to" as const,
+                sourceId: "root-a",
+                targetId: "root-b",
+            },
+        ];
+        expect(
+            taskLinkRefusal("root-a", "root-b", "relates_to", tasks, existing)
+        ).toBe("duplicate");
+        expect(
+            taskLinkRefusal("root-b", "root-a", "relates_to", tasks, existing)
+        ).toBe("duplicate");
+    });
+
+    it("throws the Product refusal when asserting an illegal Task Link", () => {
+        expect(() =>
+            assertTaskLinkLegal("root-a", "root-a", "relates_to", tasks, [])
+        ).toThrow("A Task cannot relate to itself");
+        expect(() =>
+            assertTaskLinkLegal("root-a", "child", "relates_to", tasks, [])
+        ).toThrow(
+            "A Task Link cannot connect a Parent Task and its own Subtask"
         );
     });
 });
