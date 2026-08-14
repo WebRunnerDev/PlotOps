@@ -610,15 +610,12 @@ export function TaskDrawer({
                                             />
                                         ) : undefined}
 
-                                        {isGuestSessionActive ||
-                                        (task.relatedTasks?.length ?? 0) > 0 ? (
-                                            <TaskLinksSection
-                                                boardId={boardId}
-                                                canEdit={canEdit}
-                                                projectId={projectId}
-                                                task={task}
-                                            />
-                                        ) : undefined}
+                                        <TaskLinksSection
+                                            boardId={boardId}
+                                            canEdit={canEdit}
+                                            projectId={projectId}
+                                            task={task}
+                                        />
 
                                         <TaskCommentsSection
                                             projectId={projectId}
