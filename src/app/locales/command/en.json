@@ -9,6 +9,8 @@
     "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
     "empty": "No results found.",
+    "goToBlockingTask": "Go to blocking Task {{key}}",
+    "goToParent": "Go to Parent",
     "guestCreateReminder": "Demo account — changes may be reset on the shared demo.",
     "includeArchived": "Include archived",
     "members": "Members",

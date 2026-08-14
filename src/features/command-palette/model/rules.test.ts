@@ -13,6 +13,7 @@ import {
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
+    resolveJumpTaskIntents,
     resolveNavigateIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
@@ -726,5 +727,167 @@ describe("Command Palette rules seam — intents", () => {
 
     it("Toggle theme declares theme intent", () => {
         expect(toggleThemeIntent()).toEqual({ type: "toggle-theme" });
+    });
+});
+
+describe("Command Palette rules seam — jump to Parent and blockers", () => {
+    const parent = {
+        boardId: "board-parent",
+        id: "parent-1",
+        key: "TASK-1",
+        title: "Parent",
+    };
+    const blocker = {
+        boardId: "board-b",
+        id: "blocker-1",
+        key: "TASK-9",
+        title: "Blocker",
+    };
+    const doneBlocker = {
+        boardId: "board-b",
+        id: "blocker-done",
+        isDone: true,
+        key: "TASK-10",
+        title: "Done blocker",
+    };
+    const archivedBlocker = {
+        archivedAt: "2026-01-01T00:00:00Z",
+        boardId: "board-b",
+        id: "blocker-archived",
+        key: "TASK-11",
+        title: "Archived blocker",
+    };
+    const subtask = {
+        boardId: "board-child",
+        id: "child-1",
+        key: "TASK-2",
+        parentId: "parent-1",
+        relatedTasks: [
+            {
+                direction: "incoming" as const,
+                kind: "blocks" as const,
+                otherId: "blocker-1",
+            },
+            {
+                direction: "incoming" as const,
+                kind: "blocks" as const,
+                otherId: "blocker-done",
+            },
+            {
+                direction: "incoming" as const,
+                kind: "blocks" as const,
+                otherId: "blocker-archived",
+            },
+            {
+                direction: "outgoing" as const,
+                kind: "blocks" as const,
+                otherId: "downstream",
+            },
+            {
+                direction: "incoming" as const,
+                kind: "relates_to" as const,
+                otherId: "related-1",
+            },
+        ],
+        title: "Child",
+    };
+    const catalog = [
+        parent,
+        blocker,
+        doneBlocker,
+        archivedBlocker,
+        subtask,
+        {
+            boardId: "board-b",
+            id: "downstream",
+            key: "TASK-20",
+            title: "Downstream",
+        },
+        {
+            boardId: "board-b",
+            id: "related-1",
+            key: "TASK-21",
+            title: "Related",
+        },
+    ];
+
+    it("offers no jumps without a focused Task", () => {
+        expect(resolveJumpTaskIntents(null, catalog)).toEqual([]);
+        expect(resolveJumpTaskIntents(undefined, catalog)).toEqual([]);
+    });
+
+    it("offers Go to Parent as select-task when the focused Task is a Subtask", () => {
+        const jumps = resolveJumpTaskIntents("child-1", catalog);
+        const parentJump = jumps.find((jump) => jump.kind === "parent");
+
+        expect(parentJump).toEqual({
+            intent: {
+                boardId: "board-parent",
+                taskId: "parent-1",
+                type: "select-task",
+            },
+            kind: "parent",
+            targetKey: "TASK-1",
+        });
+    });
+
+    it("omits Go to Parent when the focused Task is not a Subtask", () => {
+        expect(
+            resolveJumpTaskIntents("parent-1", catalog).some(
+                (jump) => jump.kind === "parent"
+            )
+        ).toBe(false);
+    });
+
+    it("omits Go to Parent when the Parent Task is not in the catalog", () => {
+        expect(
+            resolveJumpTaskIntents("child-1", [subtask]).some(
+                (jump) => jump.kind === "parent"
+            )
+        ).toBe(false);
+    });
+
+    it("offers one select-task jump per open blocking Task", () => {
+        const blockerJumps = resolveJumpTaskIntents("child-1", catalog).filter(
+            (jump) => jump.kind === "blocker"
+        );
+
+        expect(blockerJumps).toEqual([
+            {
+                intent: {
+                    boardId: "board-b",
+                    taskId: "blocker-1",
+                    type: "select-task",
+                },
+                kind: "blocker",
+                targetKey: "TASK-9",
+            },
+        ]);
+    });
+
+    it("omits blocker jumps when the focused Task has no open blocker", () => {
+        expect(
+            resolveJumpTaskIntents("child-1", [
+                { ...subtask, hasOpenBlocker: false },
+                blocker,
+            ]).some((jump) => jump.kind === "blocker")
+        ).toBe(false);
+    });
+
+    it("omits Done, archived, outgoing blocks, and relates-to peers", () => {
+        const ids = resolveJumpTaskIntents("child-1", catalog).map(
+            (jump) => jump.intent.taskId
+        );
+
+        expect(ids).not.toContain("blocker-done");
+        expect(ids).not.toContain("blocker-archived");
+        expect(ids).not.toContain("downstream");
+        expect(ids).not.toContain("related-1");
+    });
+
+    it("jump actions are select-task only (no create Subtask or add link)", () => {
+        for (const jump of resolveJumpTaskIntents("child-1", catalog)) {
+            expect(jump.intent.type).toBe("select-task");
+        }
     });
 });

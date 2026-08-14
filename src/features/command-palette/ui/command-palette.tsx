@@ -1,6 +1,8 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
+    BanIcon,
     BugIcon,
+    CornerUpLeftIcon,
     FolderIcon,
     KanbanIcon,
     LayoutListIcon,
@@ -32,6 +34,7 @@ import {
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
+    resolveJumpTaskIntents,
     resolveNavigateIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
@@ -116,7 +119,13 @@ export function CommandPalette() {
         Boolean(projectId),
         { includeArchived }
     );
+    const { data: jumpTasks = [] } = useProjectTasks(
+        projectId ?? "",
+        Boolean(projectId),
+        { includeArchived: true }
+    );
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const isOpen = useCommandPaletteStore((state) => state.isOpen);
     const close = useCommandPaletteStore((state) => state.close);
     const open = useCommandPaletteStore((state) => state.open);
@@ -166,11 +175,24 @@ export function CommandPalette() {
         key: task.key,
         title: task.title,
     }));
+    const jumpCatalog = jumpTasks.map((task) => ({
+        archivedAt: task.archivedAt,
+        boardId: task.boardId,
+        hasOpenBlocker: task.hasOpenBlocker,
+        id: task.id,
+        key: task.key,
+        parentId: task.parentId,
+        relatedTasks: task.relatedTasks,
+    }));
     const taskHits = resolveCommandPaletteTaskHits(
         routeContext,
         paletteTasks,
         query,
         { includeArchived }
+    );
+    const jumpIntents = resolveJumpTaskIntents(selectedTaskId, jumpCatalog);
+    const visibleJumpIntents = jumpIntents.filter((jump) =>
+        matchesJumpQuery(jump.kind, jump.targetKey, normalizedQuery, t)
     );
     const paletteMembers = buildPaletteMembers(
         ownerProfile,
@@ -200,7 +222,8 @@ export function CommandPalette() {
     const showActions =
         showTheme ||
         createIntents.length > 0 ||
-        visibleNavigateIntents.length > 0;
+        visibleNavigateIntents.length > 0 ||
+        visibleJumpIntents.length > 0;
     const createColumnGate = resolveCreateTaskColumnGate(
         columnsReady,
         columns[0]?.id,
@@ -271,6 +294,21 @@ export function CommandPalette() {
             .finally(() => {
                 setIsCreating(false);
             });
+    }
+
+    function runSelectTask(
+        intent: Extract<CommandPaletteIntent, { type: "select-task" }>
+    ) {
+        if (!projectId) return;
+        selectTask(intent.taskId);
+        void navigate({
+            params: {
+                boardId: intent.boardId,
+                projectId,
+            },
+            to: "/projects/$projectId/boards/$boardId",
+        });
+        close();
     }
 
     function runNavigate(
@@ -388,6 +426,28 @@ export function CommandPalette() {
                                     </span>
                                 </CommandItem>
                             ))}
+                            {visibleJumpIntents.map((jump) => (
+                                <CommandItem
+                                    key={`${jump.kind}-${jump.intent.taskId}`}
+                                    onSelect={() => {
+                                        runSelectTask(jump.intent);
+                                    }}
+                                    value={`jump-${jump.kind}-${jump.intent.taskId}`}
+                                >
+                                    {jump.kind === "parent" ? (
+                                        <CornerUpLeftIcon />
+                                    ) : (
+                                        <BanIcon />
+                                    )}
+                                    <span>
+                                        {jump.kind === "parent"
+                                            ? t("command:goToParent")
+                                            : t("command:goToBlockingTask", {
+                                                  key: jump.targetKey,
+                                              })}
+                                    </span>
+                                </CommandItem>
+                            ))}
                             {createIntents.map((intent) => (
                                 <CommandItem
                                     disabled={
@@ -417,17 +477,7 @@ export function CommandPalette() {
                                 <CommandItem
                                     key={task.id}
                                     onSelect={() => {
-                                        if (!projectId) return;
-                                        const intent = selectTaskIntent(task);
-                                        selectTask(intent.taskId);
-                                        void navigate({
-                                            params: {
-                                                boardId: intent.boardId,
-                                                projectId,
-                                            },
-                                            to: "/projects/$projectId/boards/$boardId",
-                                        });
-                                        close();
+                                        runSelectTask(selectTaskIntent(task));
                                     }}
                                     value={`task-${task.id}`}
                                 >
@@ -568,6 +618,41 @@ function createTaskTypeIcon(taskType: CommandPaletteTaskType) {
     if (taskType === "bug") return <BugIcon />;
     if (taskType === "feature") return <SparklesIcon />;
     return <PlusIcon />;
+}
+
+function matchesJumpQuery(
+    kind: "blocker" | "parent",
+    targetKey: string,
+    normalizedQuery: string,
+    translate: (key: string, options?: Record<string, string>) => string
+): boolean {
+    if (normalizedQuery.length === 0) {
+        return true;
+    }
+
+    const label =
+        kind === "parent"
+            ? translate("command:goToParent").toLowerCase()
+            : translate("command:goToBlockingTask", {
+                  key: targetKey,
+              }).toLowerCase();
+    if (
+        label.includes(normalizedQuery) ||
+        targetKey.toLowerCase().includes(normalizedQuery)
+    ) {
+        return true;
+    }
+
+    const keywords =
+        kind === "parent"
+            ? ["parent", "родитель", "subtask"]
+            : ["block", "blocker", "blocking", "блокер", "блокир"];
+
+    return keywords.some(
+        (keyword) =>
+            keyword.includes(normalizedQuery) ||
+            normalizedQuery.includes(keyword)
+    );
 }
 
 function matchesNavigateQuery(

@@ -100,3 +100,19 @@ describe("Command palette Search Members seam", () => {
         expect(source).toMatch(/visibility\.searchMembers/);
     });
 });
+
+describe("Command palette jump Parent and blockers seam", () => {
+    it("wires resolveJumpTaskIntents to select-task for the focused Task", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/resolveJumpTaskIntents/);
+        expect(source).toMatch(/selectedTaskId/);
+        expect(source).toMatch(/includeArchived:\s*true/);
+        expect(source).toMatch(/hasOpenBlocker/);
+        expect(source).toMatch(/command:goToParent/);
+        expect(source).toMatch(/command:goToBlockingTask/);
+        expect(source).not.toMatch(/createSubtask/);
+        expect(source).not.toMatch(/createTaskLink/);
+        expect(source).not.toMatch(/addLink/);
+    });
+});

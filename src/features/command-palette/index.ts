@@ -8,6 +8,7 @@ export {
     resolveCommandPaletteTaskHits,
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
+    resolveJumpTaskIntents,
     resolveNavigateIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
@@ -15,7 +16,10 @@ export {
     toggleThemeIntent,
 } from "./model/rules";
 export type {
+    CommandPaletteFocusedTask,
     CommandPaletteIntent,
+    CommandPaletteJumpAction,
+    CommandPaletteJumpKind,
     CommandPaletteMember,
     CommandPaletteNavigateSection,
     CommandPaletteProject,
