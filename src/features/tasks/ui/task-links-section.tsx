@@ -1,4 +1,6 @@
-import { Plus, XIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+import { ArrowRight, Ban, Link2, Plus, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -16,6 +18,8 @@ import {
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { cn } from "@/shared/lib/utils";
+import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
     Combobox,
@@ -33,6 +37,8 @@ import {
 } from "@/shared/shadcn/ui/select";
 
 type AddKind = "blocked_by" | "blocks" | "relates_to";
+
+type LinkTone = "blockedBy" | "blocks" | "relates";
 
 type TaskLinksSectionProperties = {
     boardId: string;
@@ -230,99 +236,160 @@ export function TaskLinksSection({
                 </div>
             ) : undefined}
 
+            {peers.length === 0 && !open ? (
+                <p className="text-ui text-muted-foreground">
+                    {t("taskLinks.empty")}
+                </p>
+            ) : undefined}
+
             <LinkGroup
                 canEdit={canEdit}
-                emptyKey="taskLinks.emptyBlockedBy"
                 onOpen={selectTask}
                 onRemove={removeLink}
                 peers={blockedBy}
                 title={t("taskLinks.blockedBy")}
+                tone="blockedBy"
             />
             <LinkGroup
                 canEdit={canEdit}
-                emptyKey="taskLinks.emptyBlocks"
                 onOpen={selectTask}
                 onRemove={removeLink}
                 peers={blocks}
                 title={t("taskLinks.blocks")}
+                tone="blocks"
             />
             <LinkGroup
                 canEdit={canEdit}
-                emptyKey="taskLinks.empty"
                 onOpen={selectTask}
                 onRemove={removeLink}
                 peers={related}
                 title={t("taskLinks.relatesTo")}
+                tone="relates"
             />
         </section>
     );
 }
 
+const LINK_TONE: Record<
+    LinkTone,
+    {
+        accent: string;
+        header: string;
+        icon: LucideIcon;
+        iconClass: string;
+        row: string;
+    }
+> = {
+    blockedBy: {
+        accent: "before:bg-destructive",
+        header: "text-destructive",
+        icon: Ban,
+        iconClass: "text-destructive",
+        row: "border-destructive/25 bg-destructive/5 hover:bg-destructive/10",
+    },
+    blocks: {
+        accent: "before:bg-amber-500",
+        header: "text-amber-600 dark:text-amber-400",
+        icon: ArrowRight,
+        iconClass: "text-amber-600 dark:text-amber-400",
+        row: "border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10",
+    },
+    relates: {
+        accent: "before:bg-muted-foreground",
+        header: "text-foreground",
+        icon: Link2,
+        iconClass: "text-muted-foreground",
+        row: "border-border bg-muted/30 hover:bg-muted/60",
+    },
+};
+
 function LinkGroup({
     canEdit,
-    emptyKey,
     onOpen,
     onRemove,
     peers,
     title,
+    tone,
 }: {
     canEdit: boolean;
-    emptyKey: string;
     onOpen: (taskId: string) => void;
     onRemove: (linkId: string, otherKey: string) => Promise<void>;
     peers: TaskLinkPeer[];
     title: string;
+    tone: LinkTone;
 }) {
     const { t } = useTranslation("board");
+    const style = LINK_TONE[tone];
+    const Icon = style.icon;
+
+    if (peers.length === 0) return;
 
     return (
-        <div className="flex flex-col gap-2">
-            <h4 className="text-meta font-medium text-muted-foreground">
-                {title}
-            </h4>
-            {peers.length === 0 ? (
-                <p className="text-ui text-muted-foreground">{t(emptyKey)}</p>
-            ) : (
-                <ul className="flex flex-col gap-1">
-                    {peers.map((peer) => (
-                        <li
-                            className="flex min-w-0 items-center gap-1"
-                            key={peer.id}
+        <div className="flex flex-col gap-1.5">
+            <span
+                className={cn(
+                    "flex items-center gap-1.5 text-meta font-medium",
+                    style.header
+                )}
+            >
+                <Icon
+                    aria-hidden
+                    className={cn("size-3.5 shrink-0", style.iconClass)}
+                />
+                <span>{title}</span>
+                <Badge
+                    className="rounded-sm px-1.5 font-mono"
+                    variant="secondary"
+                >
+                    {peers.length}
+                </Badge>
+            </span>
+            <ul className="flex flex-col gap-1">
+                {peers.map((peer) => (
+                    <li
+                        className="flex min-w-0 items-center gap-1"
+                        key={peer.id}
+                    >
+                        <button
+                            className={cn(
+                                "relative flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-none border px-2 py-1.5 pl-3 text-left outline-none before:absolute before:inset-y-0 before:left-0 before:w-0.5 focus-visible:ring-2 focus-visible:ring-ring",
+                                style.accent,
+                                style.row
+                            )}
+                            onClick={() => {
+                                onOpen(peer.otherId);
+                            }}
+                            type="button"
                         >
-                            <button
-                                className="flex min-w-0 flex-1 items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-                                onClick={() => {
-                                    onOpen(peer.otherId);
-                                }}
-                                type="button"
+                            <Badge
+                                className="max-w-24 shrink-0 truncate rounded-sm font-mono"
+                                variant="outline"
                             >
-                                <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                    {peer.otherKey}
-                                </span>
-                                <span className="min-w-0 truncate text-ui">
-                                    {peer.otherTitle}
-                                </span>
-                            </button>
-                            {canEdit ? (
-                                <Button
-                                    aria-label={t("taskLinks.remove", {
-                                        key: peer.otherKey,
-                                    })}
-                                    className="size-8 shrink-0"
-                                    onClick={() => {
-                                        void onRemove(peer.id, peer.otherKey);
-                                    }}
-                                    size="icon"
-                                    type="button"
-                                    variant="ghost"
-                                >
-                                    <XIcon className="size-4" />
-                                </Button>
-                            ) : undefined}
-                        </li>
-                    ))}
-                </ul>
-            )}
+                                {peer.otherKey}
+                            </Badge>
+                            <span className="min-w-0 truncate text-ui">
+                                {peer.otherTitle}
+                            </span>
+                        </button>
+                        {canEdit ? (
+                            <Button
+                                aria-label={t("taskLinks.remove", {
+                                    key: peer.otherKey,
+                                })}
+                                className="size-8 shrink-0"
+                                onClick={() => {
+                                    void onRemove(peer.id, peer.otherKey);
+                                }}
+                                size="icon"
+                                type="button"
+                                variant="ghost"
+                            >
+                                <XIcon className="size-4" />
+                            </Button>
+                        ) : undefined}
+                    </li>
+                ))}
+            </ul>
         </div>
     );
 }
