@@ -50,6 +50,20 @@ describe("tasks API Subtask hierarchy RPC seam", () => {
         expect(source).toMatch(/rpc\(\s*["']clear_task_parent["']/);
         expect(source).not.toMatch(/\.insert\([\s\S]{0,200}parent_id:/);
     });
+
+    it("create_subtask inherits the Parent Task's draft or active Sprint", () => {
+        const migration = readFileSync(
+            path.join(
+                dirname,
+                "../../../../supabase/migrations/20260814103957_create_subtask_inherit_parent_sprint.sql"
+            ),
+            "utf8"
+        );
+
+        expect(migration).toMatch(/v_sprint_id := p_sprint_id/);
+        expect(migration).toMatch(/v_parent\.sprint_id/);
+        expect(migration).toMatch(/s\.state in \('draft', 'active'\)/);
+    });
 });
 
 describe("tasks API Task Link relates to RPC seam", () => {

@@ -289,6 +289,57 @@ describe("guest tasks provider happy path", () => {
         ).toBe(true);
     });
 
+    it("createSubtaskRecord joins the Parent Task's live Sprint when sprintId is omitted", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find(
+            (task) => !task.parentId && task.sprintId
+        )!;
+        expect(parent.sprintId).toBeTruthy();
+
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Sprint child"
+        );
+
+        expect(created.sprintId).toBe(parent.sprintId);
+        expect(created.sprintPosition).toBeGreaterThanOrEqual(0);
+    });
+
+    it("restoreTaskRecord joins a Subtask to the Parent Task's live Sprint", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find(
+            (task) =>
+                !task.parentId &&
+                task.sprintId &&
+                sandbox.tasks.some((child) => child.parentId === task.id)
+        )!;
+        const child = sandbox.tasks.find(
+            (task) => task.parentId === parent.id && !task.sprintId
+        )!;
+        expect(parent.sprintId).toBeTruthy();
+        expect(child.archivedAt).toBeUndefined();
+
+        const provider = resolveTasksProvider(true);
+        await provider.archiveTaskRecord(child.id);
+        await provider.restoreTaskRecord(child.id, child.boardId);
+
+        const restored = getGuestSandbox()!.tasks.find(
+            (task) => task.id === child.id
+        );
+        expect(restored?.archivedAt).toBeUndefined();
+        expect(restored?.sprintId).toBe(parent.sprintId);
+        expect(restored?.sprintPosition).toBeGreaterThanOrEqual(0);
+    });
+
     it("createSubtaskRecord refuses making a Subtask into a Parent Task", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");

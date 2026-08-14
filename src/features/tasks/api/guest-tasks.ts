@@ -35,6 +35,7 @@ import {
     DEFAULT_TASK_PRIORITY,
     TASK_TITLE_MAX_LENGTH,
 } from "@/features/tasks/model/constants";
+import { resolveRestoreSubtaskSprintId } from "@/features/tasks/model/resolve-restore-subtask-sprint";
 import { resolveRestoreTaskStatus } from "@/features/tasks/model/resolve-restore-task-status";
 
 const ACTOR: GuestPerson = {
@@ -473,10 +474,23 @@ export const guestTasksProvider: TasksProvider = {
             );
             const maxPosition = maxPositionAmong(columnTasks);
 
+            const parentSprint = parent.sprintId
+                ? sandbox.sprints.find(
+                      (sprint) => sprint.id === parent.sprintId
+                  )
+                : undefined;
+            const resolvedSprintId =
+                sprintId ??
+                (parentSprint?.state === "draft" ||
+                parentSprint?.state === "active"
+                    ? parent.sprintId
+                    : undefined);
+
             let sprintPosition: number | undefined;
-            if (sprintId) {
+            if (resolvedSprintId) {
                 const sprintTasks = sandbox.tasks.filter(
-                    (task) => task.sprintId === sprintId && isActiveTask(task)
+                    (task) =>
+                        task.sprintId === resolvedSprintId && isActiveTask(task)
                 );
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
@@ -491,7 +505,9 @@ export const guestTasksProvider: TasksProvider = {
                 position: maxPosition + 1,
                 priority: DEFAULT_TASK_PRIORITY,
                 projectId: parent.projectId,
-                ...(sprintId ? { sprintId, sprintPosition } : {}),
+                ...(resolvedSprintId
+                    ? { sprintId: resolvedSprintId, sprintPosition }
+                    : {}),
                 status,
                 title: normalizedTitle,
                 type: resolvedType,
@@ -816,6 +832,32 @@ export const guestTasksProvider: TasksProvider = {
             task.status = status;
             task.position = maxPositionAmong(columnTasks) + 1;
             delete task.archivedAt;
+
+            const parent = task.parentId
+                ? sandbox.tasks.find((item) => item.id === task.parentId)
+                : undefined;
+            const parentSprint = parent?.sprintId
+                ? sandbox.sprints.find(
+                      (sprint) => sprint.id === parent.sprintId
+                  )
+                : undefined;
+            const restoredSprintId = resolveRestoreSubtaskSprintId({
+                parentId: task.parentId,
+                parentSprintId: parent?.sprintId,
+                parentSprintIsLive:
+                    parentSprint?.state === "draft" ||
+                    parentSprint?.state === "active",
+            });
+            if (restoredSprintId) {
+                const sprintTasks = sandbox.tasks.filter(
+                    (item) =>
+                        item.sprintId === restoredSprintId &&
+                        item.id !== taskId &&
+                        isActiveTask(item)
+                );
+                task.sprintId = restoredSprintId;
+                task.sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
+            }
         });
     },
 
