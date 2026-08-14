@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { DatabaseTask } from "./board-mappers";
 
-import { mapDatabaseTask } from "./board-mappers";
+import {
+    mapDatabaseTask,
+    parentIdsMissingFromRows,
+    withResolvedParentKeys,
+} from "./board-mappers";
 
 function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
     return {
@@ -66,6 +70,38 @@ describe("mapDatabaseTask", () => {
         expect(task.parentId).toBe("parent-1");
         expect(task.parentKey).toBe("FEAT-1");
         expect(mapDatabaseTask(databaseTask()).parentId).toBeUndefined();
+    });
+
+    it("resolves Parent keys from sibling rows without a PostgREST self-embed", () => {
+        const parent = databaseTask({
+            id: "parent-1",
+            task_key: "FEAT-1",
+        });
+        const child = databaseTask({
+            id: "child-1",
+            parent_id: "parent-1",
+            task_key: "FEAT-2",
+        });
+        const otherBoardParent = databaseTask({
+            id: "child-2",
+            parent_id: "parent-elsewhere",
+            task_key: "FEAT-3",
+        });
+
+        expect(parentIdsMissingFromRows([parent, child])).toEqual([]);
+        expect(parentIdsMissingFromRows([otherBoardParent])).toEqual([
+            "parent-elsewhere",
+        ]);
+
+        const mapped = withResolvedParentKeys([parent, child]).map(
+            mapDatabaseTask
+        );
+        expect(mapped[1]?.parentKey).toBe("FEAT-1");
+
+        const [mappedOther] = withResolvedParentKeys([otherBoardParent], [
+            { id: "parent-elsewhere", task_key: "OPS-9" },
+        ]).map(mapDatabaseTask);
+        expect(mappedOther.parentKey).toBe("OPS-9");
     });
 
     it("maps relates to peers from outgoing and incoming Task Links", () => {
