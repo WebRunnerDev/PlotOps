@@ -235,4 +235,559 @@ describe("guest tasks provider happy path", () => {
             )
         ).toBe(true);
     });
+
+    it("createSubtaskRecord creates a full Task on the Parent Task's Board", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const provider = resolveTasksProvider(true);
+        const firstColumn = sandbox.boards.find(
+            (board) => board.id === parent.boardId
+        )!.columns[0]!;
+
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Guest Subtask"
+        );
+
+        expect(created.parentId).toBe(parent.id);
+        expect(created.parentKey).toBe(parent.key);
+        expect(created.boardId).toBe(parent.boardId);
+        expect(created.status).toBe(firstColumn.id);
+        expect(created.title).toBe("Guest Subtask");
+
+        const after = getGuestSandbox()!;
+        const stored = after.tasks.find((task) => task.id === created.id);
+        expect(stored?.parentId).toBe(parent.id);
+
+        const parentActivity = after.activity.filter(
+            (event) => event.taskId === parent.id
+        );
+        const childActivity = after.activity.filter(
+            (event) => event.taskId === created.id
+        );
+        expect(
+            parentActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "subtask" &&
+                        (change.to as { key?: string }).key === created.key
+                )
+            )
+        ).toBe(true);
+        expect(
+            childActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "parent" &&
+                        (change.to as { key?: string }).key === parent.key
+                )
+            )
+        ).toBe(true);
+    });
+
+    it("createSubtaskRecord joins the Parent Task's live Sprint when sprintId is omitted", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find(
+            (task) => !task.parentId && task.sprintId
+        )!;
+        expect(parent.sprintId).toBeTruthy();
+
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Sprint child"
+        );
+
+        expect(created.sprintId).toBe(parent.sprintId);
+        expect(created.sprintPosition).toBeGreaterThanOrEqual(0);
+    });
+
+    it("restoreTaskRecord joins a Subtask to the Parent Task's live Sprint", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find(
+            (task) =>
+                !task.parentId &&
+                task.sprintId &&
+                sandbox.tasks.some((child) => child.parentId === task.id)
+        )!;
+        const child = sandbox.tasks.find(
+            (task) => task.parentId === parent.id && !task.sprintId
+        )!;
+        expect(parent.sprintId).toBeTruthy();
+        expect(child.archivedAt).toBeUndefined();
+
+        const provider = resolveTasksProvider(true);
+        await provider.archiveTaskRecord(child.id);
+        await provider.restoreTaskRecord(child.id, child.boardId);
+
+        const restored = getGuestSandbox()!.tasks.find(
+            (task) => task.id === child.id
+        );
+        expect(restored?.archivedAt).toBeUndefined();
+        expect(restored?.sprintId).toBe(parent.sprintId);
+        expect(restored?.sprintPosition).toBeGreaterThanOrEqual(0);
+    });
+
+    it("createSubtaskRecord refuses making a Subtask into a Parent Task", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Nested attempt parent"
+        );
+
+        await expect(
+            provider.createSubtaskRecord(child.id, "Nested child")
+        ).rejects.toThrow("A Subtask cannot have Subtasks");
+    });
+
+    it("clearTaskParent turns the Subtask into a root Task without deleting it", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Soon a root"
+        );
+
+        const cleared = await provider.clearTaskParent(created.id);
+        expect(cleared.parentId).toBeUndefined();
+        expect(cleared.parentKey).toBeUndefined();
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === created.id)
+        ).toBe(true);
+
+        vi.resetModules();
+        const refreshed = await import("@/features/guest-mode");
+        const { resolveTasksProvider: resolveAgain } =
+            await import("@/features/tasks/api/resolve-tasks-provider");
+        const after = refreshed.getGuestSandbox()!;
+        const task = after.tasks.find((item) => item.id === created.id);
+        expect(task?.parentId).toBeUndefined();
+
+        const boardCache = await resolveAgain(true).fetchBoardTasks(
+            parent.boardId
+        );
+        const listed = boardCache.tasks.find((item) => item.id === created.id);
+        expect(listed?.parentId).toBeUndefined();
+        expect(listed?.title).toBe("Soon a root");
+    });
+
+    it("refuses moving a Parent Task into Done while a Subtask is not Done", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) =>
+            sandbox.tasks.some(
+                (child) =>
+                    child.parentId === task.id &&
+                    child.status !== "done" &&
+                    child.archivedAt == undefined
+            )
+        )!;
+        const board = sandbox.boards.find(
+            (item) => item.id === parent.boardId
+        )!;
+        const doneColumn = board.columns.find((column) => column.isDone)!;
+        const provider = resolveTasksProvider(true);
+
+        await expect(
+            provider.persistTaskMoves(parent.boardId, [
+                { id: parent.id, position: 0, status: doneColumn.id },
+            ])
+        ).rejects.toThrow(
+            "A Parent Task cannot enter Done while Subtasks are not Done"
+        );
+
+        expect(
+            getGuestSandbox()!.tasks.find((task) => task.id === parent.id)
+                ?.status
+        ).toBe(parent.status);
+    });
+
+    it("refuses archive of a Parent Task while a Subtask is still active", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) =>
+            sandbox.tasks.some(
+                (child) =>
+                    child.parentId === task.id && child.archivedAt == undefined
+            )
+        )!;
+        const provider = resolveTasksProvider(true);
+
+        await expect(provider.archiveTaskRecords([parent.id])).rejects.toThrow(
+            "A Parent Task cannot be archived while Subtasks are still active"
+        );
+
+        expect(
+            getGuestSandbox()!.tasks.find((task) => task.id === parent.id)
+                ?.archivedAt
+        ).toBeUndefined();
+    });
+
+    it("refuses hard-delete of a Parent Task while a Subtask exists", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) =>
+            sandbox.tasks.some((child) => child.parentId === task.id)
+        )!;
+        const provider = resolveTasksProvider(true);
+
+        for (const child of sandbox.tasks.filter(
+            (task) => task.parentId === parent.id
+        )) {
+            await provider.archiveTaskRecord(child.id);
+        }
+
+        await expect(provider.deleteTaskRecord(parent.id)).rejects.toThrow(
+            "A Parent Task cannot be deleted while Subtasks exist"
+        );
+
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === parent.id)
+        ).toBe(true);
+    });
+
+    it("createTaskLinkRecord adds a relates to link both Tasks can see", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Link source"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Link target"
+        );
+
+        const updated = await provider.createTaskLinkRecord(
+            source.id,
+            target.id,
+            "relates_to"
+        );
+
+        expect(updated.relatedTasks).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "relates_to",
+                    otherId: target.id,
+                    otherKey: target.key,
+                }),
+            ])
+        );
+
+        const after = getGuestSandbox()!;
+        expect(
+            after.taskLinks.some(
+                (link) =>
+                    link.kind === "relates_to" &&
+                    link.sourceTaskId === source.id &&
+                    link.targetTaskId === target.id
+            )
+        ).toBe(true);
+
+        const sourceActivity = after.activity.filter(
+            (event) => event.taskId === source.id
+        );
+        const targetActivity = after.activity.filter(
+            (event) => event.taskId === target.id
+        );
+        expect(
+            sourceActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "task_link" &&
+                        (change.to as { key?: string; kind?: string }).kind ===
+                            "relates_to" &&
+                        (change.to as { key?: string }).key === target.key
+                )
+            )
+        ).toBe(true);
+        expect(
+            targetActivity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "task_link" &&
+                        (change.to as { key?: string; kind?: string }).kind ===
+                            "relates_to" &&
+                        (change.to as { key?: string }).key === source.key
+                )
+            )
+        ).toBe(true);
+        expect(
+            after.notifications.every(
+                (row) => row.taskId !== source.id && row.taskId !== target.id
+            )
+        ).toBe(true);
+
+        const listed = await provider.fetchBoardTasks(board.id);
+        const listedSource = listed.tasks.find((task) => task.id === source.id);
+        expect(
+            listedSource?.relatedTasks?.some(
+                (peer) => peer.otherId === target.id
+            )
+        ).toBe(true);
+    });
+
+    it("deleteTaskLinkRecord removes the relates to link from the session", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Unlink source"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Unlink target"
+        );
+        await provider.createTaskLinkRecord(source.id, target.id, "relates_to");
+        const link = getGuestSandbox()!.taskLinks.find(
+            (item) =>
+                item.sourceTaskId === source.id &&
+                item.targetTaskId === target.id
+        )!;
+
+        await provider.deleteTaskLinkRecord(link.id);
+
+        const after = getGuestSandbox()!;
+        expect(after.taskLinks.some((item) => item.id === link.id)).toBe(false);
+        const listed = await provider.fetchBoardTasks(board.id);
+        expect(
+            listed.tasks
+                .find((task) => task.id === source.id)
+                ?.relatedTasks?.some((peer) => peer.otherId === target.id)
+        ).toBeFalsy();
+        expect(
+            after.activity.some((event) =>
+                event.metadata.changes.some(
+                    (change) =>
+                        change.field === "task_link" &&
+                        change.to === null &&
+                        (change.from as { key?: string }).key === target.key
+                )
+            )
+        ).toBe(true);
+    });
+
+    it("createTaskLinkRecord refuses self, Parent↔Subtask, and cross-Project links", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const gitBoard = sandbox.boards.find(
+            (board) => board.projectId === sandbox.projects[0]!.id
+        )!;
+        const otherProjectBoard = sandbox.boards.find(
+            (board) => board.projectId !== gitBoard.projectId
+        )!;
+        const parent = sandbox.tasks.find(
+            (task) =>
+                task.projectId === gitBoard.projectId &&
+                sandbox.tasks.some((child) => child.parentId === task.id)
+        )!;
+        const child = sandbox.tasks.find(
+            (task) => task.parentId === parent.id
+        )!;
+        const foreign = sandbox.tasks.find(
+            (task) => task.projectId === otherProjectBoard.projectId
+        )!;
+
+        await expect(
+            provider.createTaskLinkRecord(parent.id, parent.id, "relates_to")
+        ).rejects.toThrow("A Task cannot relate to itself");
+        await expect(
+            provider.createTaskLinkRecord(parent.id, child.id, "relates_to")
+        ).rejects.toThrow(
+            "A Task Link cannot connect a Parent Task and its own Subtask"
+        );
+        await expect(
+            provider.createTaskLinkRecord(parent.id, foreign.id, "relates_to")
+        ).rejects.toThrow("Task Links must stay inside the same Project");
+    });
+
+    it("createTaskLinkRecord allows relates to across Boards in the same Project", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const extraBoardId = "b0000000-0000-4000-8000-000000000099";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: board.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: extraBoardId,
+                name: "Frontend",
+                position: 1,
+                projectId: board.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Same-project source"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            extraBoardId,
+            board.columns[0]!.id,
+            "Other-board target"
+        );
+
+        const updated = await provider.createTaskLinkRecord(
+            source.id,
+            target.id,
+            "relates_to"
+        );
+        expect(
+            updated.relatedTasks?.some((peer) => peer.otherId === target.id)
+        ).toBe(true);
+    });
+
+    it("createTaskLinkRecord adds a blocks link and refuses a cycle", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Blocker"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Blocked"
+        );
+
+        const updated = await provider.createTaskLinkRecord(
+            source.id,
+            target.id,
+            "blocks"
+        );
+        expect(
+            updated.relatedTasks?.some(
+                (peer) =>
+                    peer.kind === "blocks" &&
+                    peer.direction === "outgoing" &&
+                    peer.otherId === target.id
+            )
+        ).toBe(true);
+
+        const listed = await provider.fetchBoardTasks(board.id);
+        const listedTarget = listed.tasks.find((task) => task.id === target.id);
+        expect(listedTarget?.hasOpenBlocker).toBe(true);
+
+        await expect(
+            provider.createTaskLinkRecord(target.id, source.id, "blocks")
+        ).rejects.toThrow("A cyclic blocks chain is not allowed");
+
+        expect(
+            getGuestSandbox()!.notifications.every(
+                (row) => row.taskId !== source.id && row.taskId !== target.id
+            )
+        ).toBe(true);
+    });
+
+    it("refuses moving a blocked Task into Done and allows in-progress", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const blocked = sandbox.tasks.find((task) =>
+            sandbox.taskLinks.some(
+                (link) =>
+                    link.kind === "blocks" && link.targetTaskId === task.id
+            )
+        )!;
+        const board = sandbox.boards.find(
+            (item) => item.id === blocked.boardId
+        )!;
+        const doneColumn = board.columns.find((column) => column.isDone)!;
+        const inProgress = board.columns.find(
+            (column) => !column.isDone && column.id !== blocked.status
+        )!;
+
+        await expect(
+            provider.persistTaskMoves(blocked.boardId, [
+                { id: blocked.id, position: 0, status: doneColumn.id },
+            ])
+        ).rejects.toThrow(
+            "A Task cannot enter Done while an open blocker exists"
+        );
+
+        await provider.persistTaskMoves(blocked.boardId, [
+            { id: blocked.id, position: 0, status: inProgress.id },
+        ]);
+        expect(
+            getGuestSandbox()!.tasks.find((task) => task.id === blocked.id)
+                ?.status
+        ).toBe(inProgress.id);
+    });
 });

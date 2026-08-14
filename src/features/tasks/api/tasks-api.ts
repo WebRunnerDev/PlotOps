@@ -3,6 +3,7 @@ import type { ProjectLabel } from "@/features/labels";
 import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
+    TaskLinkKind,
     TaskPriority,
     TaskStatus,
     TaskType,
@@ -97,6 +98,32 @@ const TASK_SELECT = `
   ),
   task_labels (
     label_id
+  ),
+  parent_id,
+  parent:tasks!tasks_parent_id_fkey (
+    task_key
+  ),
+  outgoing_links:task_links!task_links_source_task_id_fkey (
+    id,
+    kind,
+    target:tasks!task_links_target_task_id_fkey (
+      id,
+      task_key,
+      title,
+      archived_at,
+      status
+    )
+  ),
+  incoming_links:task_links!task_links_target_task_id_fkey (
+    id,
+    kind,
+    source:tasks!task_links_source_task_id_fkey (
+      id,
+      task_key,
+      title,
+      archived_at,
+      status
+    )
   )
 `;
 
@@ -143,14 +170,91 @@ export async function archiveTaskRecords(taskIds: string[]) {
     return { archivedCount: typeof data === "number" ? data : 0 };
 }
 
+export async function clearTaskParent(taskId: string) {
+    const { error } = await supabase.rpc("clear_task_parent", {
+        p_task_id: taskId,
+    });
+    if (error) throw error;
+
+    const { data, error: fetchError } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", taskId)
+        .single();
+
+    if (fetchError) throw fetchError;
+    return mapDatabaseTask(data as DatabaseTask);
+}
+
+export async function createSubtaskRecord(
+    parentId: string,
+    title: string,
+    taskType?: TaskType,
+    sprintId?: string
+) {
+    const { data, error } = await supabase.rpc("create_subtask", {
+        p_parent_id: parentId,
+        p_sprint_id: sprintId ?? null,
+        p_task_type: taskType ?? null,
+        p_title: normalizeTaskTitle(title),
+    });
+    if (error) throw error;
+
+    const { data: row, error: fetchError } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", data)
+        .single();
+
+    if (fetchError) throw fetchError;
+    return mapDatabaseTask(row as DatabaseTask);
+}
+
+export async function createTaskLinkRecord(
+    sourceTaskId: string,
+    targetTaskId: string,
+    kind: TaskLinkKind
+) {
+    const { error } = await supabase.rpc("create_task_link", {
+        p_kind: kind,
+        p_source_task_id: sourceTaskId,
+        p_target_task_id: targetTaskId,
+    });
+    if (error) throw error;
+
+    const { data: row, error: fetchError } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", sourceTaskId)
+        .single();
+
+    if (fetchError) throw fetchError;
+    return mapDatabaseTask(row as DatabaseTask);
+}
+
 export async function createTaskRecord(
     projectId: string,
     boardId: string,
     status: TaskStatus,
     title: string,
-    taskType: TaskType = "task",
+    taskType?: TaskType,
     sprintId?: string
 ) {
+    let resolvedType: TaskType = taskType ?? "task";
+    if (taskType === undefined) {
+        const { data: boardRow, error: boardError } = await supabase
+            .from("boards")
+            .select("default_task_type")
+            .eq("id", boardId)
+            .single();
+
+        if (boardError) throw boardError;
+        const raw = boardRow?.default_task_type;
+        if (raw === "bug" || raw === "feature" || raw === "task") {
+            resolvedType = raw;
+        }
+    }
+
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
         .select("position")
@@ -195,7 +299,7 @@ export async function createTaskRecord(
                 ? { sprint_id: sprintId, sprint_position: sprintPosition }
                 : {}),
             status,
-            task_type: taskType,
+            task_type: resolvedType,
             title: normalizeTaskTitle(title),
         } as Database["public"]["Tables"]["tasks"]["Insert"])
         .select(TASK_SELECT)
@@ -203,6 +307,13 @@ export async function createTaskRecord(
 
     if (error) throw error;
     return mapDatabaseTask(data as DatabaseTask);
+}
+
+export async function deleteTaskLinkRecord(linkId: string) {
+    const { error } = await supabase.rpc("delete_task_link", {
+        p_link_id: linkId,
+    });
+    if (error) throw error;
 }
 
 export async function deleteTaskRecord(taskId: string) {

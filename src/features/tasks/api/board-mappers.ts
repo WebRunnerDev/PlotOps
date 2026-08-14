@@ -1,5 +1,6 @@
 import type {
     Task,
+    TaskLinkPeer,
     TaskPriority,
     TaskPullRequest,
     TaskType,
@@ -31,6 +32,10 @@ export type DatabaseTask = {
     description: null | string;
     estimate: null | number;
     id: string;
+    incoming_links?: DatabaseTaskLinkEmbed[] | null;
+    outgoing_links?: DatabaseTaskLinkEmbed[] | null;
+    parent?: Array<{ task_key: string }> | null | { task_key: string };
+    parent_id?: null | string;
     position: number;
     pr_number: null | number;
     pr_state: null | string;
@@ -43,6 +48,21 @@ export type DatabaseTask = {
     task_key: string;
     task_labels: Array<{ label_id: string }> | null;
     task_type: string;
+    title: string;
+};
+
+export type DatabaseTaskLinkEmbed = {
+    id: string;
+    kind: string;
+    source?: DatabaseTaskLinkPeer | DatabaseTaskLinkPeer[] | null;
+    target?: DatabaseTaskLinkPeer | DatabaseTaskLinkPeer[] | null;
+};
+
+export type DatabaseTaskLinkPeer = {
+    archived_at?: null | string;
+    id: string;
+    status?: string;
+    task_key: string;
     title: string;
 };
 
@@ -78,11 +98,15 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
         estimate: isTaskEstimate(row.estimate) ? row.estimate : undefined,
+        hasOpenBlocker: hasOpenBlockerFromRow(row),
         id: row.id,
         key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
+        parentId: row.parent_id ?? undefined,
+        parentKey: toParentKey(row),
         pr: toPullRequest(row),
         priority: toTaskPriority(row.priority),
+        relatedTasks: toRelatedTasks(row),
         sprintId: row.sprint_id ?? undefined,
         sprintPosition: row.sprint_position ?? undefined,
         status: row.status,
@@ -101,6 +125,26 @@ export function sortTasksByPosition(
     );
 }
 
+function firstPeer(
+    value: DatabaseTaskLinkPeer | DatabaseTaskLinkPeer[] | null | undefined
+): DatabaseTaskLinkPeer | undefined {
+    if (!value) return undefined;
+    return Array.isArray(value) ? value[0] : value;
+}
+
+function hasOpenBlockerFromRow(row: DatabaseTask): boolean {
+    return (row.incoming_links ?? []).some((link) => {
+        if (link.kind !== "blocks") return false;
+        const source = firstPeer(link.source);
+        return source?.archived_at == undefined;
+    });
+}
+
+function toParentKey(row: DatabaseTask): string | undefined {
+    const parent = Array.isArray(row.parent) ? row.parent[0] : row.parent;
+    return parent?.task_key ?? undefined;
+}
+
 function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {
     if (row.pr_number == undefined || !row.pr_state || !row.pr_url)
         return undefined;
@@ -110,6 +154,37 @@ function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {
         state: row.pr_state as TaskPullRequest["state"],
         url: row.pr_url,
     };
+}
+
+function toRelatedPeer(
+    link: DatabaseTaskLinkEmbed,
+    other: DatabaseTaskLinkPeer | undefined,
+    direction: "incoming" | "outgoing"
+): TaskLinkPeer | undefined {
+    if ((link.kind !== "relates_to" && link.kind !== "blocks") || !other) {
+        return undefined;
+    }
+    return {
+        direction,
+        id: link.id,
+        kind: link.kind,
+        otherId: other.id,
+        otherKey: other.task_key,
+        otherTitle: other.title,
+    };
+}
+
+function toRelatedTasks(row: DatabaseTask): TaskLinkPeer[] | undefined {
+    const peers: TaskLinkPeer[] = [];
+    for (const link of row.outgoing_links ?? []) {
+        const peer = toRelatedPeer(link, firstPeer(link.target), "outgoing");
+        if (peer) peers.push(peer);
+    }
+    for (const link of row.incoming_links ?? []) {
+        const peer = toRelatedPeer(link, firstPeer(link.source), "incoming");
+        if (peer) peers.push(peer);
+    }
+    return peers.length > 0 ? peers : undefined;
 }
 
 function toTaskPerson(profile: DatabaseProfile | null | undefined) {

@@ -1,3 +1,14 @@
+export type CommandPaletteFocusedTask = {
+    archivedAt?: null | string;
+    boardId: string;
+    hasOpenBlocker?: boolean;
+    id: string;
+    isDone?: boolean;
+    key: string;
+    parentId?: string;
+    relatedTasks?: readonly CommandPaletteRelatedTask[];
+};
+
 export type CommandPaletteIntent =
     | { boardId: string; taskId: string; type: "select-task" }
     | {
@@ -16,6 +27,14 @@ export type CommandPaletteIntent =
     | { teamId: string; type: "open-member-settings"; userId: string }
     | { type: "toggle-theme" };
 
+export type CommandPaletteJumpAction = {
+    intent: Extract<CommandPaletteIntent, { type: "select-task" }>;
+    kind: CommandPaletteJumpKind;
+    targetKey: string;
+};
+
+export type CommandPaletteJumpKind = "blocker" | "parent";
+
 export type CommandPaletteMember = {
     displayName: string;
     userId: string;
@@ -28,6 +47,12 @@ export type CommandPaletteNavigateSection =
 export type CommandPaletteProject = {
     id: string;
     name: string;
+};
+
+export type CommandPaletteRelatedTask = {
+    direction: "incoming" | "outgoing";
+    kind: "blocks" | "relates_to";
+    otherId: string;
 };
 
 export type CommandPaletteRouteContext = {
@@ -227,6 +252,58 @@ export function resolveCreateTaskIntent(
 }
 
 /**
+ * Jump offers for the focused/open Task: Parent (Subtask only) and each
+ * open blocking Task. Always `select-task` — no create Subtask or add link.
+ */
+export function resolveJumpTaskIntents(
+    focusedTaskId: null | string | undefined,
+    tasks: readonly CommandPaletteFocusedTask[]
+): CommandPaletteJumpAction[] {
+    if (!focusedTaskId) {
+        return [];
+    }
+
+    const focused = tasks.find((task) => task.id === focusedTaskId);
+    if (!focused) {
+        return [];
+    }
+
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    const jumps: CommandPaletteJumpAction[] = [];
+
+    if (focused.parentId) {
+        const parent = byId.get(focused.parentId);
+        if (parent) {
+            jumps.push({
+                intent: selectTaskIntent(parent),
+                kind: "parent",
+                targetKey: parent.key,
+            });
+        }
+    }
+
+    for (const peer of focused.relatedTasks ?? []) {
+        if (peer.kind !== "blocks" || peer.direction !== "incoming") {
+            continue;
+        }
+        if (focused.hasOpenBlocker === false) {
+            continue;
+        }
+        const blocker = byId.get(peer.otherId);
+        if (!isOpenBlockingTask(blocker)) {
+            continue;
+        }
+        jumps.push({
+            intent: selectTaskIntent(blocker),
+            kind: "blocker",
+            targetKey: blocker.key,
+        });
+    }
+
+    return jumps;
+}
+
+/**
  * Navigate offer for a TopBar section — null when projectId (and boardId for
  * Board / Backlog) are missing from URL context.
  */
@@ -296,4 +373,13 @@ function canOfferCreateTask(context: CommandPaletteRouteContext): boolean {
         return false;
     }
     return true;
+}
+
+function isOpenBlockingTask(
+    task: CommandPaletteFocusedTask | undefined
+): task is CommandPaletteFocusedTask {
+    if (!task || task.archivedAt) {
+        return false;
+    }
+    return task.isDone !== true;
 }

@@ -24,6 +24,13 @@ export function AppRouter() {
         }
     }, [auth.user]);
 
+    // RouterProvider updates context, but beforeLoad does not re-run unless
+    // we invalidate — so session loss mid-route must kick the auth gates
+    // (e.g. `/(main)` → `/sign-in` when no Auth user and no Guest Session).
+    useEffect(() => {
+        void router.invalidate();
+    }, [auth.profileNamesComplete, auth.user]);
+
     useEffect(() => {
         return subscribeGitHubAccessToken(() => {
             if (!getGitHubAccessToken()) {

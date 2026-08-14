@@ -23,6 +23,7 @@ export type GuestBoard = {
     allowedHeadPatterns: string[];
     baseBranch: string;
     columns: GuestBoardColumn[];
+    defaultTaskType: "bug" | "feature" | "task";
     id: string;
     name: string;
     position: number;
@@ -103,6 +104,7 @@ export type GuestSandbox = {
     notifications: GuestNotification[];
     projects: GuestProject[];
     sprints: GuestSprint[];
+    taskLinks: GuestTaskLink[];
     tasks: GuestTask[];
     teams: GuestTeam[];
 };
@@ -141,6 +143,8 @@ export type GuestTask = {
     id: string;
     key: string;
     labelIds?: string[];
+    /** Present when this Task is a Subtask of a Parent Task. */
+    parentId?: string;
     position: number;
     pr?: GuestPullRequest;
     priority?: "high" | "low" | "medium" | "urgent";
@@ -150,6 +154,13 @@ export type GuestTask = {
     status: string;
     title: string;
     type: "bug" | "feature" | "task";
+};
+
+export type GuestTaskLink = {
+    id: string;
+    kind: "blocks" | "relates_to";
+    sourceTaskId: string;
+    targetTaskId: string;
 };
 
 export type GuestTeam = {

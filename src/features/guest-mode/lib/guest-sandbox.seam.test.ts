@@ -154,6 +154,7 @@ describe("Guest sandbox seed store", () => {
             notifications: [],
             projects: [],
             sprints: [],
+            taskLinks: [],
             tasks: [],
             teams: [],
         });

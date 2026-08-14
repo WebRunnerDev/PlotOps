@@ -48,6 +48,8 @@ const T16 = "b0000000-0000-4000-8000-000000000116";
 const T17 = "b0000000-0000-4000-8000-000000000117";
 const T18 = "b0000000-0000-4000-8000-000000000118";
 const T19 = "b0000000-0000-4000-8000-000000000119";
+const T20 = "b0000000-0000-4000-8000-000000000120";
+const T21 = "b0000000-0000-4000-8000-000000000121";
 const LABEL_CONTENT = "b0000000-0000-4000-8000-000000000035";
 
 const DEFAULT_COLUMNS = [
@@ -165,12 +167,115 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             taskId: T15,
             user: ACTOR,
         },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T10:05:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000207",
+            metadata: {
+                changes: [
+                    {
+                        field: "subtask",
+                        from: null,
+                        to: { key: "TASK-20" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T06,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T10:05:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000208",
+            metadata: {
+                changes: [
+                    {
+                        field: "parent",
+                        from: null,
+                        to: { key: "TASK-6" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T20,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:00:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000209",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "FEAT-2", kind: "relates_to" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T01,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:00:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000210",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "FEAT-1", kind: "relates_to" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T02,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:10:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000212",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "FEAT-2", kind: "blocks" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T03,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:10:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000213",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "TASK-3", kind: "blocks" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T02,
+            user: ACTOR,
+        },
     ],
     boards: [
         {
             allowedHeadPatterns: ["feature/*", "fix/*", "bugfix/*"],
             baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
+            defaultTaskType: "task",
             id: BOARD_GIT_ID,
             name: "Board",
             position: 0,
@@ -180,6 +285,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             allowedHeadPatterns: [],
             baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
+            defaultTaskType: "task",
             id: BOARD_PLAIN_ID,
             name: "Board",
             position: 0,
@@ -292,6 +398,20 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             taskKey: "BUG-11",
             taskTitle: "Flaky board Realtime reconnect",
         },
+        {
+            createdAt: "2026-08-05T10:06:00.000Z",
+            id: "d0000000-0000-4000-8000-000000000304",
+            kind: "subtask_change",
+            metadata: {
+                action: "created",
+                subtaskKey: "TASK-20",
+            },
+            projectId: PROJ_GIT_ID,
+            readAt: null,
+            taskId: T06,
+            taskKey: "TASK-6",
+            taskTitle: "Demo account chip in TopBar",
+        },
     ],
     projects: [
         {
@@ -350,6 +470,20 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             name: "Sprint 15 — Polish",
             projectId: PROJ_GIT_ID,
             state: "draft",
+        },
+    ],
+    taskLinks: [
+        {
+            id: "c0000000-0000-4000-8000-000000000211",
+            kind: "relates_to",
+            sourceTaskId: T01,
+            targetTaskId: T02,
+        },
+        {
+            id: "c0000000-0000-4000-8000-000000000214",
+            kind: "blocks",
+            sourceTaskId: T03,
+            targetTaskId: T02,
         },
     ],
     tasks: [
@@ -741,6 +875,37 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_PLAIN_ID,
             status: "done",
             title: "Messaging pillars from interviews",
+            type: "task",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_GIT_ID,
+            createdAt: "2026-08-05T10:00:00.000Z",
+            description:
+                "<p>Hover and pressed states for the Demo chip on the Parent Task.</p>",
+            id: T20,
+            key: "TASK-20",
+            parentId: T06,
+            position: 3,
+            priority: "medium",
+            projectId: PROJ_GIT_ID,
+            status: "todo",
+            title: "Demo chip hover states",
+            type: "task",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_GIT_ID,
+            createdAt: "2026-08-05T11:00:00.000Z",
+            description: "<p>Tooltip copy for the Demo chip.</p>",
+            id: T21,
+            key: "TASK-21",
+            parentId: T06,
+            position: 2,
+            priority: "low",
+            projectId: PROJ_GIT_ID,
+            status: "done",
+            title: "Demo chip tooltip copy",
             type: "task",
         },
     ],

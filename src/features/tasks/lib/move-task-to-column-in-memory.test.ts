@@ -46,6 +46,20 @@ describe("moveTasksToColumnInMemory", () => {
         );
     });
 
+    it("accepts column task-list droppable ids", () => {
+        const tasks = [task("a", "todo"), task("b", "doing")];
+        const result = moveTasksToColumnInMemory(
+            tasks,
+            columns,
+            ["a"],
+            "column-tasks:doing"
+        );
+
+        expect(
+            result?.tasks.map((entry) => `${entry.id}:${entry.status}`)
+        ).toEqual(["b:doing", "a:doing"]);
+    });
+
     it("moves a multi-selection as a block preserving relative order", () => {
         const tasks = [
             task("a", "todo"),

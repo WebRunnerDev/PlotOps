@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
 import {
+    Ban,
     Bug,
     Calendar,
     CheckSquare,
@@ -11,6 +12,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
+import type { SubtaskProgress } from "@/features/tasks/lib/board-subtask-visibility";
 import type { Task, TaskType } from "@/features/tasks/model/types";
 
 import { TaskLabelChips } from "@/features/labels";
@@ -30,6 +32,7 @@ import {
 } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
+import { Badge } from "@/shared/shadcn/ui/badge";
 import {
     Card,
     CardContent,
@@ -53,6 +56,7 @@ const TASK_TYPE_ICON: Record<TaskType, LucideIcon> = {
 type TaskCardProperties = {
     labels: ProjectLabel[];
     selection?: TaskCardSelection;
+    subtaskProgress?: SubtaskProgress;
     task: Task;
 };
 
@@ -64,7 +68,12 @@ type TaskCardSelection = {
     toggleLabel: string;
 };
 
-export function TaskCard({ labels, selection, task }: TaskCardProperties) {
+export function TaskCard({
+    labels,
+    selection,
+    subtaskProgress,
+    task,
+}: TaskCardProperties) {
     const { i18n, t } = useTranslation("board");
     const assigneeName = task.assignee?.name;
     const overdue =
@@ -135,6 +144,43 @@ export function TaskCard({ labels, selection, task }: TaskCardProperties) {
                         <span className="truncate text-meta text-muted-foreground">
                             {task.key}
                         </span>
+                        {task.parentKey ? (
+                            <Badge
+                                className="max-w-28 shrink-0 truncate rounded-sm font-mono text-[0.625rem]"
+                                title={t("subtasks.parentBadge", {
+                                    key: task.parentKey,
+                                })}
+                                variant="outline"
+                            >
+                                {task.parentKey}
+                            </Badge>
+                        ) : undefined}
+                        {task.hasOpenBlocker ? (
+                            <span
+                                className="inline-flex shrink-0 text-destructive"
+                                title={t("taskLinks.blockerBadge")}
+                            >
+                                <Ban
+                                    aria-label={t("taskLinks.blockerBadge")}
+                                    className="size-3.5"
+                                />
+                            </span>
+                        ) : undefined}
+                        {subtaskProgress ? (
+                            <Badge
+                                className="shrink-0 rounded-sm font-mono text-[0.625rem]"
+                                title={t("subtasks.progressBadge", {
+                                    done: subtaskProgress.done,
+                                    total: subtaskProgress.total,
+                                })}
+                                variant="secondary"
+                            >
+                                {t("subtasks.progressBadge", {
+                                    done: subtaskProgress.done,
+                                    total: subtaskProgress.total,
+                                })}
+                            </Badge>
+                        ) : undefined}
                         {task.estimate === undefined ? undefined : (
                             <span
                                 className="shrink-0 text-meta font-medium text-foreground/80"

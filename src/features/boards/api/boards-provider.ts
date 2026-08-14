@@ -47,6 +47,7 @@ export type BoardsProvider = {
         patch: {
             allowed_head_patterns?: string[];
             base_branch?: string;
+            default_task_type?: ProjectBoardRecord["defaultTaskType"];
             name?: string;
             position?: number;
         }

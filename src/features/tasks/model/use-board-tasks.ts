@@ -7,6 +7,7 @@ import {
     useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
@@ -14,6 +15,7 @@ import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
     Task,
     TaskActivityChange,
+    TaskLinkKind,
     TaskPriority,
     TaskPullRequest,
     TaskStatus,
@@ -34,6 +36,7 @@ import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
 import { planDeadlineWatcherNotification } from "@/features/notifications/lib/plan-deadline-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
+import { planSubtaskChangeNotification } from "@/features/notifications/lib/plan-subtask-change-notification";
 import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -50,6 +53,18 @@ import {
     reorderTasksInMemory,
     type TaskMoveUpdate,
 } from "@/features/tasks/lib/reorder-tasks-in-memory";
+import {
+    assertParentArchiveLegal,
+    assertParentDeleteLegal,
+    PARENT_GATE_TOAST_KEY,
+    parentGateRefusalFromError,
+    type ParentGateTask,
+    TASK_DONE_ERROR,
+    taskDoneRefusal,
+    taskDoneRefusalFromError,
+    type TaskLinkEdge,
+} from "@/features/tasks/lib/task-structure";
+import { toastTaskDoneRefusal } from "@/features/tasks/lib/toast-task-done-refusal";
 import {
     getBoardSnapshot,
     invalidateBoardWorkspace,
@@ -115,8 +130,10 @@ type TaskDetailsUpdate = {
  * `@/features/labels`. Composition lives in the board page / kanban widget.
  */
 export function useBoardTasks(projectId: string, boardId: string) {
+    const { t } = useTranslation("board");
     const queryClient = useQueryClient();
     const dragGestureCacheReference = useRef<BoardTasksCache | null>(null);
+    const dragDoneRefusalToasted = useRef(false);
     const guest = isGuest();
     const tasksProvider = resolveTasksProvider(guest);
 
@@ -154,11 +171,28 @@ export function useBoardTasks(projectId: string, boardId: string) {
             await tasksProvider.persistTaskMoves(boardId, updates);
             if (guest) return;
             const activityEntries = activities ?? (activity ? [activity] : []);
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const doneIds = snapshot
+                ? doneColumnIdSet(snapshot.columns)
+                : new Set<string>();
             for (const entry of activityEntries) {
                 await notifyStatusChangeBestEffort({
                     activityChanges: entry.changes,
                     projectId,
                     taskId: entry.taskId,
+                });
+                const moved = lookupTaskForNotification(
+                    queryClient,
+                    projectId,
+                    boardId,
+                    entry.taskId
+                );
+                await notifySubtaskChangeBestEffort({
+                    activityChanges: entry.changes,
+                    doneColumnIds: doneIds,
+                    parentId: moved?.parentId,
+                    projectId,
+                    subtaskKey: moved?.key,
                 });
                 await recordTaskActivity({
                     changes: entry.changes,
@@ -168,14 +202,24 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 });
             }
         },
-        onError: (_error, variables) => {
+        onError: (error, variables) => {
             if (variables.previousCache) {
                 queryClient.setQueryData(
                     taskKeys.board(projectId, boardId),
                     variables.previousCache
                 );
             }
-            toast.error("Failed to move task");
+            const reason = parentGateRefusalFromError(error);
+            const doneReason = taskDoneRefusalFromError(error);
+            if (doneReason) {
+                toastTaskDoneRefusal(t, doneReason);
+                return;
+            }
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : "Failed to move task"
+            );
         },
         onSettled: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -320,6 +364,23 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId: id,
             });
 
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const moved = lookupTaskForNotification(
+                queryClient,
+                projectId,
+                boardId,
+                id
+            );
+            await notifySubtaskChangeBestEffort({
+                activityChanges,
+                doneColumnIds: snapshot
+                    ? doneColumnIdSet(snapshot.columns)
+                    : new Set<string>(),
+                parentId: moved?.parentId,
+                projectId,
+                subtaskKey: moved?.key,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -327,14 +388,24 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId: id,
             });
         },
-        onError: (_error, variables) => {
+        onError: (error, variables) => {
             if (variables.previousCache) {
                 queryClient.setQueryData(
                     taskKeys.board(projectId, boardId),
                     variables.previousCache
                 );
             }
-            toast.error("Failed to update task status");
+            const reason = parentGateRefusalFromError(error);
+            const doneReason = taskDoneRefusalFromError(error);
+            if (doneReason) {
+                toastTaskDoneRefusal(t, doneReason);
+                return;
+            }
+            toast.error(
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : "Failed to update task status"
+            );
         },
         onSettled: () => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -367,6 +438,34 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 activityChanges,
                 projectId,
                 taskId,
+            });
+
+            const originSnapshot = getBoardSnapshot(
+                queryClient,
+                projectId,
+                boardId
+            );
+            const targetColumns = queryClient.getQueryData<BoardColumn[]>(
+                boardKeys.columns(projectId, targetBoardId)
+            );
+            const doneIds = new Set<string>([
+                ...(originSnapshot
+                    ? doneColumnIdSet(originSnapshot.columns)
+                    : []),
+                ...(targetColumns ? doneColumnIdSet(targetColumns) : []),
+            ]);
+            const moved = lookupTaskForNotification(
+                queryClient,
+                projectId,
+                boardId,
+                taskId
+            );
+            await notifySubtaskChangeBestEffort({
+                activityChanges,
+                doneColumnIds: doneIds,
+                parentId: moved?.parentId,
+                projectId,
+                subtaskKey: moved?.key,
             });
 
             await recordTaskActivity({
@@ -413,6 +512,119 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 tasks: [...current.tasks, task],
             }));
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+        },
+    });
+
+    const createSubtaskMutation = useMutation({
+        mutationFn: ({
+            parentId,
+            sprintId,
+            taskType,
+            title,
+        }: {
+            parentId: string;
+            sprintId?: string;
+            taskType?: TaskType;
+            title: string;
+        }) =>
+            tasksProvider.createSubtaskRecord(
+                parentId,
+                title,
+                taskType,
+                sprintId
+            ),
+        onSuccess: (task) => {
+            if (task.boardId === boardId) {
+                setTasksCache(queryClient, projectId, boardId, (current) => ({
+                    taskPositions: new Map([
+                        ...current.taskPositions,
+                        [task.id, current.taskPositions.get(task.id) ?? 0],
+                    ]),
+                    tasks: [...current.tasks, task],
+                }));
+            }
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            if (task.parentId) {
+                void queryClient.invalidateQueries({
+                    queryKey: activityKey(task.parentId),
+                });
+                if (!guest) {
+                    void notifySubtaskChangeBestEffort({
+                        action: "created",
+                        parentId: task.parentId,
+                        projectId,
+                        subtaskKey: task.key,
+                    });
+                }
+            }
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(task.id),
+            });
+        },
+    });
+
+    const createTaskLinkMutation = useMutation({
+        mutationFn: ({
+            kind,
+            sourceTaskId,
+            targetTaskId,
+        }: {
+            kind: TaskLinkKind;
+            sourceTaskId: string;
+            targetTaskId: string;
+        }) =>
+            tasksProvider.createTaskLinkRecord(
+                sourceTaskId,
+                targetTaskId,
+                kind
+            ),
+        onSuccess: (task, variables) => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(task.id),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(variables.targetTaskId),
+            });
+        },
+    });
+
+    const deleteTaskLinkMutation = useMutation({
+        mutationFn: (linkId: string) =>
+            tasksProvider.deleteTaskLinkRecord(linkId),
+        onSuccess: () => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: [...taskKeys.all, "activity"],
+            });
+        },
+    });
+
+    const clearTaskParentMutation = useMutation({
+        mutationFn: (taskId: string) => tasksProvider.clearTaskParent(taskId),
+        onSuccess: (task, taskId) => {
+            const previousParentId = queryClient
+                .getQueryData<BoardTasksCache>(
+                    taskKeys.board(projectId, boardId)
+                )
+                ?.tasks.find((item) => item.id === taskId)?.parentId;
+            setTasksCache(queryClient, projectId, boardId, (current) => ({
+                taskPositions: current.taskPositions,
+                tasks: current.tasks.map((item) =>
+                    item.id === task.id
+                        ? { ...item, parentId: undefined, parentKey: undefined }
+                        : item
+                ),
+            }));
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(taskId),
+            });
+            if (previousParentId) {
+                void queryClient.invalidateQueries({
+                    queryKey: activityKey(previousParentId),
+                });
+            }
         },
     });
 
@@ -495,6 +707,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
         const uniqueIds = [...new Set(taskIds.filter(Boolean))];
         if (uniqueIds.length === 0) return { archivedCount: 0 };
 
+        const gates = collectParentGateTasks(queryClient, projectId, boardId);
+        for (const taskId of uniqueIds) {
+            assertParentArchiveLegal(taskId, gates);
+        }
+
         setTasksCache(queryClient, projectId, boardId, (current) => {
             const idSet = new Set(uniqueIds);
             const nextPositions = new Map(current.taskPositions);
@@ -532,6 +749,41 @@ export function useBoardTasks(projectId: string, boardId: string) {
             options?.displayedTaskIds
         );
         if (!result) return;
+
+        const doneColumnIds = doneColumnIdSet(snapshot.columns);
+        if (doneColumnIds.size > 0) {
+            const gates = collectParentGateTasks(
+                queryClient,
+                projectId,
+                boardId
+            );
+            for (const activeId of activeIds) {
+                const previous = snapshot.tasks.find(
+                    (task) => task.id === activeId
+                );
+                const next = result.tasks.find((task) => task.id === activeId);
+                if (
+                    !previous ||
+                    !next ||
+                    previous.status === next.status ||
+                    !doneColumnIds.has(next.status)
+                ) {
+                    continue;
+                }
+                const reason = taskDoneRefusal(
+                    activeId,
+                    gates,
+                    collectTaskLinkEdges(queryClient, projectId, boardId)
+                );
+                if (reason) {
+                    if (persist || !dragDoneRefusalToasted.current) {
+                        dragDoneRefusalToasted.current = true;
+                        toastTaskDoneRefusal(t, reason);
+                    }
+                    return;
+                }
+            }
+        }
 
         if (!persist && !dragGestureCacheReference.current && previousCache) {
             dragGestureCacheReference.current = previousCache;
@@ -572,6 +824,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             });
         }
 
+        dragDoneRefusalToasted.current = false;
+
         setTasksCache(queryClient, projectId, boardId, (current) =>
             applyTaskUpdates(current, result.updates, result.tasks)
         );
@@ -592,6 +846,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
         archiveTasks,
         boardId,
+        clearTaskParent: (taskId: string) =>
+            clearTaskParentMutation.mutateAsync(taskId),
         /**
          * Persist the board task cache vs the in-progress drag gesture snapshot.
          * No-op when no live preview ran (same-column-only drags).
@@ -605,6 +861,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskKeys.board(projectId, boardId)
             );
             dragGestureCacheReference.current = null;
+            dragDoneRefusalToasted.current = false;
             if (!current) return;
 
             const updates = diffTaskMoveUpdates(previousCache, current);
@@ -654,6 +911,17 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 updates,
             });
         },
+        createSubtask: (
+            parentId: string,
+            title: string,
+            options?: { sprintId?: string; taskType?: TaskType }
+        ) =>
+            createSubtaskMutation.mutateAsync({
+                parentId,
+                sprintId: options?.sprintId,
+                taskType: options?.taskType,
+                title,
+            }),
         createTask: (
             status: TaskStatus,
             title: string,
@@ -665,7 +933,21 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskType: options?.taskType,
                 title,
             }),
+        createTaskLink: (
+            sourceTaskId: string,
+            targetTaskId: string,
+            kind: TaskLinkKind = "relates_to"
+        ) =>
+            createTaskLinkMutation.mutateAsync({
+                kind,
+                sourceTaskId,
+                targetTaskId,
+            }),
         deleteTask: async (taskId: string) => {
+            assertParentDeleteLegal(
+                taskId,
+                collectParentGateTasks(queryClient, projectId, boardId)
+            );
             setTasksCache(queryClient, projectId, boardId, (current) => {
                 const nextPositions = new Map(current.taskPositions);
                 nextPositions.delete(taskId);
@@ -681,6 +963,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
             await deleteTaskMutation.mutateAsync(taskId);
         },
+        deleteTaskLink: (linkId: string) =>
+            deleteTaskLinkMutation.mutateAsync(linkId),
         error: tasksQuery.error ?? null,
         isLoading: tasksQuery.isLoading,
         moveTasksToColumn,
@@ -700,6 +984,27 @@ export function useBoardTasks(projectId: string, boardId: string) {
             const task = tasks.find((item) => item.id === taskId);
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             if (!task || targetBoardId === boardId) return;
+
+            const targetColumns = queryClient.getQueryData<BoardColumn[]>(
+                boardKeys.columns(projectId, targetBoardId)
+            );
+            const targetIsDone =
+                targetColumns?.some(
+                    (column) => column.id === targetStatus && column.isDone
+                ) === true ||
+                snapshot?.columns.some(
+                    (column) => column.id === targetStatus && column.isDone
+                ) === true;
+            if (targetIsDone) {
+                const reason = taskDoneRefusal(
+                    taskId,
+                    collectParentGateTasks(queryClient, projectId, boardId),
+                    collectTaskLinkEdges(queryClient, projectId, boardId)
+                );
+                if (reason) {
+                    throw new Error(TASK_DONE_ERROR[reason]);
+                }
+            }
 
             const boards = queryClient.getQueryData<ProjectBoardRecord[]>(
                 boardKeys.list(projectId)
@@ -783,6 +1088,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
         rollbackTaskDragGesture: () => {
             const previousCache = dragGestureCacheReference.current;
             dragGestureCacheReference.current = null;
+            dragDoneRefusalToasted.current = false;
             if (!previousCache) return;
             queryClient.setQueryData(
                 taskKeys.board(projectId, boardId),
@@ -910,6 +1216,24 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskKeys.board(projectId, boardId)
             );
             const previous = snapshot?.tasks.find((task) => task.id === id);
+            if (
+                snapshot &&
+                previous &&
+                previous.status !== status &&
+                snapshot.columns.some(
+                    (column) => column.id === status && column.isDone
+                )
+            ) {
+                const reason = taskDoneRefusal(
+                    id,
+                    collectParentGateTasks(queryClient, projectId, boardId),
+                    collectTaskLinkEdges(queryClient, projectId, boardId)
+                );
+                if (reason) {
+                    toastTaskDoneRefusal(t, reason);
+                    return;
+                }
+            }
             let activityChanges: TaskActivityChange[] = [];
 
             if (previous && snapshot && previous.status !== status) {
@@ -980,6 +1304,96 @@ function buildAuthorNotificationChange(
     return { field: "author", from, to };
 }
 
+function collectCachedTasks(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): Map<string, Task> {
+    const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+    const projectTasks =
+        queryClient.getQueryData<Task[]>(taskKeys.project(projectId, true)) ??
+        queryClient.getQueryData<Task[]>(taskKeys.project(projectId, false)) ??
+        [];
+    const archived =
+        queryClient.getQueryData<Task[]>(
+            taskKeys.archived(projectId, boardId)
+        ) ?? [];
+
+    const byId = new Map<string, Task>();
+    for (const task of [
+        ...(snapshot?.tasks ?? []),
+        ...projectTasks,
+        ...archived,
+    ]) {
+        byId.set(task.id, task);
+    }
+    return byId;
+}
+
+function collectDoneColumnIds(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): Set<string> {
+    const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+    const doneIds = new Set<string>();
+    for (const column of snapshot?.columns ?? []) {
+        if (column.isDone) doneIds.add(column.id);
+    }
+    for (const [, columns] of queryClient.getQueriesData<BoardColumn[]>({
+        queryKey: [...boardKeys.all, "columns", projectId],
+    })) {
+        for (const column of columns ?? []) {
+            if (column.isDone) doneIds.add(column.id);
+        }
+    }
+    return doneIds;
+}
+
+function collectParentGateTasks(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): ParentGateTask[] {
+    return [
+        ...collectCachedTasks(queryClient, projectId, boardId).values(),
+    ].map((task) => ({
+        archivedAt: task.archivedAt,
+        id: task.id,
+        isDone: collectDoneColumnIds(queryClient, projectId, boardId).has(
+            task.status
+        ),
+        parentId: task.parentId,
+    }));
+}
+
+function collectTaskLinkEdges(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): TaskLinkEdge[] {
+    const edges: TaskLinkEdge[] = [];
+    const seen = new Set<string>();
+    for (const task of collectCachedTasks(
+        queryClient,
+        projectId,
+        boardId
+    ).values()) {
+        for (const peer of task.relatedTasks ?? []) {
+            if (peer.kind !== "blocks") continue;
+            const sourceId =
+                peer.direction === "incoming" ? peer.otherId : task.id;
+            const targetId =
+                peer.direction === "incoming" ? task.id : peer.otherId;
+            const key = `${sourceId}:${targetId}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            edges.push({ kind: "blocks", sourceId, targetId });
+        }
+    }
+    return edges;
+}
+
 function diffTaskMoveUpdates(
     previous: BoardTasksCache,
     current: BoardTasksCache
@@ -1009,6 +1423,12 @@ function diffTaskMoveUpdates(
     return updates;
 }
 
+function doneColumnIdSet(columns: BoardColumn[]): Set<string> {
+    return new Set(
+        columns.filter((column) => column.isDone).map((column) => column.id)
+    );
+}
+
 function extractStatusTransition(
     activityChanges: TaskActivityChange[]
 ): null | { from: IdNameSnapshot; to: IdNameSnapshot } {
@@ -1024,6 +1444,17 @@ function isIdNameSnapshot(value: unknown): value is IdNameSnapshot {
     if (!value || typeof value !== "object") return false;
     const snapshot = value as { id?: unknown; name?: unknown };
     return typeof snapshot.id === "string" && typeof snapshot.name === "string";
+}
+
+function lookupTaskForNotification(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string,
+    taskId: string
+): Task | undefined {
+    return getBoardSnapshot(queryClient, projectId, boardId)?.tasks.find(
+        (task) => task.id === taskId
+    );
 }
 
 async function notifyBoardMoveBestEffort(input: {
@@ -1132,6 +1563,53 @@ async function notifyStatusChangeBestEffort(input: {
     } catch {
         // Best-effort: never block the primary task mutation.
     }
+}
+
+async function notifySubtaskChangeBestEffort(input: {
+    action?: "created";
+    activityChanges?: TaskActivityChange[];
+    doneColumnIds?: Set<string>;
+    parentId?: string;
+    projectId: string;
+    subtaskKey?: string;
+}) {
+    const event =
+        input.action === "created"
+            ? planSubtaskChangeNotification({
+                  action: "created",
+                  parentId: input.parentId,
+                  subtaskKey: input.subtaskKey ?? "",
+              })
+            : planSubtaskClosedFromActivity(input);
+    if (!event || !input.parentId) return;
+
+    try {
+        await createTaskNotifications({
+            events: [event],
+            projectId: input.projectId,
+            taskId: input.parentId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+function planSubtaskClosedFromActivity(input: {
+    activityChanges?: TaskActivityChange[];
+    doneColumnIds?: Set<string>;
+    parentId?: string;
+    subtaskKey?: string;
+}) {
+    const transition = extractStatusTransition(input.activityChanges ?? []);
+    if (!transition || !input.doneColumnIds) return;
+
+    return planSubtaskChangeNotification({
+        action: "closed",
+        fromDone: input.doneColumnIds.has(transition.from.id),
+        parentId: input.parentId,
+        subtaskKey: input.subtaskKey ?? "",
+        toDone: input.doneColumnIds.has(transition.to.id),
+    });
 }
 
 async function recordTaskActivity(input: {

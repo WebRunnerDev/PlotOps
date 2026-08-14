@@ -1,3 +1,4 @@
+import { useDroppable } from "@dnd-kit/core";
 import {
     SortableContext,
     type SortingStrategy,
@@ -16,7 +17,13 @@ import type { ProjectLabel } from "@/features/labels";
 import { useBoardColumns } from "@/features/boards";
 import { resolveColumnDeleteMoveTarget } from "@/features/boards/model/resolve-column-delete-move-target";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import { type Task, taskKeys, type TaskStatus } from "@/features/tasks";
+import {
+    type SubtaskProgress,
+    type Task,
+    taskKeys,
+    type TaskStatus,
+} from "@/features/tasks";
+import { columnTaskDropId } from "@/features/tasks/lib/board-drop-target-id";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -53,6 +60,7 @@ type KanbanColumnProperties = {
     startAddingTask?: boolean;
     startEditing?: boolean;
     status: TaskStatus;
+    subtaskProgressByTaskId?: Map<string, SubtaskProgress>;
     tasks: Task[];
     withinColumnDragEnabled?: boolean;
 };
@@ -66,6 +74,7 @@ export function KanbanColumn({
     startAddingTask = false,
     startEditing = false,
     status,
+    subtaskProgressByTaskId,
     tasks,
     withinColumnDragEnabled = true,
 }: KanbanColumnProperties) {
@@ -91,6 +100,12 @@ export function KanbanColumn({
         data: { type: "column" },
         id: status,
     });
+
+    const { isOver: isTaskListOver, setNodeRef: setTaskListDropReference } =
+        useDroppable({
+            data: { status, type: "column-tasks" },
+            id: columnTaskDropId(status),
+        });
 
     const [isEditing, setIsEditing] = useState(startEditing);
     const [draft, setDraft] = useState(name);
@@ -222,6 +237,7 @@ export function KanbanColumn({
                 className={cn(
                     "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 px-3 py-1 transition-colors last:border-r-0 border-r border-border",
                     isOver && !isDragging && "bg-primary/5",
+                    isTaskListOver && !isDragging && "bg-primary/5",
                     isDragging && "opacity-40"
                 )}
                 data-column-id={status}
@@ -329,7 +345,10 @@ export function KanbanColumn({
                     ) : undefined}
                 </header>
 
-                <div className="scrollbar-board flex flex-1 flex-col gap-2 overflow-y-auto">
+                <div
+                    className="scrollbar-board flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
+                    ref={setTaskListDropReference}
+                >
                     <SortableContext
                         items={tasks.map((task) => task.id)}
                         strategy={
@@ -345,6 +364,9 @@ export function KanbanColumn({
                                 key={task.id}
                                 labels={labelsByTaskId.get(task.id) ?? []}
                                 selectionEnabled={canSelectForArchive}
+                                subtaskProgress={subtaskProgressByTaskId?.get(
+                                    task.id
+                                )}
                                 task={task}
                             />
                         ))}

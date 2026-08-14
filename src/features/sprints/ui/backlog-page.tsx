@@ -28,6 +28,7 @@ import {
 } from "@/features/boards";
 import { useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { useProject } from "@/features/projects/model/use-projects";
 import { todayIsoDate } from "@/features/sprints/api/sprints-api";
 import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
@@ -54,11 +55,15 @@ import {
     SprintTaskTable,
 } from "@/features/sprints/ui/sprint-task-table";
 import {
+    BoardSortControl,
     BoardTaskFiltersBar,
+    DEFAULT_BOARD_SORT,
     EMPTY_BOARD_FILTERS,
     filterTasks,
     isBoardFiltersActive,
+    sortTasksByBoardSort,
     TaskDrawer,
+    useBoardSortStore,
     useBoardTasks,
     useTasksUiStore,
 } from "@/features/tasks";
@@ -120,11 +125,16 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         refetch: refetchBoards,
     } = useProjectBoards(projectId);
     const { labels } = useProjectLabels(projectId);
+    const people = useProjectPeople(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const columnsApi = useBoardColumns(projectId, boardId);
     const tasksApi = useBoardTasks(projectId, boardId);
     const { columns } = columnsApi;
     const { tasks } = tasksApi;
+    const boardSort = useBoardSortStore(
+        (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
+    );
+    const setBoardSort = useBoardSortStore((state) => state.setBoardSort);
     const {
         data: sprintsData,
         error: sprintsQueryError,
@@ -195,32 +205,38 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const visibleTasks = useMemo(() => {
         const filtered = filterTasks(tasks, filters);
         const query = searchQuery.trim().toLowerCase();
-        if (!query) return filtered;
-        return filtered.filter(
-            (task) =>
-                task.key.toLowerCase().includes(query) ||
-                task.title.toLowerCase().includes(query)
-        );
-    }, [filters, searchQuery, tasks]);
+        const searched = query
+            ? filtered.filter(
+                  (task) =>
+                      task.key.toLowerCase().includes(query) ||
+                      task.title.toLowerCase().includes(query)
+              )
+            : filtered;
+        return sortTasksByBoardSort(searched, boardSort);
+    }, [boardSort, filters, searchQuery, tasks]);
 
-    const backlogTasks = useMemo(
-        () =>
-            sortBySprintPosition(visibleTasks.filter((task) => !task.sprintId)),
-        [visibleTasks]
-    );
+    const backlogTasks = useMemo(() => {
+        const group = visibleTasks.filter((task) => !task.sprintId);
+        return boardSort.field === "manual"
+            ? sortBySprintPosition(group)
+            : group;
+    }, [boardSort.field, visibleTasks]);
 
     const tasksBySprint = useMemo(() => {
         const map = new Map<string, Task[]>();
         for (const sprint of planningSprints) {
+            const group = visibleTasks.filter(
+                (task) => task.sprintId === sprint.id
+            );
             map.set(
                 sprint.id,
-                sortBySprintPosition(
-                    visibleTasks.filter((task) => task.sprintId === sprint.id)
-                )
+                boardSort.field === "manual"
+                    ? sortBySprintPosition(group)
+                    : group
             );
         }
         return map;
-    }, [planningSprints, visibleTasks]);
+    }, [boardSort.field, planningSprints, visibleTasks]);
 
     const selectedCount = Object.values(rowSelection).filter(Boolean).length;
     const moveTargets = useMemo(
@@ -437,11 +453,20 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             value={searchQuery}
                         />
                     </div>
-                    <BoardTaskFiltersBar
-                        filters={filters}
-                        labels={projectLabels}
-                        onChange={setFilters}
-                    />
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+                        <BoardTaskFiltersBar
+                            filters={filters}
+                            labels={projectLabels}
+                            onChange={setFilters}
+                            people={people}
+                        />
+                        <BoardSortControl
+                            onChange={(sort) => {
+                                setBoardSort(boardId, sort);
+                            }}
+                            value={boardSort}
+                        />
+                    </div>
                 </div>
             </header>
 

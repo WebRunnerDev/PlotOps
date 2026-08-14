@@ -10,6 +10,12 @@ import {
     useBoardTasks,
     useTasksUiStore,
 } from "@/features/tasks";
+import {
+    clearCreateTaskDraft,
+    getCreateTaskDraft,
+    setCreateTaskDraft,
+} from "@/features/tasks/lib/task-drafts";
+import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
 import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
@@ -42,8 +48,15 @@ export function KanbanAddTask({
     const [open, setOpen] = useState(startOpen);
     const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [draftTitle, setDraftTitle] = useState<null | string>(() => {
+        return getCreateTaskDraft(boardId, status)?.title ?? null;
+    });
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurSubmit = useRef(false);
+
+    useEffect(() => {
+        setDraftTitle(getCreateTaskDraft(boardId, status)?.title ?? null);
+    }, [boardId, status]);
 
     useEffect(() => {
         if (!startOpen) return;
@@ -56,10 +69,23 @@ export function KanbanAddTask({
 
     useEffect(() => {
         if (!open) return;
+        const draft = getCreateTaskDraft(boardId, status);
+        if (draft) {
+            setTitle(draft.title);
+            setDraftTitle(draft.title);
+        }
         inputReference.current?.focus();
-    }, [open]);
+    }, [boardId, open, status]);
 
-    const reset = () => {
+    const closeComposer = () => {
+        const trimmed = title.trim();
+        if (trimmed) {
+            setCreateTaskDraft(boardId, status, trimmed);
+            setDraftTitle(trimmed);
+        } else {
+            clearCreateTaskDraft(boardId, status);
+            setDraftTitle(null);
+        }
         setOpen(false);
         setTitle("");
     };
@@ -67,7 +93,10 @@ export function KanbanAddTask({
     const submit = async () => {
         const trimmed = title.trim();
         if (!trimmed) {
-            reset();
+            clearCreateTaskDraft(boardId, status);
+            setDraftTitle(null);
+            setOpen(false);
+            setTitle("");
             return;
         }
         if (isSubmitting) return;
@@ -77,8 +106,11 @@ export function KanbanAddTask({
             const task = await createTask(status, trimmed, {
                 sprintId: createSprintId,
             });
+            clearCreateTaskDraft(boardId, status);
+            setDraftTitle(null);
             selectTask(task.id);
-            reset();
+            setOpen(false);
+            setTitle("");
         } catch {
             toast.error(t("tasks.createFailed"));
         } finally {
@@ -98,41 +130,74 @@ export function KanbanAddTask({
                 type="button"
                 variant="ghost"
             >
-                <Plus className="size-4" />
-                {t("tasks.add")}
+                <Plus className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-left">
+                    {draftTitle ?? t("tasks.add")}
+                </span>
+                {draftTitle ? (
+                    <Badge
+                        className="shrink-0 rounded-sm font-mono text-[0.625rem]"
+                        variant="outline"
+                    >
+                        {t("tasks.draft")}
+                    </Badge>
+                ) : null}
             </Button>
         );
     }
 
     return (
-        <Input
-            aria-label={t("tasks.addPlaceholder")}
-            className="h-8 bg-background text-ui shadow-none"
-            disabled={isSubmitting}
-            maxLength={TASK_TITLE_MAX_LENGTH}
-            onBlur={() => {
-                if (skipBlurSubmit.current) {
-                    skipBlurSubmit.current = false;
-                    return;
-                }
-                void submit();
-            }}
-            onChange={(event) => setTitle(event.target.value)}
-            onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    skipBlurSubmit.current = true;
-                    void submit();
-                }
-                if (event.key === "Escape") {
-                    event.preventDefault();
-                    skipBlurSubmit.current = true;
-                    reset();
-                }
-            }}
-            placeholder={t("tasks.addPlaceholder")}
-            ref={inputReference}
-            value={title}
-        />
+        <div className="flex min-w-0 flex-col gap-1">
+            {draftTitle || title.trim() ? (
+                <div className="flex justify-end">
+                    <Badge
+                        className="rounded-sm font-mono text-[0.625rem]"
+                        variant="outline"
+                    >
+                        {t("tasks.unsaved")}
+                    </Badge>
+                </div>
+            ) : null}
+            <Input
+                aria-label={t("tasks.addPlaceholder")}
+                className="h-8 bg-background text-ui shadow-none"
+                disabled={isSubmitting}
+                maxLength={TASK_TITLE_MAX_LENGTH}
+                onBlur={() => {
+                    if (skipBlurSubmit.current) {
+                        skipBlurSubmit.current = false;
+                        return;
+                    }
+                    // Persist draft on accidental blur/navigation; create only on Enter.
+                    closeComposer();
+                }}
+                onChange={(event) => {
+                    const next = event.target.value;
+                    setTitle(next);
+                    if (next.trim()) {
+                        setCreateTaskDraft(boardId, status, next);
+                        setDraftTitle(next.trim());
+                    } else {
+                        clearCreateTaskDraft(boardId, status);
+                        setDraftTitle(null);
+                    }
+                }}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        skipBlurSubmit.current = true;
+                        void submit();
+                    }
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        skipBlurSubmit.current = true;
+                        closeComposer();
+                    }
+                }}
+                placeholder={t("tasks.addPlaceholder")}
+                ref={inputReference}
+                value={title}
+            />
+        </div>
     );
 }

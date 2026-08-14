@@ -62,7 +62,10 @@
             "priorityChange": "Priority changed",
             "priorityChangeDetail": "{{from}} → {{to}}",
             "statusChange": "Status changed",
-            "statusChangeDetail": "{{from}} → {{to}}"
+            "statusChangeDetail": "{{from}} → {{to}}",
+            "subtaskChange": "Subtask changed",
+            "subtaskChangeClosedDetail": "Subtask {{key}} closed",
+            "subtaskChangeCreatedDetail": "Subtask {{key}} created"
         },
         "priority": {
             "none": "No priority",

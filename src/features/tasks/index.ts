@@ -1,11 +1,17 @@
 export { resolveTasksProvider } from "./api/resolve-tasks-provider";
 export type { TasksProvider } from "./api/tasks-provider";
 export {
+    parentSubtaskProgress,
+    visibleBoardTasks,
+} from "./lib/board-subtask-visibility";
+export type { SubtaskProgress } from "./lib/board-subtask-visibility";
+export {
     DEADLINE_FILTER_VALUES,
     EMPTY_BOARD_FILTERS,
     filterTasks,
     isBoardFiltersActive,
     toggleFilterValue,
+    UNASSIGNED_ASSIGNEE_FILTER,
 } from "./lib/filter-tasks";
 export type {
     BoardTaskFilters,
@@ -31,7 +37,45 @@ export type {
 } from "./lib/sort-tasks-by-board-sort";
 export { isTaskEstimate, TASK_ESTIMATE_VALUES } from "./lib/task-estimate";
 export type { TaskEstimate } from "./lib/task-estimate";
+export {
+    assertParentArchiveLegal,
+    assertParentDeleteLegal,
+    assertParentDoneLegal,
+    assertParentLinkLegal,
+    assertTaskDoneLegal,
+    assertTaskLinkLegal,
+    hasOpenBlocker,
+    PARENT_GATE_ERROR,
+    PARENT_GATE_TOAST_KEY,
+    PARENT_LINK_ERROR,
+    parentArchiveRefusal,
+    parentDeleteRefusal,
+    parentDoneRefusal,
+    parentGateRefusalFromError,
+    parentLinkRefusal,
+    subtasksOf,
+    TASK_DONE_ERROR,
+    TASK_DONE_TOAST_KEY,
+    TASK_LINK_ERROR,
+    taskDoneRefusal,
+    taskDoneRefusalFromError,
+    taskLinkRefusal,
+} from "./lib/task-structure";
+export type {
+    ParentArchiveRefusal,
+    ParentDeleteRefusal,
+    ParentDoneRefusal,
+    ParentGateTask,
+    ParentLinkRefusal,
+    ProposedChild,
+    TaskDoneRefusal,
+    TaskLinkEdge,
+    TaskLinkKind,
+    TaskLinkRefusal,
+    TaskStructureNode,
+} from "./lib/task-structure";
 export { useBoardSortStore } from "./model/board-sort-store";
+export { useBoardSubtaskVisibilityStore } from "./model/board-subtask-visibility-store";
 export {
     columnAccentClass,
     DEFAULT_TASK_PRIORITY,
@@ -43,13 +87,20 @@ export {
     TASK_TYPE_ICON_CLASS,
 } from "./model/constants";
 export { taskKeys } from "./model/query-keys";
-export type { Task, TaskPriority, TaskStatus, TaskType } from "./model/types";
+export type {
+    Task,
+    TaskLinkPeer,
+    TaskPriority,
+    TaskStatus,
+    TaskType,
+} from "./model/types";
 export { useBoardTaskSelectionStore } from "./model/use-board-task-selection-store";
 export { useBoardTasks } from "./model/use-board-tasks";
 export { useProjectTasks } from "./model/use-project-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
 export { BoardSortControl } from "./ui/board-sort-control";
+export { BoardSubtaskVisibilityControl } from "./ui/board-subtask-visibility-control";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";
 export { BoardTaskSelectionBar } from "./ui/board-task-selection-bar";
 export { GithubTaskMeta } from "./ui/github-task-meta";

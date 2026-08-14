@@ -137,6 +137,7 @@ export type Database = {
         }
       }
       cleanup_notifications_for_user: { Args: never; Returns: undefined }
+      clear_task_parent: { Args: { p_task_id: string }; Returns: undefined }
       close_sprint: {
         Args: {
           p_carryover_by_task_id?: Json
@@ -189,6 +190,7 @@ export type Database = {
           allowed_head_patterns: string[]
           base_branch: string
           created_at: string
+          default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
           name: string
           position: number
@@ -243,6 +245,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_subtask: {
+        Args: {
+          p_parent_id: string
+          p_sprint_id?: null | string
+          p_task_type?: Database["public"]["Enums"]["task_type"] | null
+          p_title: string
+        }
+        Returns: string
+      }
+      create_task_link: {
+        Args: {
+          p_kind: string
+          p_source_task_id: string
+          p_target_task_id: string
+        }
+        Returns: string
+      }
       create_task_notifications: {
         Args: { p_events: Json; p_project_id: string; p_task_id: string }
         Returns: undefined
@@ -255,6 +274,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_task_link: { Args: { p_link_id: string }; Returns: undefined }
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -524,6 +544,7 @@ export type Database = {
           allowed_head_patterns?: string[]
           base_branch?: string
           created_at?: string
+          default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
           name: string
           position?: number
@@ -542,6 +563,7 @@ export type Database = {
           allowed_head_patterns: string[]
           base_branch: string
           created_at: string
+          default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
           name: string
           position: number
@@ -551,6 +573,7 @@ export type Database = {
           allowed_head_patterns?: string[]
           base_branch?: string
           created_at?: string
+          default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
           name?: string
           position?: number
@@ -979,6 +1002,65 @@ export type Database = {
           task_id?: string
         }
       }
+      task_links: {
+        Insert: {
+          created_at?: string
+          created_by?: null | string
+          id?: string
+          kind: string
+          project_id: string
+          source_task_id: string
+          target_task_id: string
+        }
+        Relationships: [
+          {
+            columns: ["created_by"]
+            foreignKeyName: "task_links_created_by_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "profiles"
+          },
+          {
+            columns: ["project_id"]
+            foreignKeyName: "task_links_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["source_task_id"]
+            foreignKeyName: "task_links_source_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+          {
+            columns: ["target_task_id"]
+            foreignKeyName: "task_links_target_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+        ]
+        Row: {
+          created_at: string
+          created_by: null | string
+          id: string
+          kind: string
+          project_id: string
+          source_task_id: string
+          target_task_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: null | string
+          id?: string
+          kind?: string
+          project_id?: string
+          source_task_id?: string
+          target_task_id?: string
+        }
+      }
       task_watchers: {
         Insert: {
           created_at?: string
@@ -1042,6 +1124,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          parent_id?: null | string
           position?: number
           pr_number?: null | number
           pr_state?: null | string
@@ -1085,6 +1168,13 @@ export type Database = {
             referencedRelation: "boards"
           },
           {
+            columns: ["parent_id"]
+            foreignKeyName: "tasks_parent_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+          {
             columns: ["project_id"]
             foreignKeyName: "tasks_project_id_fkey"
             isOneToOne: false
@@ -1111,6 +1201,7 @@ export type Database = {
           description: null | string
           estimate: null | number
           id: string
+          parent_id: null | string
           position: number
           pr_number: null | number
           pr_state: null | string
@@ -1136,6 +1227,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          parent_id?: null | string
           position?: number
           pr_number?: null | number
           pr_state?: null | string

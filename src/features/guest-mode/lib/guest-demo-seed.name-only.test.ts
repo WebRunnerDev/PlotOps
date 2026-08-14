@@ -55,4 +55,129 @@ describe("GUEST_DEMO_SEED name-only project", () => {
         );
         expect(canonical!.name).not.toBe("Mutated");
     });
+
+    it("seeds a Parent Task with Subtasks on the Git demo Board", () => {
+        const children = GUEST_DEMO_SEED.tasks.filter((task) => task.parentId);
+        expect(children.length).toBeGreaterThanOrEqual(2);
+
+        const parentIds = new Set(children.map((task) => task.parentId));
+        expect(parentIds.size).toBeGreaterThanOrEqual(1);
+
+        for (const parentId of parentIds) {
+            const parent = GUEST_DEMO_SEED.tasks.find(
+                (task) => task.id === parentId
+            );
+            expect(parent).toBeDefined();
+            expect(parent!.parentId).toBeUndefined();
+            expect(parent!.projectId).toBe(children[0]!.projectId);
+        }
+
+        const statuses = new Set(children.map((task) => task.status));
+        expect(statuses.has("done")).toBe(true);
+        expect(statuses.has("todo") || statuses.has("in_progress")).toBe(true);
+    });
+
+    it("seeds at least one relates to Task Link in the same Project", () => {
+        const links = GUEST_DEMO_SEED.taskLinks.filter(
+            (link) => link.kind === "relates_to"
+        );
+        expect(links.length).toBeGreaterThanOrEqual(1);
+
+        const link = links[0]!;
+        const source = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.sourceTaskId
+        );
+        const target = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.targetTaskId
+        );
+        expect(source).toBeDefined();
+        expect(target).toBeDefined();
+        expect(source!.projectId).toBe(target!.projectId);
+        expect(source!.id).not.toBe(target!.id);
+        expect(source!.parentId).not.toBe(target!.id);
+        expect(target!.parentId).not.toBe(source!.id);
+
+        const activityMentionsLink = GUEST_DEMO_SEED.activity.some((event) =>
+            event.metadata.changes.some(
+                (change) =>
+                    change.field === "task_link" &&
+                    (change.to as { key?: string; kind?: string }).kind ===
+                        "relates_to"
+            )
+        );
+        expect(activityMentionsLink).toBe(true);
+
+        expect(
+            GUEST_DEMO_SEED.notifications.every(
+                (row) => row.kind !== "task_link"
+            )
+        ).toBe(true);
+    });
+
+    it("seeds at least one blocks Task Link in the same Project", () => {
+        const links = GUEST_DEMO_SEED.taskLinks.filter(
+            (link) => link.kind === "blocks"
+        );
+        expect(links.length).toBeGreaterThanOrEqual(1);
+
+        const link = links[0]!;
+        const source = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.sourceTaskId
+        );
+        const target = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.targetTaskId
+        );
+        expect(source).toBeDefined();
+        expect(target).toBeDefined();
+        expect(source!.projectId).toBe(target!.projectId);
+        expect(source!.id).not.toBe(target!.id);
+        expect(source!.parentId).not.toBe(target!.id);
+        expect(target!.parentId).not.toBe(source!.id);
+        expect(source!.status).not.toBe("done");
+
+        const activityMentionsLink = GUEST_DEMO_SEED.activity.some((event) =>
+            event.metadata.changes.some(
+                (change) =>
+                    change.field === "task_link" &&
+                    (change.to as { key?: string; kind?: string }).kind ===
+                        "blocks"
+            )
+        );
+        expect(activityMentionsLink).toBe(true);
+
+        expect(
+            GUEST_DEMO_SEED.notifications.every(
+                (row) => row.kind !== "task_link"
+            )
+        ).toBe(true);
+    });
+
+    it("seeds a Parent Task subtask_change Notification in the inbox", () => {
+        const row = GUEST_DEMO_SEED.notifications.find(
+            (item) => item.kind === "subtask_change"
+        );
+        expect(row).toBeDefined();
+
+        const parent = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === row!.taskId
+        );
+        expect(parent).toBeDefined();
+        expect(parent!.parentId).toBeUndefined();
+
+        const metadata = row!.metadata as {
+            action?: string;
+            subtaskKey?: string;
+        };
+        expect(
+            metadata.action === "created" || metadata.action === "closed"
+        ).toBe(true);
+        expect(metadata.subtaskKey).toBeTruthy();
+        expect(
+            GUEST_DEMO_SEED.tasks.some(
+                (task) =>
+                    task.parentId === parent!.id &&
+                    task.key === metadata.subtaskKey
+            )
+        ).toBe(true);
+    });
 });

@@ -3,7 +3,11 @@ import type { TasksProvider } from "@/features/tasks/api/tasks-provider";
 import {
     archiveTaskRecord,
     archiveTaskRecords,
+    clearTaskParent,
+    createSubtaskRecord,
+    createTaskLinkRecord,
     createTaskRecord,
+    deleteTaskLinkRecord,
     deleteTaskRecord,
     fetchArchivedTasks,
     fetchBoardTasks,
@@ -19,7 +23,11 @@ import {
 export const supabaseTasksProvider: TasksProvider = {
     archiveTaskRecord,
     archiveTaskRecords,
+    clearTaskParent,
+    createSubtaskRecord,
+    createTaskLinkRecord,
     createTaskRecord,
+    deleteTaskLinkRecord,
     deleteTaskRecord,
     fetchArchivedTasks,
     fetchBoardTasks,

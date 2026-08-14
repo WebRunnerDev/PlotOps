@@ -1,4 +1,4 @@
-import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import {
     AlignCenter,
     AlignLeft,
@@ -7,11 +7,12 @@ import {
     SquareDashed,
 } from "lucide-react";
 import {
+    type PointerEvent as ReactPointerEvent,
     useCallback,
     useEffect,
+    useLayoutEffect,
     useRef,
     useState,
-    type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +20,7 @@ import { cn } from "@/shared/lib/utils";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 const MIN_WIDTH = 48;
+const TOOLBAR_EDGE_PAD = 8;
 
 type Alignment = "center" | "left" | "right";
 
@@ -30,7 +32,7 @@ const ALIGNMENTS: { icon: typeof AlignLeft; value: Alignment }[] = [
 
 type Corner = "ne" | "nw" | "se" | "sw";
 
-const CORNERS: { corner: Corner; className: string; signX: number }[] = [
+const CORNERS: { className: string; corner: Corner; signX: number }[] = [
     {
         className:
             "left-0 top-0 -translate-x-1/2 -translate-y-1/2 cursor-nwse-resize",
@@ -57,11 +59,6 @@ const CORNERS: { corner: Corner; className: string; signX: number }[] = [
     },
 ];
 
-function clampWidth(width: number, max: number): number {
-    const upperBound = max > 0 ? max : width;
-    return Math.round(Math.min(Math.max(width, MIN_WIDTH), upperBound));
-}
-
 export function ImageNodeView({
     editor,
     getPos,
@@ -70,11 +67,13 @@ export function ImageNodeView({
     updateAttributes,
 }: NodeViewProps) {
     const { t } = useTranslation("board");
-    const imageRef = useRef<HTMLImageElement | null>(null);
-    const wrapperRef = useRef<HTMLDivElement | null>(null);
-    const topSentinelRef = useRef<HTMLSpanElement | null>(null);
-    const bottomSentinelRef = useRef<HTMLSpanElement | null>(null);
-    const aspectRef = useRef<null | number>(null);
+    const imageReference = useRef<HTMLImageElement | null>(null);
+    const frameReference = useRef<HTMLSpanElement | null>(null);
+    const toolbarReference = useRef<HTMLSpanElement | null>(null);
+    const wrapperReference = useRef<HTMLDivElement | null>(null);
+    const topSentinelReference = useRef<HTMLSpanElement | null>(null);
+    const bottomSentinelReference = useRef<HTMLSpanElement | null>(null);
+    const aspectReference = useRef<null | number>(null);
     const [isResizing, setIsResizing] = useState(false);
     const [toolbarPlacement, setToolbarPlacement] = useState<
         "bottom" | "hidden" | "top"
@@ -82,7 +81,7 @@ export function ImageNodeView({
     const [widthField, setWidthField] = useState("");
     const [heightField, setHeightField] = useState("");
 
-    const src = node.attrs.src as string;
+    const source = node.attrs.src as string;
     const alt = (node.attrs.alt as null | string) ?? "";
     const width = node.attrs.width as null | number;
     const height = node.attrs.height as null | number;
@@ -93,9 +92,9 @@ export function ImageNodeView({
     const showControls = isEditable && selected && !uploading;
 
     const getAspectRatio = useCallback(() => {
-        if (aspectRef.current) return aspectRef.current;
+        if (aspectReference.current) return aspectReference.current;
         if (width && height) return width / height;
-        const image = imageRef.current;
+        const image = imageReference.current;
         if (image?.naturalWidth && image.naturalHeight) {
             return image.naturalWidth / image.naturalHeight;
         }
@@ -103,12 +102,12 @@ export function ImageNodeView({
     }, [height, width]);
 
     const getMaxWidth = useCallback(() => {
-        const surface = wrapperRef.current?.closest(".ProseMirror");
+        const surface = wrapperReference.current?.closest(".ProseMirror");
         return surface instanceof HTMLElement ? surface.clientWidth : 0;
     }, []);
 
     const syncFields = useCallback(() => {
-        const image = imageRef.current;
+        const image = imageReference.current;
         const measuredWidth = image
             ? Math.round(image.getBoundingClientRect().width)
             : 0;
@@ -122,9 +121,9 @@ export function ImageNodeView({
     }, [height, width]);
 
     const handleImageLoad = useCallback(() => {
-        const image = imageRef.current;
+        const image = imageReference.current;
         if (image?.naturalWidth && image.naturalHeight) {
-            aspectRef.current = image.naturalWidth / image.naturalHeight;
+            aspectReference.current = image.naturalWidth / image.naturalHeight;
         }
         syncFields();
     }, [syncFields]);
@@ -134,7 +133,7 @@ export function ImageNodeView({
             event.preventDefault();
             event.stopPropagation();
 
-            const image = imageRef.current;
+            const image = imageReference.current;
             if (!image) return;
 
             const startX = event.clientX;
@@ -155,14 +154,14 @@ export function ImageNodeView({
 
             const handleUp = () => {
                 setIsResizing(false);
-                window.removeEventListener("pointermove", handleMove);
-                window.removeEventListener("pointerup", handleUp);
+                globalThis.removeEventListener("pointermove", handleMove);
+                globalThis.removeEventListener("pointerup", handleUp);
             };
 
-            window.addEventListener("pointermove", handleMove);
-            window.addEventListener("pointerup", handleUp);
+            globalThis.addEventListener("pointermove", handleMove);
+            globalThis.addEventListener("pointerup", handleUp);
         },
-        [getAspectRatio, getMaxWidth, updateAttributes],
+        [getAspectRatio, getMaxWidth, updateAttributes]
     );
 
     const applyWidth = useCallback(
@@ -175,7 +174,7 @@ export function ImageNodeView({
                 width: nextWidth,
             });
         },
-        [getAspectRatio, getMaxWidth, updateAttributes],
+        [getAspectRatio, getMaxWidth, updateAttributes]
     );
 
     const applyHeight = useCallback(
@@ -189,13 +188,16 @@ export function ImageNodeView({
             }
             // Derive width from height, then clamp width and re-derive height so
             // the pair stays within the editor bounds without breaking ratio.
-            const clampedWidth = clampWidth(targetHeight * aspect, getMaxWidth());
+            const clampedWidth = clampWidth(
+                targetHeight * aspect,
+                getMaxWidth()
+            );
             updateAttributes({
                 height: Math.round(clampedWidth / aspect),
                 width: clampedWidth,
             });
         },
-        [getAspectRatio, getMaxWidth, updateAttributes],
+        [getAspectRatio, getMaxWidth, updateAttributes]
     );
 
     const toggleBorder = useCallback(() => {
@@ -206,7 +208,7 @@ export function ImageNodeView({
         (value: Alignment) => {
             updateAttributes({ align: value });
         },
-        [updateAttributes],
+        [updateAttributes]
     );
 
     // The image node is `user-select: none` (so a text selection dragged across
@@ -214,32 +216,41 @@ export function ImageNodeView({
     // longer clears an active text selection, so ProseMirror's default
     // click-to-select-node fails and the resize toolbar never appears.
     //
-    // Fix it with a native mousedown listener on the <img>: it runs in the
-    // target phase, before the event bubbles to ProseMirror's own handler on
-    // `.ProseMirror`, so stopPropagation keeps PM from processing the click at
-    // all (a React onMouseDown is delegated to the root and would fire too
-    // late — PM would already have run and would clobber our selection on
-    // mouseup). We then select this node explicitly by its own position.
+    // Capture-phase listener on the frame (not a React onMouseDown): React
+    // delegates to the root and would fire after ProseMirror's handler on
+    // `.ProseMirror`, which then clobbers NodeSelection on mouseup. Capture +
+    // stopPropagation selects the node before PM sees the event.
     useEffect(() => {
-        const image = imageRef.current;
-        if (!image || !isEditable) return;
+        const frame = frameReference.current;
+        if (!frame || !isEditable) return;
 
         const handleMouseDown = (event: MouseEvent) => {
             if (event.button !== 0) return;
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            // Let resize handles / toolbar inputs keep their own pointer behavior.
+            if (
+                target.closest(
+                    ".rich-text-image-handle, .rich-text-image-toolbar"
+                )
+            ) {
+                return;
+            }
             const pos = typeof getPos === "function" ? getPos() : null;
-            if (pos == null) return;
+            if (typeof pos !== "number") return;
             event.preventDefault();
             event.stopPropagation();
             editor.chain().focus().setNodeSelection(pos).run();
         };
 
-        image.addEventListener("mousedown", handleMouseDown);
-        return () => image.removeEventListener("mousedown", handleMouseDown);
+        frame.addEventListener("mousedown", handleMouseDown, true);
+        return () =>
+            frame.removeEventListener("mousedown", handleMouseDown, true);
     }, [editor, getPos, isEditable]);
 
     useEffect(() => {
         if (width && height) {
-            aspectRef.current = width / height;
+            aspectReference.current = width / height;
         }
     }, [height, width]);
 
@@ -252,9 +263,9 @@ export function ImageNodeView({
     // the scroll container, drop to the bottom; if neither fits, hide.
     useEffect(() => {
         if (!showControls) return;
-        const image = imageRef.current;
-        const topProbe = topSentinelRef.current;
-        const bottomProbe = bottomSentinelRef.current;
+        const image = imageReference.current;
+        const topProbe = topSentinelReference.current;
+        const bottomProbe = bottomSentinelReference.current;
         if (!image || !topProbe || !bottomProbe) return;
 
         const fits = { bottom: false, top: true };
@@ -276,10 +287,10 @@ export function ImageNodeView({
                     }
                 }
                 setToolbarPlacement(
-                    fits.top ? "top" : fits.bottom ? "bottom" : "hidden",
+                    fits.top ? "top" : fits.bottom ? "bottom" : "hidden"
                 );
             },
-            { threshold: [0, 1] },
+            { threshold: [0, 1] }
         );
         observer.observe(topProbe);
         observer.observe(bottomProbe);
@@ -287,20 +298,79 @@ export function ImageNodeView({
         return () => observer.disconnect();
     }, [showControls]);
 
+    // Keep the floating image toolbar inside the editor's overflow box. The
+    // shell uses overflow-x-hidden, so a left:8px toolbar on a right-aligned
+    // (or narrow) image otherwise clips off the far edge — and the reverse when
+    // left-aligned if we naively mirror with right:8px.
+    useLayoutEffect(() => {
+        if (!showControls) return;
+        const toolbar = toolbarReference.current;
+        const frame = frameReference.current;
+        const surface = wrapperReference.current?.closest(".ProseMirror");
+        if (
+            !(toolbar instanceof HTMLElement) ||
+            !(frame instanceof HTMLElement) ||
+            !(surface instanceof HTMLElement)
+        ) {
+            return;
+        }
+
+        const place = () => {
+            toolbar.style.left = `${TOOLBAR_EDGE_PAD}px`;
+            toolbar.style.right = "auto";
+            toolbar.style.maxWidth = "";
+
+            const surfaceRect = surface.getBoundingClientRect();
+            const frameRect = frame.getBoundingClientRect();
+            const available = Math.max(
+                0,
+                surfaceRect.width - TOOLBAR_EDGE_PAD * 2
+            );
+            if (available > 0) {
+                toolbar.style.maxWidth = `${available}px`;
+            }
+
+            const toolbarWidth = toolbar.offsetWidth;
+            const minLeft =
+                surfaceRect.left + TOOLBAR_EDGE_PAD - frameRect.left;
+            const maxLeft =
+                surfaceRect.right -
+                TOOLBAR_EDGE_PAD -
+                toolbarWidth -
+                frameRect.left;
+            const nextLeft = Math.min(
+                Math.max(TOOLBAR_EDGE_PAD, minLeft),
+                Math.max(minLeft, maxLeft)
+            );
+            toolbar.style.left = `${nextLeft}px`;
+        };
+
+        place();
+
+        const observer = new ResizeObserver(place);
+        observer.observe(surface);
+        observer.observe(frame);
+        observer.observe(toolbar);
+        return () => observer.disconnect();
+    }, [align, showControls, toolbarPlacement, width, widthField]);
+
     return (
         <NodeViewWrapper
+            as="div"
             className="rich-text-image-view"
+            contentEditable={false}
             data-align={align}
             data-selected={selected ? "true" : undefined}
-            ref={wrapperRef}
+            ref={wrapperReference}
             style={{ textAlign: align }}
         >
             <span
                 className={cn(
                     "rich-text-image-frame",
                     selected && "is-selected",
-                    isResizing && "is-resizing",
+                    isResizing && "is-resizing"
                 )}
+                ref={frameReference}
                 style={width ? { width: `${width}px` } : undefined}
             >
                 <img
@@ -310,8 +380,8 @@ export function ImageNodeView({
                     draggable={false}
                     height={height ?? undefined}
                     onLoad={handleImageLoad}
-                    ref={imageRef}
-                    src={src}
+                    ref={imageReference}
+                    src={source}
                     width={width ?? undefined}
                 />
 
@@ -326,18 +396,18 @@ export function ImageNodeView({
                         <span
                             aria-hidden
                             className="rich-text-image-sentinel is-top"
-                            ref={topSentinelRef}
+                            ref={topSentinelReference}
                         />
                         <span
                             aria-hidden
                             className="rich-text-image-sentinel is-bottom"
-                            ref={bottomSentinelRef}
+                            ref={bottomSentinelReference}
                         />
                         {CORNERS.map(({ className, corner, signX }) => (
                             <span
                                 className={cn(
                                     "rich-text-image-handle",
-                                    className,
+                                    className
                                 )}
                                 key={corner}
                                 onPointerDown={(event) =>
@@ -350,9 +420,10 @@ export function ImageNodeView({
                             className={cn(
                                 "rich-text-image-toolbar",
                                 toolbarPlacement === "bottom" && "is-bottom",
-                                toolbarPlacement === "hidden" && "is-hidden",
+                                toolbarPlacement === "hidden" && "is-hidden"
                             )}
                             contentEditable={false}
+                            ref={toolbarReference}
                         >
                             <label className="rich-text-image-field">
                                 <span>{t("richText.media.width")}</span>
@@ -363,8 +434,8 @@ export function ImageNodeView({
                                         applyWidth(
                                             Number.parseInt(
                                                 event.target.value,
-                                                10,
-                                            ),
+                                                10
+                                            )
                                         )
                                     }
                                     onChange={(event) =>
@@ -374,10 +445,7 @@ export function ImageNodeView({
                                         if (event.key === "Enter") {
                                             event.preventDefault();
                                             applyWidth(
-                                                Number.parseInt(
-                                                    widthField,
-                                                    10,
-                                                ),
+                                                Number.parseInt(widthField, 10)
                                             );
                                         }
                                     }}
@@ -395,8 +463,8 @@ export function ImageNodeView({
                                         applyHeight(
                                             Number.parseInt(
                                                 event.target.value,
-                                                10,
-                                            ),
+                                                10
+                                            )
                                         )
                                     }
                                     onChange={(event) =>
@@ -406,10 +474,7 @@ export function ImageNodeView({
                                         if (event.key === "Enter") {
                                             event.preventDefault();
                                             applyHeight(
-                                                Number.parseInt(
-                                                    heightField,
-                                                    10,
-                                                ),
+                                                Number.parseInt(heightField, 10)
                                             );
                                         }
                                     }}
@@ -422,7 +487,7 @@ export function ImageNodeView({
                                 aria-pressed={bordered}
                                 className={cn(
                                     "rich-text-image-border-toggle",
-                                    bordered && "is-active",
+                                    bordered && "is-active"
                                 )}
                                 onClick={toggleBorder}
                                 onMouseDown={(event) => event.preventDefault()}
@@ -440,12 +505,12 @@ export function ImageNodeView({
                                 {ALIGNMENTS.map(({ icon: Icon, value }) => (
                                     <button
                                         aria-label={t(
-                                            `richText.media.align.${value}`,
+                                            `richText.media.align.${value}`
                                         )}
                                         aria-pressed={align === value}
                                         className={cn(
                                             "rich-text-image-align-button",
-                                            align === value && "is-active",
+                                            align === value && "is-active"
                                         )}
                                         key={value}
                                         onClick={() => setAlignment(value)}
@@ -453,7 +518,7 @@ export function ImageNodeView({
                                             event.preventDefault()
                                         }
                                         title={t(
-                                            `richText.media.align.${value}`,
+                                            `richText.media.align.${value}`
                                         )}
                                         type="button"
                                     >
@@ -467,4 +532,9 @@ export function ImageNodeView({
             </span>
         </NodeViewWrapper>
     );
+}
+
+function clampWidth(width: number, max: number): number {
+    const upperBound = max > 0 ? max : width;
+    return Math.round(Math.min(Math.max(width, MIN_WIDTH), upperBound));
 }

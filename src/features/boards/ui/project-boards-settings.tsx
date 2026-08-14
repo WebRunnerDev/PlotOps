@@ -5,8 +5,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { BoardDefaultTaskType } from "@/features/boards/model/types";
+
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { parseAllowedHeadPatterns } from "@/features/boards/lib/allowed-head-patterns";
+import { BOARD_DEFAULT_TASK_TYPES } from "@/features/boards/model/constants";
 import {
     useBoardMutations,
     useProjectBoards,
@@ -41,6 +44,12 @@ import {
 } from "@/shared/shadcn/ui/dialog";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 import { Textarea } from "@/shared/shadcn/ui/textarea";
 
@@ -154,6 +163,7 @@ export function ProjectBoardsSettings({
                                 "\n"
                             )}
                             initialBase={board.baseBranch}
+                            initialDefaultTaskType={board.defaultTaskType}
                             initialName={board.name}
                             isSaving={isUpdating}
                             key={board.id}
@@ -304,6 +314,7 @@ function BoardSettingsCard({
     expanded,
     initialAllowed,
     initialBase,
+    initialDefaultTaskType,
     initialName,
     isSaving,
     onDelete,
@@ -315,6 +326,7 @@ function BoardSettingsCard({
     expanded: boolean;
     initialAllowed: string;
     initialBase: string;
+    initialDefaultTaskType: BoardDefaultTaskType;
     initialName: string;
     isSaving: boolean;
     onDelete: () => void;
@@ -322,23 +334,29 @@ function BoardSettingsCard({
     onSave: (patch: {
         allowed_head_patterns?: string[];
         base_branch?: string;
+        default_task_type?: BoardDefaultTaskType;
         name?: string;
     }) => Promise<void>;
 }) {
     const { t } = useTranslation("board");
     const [name, setName] = useState(initialName);
     const [baseBranch, setBaseBranch] = useState(initialBase);
+    const [defaultTaskType, setDefaultTaskType] = useState(
+        initialDefaultTaskType
+    );
     const [allowedRaw, setAllowedRaw] = useState(initialAllowed);
 
     useEffect(() => {
         setName(initialName);
         setBaseBranch(initialBase);
+        setDefaultTaskType(initialDefaultTaskType);
         setAllowedRaw(initialAllowed);
-    }, [initialAllowed, initialBase, initialName]);
+    }, [initialAllowed, initialBase, initialDefaultTaskType, initialName]);
 
     const dirty =
         name.trim() !== initialName ||
         baseBranch.trim() !== initialBase ||
+        defaultTaskType !== initialDefaultTaskType ||
         parseAllowedHeadPatterns(allowedRaw).join("\n") !==
             parseAllowedHeadPatterns(initialAllowed).join("\n");
 
@@ -370,6 +388,12 @@ function BoardSettingsCard({
                                 {t("boards.unsaved")}
                             </Badge>
                         ) : undefined}
+                        <Badge
+                            className="shrink-0 rounded-sm px-1.5 font-mono text-[0.625rem]"
+                            variant="outline"
+                        >
+                            {t(`taskType.${defaultTaskType}`)}
+                        </Badge>
                         <Badge
                             className={cn(
                                 "shrink-0 rounded-sm px-1.5 font-mono text-[0.625rem]",
@@ -412,6 +436,49 @@ function BoardSettingsCard({
                                         {t("boards.baseBranchHint")}
                                     </p>
                                 </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5 sm:max-w-xs">
+                                <Label
+                                    htmlFor={`board-default-type-${boardId}`}
+                                >
+                                    {t("boards.defaultTaskType")}
+                                </Label>
+                                <Select
+                                    onValueChange={(value) => {
+                                        if (
+                                            value === "bug" ||
+                                            value === "feature" ||
+                                            value === "task"
+                                        ) {
+                                            setDefaultTaskType(value);
+                                        }
+                                    }}
+                                    value={defaultTaskType}
+                                >
+                                    <SelectTrigger
+                                        id={`board-default-type-${boardId}`}
+                                    >
+                                        <span>
+                                            {t(`taskType.${defaultTaskType}`)}
+                                        </span>
+                                    </SelectTrigger>
+                                    <SelectContent alignItemWithTrigger={false}>
+                                        {BOARD_DEFAULT_TASK_TYPES.map(
+                                            (type) => (
+                                                <SelectItem
+                                                    key={type}
+                                                    value={type}
+                                                >
+                                                    {t(`taskType.${type}`)}
+                                                </SelectItem>
+                                            )
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-meta text-muted-foreground">
+                                    {t("boards.defaultTaskTypeHint")}
+                                </p>
                             </div>
 
                             <div className="flex flex-col gap-1.5">
@@ -457,6 +524,7 @@ function BoardSettingsCard({
                                                     allowedRaw
                                                 ),
                                             base_branch: baseBranch.trim(),
+                                            default_task_type: defaultTaskType,
                                             name: name.trim(),
                                         })
                                     }

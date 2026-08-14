@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import type { BoardDefaultTaskType } from "@/features/boards/model/types";
+
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateProjectBoards } from "@/features/boards/model/invalidate-boards";
 import { boardKeys } from "@/features/boards/model/query-keys";
@@ -39,6 +41,7 @@ export function useBoardMutations(projectId: string) {
             patch: {
                 allowed_head_patterns?: string[];
                 base_branch?: string;
+                default_task_type?: BoardDefaultTaskType;
                 name?: string;
             };
         }) => boardsProvider.updateBoard(boardId, patch),
@@ -69,6 +72,7 @@ export function useBoardMutations(projectId: string) {
             patch: {
                 allowed_head_patterns?: string[];
                 base_branch?: string;
+                default_task_type?: BoardDefaultTaskType;
                 name?: string;
             }
         ) => updateMutation.mutateAsync({ boardId, patch }),

@@ -4,6 +4,8 @@ import { CommandPalette } from "@/features/command-palette";
 import { cn } from "@/shared/lib/utils";
 import { TopBar } from "@/widgets/top-bar";
 
+import { AuthSessionGuard } from "./auth-session-guard";
+
 export function MainLayoutWidget() {
     return <MainLayoutContent />;
 }
@@ -40,6 +42,7 @@ function MainLayoutContent() {
                 layoutMode === "default" && "min-h-dvh"
             )}
         >
+            <AuthSessionGuard />
             <TopBar />
             <CommandPalette />
             {layoutMode === "kanban" ? (

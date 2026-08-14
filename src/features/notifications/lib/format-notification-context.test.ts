@@ -32,6 +32,9 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.priorityChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.statusChange": "Status changed",
         "notifications.kinds.statusChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
+        "notifications.kinds.subtaskChange": "Subtask changed",
+        "notifications.kinds.subtaskChangeClosedDetail": `Subtask ${options?.key ?? ""} closed`,
+        "notifications.kinds.subtaskChangeCreatedDetail": `Subtask ${options?.key ?? ""} created`,
         "notifications.priority.high": "High",
         "notifications.priority.medium": "Medium",
         "notifications.priority.none": "No priority",
@@ -346,6 +349,48 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("You were mentioned in the Description");
+    });
+
+    it("shows Subtask created copy with Subtask key for subtask_change", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "subtask_change",
+                    metadata: {
+                        action: "created",
+                        subtaskKey: "TASK-20",
+                    },
+                }),
+                t
+            )
+        ).toBe("Subtask TASK-20 created");
+    });
+
+    it("shows Subtask closed copy with Subtask key for subtask_change", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "subtask_change",
+                    metadata: {
+                        action: "closed",
+                        subtaskKey: "TASK-21",
+                    },
+                }),
+                t
+            )
+        ).toBe("Subtask TASK-21 closed");
+    });
+
+    it("falls back when subtask_change metadata is incomplete", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "subtask_change",
+                    metadata: {},
+                }),
+                t
+            )
+        ).toBe("Subtask changed");
     });
 
     it("falls back when mention metadata is incomplete", () => {

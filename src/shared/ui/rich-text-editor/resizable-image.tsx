@@ -7,16 +7,16 @@ const IMAGE_ALIGNMENTS = ["left", "center", "right"] as const;
 
 type ImageAlignment = (typeof IMAGE_ALIGNMENTS)[number];
 
-function parsePixelValue(value: null | string): null | number {
-    if (!value) return null;
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
 function parseAlignment(value: null | string): ImageAlignment {
     return IMAGE_ALIGNMENTS.includes(value as ImageAlignment)
         ? (value as ImageAlignment)
         : "left";
+}
+
+function parsePixelValue(value: null | string): null | number {
+    if (!value) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 /**
@@ -30,7 +30,7 @@ export const ResizableImage = Image.extend({
             align: {
                 default: "left",
                 parseHTML: (element) =>
-                    parseAlignment(element.getAttribute("data-align")),
+                    parseAlignment(element.dataset.align ?? null),
                 renderHTML: (attributes) =>
                     attributes.align && attributes.align !== "left"
                         ? { "data-align": attributes.align }
@@ -38,8 +38,7 @@ export const ResizableImage = Image.extend({
             },
             bordered: {
                 default: false,
-                parseHTML: (element) =>
-                    element.getAttribute("data-bordered") === "true",
+                parseHTML: (element) => element.dataset.bordered === "true",
                 renderHTML: (attributes) =>
                     attributes.bordered ? { "data-bordered": "true" } : {},
             },
@@ -79,6 +78,10 @@ export const ResizableImage = Image.extend({
             className: "rich-text-image-view",
         });
     },
+
+    // Native PM drag on mousedown races click-to-select for React node views.
+    // Resize handles cover the intentional resize UX; keep the node non-draggable.
+    draggable: false,
 }).configure({
     allowBase64: false,
     HTMLAttributes: {

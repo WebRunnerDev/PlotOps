@@ -120,9 +120,12 @@ function isActivityField(value: unknown): value is TaskActivityChange["field"] {
         value === "deadline" ||
         value === "estimate" ||
         value === "labels" ||
+        value === "parent" ||
         value === "pr" ||
         value === "priority" ||
         value === "status" ||
+        value === "subtask" ||
+        value === "task_link" ||
         value === "title" ||
         value === "type"
     );

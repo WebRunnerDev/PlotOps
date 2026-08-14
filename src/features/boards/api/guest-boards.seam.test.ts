@@ -82,6 +82,11 @@ describe("guest boards provider happy path", () => {
         const updated = await provider.fetchBoard(board.id);
         expect(updated.name).toBe("Renamed Guest Board");
 
+        expect(board.defaultTaskType).toBe("task");
+        await provider.updateBoard(board.id, { default_task_type: "bug" });
+        const withDefaultType = await provider.fetchBoard(board.id);
+        expect(withDefaultType.defaultTaskType).toBe("bug");
+
         await provider.deleteBoard(board.id);
         const boards = await provider.fetchProjectBoards(projectId);
         expect(boards.some((item) => item.id === board.id)).toBe(false);

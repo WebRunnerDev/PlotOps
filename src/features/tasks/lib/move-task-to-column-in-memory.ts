@@ -3,6 +3,7 @@ import type { TaskMoveUpdate } from "@/features/tasks/lib/reorder-tasks-in-memor
 import type { Task, TaskStatus } from "@/features/tasks/model/types";
 
 import { applyVisibleColumnOrder } from "@/features/tasks/lib/apply-visible-column-order";
+import { resolveBoardDropTargetId } from "@/features/tasks/lib/board-drop-target-id";
 
 /**
  * Move one or more tasks into a column (by column id or a task living there).
@@ -21,11 +22,12 @@ export function moveTasksToColumnInMemory(
 ): undefined | { tasks: Task[]; updates: TaskMoveUpdate[] } {
     if (activeIds.length === 0) return undefined;
 
-    const overTask = tasks.find((task) => task.id === overId);
-    const overIsColumn = columns.some((column) => column.id === overId);
+    const resolvedOverId = resolveBoardDropTargetId(overId);
+    const overTask = tasks.find((task) => task.id === resolvedOverId);
+    const overIsColumn = columns.some((column) => column.id === resolvedOverId);
     if (!overTask && !overIsColumn) return undefined;
 
-    const targetStatus = overTask ? overTask.status : overId;
+    const targetStatus = overTask ? overTask.status : resolvedOverId;
     const movingIdSet = new Set(
         activeIds.filter((id) => {
             const task = tasks.find((entry) => entry.id === id);
@@ -62,8 +64,8 @@ export function moveTasksToColumnInMemory(
 
         let insertAt = visibleExisting.length;
         if (overTask && !movingIdSet.has(overTask.id)) {
-            const overVisibleIndex = displayedTaskIds.has(overId)
-                ? visibleExisting.indexOf(overId)
+            const overVisibleIndex = displayedTaskIds.has(resolvedOverId)
+                ? visibleExisting.indexOf(resolvedOverId)
                 : -1;
             if (overVisibleIndex !== -1) insertAt = overVisibleIndex;
         }
@@ -94,7 +96,9 @@ export function moveTasksToColumnInMemory(
     } else {
         let insertIndex: number;
         if (overTask && !movingIdSet.has(overTask.id)) {
-            insertIndex = withoutMoving.findIndex((task) => task.id === overId);
+            insertIndex = withoutMoving.findIndex(
+                (task) => task.id === resolvedOverId
+            );
             if (insertIndex === -1) insertIndex = withoutMoving.length;
         } else {
             let lastIndex = -1;

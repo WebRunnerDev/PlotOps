@@ -62,7 +62,10 @@
             "priorityChange": "Приоритет изменён",
             "priorityChangeDetail": "{{from}} → {{to}}",
             "statusChange": "Статус изменён",
-            "statusChangeDetail": "{{from}} → {{to}}"
+            "statusChangeDetail": "{{from}} → {{to}}",
+            "subtaskChange": "Подзадача изменена",
+            "subtaskChangeClosedDetail": "Подзадача {{key}} закрыта",
+            "subtaskChangeCreatedDetail": "Создана подзадача {{key}}"
         },
         "priority": {
             "none": "Без приоритета",

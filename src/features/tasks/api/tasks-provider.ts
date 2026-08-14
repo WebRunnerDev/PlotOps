@@ -2,7 +2,12 @@ import type {
     BoardTasksCache,
     TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
-import type { Task, TaskStatus, TaskType } from "@/features/tasks/model/types";
+import type {
+    Task,
+    TaskLinkKind,
+    TaskStatus,
+    TaskType,
+} from "@/features/tasks/model/types";
 
 /**
  * Narrow Tasks data seam for Guest vs Supabase resolution.
@@ -11,6 +16,18 @@ import type { Task, TaskStatus, TaskType } from "@/features/tasks/model/types";
 export type TasksProvider = {
     archiveTaskRecord(taskId: string): Promise<void>;
     archiveTaskRecords(taskIds: string[]): Promise<{ archivedCount: number }>;
+    clearTaskParent(taskId: string): Promise<Task>;
+    createSubtaskRecord(
+        parentId: string,
+        title: string,
+        taskType?: TaskType,
+        sprintId?: string
+    ): Promise<Task>;
+    createTaskLinkRecord(
+        sourceTaskId: string,
+        targetTaskId: string,
+        kind: TaskLinkKind
+    ): Promise<Task>;
     createTaskRecord(
         projectId: string,
         boardId: string,
@@ -19,6 +36,7 @@ export type TasksProvider = {
         taskType?: TaskType,
         sprintId?: string
     ): Promise<Task>;
+    deleteTaskLinkRecord(linkId: string): Promise<void>;
     deleteTaskRecord(taskId: string): Promise<void>;
     fetchArchivedTasks(boardId: string): Promise<Task[]>;
     fetchBoardTasks(boardId: string): Promise<BoardTasksCache>;

@@ -17,12 +17,20 @@ export type Task = {
      * Absent / undefined = unestimated.
      */
     estimate?: TaskEstimate;
+    /** True when an open `blocks` Task Link targets this Task. */
+    hasOpenBlocker?: boolean;
     id: string;
     /** Human-readable key, e.g. TASK-1, BUG-5, FEAT-12. Set by DB trigger on insert. */
     key: string;
     labelIds?: string[];
+    /** Present when this Task is a Subtask of a Parent Task in the same Project. */
+    parentId?: string;
+    /** Parent Task key for card/drawer badge; set when parentId is set. */
+    parentKey?: string;
     pr?: TaskPullRequest;
     priority?: TaskPriority;
+    /** Peer Task Link summaries for the drawer (and later cards). */
+    relatedTasks?: TaskLinkPeer[];
     /** Board Sprint membership; absent ⇒ Backlog. */
     sprintId?: string;
     /** Order within the Sprint section or Backlog. */
@@ -56,9 +64,12 @@ export type TaskActivityField =
     | "deadline"
     | "estimate"
     | "labels"
+    | "parent"
     | "pr"
     | "priority"
     | "status"
+    | "subtask"
+    | "task_link"
     | "title"
     | "type";
 
@@ -81,6 +92,17 @@ export type TaskComment = {
     id: string;
     taskId: string;
     updatedAt: string;
+};
+
+export type TaskLinkKind = "blocks" | "relates_to";
+
+export type TaskLinkPeer = {
+    direction: "incoming" | "outgoing";
+    id: string;
+    kind: TaskLinkKind;
+    otherId: string;
+    otherKey: string;
+    otherTitle: string;
 };
 
 export type TaskPriority = "high" | "low" | "medium" | "urgent";

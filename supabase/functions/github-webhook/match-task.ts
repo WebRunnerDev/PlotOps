@@ -8,6 +8,7 @@ export type CandidateTask = {
     board_id: string;
     branch_name: null | string;
     id: string;
+    parent_id?: null | string;
     pr_number: null | number;
     pr_state: null | string;
     status: string;

@@ -32,6 +32,11 @@ const KIND_PHRASE_KEYS = {
     ],
     priority_change: ["priorityChange", "priorityChangeDetail"],
     status_change: ["statusChange", "statusChangeDetail"],
+    subtask_change: [
+        "subtaskChange",
+        "subtaskChangeClosedDetail",
+        "subtaskChangeCreatedDetail",
+    ],
 } as const satisfies Record<NotificationKind, readonly string[]>;
 
 const PRIORITY_VALUES = ["none", "urgent", "high", "medium", "low"] as const;
@@ -46,6 +51,7 @@ const KIND_ALIASES: Partial<Record<NotificationKind, readonly string[]>> = {
     mention: ["mentioned", "mention", "упомянул", "упомянули", "упоминание"],
     priority_change: ["priority"],
     status_change: ["status"],
+    subtask_change: ["subtask", "подзадача", "подзадачи"],
 };
 
 export type NotificationSearchExpansion = {
