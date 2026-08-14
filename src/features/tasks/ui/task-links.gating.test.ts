@@ -15,6 +15,7 @@ describe("Task Link Role gating seam", () => {
         const section = readUi("task-links-section.tsx");
 
         expect(drawer).toMatch(/TaskLinksSection/);
+        expect(drawer).not.toMatch(/relatedTasks\?\.length/);
         expect(drawer).toMatch(/canEditTasks/);
         expect(section).toMatch(/canEdit/);
         expect(section).toMatch(/taskLinks\.relatesTo/);
