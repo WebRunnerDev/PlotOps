@@ -60,11 +60,11 @@ import {
     parentGateRefusalFromError,
     type ParentGateTask,
     TASK_DONE_ERROR,
-    TASK_DONE_TOAST_KEY,
     taskDoneRefusal,
     taskDoneRefusalFromError,
     type TaskLinkEdge,
 } from "@/features/tasks/lib/task-structure";
+import { toastTaskDoneRefusal } from "@/features/tasks/lib/toast-task-done-refusal";
 import {
     getBoardSnapshot,
     invalidateBoardWorkspace,
@@ -133,6 +133,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const { t } = useTranslation("board");
     const queryClient = useQueryClient();
     const dragGestureCacheReference = useRef<BoardTasksCache | null>(null);
+    const dragDoneRefusalToasted = useRef(false);
     const guest = isGuest();
     const tasksProvider = resolveTasksProvider(guest);
 
@@ -210,12 +211,14 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             const reason = parentGateRefusalFromError(error);
             const doneReason = taskDoneRefusalFromError(error);
+            if (doneReason) {
+                toastTaskDoneRefusal(t, doneReason);
+                return;
+            }
             toast.error(
-                doneReason
-                    ? t(TASK_DONE_TOAST_KEY[doneReason])
-                    : reason
-                      ? t(PARENT_GATE_TOAST_KEY[reason])
-                      : "Failed to move task"
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : "Failed to move task"
             );
         },
         onSettled: () => {
@@ -394,12 +397,14 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             const reason = parentGateRefusalFromError(error);
             const doneReason = taskDoneRefusalFromError(error);
+            if (doneReason) {
+                toastTaskDoneRefusal(t, doneReason);
+                return;
+            }
             toast.error(
-                doneReason
-                    ? t(TASK_DONE_TOAST_KEY[doneReason])
-                    : reason
-                      ? t(PARENT_GATE_TOAST_KEY[reason])
-                      : "Failed to update task status"
+                reason
+                    ? t(PARENT_GATE_TOAST_KEY[reason])
+                    : "Failed to update task status"
             );
         },
         onSettled: () => {
@@ -771,7 +776,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     collectTaskLinkEdges(queryClient, projectId, boardId)
                 );
                 if (reason) {
-                    toast.error(t(TASK_DONE_TOAST_KEY[reason]));
+                    if (persist || !dragDoneRefusalToasted.current) {
+                        dragDoneRefusalToasted.current = true;
+                        toastTaskDoneRefusal(t, reason);
+                    }
                     return;
                 }
             }
@@ -816,6 +824,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             });
         }
 
+        dragDoneRefusalToasted.current = false;
+
         setTasksCache(queryClient, projectId, boardId, (current) =>
             applyTaskUpdates(current, result.updates, result.tasks)
         );
@@ -851,6 +861,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskKeys.board(projectId, boardId)
             );
             dragGestureCacheReference.current = null;
+            dragDoneRefusalToasted.current = false;
             if (!current) return;
 
             const updates = diffTaskMoveUpdates(previousCache, current);
@@ -1077,6 +1088,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
         rollbackTaskDragGesture: () => {
             const previousCache = dragGestureCacheReference.current;
             dragGestureCacheReference.current = null;
+            dragDoneRefusalToasted.current = false;
             if (!previousCache) return;
             queryClient.setQueryData(
                 taskKeys.board(projectId, boardId),
@@ -1218,7 +1230,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     collectTaskLinkEdges(queryClient, projectId, boardId)
                 );
                 if (reason) {
-                    toast.error(t(TASK_DONE_TOAST_KEY[reason]));
+                    toastTaskDoneRefusal(t, reason);
                     return;
                 }
             }

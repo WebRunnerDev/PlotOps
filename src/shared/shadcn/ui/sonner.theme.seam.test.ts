@@ -14,5 +14,6 @@ describe("Sonner theme seam", () => {
         );
         expect(source).not.toMatch(/next-themes/);
         expect(source).toMatch(/const\s+\{\s*theme\s*\}\s*=\s*useTheme\(\)/);
+        expect(source).toMatch(/visibleToasts=\{3\}/);
     });
 });

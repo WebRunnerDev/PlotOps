@@ -16,11 +16,12 @@ describe("useBoardTasks Parent Task Done/archive/delete gates", () => {
         const domain = read("src/features/tasks/lib/task-structure.ts");
 
         expect(source).toMatch(/taskDoneRefusal/);
-        expect(source).toMatch(/TASK_DONE_TOAST_KEY/);
+        expect(source).toMatch(/toastTaskDoneRefusal/);
         expect(source).toMatch(/PARENT_GATE_TOAST_KEY/);
         expect(source).toMatch(
-            /const moveTasksToColumn = \([\s\S]*taskDoneRefusal[\s\S]*toast\.error[\s\S]*return;[\s\S]*setTasksCache/
+            /const moveTasksToColumn = \([\s\S]*taskDoneRefusal[\s\S]*toastTaskDoneRefusal[\s\S]*return;[\s\S]*setTasksCache/
         );
+        expect(source).toMatch(/dragDoneRefusalToasted/);
         expect(source).toMatch(/persistTaskMoves/);
         expect(domain).toMatch(/subtasks\.doneRefused/);
         expect(domain).toMatch(/taskLinks\.blockedDoneRefused/);
