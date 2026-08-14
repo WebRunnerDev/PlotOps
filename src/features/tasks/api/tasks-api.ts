@@ -23,7 +23,9 @@ import { supabase } from "@/shared/api/supabase";
 import {
     type DatabaseTask,
     mapDatabaseTask,
+    parentIdsMissingFromRows,
     sortTasksByPosition,
+    withResolvedParentKeys,
 } from "./board-mappers";
 
 export type BoardTasksCache = {
@@ -49,6 +51,27 @@ function normalizeTaskTitle(title: string): string {
         );
     }
     return trimmed;
+}
+
+async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
+    const missing = parentIdsMissingFromRows(rows);
+    let extraParents: Array<{ id: string; task_key: string }> = [];
+    if (missing.length > 0) {
+        const { data, error } = await supabase
+            .from("tasks")
+            .select("id, task_key")
+            .in("id", missing);
+        if (error) throw error;
+        extraParents = data ?? [];
+    }
+    return withResolvedParentKeys(rows, extraParents).map((row) =>
+        mapDatabaseTask(row)
+    );
+}
+
+async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
+    const [task] = await mapSelectedTaskRows([row]);
+    return task;
 }
 
 const TASK_SELECT = `
@@ -100,9 +123,6 @@ const TASK_SELECT = `
     label_id
   ),
   parent_id,
-  parent:tasks!tasks_parent_id_fkey (
-    task_key
-  ),
   outgoing_links:task_links!task_links_source_task_id_fkey (
     id,
     kind,
@@ -183,7 +203,7 @@ export async function clearTaskParent(taskId: string) {
         .single();
 
     if (fetchError) throw fetchError;
-    return mapDatabaseTask(data as DatabaseTask);
+    return mapSelectedTaskRow(data as DatabaseTask);
 }
 
 export async function createSubtaskRecord(
@@ -207,7 +227,7 @@ export async function createSubtaskRecord(
         .single();
 
     if (fetchError) throw fetchError;
-    return mapDatabaseTask(row as DatabaseTask);
+    return mapSelectedTaskRow(row as DatabaseTask);
 }
 
 export async function createTaskLinkRecord(
@@ -229,7 +249,7 @@ export async function createTaskLinkRecord(
         .single();
 
     if (fetchError) throw fetchError;
-    return mapDatabaseTask(row as DatabaseTask);
+    return mapSelectedTaskRow(row as DatabaseTask);
 }
 
 export async function createTaskRecord(
@@ -306,7 +326,7 @@ export async function createTaskRecord(
         .single();
 
     if (error) throw error;
-    return mapDatabaseTask(data as DatabaseTask);
+    return mapSelectedTaskRow(data as DatabaseTask);
 }
 
 export async function deleteTaskLinkRecord(linkId: string) {
@@ -330,7 +350,7 @@ export async function fetchArchivedTasks(boardId: string): Promise<Task[]> {
         .order("archived_at", { ascending: false });
 
     if (error) throw error;
-    return ((data ?? []) as DatabaseTask[]).map((row) => mapDatabaseTask(row));
+    return mapSelectedTaskRows((data ?? []) as DatabaseTask[]);
 }
 
 export async function fetchBoardTasks(
@@ -347,7 +367,7 @@ export async function fetchBoardTasks(
     if (error) throw error;
 
     const taskRows = (data ?? []) as DatabaseTask[];
-    const tasks = taskRows.map((row) => mapDatabaseTask(row));
+    const tasks = await mapSelectedTaskRows(taskRows);
     const taskPositions = new Map(
         taskRows.map((row) => [row.id, row.position] as const)
     );
@@ -378,7 +398,7 @@ export async function fetchProjectTasks(
     const { data, error } = await query;
 
     if (error) throw error;
-    return ((data ?? []) as DatabaseTask[]).map((row) => mapDatabaseTask(row));
+    return mapSelectedTaskRows((data ?? []) as DatabaseTask[]);
 }
 
 export async function moveTaskToBoard(

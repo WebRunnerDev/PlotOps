@@ -115,6 +115,34 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
     };
 }
 
+export function parentIdsMissingFromRows(rows: DatabaseTask[]): string[] {
+    const present = new Set(rows.map((row) => row.id));
+    const missing = new Set<string>();
+    for (const row of rows) {
+        if (row.parent_id && !present.has(row.parent_id)) {
+            missing.add(row.parent_id);
+        }
+    }
+    return [...missing];
+}
+
+export function withResolvedParentKeys(
+    rows: DatabaseTask[],
+    extraParents: Array<{ id: string; task_key: string }> = []
+): DatabaseTask[] {
+    const keys = new Map(rows.map((row) => [row.id, row.task_key]));
+    for (const parent of extraParents) {
+        keys.set(parent.id, parent.task_key);
+    }
+    return rows.map((row) => {
+        const taskKey = row.parent_id ? keys.get(row.parent_id) : undefined;
+        return {
+            ...row,
+            parent: taskKey ? { task_key: taskKey } : null,
+        };
+    });
+}
+
 export function sortTasksByPosition(
     tasks: Task[],
     positions: Map<string, number>
