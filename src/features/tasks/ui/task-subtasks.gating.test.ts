@@ -29,6 +29,27 @@ describe("Subtask Role gating seam", () => {
     });
 });
 
+describe("Subtask drawer list seam", () => {
+    it("animates drawer content when switching to a Subtask", () => {
+        const drawer = readUi("task-drawer.tsx");
+        const section = readUi("task-subtasks-section.tsx");
+
+        expect(drawer).toMatch(/shouldAnimateTaskSwap/);
+        expect(drawer).toMatch(/slide-in-from-right-4/);
+        expect(drawer).toMatch(/slide-in-from-left-4/);
+        expect(section).toMatch(/selectTask\(child\.id\)/);
+        expect(section).toMatch(/transition-colors/);
+    });
+
+    it("shows status and assignee on each Subtask row", () => {
+        const section = readUi("task-subtasks-section.tsx");
+
+        expect(section).toMatch(/child\.status/);
+        expect(section).toMatch(/child\.assignee/);
+        expect(section).toMatch(/fields\.memberNone/);
+    });
+});
+
 describe("Subtask card badge seam", () => {
     it("shows the Parent Task key on Subtask cards", () => {
         const card = readUi("task-card.tsx");

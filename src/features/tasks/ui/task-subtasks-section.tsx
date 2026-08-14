@@ -1,15 +1,17 @@
-import { Plus } from "lucide-react";
+import { Plus, User } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { Task } from "@/features/tasks/model/types";
 
+import { useBoardColumns } from "@/features/boards";
 import { PARENT_LINK_ERROR } from "@/features/tasks/lib/task-structure";
 import { TASK_TITLE_MAX_LENGTH } from "@/features/tasks/model/constants";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
 
@@ -28,6 +30,7 @@ export function TaskSubtasksSection({
 }: TaskSubtasksSectionProperties) {
     const { t } = useTranslation("board");
     const { createSubtask } = useBoardTasks(projectId, boardId);
+    const { columns } = useBoardColumns(projectId, boardId);
     const { data: projectTasks = [] } = useProjectTasks(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
@@ -128,28 +131,83 @@ export function TaskSubtasksSection({
                 </p>
             ) : (
                 <ul className="flex flex-col gap-1">
-                    {children.map((child) => (
-                        <li key={child.id}>
-                            <button
-                                className="flex min-w-0 w-full items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-                                onClick={() => {
-                                    selectTask(child.id);
-                                }}
-                                type="button"
-                            >
-                                <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                    {child.key}
-                                </span>
-                                <span className="min-w-0 truncate text-ui">
-                                    {child.title}
-                                </span>
-                            </button>
-                        </li>
-                    ))}
+                    {children.map((child) => {
+                        const statusName =
+                            columns.find((column) => column.id === child.status)
+                                ?.name ?? child.status;
+                        const assigneeName = child.assignee?.name;
+
+                        return (
+                            <li key={child.id}>
+                                <button
+                                    className="flex min-w-0 w-full items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring active:bg-muted"
+                                    onClick={() => {
+                                        selectTask(child.id);
+                                    }}
+                                    type="button"
+                                >
+                                    <span className="shrink-0 font-mono text-meta text-muted-foreground">
+                                        {child.key}
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate text-ui">
+                                        {child.title}
+                                    </span>
+                                    <span
+                                        className="max-w-28 shrink-0 truncate text-meta text-muted-foreground"
+                                        title={t("fields.status")}
+                                    >
+                                        {statusName}
+                                    </span>
+                                    <span
+                                        className="flex min-w-0 max-w-32 shrink-0 items-center gap-1.5"
+                                        title={
+                                            assigneeName ??
+                                            t("fields.memberNone")
+                                        }
+                                    >
+                                        <Avatar size="sm">
+                                            {child.assignee?.avatarUrl ? (
+                                                <AvatarImage
+                                                    alt={assigneeName ?? ""}
+                                                    src={
+                                                        child.assignee.avatarUrl
+                                                    }
+                                                />
+                                            ) : undefined}
+                                            <AvatarFallback className="text-meta">
+                                                {assigneeName ? (
+                                                    initials(assigneeName)
+                                                ) : (
+                                                    <User className="size-3" />
+                                                )}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="hidden min-w-0 truncate text-meta text-muted-foreground sm:inline">
+                                            {assigneeName ??
+                                                t("fields.memberNone")}
+                                        </span>
+                                    </span>
+                                </button>
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </section>
     );
+}
+
+function initials(name: string): string {
+    const parts = name
+        .trim()
+        .split(/[\s_-]+/)
+        .filter(Boolean);
+
+    if (parts.length >= 2) {
+        return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
+    }
+
+    return name.slice(0, 2).toUpperCase();
 }
 
 function subtaskCreateErrorMessage(
