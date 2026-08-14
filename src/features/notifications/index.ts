@@ -13,6 +13,7 @@ export { planAuthorChangeNotifications } from "./lib/plan-author-change-notifica
 export { planBoardMoveWatcherNotification } from "./lib/plan-board-move-watcher-notification";
 
 export { planPriorityWatcherNotification } from "./lib/plan-priority-watcher-notification";
+export { planSubtaskChangeNotification } from "./lib/plan-subtask-change-notification";
 
 export {
     planTaskNotificationEvents,
@@ -32,6 +33,7 @@ export type {
     NotificationMetadata,
     PriorityChangeMetadata,
     StatusChangeMetadata,
+    SubtaskChangeMetadata,
     TaskWatcher,
 } from "./model/types";
 

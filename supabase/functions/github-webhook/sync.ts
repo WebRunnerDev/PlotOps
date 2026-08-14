@@ -100,7 +100,7 @@ async function syncInProject(
     const { data: taskRows, error: tasksError } = await supabase
         .from("tasks")
         .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at"
+            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
         )
         .eq("project_id", input.projectId);
 
@@ -277,6 +277,36 @@ async function syncInProject(
             reason: "notification_fan_out_failed",
             taskId: matched.id,
         });
+    }
+
+    if (matched.parent_id) {
+        const { error: subtaskNotificationError } = await supabase.rpc(
+            "create_task_notifications",
+            {
+                p_events: [
+                    {
+                        kind: "subtask_change",
+                        metadata: {
+                            action: "closed",
+                            source: "github_webhook",
+                            subtaskKey: matched.task_key,
+                        },
+                    },
+                ],
+                p_project_id: input.projectId,
+                p_task_id: matched.parent_id,
+            }
+        );
+
+        if (subtaskNotificationError) {
+            input.log({
+                error: subtaskNotificationError.message,
+                parentId: matched.parent_id,
+                projectId: input.projectId,
+                reason: "subtask_change_fan_out_failed",
+                taskId: matched.id,
+            });
+        }
     }
 
     input.log({

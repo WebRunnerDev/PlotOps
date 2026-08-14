@@ -113,4 +113,33 @@ describe("GUEST_DEMO_SEED name-only project", () => {
             )
         ).toBe(true);
     });
+
+    it("seeds a Parent Task subtask_change Notification in the inbox", () => {
+        const row = GUEST_DEMO_SEED.notifications.find(
+            (item) => item.kind === "subtask_change"
+        );
+        expect(row).toBeDefined();
+
+        const parent = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === row!.taskId
+        );
+        expect(parent).toBeDefined();
+        expect(parent!.parentId).toBeUndefined();
+
+        const metadata = row!.metadata as {
+            action?: string;
+            subtaskKey?: string;
+        };
+        expect(
+            metadata.action === "created" || metadata.action === "closed"
+        ).toBe(true);
+        expect(metadata.subtaskKey).toBeTruthy();
+        expect(
+            GUEST_DEMO_SEED.tasks.some(
+                (task) =>
+                    task.parentId === parent!.id &&
+                    task.key === metadata.subtaskKey
+            )
+        ).toBe(true);
+    });
 });

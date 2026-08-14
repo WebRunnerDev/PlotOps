@@ -9,6 +9,7 @@ import type {
     Notification,
     PriorityChangeMetadata,
     StatusChangeMetadata,
+    SubtaskChangeMetadata,
 } from "@/features/notifications/model/types";
 
 export function formatNotificationContext(
@@ -113,6 +114,18 @@ export function formatNotificationContext(
             return t("notifications.kinds.mentionDescription");
         }
         return t("notifications.kinds.mention");
+    }
+
+    if (notification.kind === "subtask_change") {
+        const metadata = notification.metadata as SubtaskChangeMetadata;
+        const key = metadata.subtaskKey;
+        if (key && metadata.action === "created") {
+            return t("notifications.kinds.subtaskChangeCreatedDetail", { key });
+        }
+        if (key && metadata.action === "closed") {
+            return t("notifications.kinds.subtaskChangeClosedDetail", { key });
+        }
+        return t("notifications.kinds.subtaskChange");
     }
 
     if (notification.kind === "priority_change") {

@@ -34,6 +34,8 @@ describe("useBoardTasks mutation error + clear seams", () => {
         );
         expect(source).toMatch(/labelIds\?:\s*null\s*\|\s*string\[\]/);
         expect(source).toMatch(/notifyDeadlineChangeBestEffort/);
+        expect(source).toMatch(/notifySubtaskChangeBestEffort/);
+        expect(source).toMatch(/createTaskNotifications/);
         expect(source).toMatch(/updateTaskDetails\(/);
         expect(source).toMatch(/commitTaskDragGesture/);
         expect(source).toMatch(/persist:\s*false|persist\?:\s*boolean/);

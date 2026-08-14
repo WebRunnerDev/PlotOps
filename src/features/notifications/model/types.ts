@@ -60,7 +60,8 @@ export type NotificationKind =
     | "deadline_change"
     | "mention"
     | "priority_change"
-    | "status_change";
+    | "status_change"
+    | "subtask_change";
 
 export type NotificationMetadata =
     | AssigneeChangeMetadata
@@ -71,7 +72,8 @@ export type NotificationMetadata =
     | MentionMetadata
     | PriorityChangeMetadata
     | Record<string, unknown>
-    | StatusChangeMetadata;
+    | StatusChangeMetadata
+    | SubtaskChangeMetadata;
 
 export type PriorityChangeMetadata = {
     from: string;
@@ -83,6 +85,12 @@ export type StatusChangeMetadata = {
     from: { id: string; name: string };
     source?: "app" | "github_webhook";
     to: { id: string; name: string };
+};
+
+export type SubtaskChangeMetadata = {
+    action: "closed" | "created";
+    source?: "app" | "github_webhook";
+    subtaskKey: string;
 };
 
 export type TaskWatcher = {

@@ -36,6 +36,7 @@ import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan
 import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/plan-board-move-watcher-notification";
 import { planDeadlineWatcherNotification } from "@/features/notifications/lib/plan-deadline-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
+import { planSubtaskChangeNotification } from "@/features/notifications/lib/plan-subtask-change-notification";
 import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -166,11 +167,28 @@ export function useBoardTasks(projectId: string, boardId: string) {
             await tasksProvider.persistTaskMoves(boardId, updates);
             if (guest) return;
             const activityEntries = activities ?? (activity ? [activity] : []);
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const doneIds = snapshot
+                ? doneColumnIdSet(snapshot.columns)
+                : new Set<string>();
             for (const entry of activityEntries) {
                 await notifyStatusChangeBestEffort({
                     activityChanges: entry.changes,
                     projectId,
                     taskId: entry.taskId,
+                });
+                const moved = lookupTaskForNotification(
+                    queryClient,
+                    projectId,
+                    boardId,
+                    entry.taskId
+                );
+                await notifySubtaskChangeBestEffort({
+                    activityChanges: entry.changes,
+                    doneColumnIds: doneIds,
+                    parentId: moved?.parentId,
+                    projectId,
+                    subtaskKey: moved?.key,
                 });
                 await recordTaskActivity({
                     changes: entry.changes,
@@ -337,6 +355,23 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId: id,
             });
 
+            const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
+            const moved = lookupTaskForNotification(
+                queryClient,
+                projectId,
+                boardId,
+                id
+            );
+            await notifySubtaskChangeBestEffort({
+                activityChanges,
+                doneColumnIds: snapshot
+                    ? doneColumnIdSet(snapshot.columns)
+                    : new Set<string>(),
+                parentId: moved?.parentId,
+                projectId,
+                subtaskKey: moved?.key,
+            });
+
             await recordTaskActivity({
                 changes: activityChanges,
                 projectId,
@@ -389,6 +424,34 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 activityChanges,
                 projectId,
                 taskId,
+            });
+
+            const originSnapshot = getBoardSnapshot(
+                queryClient,
+                projectId,
+                boardId
+            );
+            const targetColumns = queryClient.getQueryData<BoardColumn[]>(
+                boardKeys.columns(projectId, targetBoardId)
+            );
+            const doneIds = new Set<string>([
+                ...(originSnapshot
+                    ? doneColumnIdSet(originSnapshot.columns)
+                    : []),
+                ...(targetColumns ? doneColumnIdSet(targetColumns) : []),
+            ]);
+            const moved = lookupTaskForNotification(
+                queryClient,
+                projectId,
+                boardId,
+                taskId
+            );
+            await notifySubtaskChangeBestEffort({
+                activityChanges,
+                doneColumnIds: doneIds,
+                parentId: moved?.parentId,
+                projectId,
+                subtaskKey: moved?.key,
             });
 
             await recordTaskActivity({
@@ -471,6 +534,14 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 void queryClient.invalidateQueries({
                     queryKey: activityKey(task.parentId),
                 });
+                if (!guest) {
+                    void notifySubtaskChangeBestEffort({
+                        action: "created",
+                        parentId: task.parentId,
+                        projectId,
+                        subtaskKey: task.key,
+                    });
+                }
             }
             void queryClient.invalidateQueries({
                 queryKey: activityKey(task.id),
@@ -1302,6 +1373,17 @@ function isIdNameSnapshot(value: unknown): value is IdNameSnapshot {
     return typeof snapshot.id === "string" && typeof snapshot.name === "string";
 }
 
+function lookupTaskForNotification(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string,
+    taskId: string
+): Task | undefined {
+    return getBoardSnapshot(queryClient, projectId, boardId)?.tasks.find(
+        (task) => task.id === taskId
+    );
+}
+
 async function notifyBoardMoveBestEffort(input: {
     activityChanges: TaskActivityChange[];
     projectId: string;
@@ -1408,6 +1490,53 @@ async function notifyStatusChangeBestEffort(input: {
     } catch {
         // Best-effort: never block the primary task mutation.
     }
+}
+
+async function notifySubtaskChangeBestEffort(input: {
+    action?: "created";
+    activityChanges?: TaskActivityChange[];
+    doneColumnIds?: Set<string>;
+    parentId?: string;
+    projectId: string;
+    subtaskKey?: string;
+}) {
+    const event =
+        input.action === "created"
+            ? planSubtaskChangeNotification({
+                  action: "created",
+                  parentId: input.parentId,
+                  subtaskKey: input.subtaskKey ?? "",
+              })
+            : planSubtaskClosedFromActivity(input);
+    if (!event || !input.parentId) return;
+
+    try {
+        await createTaskNotifications({
+            events: [event],
+            projectId: input.projectId,
+            taskId: input.parentId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+function planSubtaskClosedFromActivity(input: {
+    activityChanges?: TaskActivityChange[];
+    doneColumnIds?: Set<string>;
+    parentId?: string;
+    subtaskKey?: string;
+}) {
+    const transition = extractStatusTransition(input.activityChanges ?? []);
+    if (!transition || !input.doneColumnIds) return;
+
+    return planSubtaskChangeNotification({
+        action: "closed",
+        fromDone: input.doneColumnIds.has(transition.from.id),
+        parentId: input.parentId,
+        subtaskKey: input.subtaskKey ?? "",
+        toDone: input.doneColumnIds.has(transition.to.id),
+    });
 }
 
 async function recordTaskActivity(input: {

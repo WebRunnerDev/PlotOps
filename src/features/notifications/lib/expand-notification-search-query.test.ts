@@ -71,6 +71,16 @@ describe("expandNotificationSearchQuery", () => {
         const result = expandNotificationSearchQuery("упоминание");
         expect(result.matchedKinds).toContain("mention");
     });
+
+    it("matches Subtask UI copy to subtask_change", () => {
+        const result = expandNotificationSearchQuery("subtask");
+        expect(result.matchedKinds).toContain("subtask_change");
+    });
+
+    it("matches Russian Subtask copy", () => {
+        const result = expandNotificationSearchQuery("подзадача");
+        expect(result.matchedKinds).toContain("subtask_change");
+    });
 });
 
 describe("fuzzyTextMatch", () => {

@@ -364,6 +364,20 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             taskKey: "BUG-11",
             taskTitle: "Flaky board Realtime reconnect",
         },
+        {
+            createdAt: "2026-08-05T10:06:00.000Z",
+            id: "d0000000-0000-4000-8000-000000000304",
+            kind: "subtask_change",
+            metadata: {
+                action: "created",
+                subtaskKey: "TASK-20",
+            },
+            projectId: PROJ_GIT_ID,
+            readAt: null,
+            taskId: T06,
+            taskKey: "TASK-6",
+            taskTitle: "Demo account chip in TopBar",
+        },
     ],
     projects: [
         {
