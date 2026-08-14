@@ -153,7 +153,10 @@
         "removeParentFailed": "Could not remove the Parent relationship",
         "doneRefused": "A Parent Task cannot enter Done while Subtasks are not Done",
         "archiveRefused": "A Parent Task cannot be archived while Subtasks are still active",
-        "deleteRefused": "A Parent Task cannot be deleted while Subtasks exist"
+        "deleteRefused": "A Parent Task cannot be deleted while Subtasks exist",
+        "hideToggle": "Hide Subtasks",
+        "showToggle": "Show Subtasks",
+        "progressBadge": "{{done}}/{{total}} Done"
     },
     "taskLinks": {
         "title": "Linked tasks",

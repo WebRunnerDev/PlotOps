@@ -30,6 +30,7 @@ import {
 } from "@/features/sprints";
 import {
     BoardSortControl,
+    BoardSubtaskVisibilityControl,
     type BoardTaskFilters,
     BoardTaskFiltersBar,
     BoardTaskSelectionBar,
@@ -37,13 +38,17 @@ import {
     EMPTY_BOARD_FILTERS,
     filterTasks,
     isWithinColumnDragEnabled,
+    parentSubtaskProgress,
     sortTasksByBoardSort,
+    type SubtaskProgress,
     type Task,
     TaskCard,
     TaskDrawer,
     useBoardSortStore,
+    useBoardSubtaskVisibilityStore,
     useBoardTasks,
     useBoardTaskSelectionStore,
+    visibleBoardTasks,
 } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -105,6 +110,12 @@ export function KanbanBoard({
         (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
     );
     const setBoardSort = useBoardSortStore((state) => state.setBoardSort);
+    const hideSubtasks = useBoardSubtaskVisibilityStore(
+        (state) => state.hideSubtasksByBoardId[boardId] === true
+    );
+    const setHideSubtasks = useBoardSubtaskVisibilityStore(
+        (state) => state.setHideSubtasks
+    );
     const withinColumnDragEnabled = isWithinColumnDragEnabled(boardSort);
     const syncBoardSelection = useBoardTaskSelectionStore(
         (state) => state.syncBoard
@@ -206,13 +217,40 @@ export function KanbanBoard({
             sprints,
             tasks,
         });
-        return filterTasks(scoped, filters);
-    }, [activeSprint?.id, effectiveBoardSprintScope, filters, sprints, tasks]);
+        return visibleBoardTasks(filterTasks(scoped, filters), hideSubtasks);
+    }, [
+        activeSprint?.id,
+        effectiveBoardSprintScope,
+        filters,
+        hideSubtasks,
+        sprints,
+        tasks,
+    ]);
 
     const displayedTasks = useMemo(
         () => sortTasksByBoardSort(filteredTasks, boardSort),
         [boardSort, filteredTasks]
     );
+
+    const subtaskProgressByTaskId = useMemo(() => {
+        const doneColumnIds = new Set(
+            columns.filter((column) => column.isDone).map((column) => column.id)
+        );
+        const nodes = tasks.map((task) => ({
+            id: task.id,
+            isDone: doneColumnIds.has(task.status),
+            parentId: task.parentId,
+        }));
+        const map = new Map<string, SubtaskProgress>();
+        for (const task of tasks) {
+            if (task.parentId !== undefined) continue;
+            const progress = parentSubtaskProgress(task.id, nodes);
+            if (progress) {
+                map.set(task.id, progress);
+            }
+        }
+        return map;
+    }, [columns, tasks]);
 
     const boardTaskViewRestricted = isBoardTaskViewRestricted(
         tasks,
@@ -463,6 +501,12 @@ export function KanbanBoard({
                     }}
                     value={boardSort}
                 />
+                <BoardSubtaskVisibilityControl
+                    hideSubtasks={hideSubtasks}
+                    onChange={(next) => {
+                        setHideSubtasks(boardId, next);
+                    }}
+                />
             </div>
 
             <DndContext
@@ -491,6 +535,9 @@ export function KanbanBoard({
                                 }
                                 startEditing={focusColumnId === column.id}
                                 status={column.id}
+                                subtaskProgressByTaskId={
+                                    subtaskProgressByTaskId
+                                }
                                 tasks={displayedTasks.filter(
                                     (task) => task.status === column.id
                                 )}
@@ -521,6 +568,9 @@ export function KanbanBoard({
                         <div className="relative rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
                             <TaskCard
                                 labels={labelsByTaskId.get(activeTask.id) ?? []}
+                                subtaskProgress={subtaskProgressByTaskId.get(
+                                    activeTask.id
+                                )}
                                 task={activeTask}
                             />
                             {activeDragCount > 1 ? (

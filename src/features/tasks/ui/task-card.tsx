@@ -11,6 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
+import type { SubtaskProgress } from "@/features/tasks/lib/board-subtask-visibility";
 import type { Task, TaskType } from "@/features/tasks/model/types";
 
 import { TaskLabelChips } from "@/features/labels";
@@ -54,6 +55,7 @@ const TASK_TYPE_ICON: Record<TaskType, LucideIcon> = {
 type TaskCardProperties = {
     labels: ProjectLabel[];
     selection?: TaskCardSelection;
+    subtaskProgress?: SubtaskProgress;
     task: Task;
 };
 
@@ -65,7 +67,12 @@ type TaskCardSelection = {
     toggleLabel: string;
 };
 
-export function TaskCard({ labels, selection, task }: TaskCardProperties) {
+export function TaskCard({
+    labels,
+    selection,
+    subtaskProgress,
+    task,
+}: TaskCardProperties) {
     const { i18n, t } = useTranslation("board");
     const assigneeName = task.assignee?.name;
     const overdue =
@@ -145,6 +152,21 @@ export function TaskCard({ labels, selection, task }: TaskCardProperties) {
                                 variant="outline"
                             >
                                 {task.parentKey}
+                            </Badge>
+                        ) : undefined}
+                        {subtaskProgress ? (
+                            <Badge
+                                className="shrink-0 rounded-sm font-mono text-[0.625rem]"
+                                title={t("subtasks.progressBadge", {
+                                    done: subtaskProgress.done,
+                                    total: subtaskProgress.total,
+                                })}
+                                variant="secondary"
+                            >
+                                {t("subtasks.progressBadge", {
+                                    done: subtaskProgress.done,
+                                    total: subtaskProgress.total,
+                                })}
                             </Badge>
                         ) : undefined}
                         {task.estimate === undefined ? undefined : (

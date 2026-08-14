@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { ProjectLabel } from "@/features/labels";
 
 import {
+    type SubtaskProgress,
     type Task,
     TaskCard,
     useBoardTaskSelectionStore,
@@ -24,6 +25,7 @@ type DraggableTaskCardProperties = {
     canDrag: boolean;
     labels: ProjectLabel[];
     selectionEnabled: boolean;
+    subtaskProgress?: SubtaskProgress;
     task: Task;
 };
 
@@ -32,6 +34,7 @@ export function DraggableTaskCard({
     canDrag,
     labels,
     selectionEnabled,
+    subtaskProgress,
     task,
 }: DraggableTaskCardProperties) {
     const { t } = useTranslation("board");
@@ -147,6 +150,7 @@ export function DraggableTaskCard({
                           }
                         : undefined
                 }
+                subtaskProgress={subtaskProgress}
                 task={task}
             />
         </div>

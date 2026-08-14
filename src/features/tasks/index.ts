@@ -1,6 +1,11 @@
 export { resolveTasksProvider } from "./api/resolve-tasks-provider";
 export type { TasksProvider } from "./api/tasks-provider";
 export {
+    parentSubtaskProgress,
+    visibleBoardTasks,
+} from "./lib/board-subtask-visibility";
+export type { SubtaskProgress } from "./lib/board-subtask-visibility";
+export {
     DEADLINE_FILTER_VALUES,
     EMPTY_BOARD_FILTERS,
     filterTasks,
@@ -63,6 +68,7 @@ export type {
     TaskStructureNode,
 } from "./lib/task-structure";
 export { useBoardSortStore } from "./model/board-sort-store";
+export { useBoardSubtaskVisibilityStore } from "./model/board-subtask-visibility-store";
 export {
     columnAccentClass,
     DEFAULT_TASK_PRIORITY,
@@ -87,6 +93,7 @@ export { useProjectTasks } from "./model/use-project-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
 export { BoardSortControl } from "./ui/board-sort-control";
+export { BoardSubtaskVisibilityControl } from "./ui/board-subtask-visibility-control";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";
 export { BoardTaskSelectionBar } from "./ui/board-task-selection-bar";
 export { GithubTaskMeta } from "./ui/github-task-meta";

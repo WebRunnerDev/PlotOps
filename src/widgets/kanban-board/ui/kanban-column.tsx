@@ -17,7 +17,12 @@ import type { ProjectLabel } from "@/features/labels";
 import { useBoardColumns } from "@/features/boards";
 import { resolveColumnDeleteMoveTarget } from "@/features/boards/model/resolve-column-delete-move-target";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
-import { type Task, taskKeys, type TaskStatus } from "@/features/tasks";
+import {
+    type SubtaskProgress,
+    type Task,
+    taskKeys,
+    type TaskStatus,
+} from "@/features/tasks";
 import { columnTaskDropId } from "@/features/tasks/lib/board-drop-target-id";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -55,6 +60,7 @@ type KanbanColumnProperties = {
     startAddingTask?: boolean;
     startEditing?: boolean;
     status: TaskStatus;
+    subtaskProgressByTaskId?: Map<string, SubtaskProgress>;
     tasks: Task[];
     withinColumnDragEnabled?: boolean;
 };
@@ -68,6 +74,7 @@ export function KanbanColumn({
     startAddingTask = false,
     startEditing = false,
     status,
+    subtaskProgressByTaskId,
     tasks,
     withinColumnDragEnabled = true,
 }: KanbanColumnProperties) {
@@ -357,6 +364,9 @@ export function KanbanColumn({
                                 key={task.id}
                                 labels={labelsByTaskId.get(task.id) ?? []}
                                 selectionEnabled={canSelectForArchive}
+                                subtaskProgress={subtaskProgressByTaskId?.get(
+                                    task.id
+                                )}
                                 task={task}
                             />
                         ))}
