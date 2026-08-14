@@ -22,11 +22,13 @@ import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     assertParentArchiveLegal,
     assertParentDeleteLegal,
-    assertParentDoneLegal,
     assertParentLinkLegal,
+    assertTaskDoneLegal,
     assertTaskLinkLegal,
+    hasOpenBlocker,
     PARENT_LINK_ERROR,
     type ParentGateTask,
+    type TaskLinkEdge,
     type TaskLinkKind,
 } from "@/features/tasks/lib/task-structure";
 import {
@@ -187,7 +189,11 @@ function assertDoneMoveLegal(
             (column) => column.id === nextStatus && column.isDone
         ) === true;
     if (!isDoneColumn) return;
-    assertParentDoneLegal(taskId, parentGateTasks(sandbox));
+    assertTaskDoneLegal(
+        taskId,
+        parentGateTasks(sandbox),
+        taskLinkEdges(sandbox)
+    );
 }
 
 function findTaskOrThrow(tasks: GuestTask[], taskId: string): GuestTask {
@@ -215,10 +221,7 @@ function isActiveTask(task: GuestTask): boolean {
     return task.archivedAt == undefined;
 }
 
-function mapGuestTask(
-    task: GuestTask,
-    sandbox: Pick<GuestSandbox, "taskLinks" | "tasks">
-): Task {
+function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
     const parent = task.parentId
         ? sandbox.tasks.find((item) => item.id === task.parentId)
         : undefined;
@@ -232,6 +235,11 @@ function mapGuestTask(
         deadline: task.deadline,
         description: task.description,
         estimate: task.estimate,
+        hasOpenBlocker: hasOpenBlocker(
+            task.id,
+            parentGateTasks(sandbox),
+            taskLinkEdges(sandbox)
+        ),
         id: task.id,
         key: task.key,
         labelIds: task.labelIds,
@@ -323,7 +331,6 @@ function relatedPeersOf(
 ): TaskLinkPeer[] {
     const peers: TaskLinkPeer[] = [];
     for (const link of sandbox.taskLinks) {
-        if (link.kind !== "relates_to") continue;
         const otherId =
             link.sourceTaskId === taskId
                 ? link.targetTaskId
@@ -334,6 +341,7 @@ function relatedPeersOf(
         const other = sandbox.tasks.find((item) => item.id === otherId);
         if (!other) continue;
         peers.push({
+            direction: link.sourceTaskId === taskId ? "outgoing" : "incoming",
             id: link.id,
             kind: link.kind,
             otherId: other.id,
@@ -342,6 +350,16 @@ function relatedPeersOf(
         });
     }
     return peers;
+}
+
+function taskLinkEdges(
+    sandbox: Pick<GuestSandbox, "taskLinks">
+): TaskLinkEdge[] {
+    return sandbox.taskLinks.map((link) => ({
+        kind: link.kind,
+        sourceId: link.sourceTaskId,
+        targetId: link.targetTaskId,
+    }));
 }
 
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */

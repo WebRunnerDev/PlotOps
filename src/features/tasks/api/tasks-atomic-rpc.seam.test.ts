@@ -62,6 +62,13 @@ describe("tasks API Task Link relates to RPC seam", () => {
             ),
             "utf8"
         );
+        const blocksMigration = readFileSync(
+            path.join(
+                dirname,
+                "../../../../supabase/migrations/20260814094923_task_links_blocks.sql"
+            ),
+            "utf8"
+        );
 
         expect(source).toMatch(/rpc\(\s*["']create_task_link["']/);
         expect(source).toMatch(/rpc\(\s*["']delete_task_link["']/);
@@ -85,6 +92,12 @@ describe("tasks API Task Link relates to RPC seam", () => {
         );
         expect(migration).not.toMatch(/create_task_notifications/);
         expect(migration).not.toMatch(/create_notifications_for_watchers/);
+        expect(blocksMigration).toMatch("A cyclic blocks chain is not allowed");
+        expect(blocksMigration).toMatch(
+            "A Task cannot enter Done while an open blocker exists"
+        );
+        expect(blocksMigration).toMatch(/assert_task_may_enter_done/);
+        expect(blocksMigration).not.toMatch(/create_task_notifications/);
     });
 });
 

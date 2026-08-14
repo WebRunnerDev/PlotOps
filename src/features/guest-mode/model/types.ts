@@ -158,7 +158,7 @@ export type GuestTask = {
 
 export type GuestTaskLink = {
     id: string;
-    kind: "relates_to";
+    kind: "blocks" | "relates_to";
     sourceTaskId: string;
     targetTaskId: string;
 };

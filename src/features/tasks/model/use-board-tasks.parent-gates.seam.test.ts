@@ -15,13 +15,15 @@ describe("useBoardTasks Parent Task Done/archive/delete gates", () => {
         const source = read("src/features/tasks/model/use-board-tasks.ts");
         const domain = read("src/features/tasks/lib/task-structure.ts");
 
-        expect(source).toMatch(/parentDoneRefusal/);
+        expect(source).toMatch(/taskDoneRefusal/);
+        expect(source).toMatch(/TASK_DONE_TOAST_KEY/);
         expect(source).toMatch(/PARENT_GATE_TOAST_KEY/);
         expect(source).toMatch(
-            /const moveTasksToColumn = \([\s\S]*parentDoneRefusal[\s\S]*toast\.error[\s\S]*return;[\s\S]*setTasksCache/
+            /const moveTasksToColumn = \([\s\S]*taskDoneRefusal[\s\S]*toast\.error[\s\S]*return;[\s\S]*setTasksCache/
         );
         expect(source).toMatch(/persistTaskMoves/);
         expect(domain).toMatch(/subtasks\.doneRefused/);
+        expect(domain).toMatch(/taskLinks\.blockedDoneRefused/);
     });
 
     it("refuses archive and delete before the provider request", () => {
@@ -53,6 +55,9 @@ describe("useBoardTasks Parent Task Done/archive/delete gates", () => {
         );
         expect(en).toMatch(
             "A Parent Task cannot be deleted while Subtasks exist"
+        );
+        expect(en).toMatch(
+            "A Task cannot enter Done while an open blocker exists"
         );
     });
 });

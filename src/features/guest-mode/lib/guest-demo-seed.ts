@@ -235,6 +235,40 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             taskId: T02,
             user: ACTOR,
         },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:10:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000212",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "FEAT-2", kind: "blocks" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T03,
+            user: ACTOR,
+        },
+        {
+            action: "updated",
+            createdAt: "2026-08-05T11:10:00.000Z",
+            id: "c0000000-0000-4000-8000-000000000213",
+            metadata: {
+                changes: [
+                    {
+                        field: "task_link",
+                        from: null,
+                        to: { key: "TASK-3", kind: "blocks" },
+                    },
+                ],
+            },
+            projectId: PROJ_GIT_ID,
+            taskId: T02,
+            user: ACTOR,
+        },
     ],
     boards: [
         {
@@ -443,6 +477,12 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "c0000000-0000-4000-8000-000000000211",
             kind: "relates_to",
             sourceTaskId: T01,
+            targetTaskId: T02,
+        },
+        {
+            id: "c0000000-0000-4000-8000-000000000214",
+            kind: "blocks",
+            sourceTaskId: T03,
             targetTaskId: T02,
         },
     ],

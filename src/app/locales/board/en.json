@@ -161,8 +161,13 @@
     "taskLinks": {
         "title": "Linked tasks",
         "relatesTo": "Relates to",
+        "blocks": "Blocks",
+        "blockedBy": "Blocked by",
         "empty": "No related Tasks yet.",
+        "emptyBlocks": "Does not block any Task.",
+        "emptyBlockedBy": "Not blocked by any Task.",
         "add": "Add",
+        "addKind": "Link kind",
         "addPlaceholder": "Search Tasks…",
         "noResults": "No matching Tasks.",
         "added": "Linked {{key}}",
@@ -174,8 +179,12 @@
         "parentSubtaskRefused": "A Task Link cannot connect a Parent Task and its own Subtask",
         "differentProject": "Task Links must stay inside the same Project",
         "duplicate": "These Tasks are already linked",
+        "cycleRefused": "A cyclic blocks chain is not allowed",
+        "blockedDoneRefused": "A Task cannot enter Done while an open blocker exists",
+        "blockerBadge": "Blocked",
         "kind": {
-            "relates_to": "relates to"
+            "relates_to": "relates to",
+            "blocks": "blocks"
         }
     },
     "activity": {

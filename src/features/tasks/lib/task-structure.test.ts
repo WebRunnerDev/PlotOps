@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
     assertParentLinkLegal,
     assertTaskLinkLegal,
+    hasOpenBlocker,
     parentArchiveRefusal,
     parentDeleteRefusal,
     parentDoneRefusal,
     type ParentGateTask,
     parentLinkRefusal,
     subtasksOf,
+    taskDoneRefusal,
+    type TaskLinkEdge,
     taskLinkRefusal,
     type TaskStructureNode,
 } from "./task-structure";
@@ -272,5 +275,155 @@ describe("taskLinkRefusal — relates to is Project-scoped and not hierarchy", (
         ).toThrow(
             "A Task Link cannot connect a Parent Task and its own Subtask"
         );
+    });
+});
+
+describe("taskLinkRefusal — blocks is directed and acyclic", () => {
+    const rootA = node("root-a");
+    const rootB = node("root-b");
+    const rootC = node("root-c");
+    const child = node("child", { parentId: "root-a" });
+    const tasks = [rootA, rootB, rootC, child];
+
+    it("allows a blocks link between two Tasks in the same Project", () => {
+        expect(
+            taskLinkRefusal("root-a", "root-b", "blocks", tasks, [])
+        ).toBeNull();
+    });
+
+    it("refuses a Task blocking itself", () => {
+        expect(taskLinkRefusal("root-a", "root-a", "blocks", tasks, [])).toBe(
+            "self"
+        );
+    });
+
+    it("refuses a blocks link between a Parent Task and its Subtask", () => {
+        expect(taskLinkRefusal("root-a", "child", "blocks", tasks, [])).toBe(
+            "parent_subtask"
+        );
+    });
+
+    it("refuses a duplicate directed blocks pair", () => {
+        const existing: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "root-a", targetId: "root-b" },
+        ];
+        expect(
+            taskLinkRefusal("root-a", "root-b", "blocks", tasks, existing)
+        ).toBe("duplicate");
+    });
+
+    it("allows relates to and blocks between the same pair", () => {
+        const existing: TaskLinkEdge[] = [
+            { kind: "relates_to", sourceId: "root-a", targetId: "root-b" },
+        ];
+        expect(
+            taskLinkRefusal("root-a", "root-b", "blocks", tasks, existing)
+        ).toBeNull();
+    });
+
+    it("refuses a two-Task cyclic blocks chain", () => {
+        const existing: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "root-a", targetId: "root-b" },
+        ];
+        expect(
+            taskLinkRefusal("root-b", "root-a", "blocks", tasks, existing)
+        ).toBe("blocks_cycle");
+    });
+
+    it("refuses a longer cyclic blocks chain", () => {
+        const existing: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "root-a", targetId: "root-b" },
+            { kind: "blocks", sourceId: "root-b", targetId: "root-c" },
+        ];
+        expect(
+            taskLinkRefusal("root-c", "root-a", "blocks", tasks, existing)
+        ).toBe("blocks_cycle");
+    });
+
+    it("throws the Product refusal when asserting a cyclic blocks chain", () => {
+        const existing: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "root-a", targetId: "root-b" },
+        ];
+        expect(() =>
+            assertTaskLinkLegal("root-b", "root-a", "blocks", tasks, existing)
+        ).toThrow("A cyclic blocks chain is not allowed");
+    });
+});
+
+describe("taskDoneRefusal — open blockers compose with incomplete Subtasks", () => {
+    it("allows Done when the Task has no open blocker", () => {
+        expect(taskDoneRefusal("solo", [gate("solo")], [])).toBeNull();
+    });
+
+    it("allows Done when the blocker is already Done", () => {
+        const blocked = gate("blocked");
+        const blocker = gate("blocker", { isDone: true });
+        const links: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "blocker", targetId: "blocked" },
+        ];
+        expect(
+            taskDoneRefusal("blocked", [blocked, blocker], links)
+        ).toBeNull();
+    });
+
+    it("allows Done when the blocker is archived", () => {
+        const blocked = gate("blocked");
+        const blocker = gate("blocker", {
+            archivedAt: "2026-08-01T00:00:00.000Z",
+        });
+        const links: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "blocker", targetId: "blocked" },
+        ];
+        expect(
+            taskDoneRefusal("blocked", [blocked, blocker], links)
+        ).toBeNull();
+    });
+
+    it("refuses Done while an open blocker exists", () => {
+        const blocked = gate("blocked");
+        const blocker = gate("blocker");
+        const links: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "blocker", targetId: "blocked" },
+        ];
+        expect(taskDoneRefusal("blocked", [blocked, blocker], links)).toBe(
+            "open_blocker"
+        );
+    });
+
+    it("allows a blocked Task to stay out of Done (in-progress is not gated)", () => {
+        const blocked = gate("blocked");
+        const blocker = gate("blocker");
+        const links: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "blocker", targetId: "blocked" },
+        ];
+        expect(hasOpenBlocker("blocked", [blocked, blocker], links)).toBe(true);
+        expect(
+            taskDoneRefusal("blocker", [blocked, blocker], links)
+        ).toBeNull();
+    });
+
+    it("refuses a Parent Task with incomplete Subtasks even without blockers", () => {
+        const parent = gate("parent");
+        const child = gate("child", { parentId: "parent" });
+        expect(taskDoneRefusal("parent", [parent, child], [])).toBe(
+            "incomplete_subtasks"
+        );
+    });
+
+    it("composes Parent incomplete-Subtask and open-blocker gates", () => {
+        const parent = gate("parent");
+        const child = gate("child", { parentId: "parent" });
+        const blocker = gate("blocker");
+        const links: TaskLinkEdge[] = [
+            { kind: "blocks", sourceId: "blocker", targetId: "parent" },
+        ];
+        const reason = taskDoneRefusal(
+            "parent",
+            [parent, child, blocker],
+            links
+        );
+        expect(
+            reason === "incomplete_subtasks" || reason === "open_blocker"
+        ).toBe(true);
     });
 });

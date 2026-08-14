@@ -59,7 +59,9 @@ export type DatabaseTaskLinkEmbed = {
 };
 
 export type DatabaseTaskLinkPeer = {
+    archived_at?: null | string;
     id: string;
+    status?: string;
     task_key: string;
     title: string;
 };
@@ -96,6 +98,7 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
         estimate: isTaskEstimate(row.estimate) ? row.estimate : undefined,
+        hasOpenBlocker: hasOpenBlockerFromRow(row),
         id: row.id,
         key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
@@ -129,6 +132,14 @@ function firstPeer(
     return Array.isArray(value) ? value[0] : value;
 }
 
+function hasOpenBlockerFromRow(row: DatabaseTask): boolean {
+    return (row.incoming_links ?? []).some((link) => {
+        if (link.kind !== "blocks") return false;
+        const source = firstPeer(link.source);
+        return source?.archived_at == undefined;
+    });
+}
+
 function toParentKey(row: DatabaseTask): string | undefined {
     const parent = Array.isArray(row.parent) ? row.parent[0] : row.parent;
     return parent?.task_key ?? undefined;
@@ -147,12 +158,16 @@ function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {
 
 function toRelatedPeer(
     link: DatabaseTaskLinkEmbed,
-    other: DatabaseTaskLinkPeer | undefined
+    other: DatabaseTaskLinkPeer | undefined,
+    direction: "incoming" | "outgoing"
 ): TaskLinkPeer | undefined {
-    if (link.kind !== "relates_to" || !other) return undefined;
+    if ((link.kind !== "relates_to" && link.kind !== "blocks") || !other) {
+        return undefined;
+    }
     return {
+        direction,
         id: link.id,
-        kind: "relates_to",
+        kind: link.kind,
         otherId: other.id,
         otherKey: other.task_key,
         otherTitle: other.title,
@@ -162,11 +177,11 @@ function toRelatedPeer(
 function toRelatedTasks(row: DatabaseTask): TaskLinkPeer[] | undefined {
     const peers: TaskLinkPeer[] = [];
     for (const link of row.outgoing_links ?? []) {
-        const peer = toRelatedPeer(link, firstPeer(link.target));
+        const peer = toRelatedPeer(link, firstPeer(link.target), "outgoing");
         if (peer) peers.push(peer);
     }
     for (const link of row.incoming_links ?? []) {
-        const peer = toRelatedPeer(link, firstPeer(link.source));
+        const peer = toRelatedPeer(link, firstPeer(link.source), "incoming");
         if (peer) peers.push(peer);
     }
     return peers.length > 0 ? peers : undefined;

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
 import {
+    Ban,
     Bug,
     Calendar,
     CheckSquare,
@@ -153,6 +154,17 @@ export function TaskCard({
                             >
                                 {task.parentKey}
                             </Badge>
+                        ) : undefined}
+                        {task.hasOpenBlocker ? (
+                            <span
+                                className="inline-flex shrink-0 text-destructive"
+                                title={t("taskLinks.blockerBadge")}
+                            >
+                                <Ban
+                                    aria-label={t("taskLinks.blockerBadge")}
+                                    className="size-3.5"
+                                />
+                            </span>
                         ) : undefined}
                         {subtaskProgress ? (
                             <Badge

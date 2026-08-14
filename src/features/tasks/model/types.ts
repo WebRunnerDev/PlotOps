@@ -17,6 +17,8 @@ export type Task = {
      * Absent / undefined = unestimated.
      */
     estimate?: TaskEstimate;
+    /** True when an open `blocks` Task Link targets this Task. */
+    hasOpenBlocker?: boolean;
     id: string;
     /** Human-readable key, e.g. TASK-1, BUG-5, FEAT-12. Set by DB trigger on insert. */
     key: string;
@@ -92,9 +94,10 @@ export type TaskComment = {
     updatedAt: string;
 };
 
-export type TaskLinkKind = "relates_to";
+export type TaskLinkKind = "blocks" | "relates_to";
 
 export type TaskLinkPeer = {
+    direction: "incoming" | "outgoing";
     id: string;
     kind: TaskLinkKind;
     otherId: string;

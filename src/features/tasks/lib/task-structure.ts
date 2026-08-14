@@ -1,7 +1,8 @@
 /**
  * Task hierarchy and Task Link rules (ADR 0023): one Parent/Subtask level;
- * peer `relates to` links stay in the same Project and are not Parent↔Subtask.
- * Guest sandbox and client UX call this; Postgres RPCs re-implement the same checks.
+ * peer `blocks` / `relates to` links stay in the same Project and are not
+ * Parent↔Subtask. Cyclic `blocks` chains are rejected. Guest sandbox and
+ * client UX call this; Postgres RPCs re-implement the same checks.
  */
 
 export type ParentArchiveRefusal = "active_subtasks";
@@ -31,15 +32,18 @@ export type ProposedChild = {
     projectId: string;
 };
 
+export type TaskDoneRefusal = "open_blocker" | ParentDoneRefusal;
+
 export type TaskLinkEdge = {
     kind: TaskLinkKind;
     sourceId: string;
     targetId: string;
 };
 
-export type TaskLinkKind = "relates_to";
+export type TaskLinkKind = "blocks" | "relates_to";
 
 export type TaskLinkRefusal =
+    | "blocks_cycle"
     | "different_project"
     | "duplicate"
     | "parent_subtask"
@@ -74,7 +78,21 @@ export const PARENT_GATE_TOAST_KEY: Record<
     subtasks_exist: "subtasks.deleteRefused",
 };
 
+export const TASK_DONE_ERROR: Record<TaskDoneRefusal, string> = {
+    incomplete_subtasks: PARENT_GATE_ERROR.incomplete_subtasks,
+    open_blocker: "A Task cannot enter Done while an open blocker exists",
+};
+
+export const TASK_DONE_TOAST_KEY: Record<
+    TaskDoneRefusal,
+    "subtasks.doneRefused" | "taskLinks.blockedDoneRefused"
+> = {
+    incomplete_subtasks: "subtasks.doneRefused",
+    open_blocker: "taskLinks.blockedDoneRefused",
+};
+
 export const TASK_LINK_ERROR: Record<TaskLinkRefusal, string> = {
+    blocks_cycle: "A cyclic blocks chain is not allowed",
     different_project: "Task Links must stay inside the same Project",
     duplicate: "These Tasks are already linked",
     parent_subtask:
@@ -132,6 +150,17 @@ export function assertParentLinkLegal(
     }
 }
 
+export function assertTaskDoneLegal(
+    taskId: string,
+    tasks: readonly ParentGateTask[],
+    links: readonly TaskLinkEdge[]
+): void {
+    const reason = taskDoneRefusal(taskId, tasks, links);
+    if (reason) {
+        throw new Error(TASK_DONE_ERROR[reason]);
+    }
+}
+
 export function assertTaskLinkLegal(
     sourceId: string,
     targetId: string,
@@ -143,6 +172,24 @@ export function assertTaskLinkLegal(
     if (reason) {
         throw new Error(TASK_LINK_ERROR[reason]);
     }
+}
+
+export function hasOpenBlocker(
+    taskId: string,
+    tasks: readonly ParentGateTask[],
+    links: readonly TaskLinkEdge[]
+): boolean {
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    return links.some((link) => {
+        if (link.kind !== "blocks" || link.targetId !== taskId) {
+            return false;
+        }
+        const blocker = byId.get(link.sourceId);
+        if (!blocker || blocker.archivedAt !== undefined) {
+            return false;
+        }
+        return !blocker.isDone;
+    });
 }
 
 export function parentArchiveRefusal(
@@ -234,6 +281,41 @@ export function subtasksOf<T extends { parentId?: string }>(
     return tasks.filter((task) => task.parentId === parentId);
 }
 
+export function taskDoneRefusal(
+    taskId: string,
+    tasks: readonly ParentGateTask[],
+    links: readonly TaskLinkEdge[]
+): null | TaskDoneRefusal {
+    const parentReason = parentDoneRefusal(taskId, tasks);
+    if (parentReason) {
+        return parentReason;
+    }
+    if (hasOpenBlocker(taskId, tasks, links)) {
+        return "open_blocker";
+    }
+    return null;
+}
+
+export function taskDoneRefusalFromError(
+    error: unknown
+): null | TaskDoneRefusal {
+    const message =
+        error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : "";
+    if (!message) return null;
+    for (const reason of Object.keys(TASK_DONE_ERROR) as Array<
+        keyof typeof TASK_DONE_ERROR
+    >) {
+        if (message.includes(TASK_DONE_ERROR[reason])) {
+            return reason;
+        }
+    }
+    return null;
+}
+
 export function taskLinkRefusal(
     sourceId: string,
     targetId: string,
@@ -259,14 +341,27 @@ export function taskLinkRefusal(
         return "parent_subtask";
     }
 
-    const duplicate = existing.some(
-        (link) =>
-            link.kind === kind &&
-            ((link.sourceId === sourceId && link.targetId === targetId) ||
-                (link.sourceId === targetId && link.targetId === sourceId))
-    );
+    const duplicate = existing.some((link) => {
+        if (link.kind !== kind) {
+            return false;
+        }
+        if (kind === "relates_to") {
+            return (
+                (link.sourceId === sourceId && link.targetId === targetId) ||
+                (link.sourceId === targetId && link.targetId === sourceId)
+            );
+        }
+        return link.sourceId === sourceId && link.targetId === targetId;
+    });
     if (duplicate) {
         return "duplicate";
+    }
+
+    if (
+        kind === "blocks" &&
+        wouldCreateBlocksCycle(sourceId, targetId, existing)
+    ) {
+        return "blocks_cycle";
     }
 
     return null;
@@ -277,4 +372,34 @@ function hasSubtasks(
     tasks: readonly TaskStructureNode[]
 ): boolean {
     return tasks.some((task) => task.parentId === taskId);
+}
+
+function wouldCreateBlocksCycle(
+    sourceId: string,
+    targetId: string,
+    existing: readonly TaskLinkEdge[]
+): boolean {
+    const outgoing = new Map<string, string[]>();
+    for (const link of existing) {
+        if (link.kind !== "blocks") continue;
+        const next = outgoing.get(link.sourceId) ?? [];
+        next.push(link.targetId);
+        outgoing.set(link.sourceId, next);
+    }
+
+    const seen = new Set<string>();
+    const queue = [targetId];
+    while (queue.length > 0) {
+        const current = queue.pop();
+        if (current === undefined || seen.has(current)) continue;
+        if (current === sourceId) {
+            return true;
+        }
+        seen.add(current);
+        const next = outgoing.get(current);
+        if (next) {
+            queue.push(...next);
+        }
+    }
+    return false;
 }

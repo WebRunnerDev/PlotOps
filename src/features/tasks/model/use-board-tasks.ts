@@ -56,11 +56,14 @@ import {
 import {
     assertParentArchiveLegal,
     assertParentDeleteLegal,
-    PARENT_GATE_ERROR,
     PARENT_GATE_TOAST_KEY,
-    parentDoneRefusal,
     parentGateRefusalFromError,
     type ParentGateTask,
+    TASK_DONE_ERROR,
+    TASK_DONE_TOAST_KEY,
+    taskDoneRefusal,
+    taskDoneRefusalFromError,
+    type TaskLinkEdge,
 } from "@/features/tasks/lib/task-structure";
 import {
     getBoardSnapshot,
@@ -206,10 +209,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 );
             }
             const reason = parentGateRefusalFromError(error);
+            const doneReason = taskDoneRefusalFromError(error);
             toast.error(
-                reason
-                    ? t(PARENT_GATE_TOAST_KEY[reason])
-                    : "Failed to move task"
+                doneReason
+                    ? t(TASK_DONE_TOAST_KEY[doneReason])
+                    : reason
+                      ? t(PARENT_GATE_TOAST_KEY[reason])
+                      : "Failed to move task"
             );
         },
         onSettled: () => {
@@ -387,10 +393,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 );
             }
             const reason = parentGateRefusalFromError(error);
+            const doneReason = taskDoneRefusalFromError(error);
             toast.error(
-                reason
-                    ? t(PARENT_GATE_TOAST_KEY[reason])
-                    : "Failed to update task status"
+                doneReason
+                    ? t(TASK_DONE_TOAST_KEY[doneReason])
+                    : reason
+                      ? t(PARENT_GATE_TOAST_KEY[reason])
+                      : "Failed to update task status"
             );
         },
         onSettled: () => {
@@ -756,9 +765,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 ) {
                     continue;
                 }
-                const reason = parentDoneRefusal(activeId, gates);
+                const reason = taskDoneRefusal(
+                    activeId,
+                    gates,
+                    collectTaskLinkEdges(queryClient, projectId, boardId)
+                );
                 if (reason) {
-                    toast.error(t(PARENT_GATE_TOAST_KEY[reason]));
+                    toast.error(t(TASK_DONE_TOAST_KEY[reason]));
                     return;
                 }
             }
@@ -972,12 +985,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     (column) => column.id === targetStatus && column.isDone
                 ) === true;
             if (targetIsDone) {
-                const reason = parentDoneRefusal(
+                const reason = taskDoneRefusal(
                     taskId,
-                    collectParentGateTasks(queryClient, projectId, boardId)
+                    collectParentGateTasks(queryClient, projectId, boardId),
+                    collectTaskLinkEdges(queryClient, projectId, boardId)
                 );
                 if (reason) {
-                    throw new Error(PARENT_GATE_ERROR[reason]);
+                    throw new Error(TASK_DONE_ERROR[reason]);
                 }
             }
 
@@ -1198,12 +1212,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     (column) => column.id === status && column.isDone
                 )
             ) {
-                const reason = parentDoneRefusal(
+                const reason = taskDoneRefusal(
                     id,
-                    collectParentGateTasks(queryClient, projectId, boardId)
+                    collectParentGateTasks(queryClient, projectId, boardId),
+                    collectTaskLinkEdges(queryClient, projectId, boardId)
                 );
                 if (reason) {
-                    toast.error(t(PARENT_GATE_TOAST_KEY[reason]));
+                    toast.error(t(TASK_DONE_TOAST_KEY[reason]));
                     return;
                 }
             }
@@ -1277,11 +1292,11 @@ function buildAuthorNotificationChange(
     return { field: "author", from, to };
 }
 
-function collectParentGateTasks(
+function collectCachedTasks(
     queryClient: QueryClient,
     projectId: string,
     boardId: string
-): ParentGateTask[] {
+): Map<string, Task> {
     const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
     const projectTasks =
         queryClient.getQueryData<Task[]>(taskKeys.project(projectId, true)) ??
@@ -1300,7 +1315,15 @@ function collectParentGateTasks(
     ]) {
         byId.set(task.id, task);
     }
+    return byId;
+}
 
+function collectDoneColumnIds(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): Set<string> {
+    const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
     const doneIds = new Set<string>();
     for (const column of snapshot?.columns ?? []) {
         if (column.isDone) doneIds.add(column.id);
@@ -1312,13 +1335,51 @@ function collectParentGateTasks(
             if (column.isDone) doneIds.add(column.id);
         }
     }
+    return doneIds;
+}
 
-    return [...byId.values()].map((task) => ({
+function collectParentGateTasks(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): ParentGateTask[] {
+    return [
+        ...collectCachedTasks(queryClient, projectId, boardId).values(),
+    ].map((task) => ({
         archivedAt: task.archivedAt,
         id: task.id,
-        isDone: doneIds.has(task.status),
+        isDone: collectDoneColumnIds(queryClient, projectId, boardId).has(
+            task.status
+        ),
         parentId: task.parentId,
     }));
+}
+
+function collectTaskLinkEdges(
+    queryClient: QueryClient,
+    projectId: string,
+    boardId: string
+): TaskLinkEdge[] {
+    const edges: TaskLinkEdge[] = [];
+    const seen = new Set<string>();
+    for (const task of collectCachedTasks(
+        queryClient,
+        projectId,
+        boardId
+    ).values()) {
+        for (const peer of task.relatedTasks ?? []) {
+            if (peer.kind !== "blocks") continue;
+            const sourceId =
+                peer.direction === "incoming" ? peer.otherId : task.id;
+            const targetId =
+                peer.direction === "incoming" ? task.id : peer.otherId;
+            const key = `${sourceId}:${targetId}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            edges.push({ kind: "blocks", sourceId, targetId });
+        }
+    }
+    return edges;
 }
 
 function diffTaskMoveUpdates(

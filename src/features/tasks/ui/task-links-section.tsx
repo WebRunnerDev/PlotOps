@@ -3,7 +3,11 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type { Task } from "@/features/tasks/model/types";
+import type {
+    Task,
+    TaskLinkKind,
+    TaskLinkPeer,
+} from "@/features/tasks/model/types";
 
 import {
     TASK_LINK_ERROR,
@@ -21,6 +25,14 @@ import {
     ComboboxItem,
     ComboboxList,
 } from "@/shared/shadcn/ui/combobox";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from "@/shared/shadcn/ui/select";
+
+type AddKind = "blocked_by" | "blocks" | "relates_to";
 
 type TaskLinksSectionProperties = {
     boardId: string;
@@ -43,33 +55,62 @@ export function TaskLinksSection({
     const { data: projectTasks = [] } = useProjectTasks(projectId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
+    const [addKind, setAddKind] = useState<AddKind>("relates_to");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const related = (task.relatedTasks ?? []).filter(
-        (peer) => peer.kind === "relates_to"
+    const peers = task.relatedTasks ?? [];
+    const blockedBy = peers.filter(
+        (peer) => peer.kind === "blocks" && peer.direction === "incoming"
     );
+    const blocks = peers.filter(
+        (peer) => peer.kind === "blocks" && peer.direction === "outgoing"
+    );
+    const related = peers.filter((peer) => peer.kind === "relates_to");
 
     const candidates = useMemo(() => {
-        const linkedIds = new Set(related.map((peer) => peer.otherId));
+        const linkedIds = new Set(
+            peers
+                .filter((peer) =>
+                    addKind === "relates_to"
+                        ? peer.kind === "relates_to"
+                        : peer.kind === "blocks" &&
+                          (addKind === "blocks"
+                              ? peer.direction === "outgoing"
+                              : peer.direction === "incoming")
+                )
+                .map((peer) => peer.otherId)
+        );
         const nodes = projectTasks.map((item) => ({
             id: item.id,
             parentId: item.parentId,
             projectId,
         }));
+        const edges = peers.map((peer) => ({
+            kind: peer.kind,
+            sourceId: peer.direction === "incoming" ? peer.otherId : task.id,
+            targetId: peer.direction === "incoming" ? task.id : peer.otherId,
+        }));
         return projectTasks.filter((item) => {
             if (item.archivedAt || linkedIds.has(item.id)) return false;
+            const sourceId = addKind === "blocked_by" ? item.id : task.id;
+            const targetId = addKind === "blocked_by" ? task.id : item.id;
+            const kind: TaskLinkKind =
+                addKind === "relates_to" ? "relates_to" : "blocks";
             return (
-                taskLinkRefusal(task.id, item.id, "relates_to", nodes, []) ===
-                null
+                taskLinkRefusal(sourceId, targetId, kind, nodes, edges) === null
             );
         });
-    }, [projectId, projectTasks, related, task.id]);
+    }, [addKind, peers, projectId, projectTasks, task.id]);
 
     const addLink = async (target: null | Task) => {
         if (!target || isSubmitting) return;
         setIsSubmitting(true);
+        const kind: TaskLinkKind =
+            addKind === "relates_to" ? "relates_to" : "blocks";
+        const sourceId = addKind === "blocked_by" ? target.id : task.id;
+        const targetId = addKind === "blocked_by" ? task.id : target.id;
         try {
-            await createTaskLink(task.id, target.id, "relates_to");
+            await createTaskLink(sourceId, targetId, kind);
             toast.success(t("taskLinks.added", { key: target.key }));
             setOpen(false);
         } catch (error) {
@@ -111,100 +152,178 @@ export function TaskLinksSection({
             </div>
 
             {canEdit && open ? (
-                <Combobox
-                    disabled={isSubmitting}
-                    isItemEqualToValue={(
-                        left: null | Task,
-                        right: null | Task
-                    ) => left?.id === right?.id}
-                    items={candidates}
-                    itemToStringLabel={(item: null | Task) =>
-                        item ? `${item.key} ${item.title}` : ""
-                    }
-                    onValueChange={(value: null | Task) => {
-                        void addLink(value);
-                    }}
-                    value={emptySelection}
-                >
-                    <ComboboxInput
-                        aria-label={t("taskLinks.addPlaceholder")}
-                        className="h-8 w-full font-mono text-code"
-                        placeholder={t("taskLinks.addPlaceholder")}
-                    />
-                    <ComboboxContent>
-                        <ComboboxEmpty>
-                            {t("taskLinks.noResults")}
-                        </ComboboxEmpty>
-                        <ComboboxList>
-                            {(item: Task) => (
-                                <ComboboxItem key={item.id} value={item}>
-                                    <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                        {item.key}
-                                    </span>
-                                    <span className="min-w-0 truncate">
-                                        {item.title}
-                                    </span>
-                                </ComboboxItem>
-                            )}
-                        </ComboboxList>
-                    </ComboboxContent>
-                </Combobox>
+                <div className="flex flex-col gap-2">
+                    <Select
+                        onValueChange={(value) => {
+                            if (
+                                value === "relates_to" ||
+                                value === "blocks" ||
+                                value === "blocked_by"
+                            ) {
+                                setAddKind(value);
+                            }
+                        }}
+                        value={addKind}
+                    >
+                        <SelectTrigger
+                            aria-label={t("taskLinks.addKind")}
+                            className="h-8 w-full font-mono text-code"
+                        >
+                            <span>
+                                {addKind === "blocked_by"
+                                    ? t("taskLinks.blockedBy")
+                                    : addKind === "blocks"
+                                      ? t("taskLinks.blocks")
+                                      : t("taskLinks.relatesTo")}
+                            </span>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                            <SelectItem value="blocked_by">
+                                {t("taskLinks.blockedBy")}
+                            </SelectItem>
+                            <SelectItem value="blocks">
+                                {t("taskLinks.blocks")}
+                            </SelectItem>
+                            <SelectItem value="relates_to">
+                                {t("taskLinks.relatesTo")}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Combobox
+                        disabled={isSubmitting}
+                        isItemEqualToValue={(
+                            left: null | Task,
+                            right: null | Task
+                        ) => left?.id === right?.id}
+                        items={candidates}
+                        itemToStringLabel={(item: null | Task) =>
+                            item ? `${item.key} ${item.title}` : ""
+                        }
+                        onValueChange={(value: null | Task) => {
+                            void addLink(value);
+                        }}
+                        value={emptySelection}
+                    >
+                        <ComboboxInput
+                            aria-label={t("taskLinks.addPlaceholder")}
+                            className="h-8 w-full font-mono text-code"
+                            placeholder={t("taskLinks.addPlaceholder")}
+                        />
+                        <ComboboxContent>
+                            <ComboboxEmpty>
+                                {t("taskLinks.noResults")}
+                            </ComboboxEmpty>
+                            <ComboboxList>
+                                {(item: Task) => (
+                                    <ComboboxItem key={item.id} value={item}>
+                                        <span className="shrink-0 font-mono text-meta text-muted-foreground">
+                                            {item.key}
+                                        </span>
+                                        <span className="min-w-0 truncate">
+                                            {item.title}
+                                        </span>
+                                    </ComboboxItem>
+                                )}
+                            </ComboboxList>
+                        </ComboboxContent>
+                    </Combobox>
+                </div>
             ) : undefined}
 
-            <div className="flex flex-col gap-2">
-                <h4 className="text-meta font-medium text-muted-foreground">
-                    {t("taskLinks.relatesTo")}
-                </h4>
-                {related.length === 0 ? (
-                    <p className="text-ui text-muted-foreground">
-                        {t("taskLinks.empty")}
-                    </p>
-                ) : (
-                    <ul className="flex flex-col gap-1">
-                        {related.map((peer) => (
-                            <li
-                                className="flex min-w-0 items-center gap-1"
-                                key={peer.id}
-                            >
-                                <button
-                                    className="flex min-w-0 flex-1 items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
-                                    onClick={() => {
-                                        selectTask(peer.otherId);
-                                    }}
-                                    type="button"
-                                >
-                                    <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                        {peer.otherKey}
-                                    </span>
-                                    <span className="min-w-0 truncate text-ui">
-                                        {peer.otherTitle}
-                                    </span>
-                                </button>
-                                {canEdit ? (
-                                    <Button
-                                        aria-label={t("taskLinks.remove", {
-                                            key: peer.otherKey,
-                                        })}
-                                        className="size-8 shrink-0"
-                                        onClick={() => {
-                                            void removeLink(
-                                                peer.id,
-                                                peer.otherKey
-                                            );
-                                        }}
-                                        size="icon"
-                                        type="button"
-                                        variant="ghost"
-                                    >
-                                        <XIcon className="size-4" />
-                                    </Button>
-                                ) : undefined}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
+            <LinkGroup
+                canEdit={canEdit}
+                emptyKey="taskLinks.emptyBlockedBy"
+                onOpen={selectTask}
+                onRemove={removeLink}
+                peers={blockedBy}
+                title={t("taskLinks.blockedBy")}
+            />
+            <LinkGroup
+                canEdit={canEdit}
+                emptyKey="taskLinks.emptyBlocks"
+                onOpen={selectTask}
+                onRemove={removeLink}
+                peers={blocks}
+                title={t("taskLinks.blocks")}
+            />
+            <LinkGroup
+                canEdit={canEdit}
+                emptyKey="taskLinks.empty"
+                onOpen={selectTask}
+                onRemove={removeLink}
+                peers={related}
+                title={t("taskLinks.relatesTo")}
+            />
         </section>
+    );
+}
+
+function LinkGroup({
+    canEdit,
+    emptyKey,
+    onOpen,
+    onRemove,
+    peers,
+    title,
+}: {
+    canEdit: boolean;
+    emptyKey: string;
+    onOpen: (taskId: string) => void;
+    onRemove: (linkId: string, otherKey: string) => Promise<void>;
+    peers: TaskLinkPeer[];
+    title: string;
+}) {
+    const { t } = useTranslation("board");
+
+    return (
+        <div className="flex flex-col gap-2">
+            <h4 className="text-meta font-medium text-muted-foreground">
+                {title}
+            </h4>
+            {peers.length === 0 ? (
+                <p className="text-ui text-muted-foreground">{t(emptyKey)}</p>
+            ) : (
+                <ul className="flex flex-col gap-1">
+                    {peers.map((peer) => (
+                        <li
+                            className="flex min-w-0 items-center gap-1"
+                            key={peer.id}
+                        >
+                            <button
+                                className="flex min-w-0 flex-1 items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring"
+                                onClick={() => {
+                                    onOpen(peer.otherId);
+                                }}
+                                type="button"
+                            >
+                                <span className="shrink-0 font-mono text-meta text-muted-foreground">
+                                    {peer.otherKey}
+                                </span>
+                                <span className="min-w-0 truncate text-ui">
+                                    {peer.otherTitle}
+                                </span>
+                            </button>
+                            {canEdit ? (
+                                <Button
+                                    aria-label={t("taskLinks.remove", {
+                                        key: peer.otherKey,
+                                    })}
+                                    className="size-8 shrink-0"
+                                    onClick={() => {
+                                        void onRemove(peer.id, peer.otherKey);
+                                    }}
+                                    size="icon"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <XIcon className="size-4" />
+                                </Button>
+                            ) : undefined}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
     );
 }
 
@@ -224,6 +343,9 @@ function taskLinkErrorMessage(
     }
     if (message === TASK_LINK_ERROR.duplicate) {
         return t("taskLinks.duplicate");
+    }
+    if (message === TASK_LINK_ERROR.blocks_cycle) {
+        return t("taskLinks.cycleRefused");
     }
     return t("taskLinks.addFailed");
 }

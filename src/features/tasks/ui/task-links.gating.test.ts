@@ -18,6 +18,8 @@ describe("Task Link Role gating seam", () => {
         expect(drawer).toMatch(/canEditTasks/);
         expect(section).toMatch(/canEdit/);
         expect(section).toMatch(/taskLinks\.relatesTo/);
+        expect(section).toMatch(/taskLinks\.blocks/);
+        expect(section).toMatch(/taskLinks\.blockedBy/);
         expect(section).toMatch(/createTaskLink/);
         expect(section).toMatch(/deleteTaskLink/);
         expect(section).not.toMatch(/canCreateTasks/);

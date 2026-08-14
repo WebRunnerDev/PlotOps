@@ -98,6 +98,7 @@ describe("mapDatabaseTask", () => {
 
         expect(task.relatedTasks).toEqual([
             {
+                direction: "outgoing",
                 id: "link-out",
                 kind: "relates_to",
                 otherId: "task-2",
@@ -105,11 +106,43 @@ describe("mapDatabaseTask", () => {
                 otherTitle: "Outgoing peer",
             },
             {
+                direction: "incoming",
                 id: "link-in",
                 kind: "relates_to",
                 otherId: "task-0",
                 otherKey: "FEAT-1",
                 otherTitle: "Incoming peer",
+            },
+        ]);
+    });
+
+    it("maps blocks peers and hasOpenBlocker from the row", () => {
+        const task = mapDatabaseTask(
+            databaseTask({
+                incoming_links: [
+                    {
+                        id: "link-block",
+                        kind: "blocks",
+                        source: {
+                            archived_at: null,
+                            id: "task-9",
+                            task_key: "TASK-9",
+                            title: "Blocker",
+                        },
+                    },
+                ],
+            })
+        );
+
+        expect(task.hasOpenBlocker).toBe(true);
+        expect(task.relatedTasks).toEqual([
+            {
+                direction: "incoming",
+                id: "link-block",
+                kind: "blocks",
+                otherId: "task-9",
+                otherKey: "TASK-9",
+                otherTitle: "Blocker",
             },
         ]);
     });

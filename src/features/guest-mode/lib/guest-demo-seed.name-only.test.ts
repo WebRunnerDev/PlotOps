@@ -114,6 +114,44 @@ describe("GUEST_DEMO_SEED name-only project", () => {
         ).toBe(true);
     });
 
+    it("seeds at least one blocks Task Link in the same Project", () => {
+        const links = GUEST_DEMO_SEED.taskLinks.filter(
+            (link) => link.kind === "blocks"
+        );
+        expect(links.length).toBeGreaterThanOrEqual(1);
+
+        const link = links[0]!;
+        const source = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.sourceTaskId
+        );
+        const target = GUEST_DEMO_SEED.tasks.find(
+            (task) => task.id === link.targetTaskId
+        );
+        expect(source).toBeDefined();
+        expect(target).toBeDefined();
+        expect(source!.projectId).toBe(target!.projectId);
+        expect(source!.id).not.toBe(target!.id);
+        expect(source!.parentId).not.toBe(target!.id);
+        expect(target!.parentId).not.toBe(source!.id);
+        expect(source!.status).not.toBe("done");
+
+        const activityMentionsLink = GUEST_DEMO_SEED.activity.some((event) =>
+            event.metadata.changes.some(
+                (change) =>
+                    change.field === "task_link" &&
+                    (change.to as { key?: string; kind?: string }).kind ===
+                        "blocks"
+            )
+        );
+        expect(activityMentionsLink).toBe(true);
+
+        expect(
+            GUEST_DEMO_SEED.notifications.every(
+                (row) => row.kind !== "task_link"
+            )
+        ).toBe(true);
+    });
+
     it("seeds a Parent Task subtask_change Notification in the inbox", () => {
         const row = GUEST_DEMO_SEED.notifications.find(
             (item) => item.kind === "subtask_change"

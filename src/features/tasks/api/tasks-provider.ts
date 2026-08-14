@@ -2,7 +2,12 @@ import type {
     BoardTasksCache,
     TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
-import type { Task, TaskStatus, TaskType } from "@/features/tasks/model/types";
+import type {
+    Task,
+    TaskLinkKind,
+    TaskStatus,
+    TaskType,
+} from "@/features/tasks/model/types";
 
 /**
  * Narrow Tasks data seam for Guest vs Supabase resolution.
@@ -21,7 +26,7 @@ export type TasksProvider = {
     createTaskLinkRecord(
         sourceTaskId: string,
         targetTaskId: string,
-        kind: "relates_to"
+        kind: TaskLinkKind
     ): Promise<Task>;
     createTaskRecord(
         projectId: string,

@@ -650,4 +650,93 @@ describe("guest tasks provider happy path", () => {
             updated.relatedTasks?.some((peer) => peer.otherId === target.id)
         ).toBe(true);
     });
+
+    it("createTaskLinkRecord adds a blocks link and refuses a cycle", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const source = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Blocker"
+        );
+        const target = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Blocked"
+        );
+
+        const updated = await provider.createTaskLinkRecord(
+            source.id,
+            target.id,
+            "blocks"
+        );
+        expect(
+            updated.relatedTasks?.some(
+                (peer) =>
+                    peer.kind === "blocks" &&
+                    peer.direction === "outgoing" &&
+                    peer.otherId === target.id
+            )
+        ).toBe(true);
+
+        const listed = await provider.fetchBoardTasks(board.id);
+        const listedTarget = listed.tasks.find((task) => task.id === target.id);
+        expect(listedTarget?.hasOpenBlocker).toBe(true);
+
+        await expect(
+            provider.createTaskLinkRecord(target.id, source.id, "blocks")
+        ).rejects.toThrow("A cyclic blocks chain is not allowed");
+
+        expect(
+            getGuestSandbox()!.notifications.every(
+                (row) => row.taskId !== source.id && row.taskId !== target.id
+            )
+        ).toBe(true);
+    });
+
+    it("refuses moving a blocked Task into Done and allows in-progress", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const provider = resolveTasksProvider(true);
+        const blocked = sandbox.tasks.find((task) =>
+            sandbox.taskLinks.some(
+                (link) =>
+                    link.kind === "blocks" && link.targetTaskId === task.id
+            )
+        )!;
+        const board = sandbox.boards.find(
+            (item) => item.id === blocked.boardId
+        )!;
+        const doneColumn = board.columns.find((column) => column.isDone)!;
+        const inProgress = board.columns.find(
+            (column) => !column.isDone && column.id !== blocked.status
+        )!;
+
+        await expect(
+            provider.persistTaskMoves(blocked.boardId, [
+                { id: blocked.id, position: 0, status: doneColumn.id },
+            ])
+        ).rejects.toThrow(
+            "A Task cannot enter Done while an open blocker exists"
+        );
+
+        await provider.persistTaskMoves(blocked.boardId, [
+            { id: blocked.id, position: 0, status: inProgress.id },
+        ]);
+        expect(
+            getGuestSandbox()!.tasks.find((task) => task.id === blocked.id)
+                ?.status
+        ).toBe(inProgress.id);
+    });
 });

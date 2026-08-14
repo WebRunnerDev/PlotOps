@@ -109,7 +109,9 @@ const TASK_SELECT = `
     target:tasks!task_links_target_task_id_fkey (
       id,
       task_key,
-      title
+      title,
+      archived_at,
+      status
     )
   ),
   incoming_links:task_links!task_links_target_task_id_fkey (
@@ -118,7 +120,9 @@ const TASK_SELECT = `
     source:tasks!task_links_source_task_id_fkey (
       id,
       task_key,
-      title
+      title,
+      archived_at,
+      status
     )
   )
 `;

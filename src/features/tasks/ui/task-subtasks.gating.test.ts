@@ -35,5 +35,7 @@ describe("Subtask card badge seam", () => {
 
         expect(card).toMatch(/task\.parentKey/);
         expect(card).toMatch(/subtasks\.parentBadge/);
+        expect(card).toMatch(/task\.hasOpenBlocker/);
+        expect(card).toMatch(/taskLinks\.blockerBadge/);
     });
 });
