@@ -5,6 +5,7 @@ import {
     createTeam,
     deleteTeam,
     fetchTeams,
+    updateTeam,
 } from "@/features/teams/api/teams-api";
 
 /** Real-account Teams adapter — delegates to existing Supabase APIs. */
@@ -19,6 +20,14 @@ export const supabaseTeamsProvider: TeamsProvider = {
 
     async deleteTeam(teamId) {
         const result = await deleteTeam(teamId);
+        return {
+            data: result.data,
+            error: result.error ? new Error(result.error.message) : null,
+        };
+    },
+
+    async updateTeam(teamId, name) {
+        const result = await updateTeam(teamId, name);
         return {
             data: result.data,
             error: result.error ? new Error(result.error.message) : null,

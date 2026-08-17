@@ -22,6 +22,30 @@ export function useCreateTeam() {
     });
 }
 
+export function useUpdateTeam() {
+    const queryClient = useQueryClient();
+    const provider = resolveTeamsProvider(isGuest());
+
+    return useMutation({
+        mutationFn: async ({
+            name,
+            teamId,
+        }: {
+            name: string;
+            teamId: string;
+        }) => {
+            const { data, error } = await provider.updateTeam(teamId, name);
+            if (error) throw error;
+            if (!data) throw new Error("Could not update team");
+            return data;
+        },
+        onSuccess: (team) => {
+            queryClient.invalidateQueries({ queryKey: teamKeys.list() });
+            queryClient.setQueryData(teamKeys.detail(team.id), team);
+        },
+    });
+}
+
 export function useDeleteTeam() {
     const queryClient = useQueryClient();
     const provider = resolveTeamsProvider(isGuest());
