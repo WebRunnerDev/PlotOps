@@ -8,6 +8,8 @@ export const UNASSIGNED_ASSIGNEE_FILTER = "none";
 export type BoardTaskFilters = {
     /** Profile ids and/or {@link UNASSIGNED_ASSIGNEE_FILTER}. */
     assigneeIds: string[];
+    /** Board ids. Empty = no Board restriction (kanban/backlog omit this). */
+    boardIds: string[];
     deadlines: DeadlineFilterValue[];
     labelIds: string[];
     priorities: PriorityFilterValue[];
@@ -20,6 +22,7 @@ export type PriorityFilterValue = "none" | TaskPriority;
 
 export const EMPTY_BOARD_FILTERS: BoardTaskFilters = {
     assigneeIds: [],
+    boardIds: [],
     deadlines: [],
     labelIds: [],
     priorities: [],
@@ -46,6 +49,7 @@ export function filterTasks(
 export function isBoardFiltersActive(filters: BoardTaskFilters): boolean {
     return (
         filters.assigneeIds.length > 0 ||
+        filters.boardIds.length > 0 ||
         filters.deadlines.length > 0 ||
         filters.labelIds.length > 0 ||
         filters.priorities.length > 0
@@ -79,6 +83,10 @@ export function matchesTaskFilters(
         filters.assigneeIds.length > 0 &&
         !matchesAssignees(task, filters.assigneeIds)
     ) {
+        return false;
+    }
+
+    if (filters.boardIds.length > 0 && !matchesBoards(task, filters.boardIds)) {
         return false;
     }
 
@@ -118,6 +126,10 @@ function matchesAssignees(task: Task, assigneeIds: string[]): boolean {
         }
         return task.assignee?.id === id;
     });
+}
+
+function matchesBoards(task: Task, boardIds: string[]): boolean {
+    return boardIds.includes(task.boardId);
 }
 
 function matchesDeadline(
