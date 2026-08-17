@@ -36,6 +36,18 @@ export const gitKeys = {
             repoFullName,
             branchName,
         ] as const,
+    taskKeyCommits: (
+        authFingerprint: string,
+        repoFullName: string,
+        taskKey: string
+    ) =>
+        [
+            ...gitKeys.all,
+            "task-key-commits",
+            authFingerprint,
+            repoFullName,
+            taskKey,
+        ] as const,
 };
 
 /** Stable cache scope for GitHub queries — never the raw token. */

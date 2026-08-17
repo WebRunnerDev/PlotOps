@@ -5,6 +5,8 @@ import type {
     PullRequestFilesResult,
 } from "@/features/git-integration/api/github-git-api";
 
+import { textReferencesTaskKey } from "@/features/git-integration/lib/extract-task-key";
+
 const FIXTURE_AUTHOR = {
     avatar_url: null as null | string,
     login: "demo-guest",
@@ -76,6 +78,31 @@ export async function fetchFixtureBranchPullRequests(
     ];
 }
 
+export async function fetchFixtureCommitBySha(
+    repoFullName: string,
+    sha: string
+): Promise<GitCommit> {
+    const normalized = sha.toLowerCase();
+    const branchCommits = await fetchFixtureBranchCommits(repoFullName, "main");
+    const match = branchCommits.find((commit) =>
+        commit.sha.startsWith(normalized)
+    );
+    if (match) return match;
+
+    return {
+        author: {
+            ...FIXTURE_AUTHOR,
+            date: "2026-07-28T14:22:00.000Z",
+        },
+        message: "TASK-1: linked fixture commit",
+        sha:
+            normalized.length >= 40
+                ? normalized
+                : `${normalized}000000000000000000000000000`.slice(0, 40),
+        url: `https://github.com/${repoFullName}/commit/${normalized}`,
+    };
+}
+
 export async function fetchFixturePullRequestFiles(
     repoFullName: string,
     prNumber: number
@@ -122,6 +149,40 @@ export async function fetchFixturePullRequestFiles(
     ];
 
     return { files, truncated: false };
+}
+
+/** Commits whose message mentions the task key (guest demo smart commits). */
+export async function fetchFixtureTaskKeyCommits(
+    repoFullName: string,
+    taskKey: string
+): Promise<GitCommit[]> {
+    const branchCommits = await fetchFixtureBranchCommits(
+        repoFullName,
+        `feature/${taskKey}-demo`
+    );
+
+    return branchCommits.some((commit) =>
+        textReferencesTaskKey(commit.message, taskKey)
+    )
+        ? branchCommits.map((commit, index) =>
+              index === 0
+                  ? {
+                        ...commit,
+                        message: `${taskKey}: ${commit.message}`,
+                    }
+                  : commit
+          )
+        : [
+              {
+                  author: {
+                      ...FIXTURE_AUTHOR,
+                      date: "2026-07-28T14:22:00.000Z",
+                  },
+                  message: `${taskKey}: guest demo smart commit`,
+                  sha: "c0ffee1a2b3c4d5e6f708192a3b4c5d6e7f8091a",
+                  url: `https://github.com/${repoFullName}/commit/c0ffee1a2b3c4d5e6f708192a3b4c5d6e7f8091a`,
+              },
+          ];
 }
 
 function branchSlug(branchName: string): string {

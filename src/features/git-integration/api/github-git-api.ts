@@ -93,6 +93,16 @@ type GithubFetchOptions = {
     signal?: AbortSignal;
 };
 
+type RawCommitPayload = {
+    author: null | { avatar_url: string; login: string };
+    commit: {
+        author: null | { date: string; name: string };
+        message: string;
+    };
+    html_url: string;
+    sha: string;
+};
+
 type RawPrPayload = {
     body: null | string;
     created_at: string;
@@ -146,33 +156,13 @@ export async function fetchBranchCommits(
     token: string,
     perPage = 20
 ): Promise<GitCommit[]> {
-    type RawCommit = {
-        author: null | { avatar_url: string; login: string };
-        commit: {
-            author: null | { date: string; name: string };
-            message: string;
-        };
-        html_url: string;
-        sha: string;
-    };
-
-    const raw = await githubFetch<RawCommit[]>(
+    const raw = await githubFetch<RawCommitPayload[]>(
         `/repos/${repoFullName}/commits`,
         token,
         { parameters: { per_page: String(perPage), sha: branchName } }
     );
 
-    return raw.map((c) => ({
-        author: {
-            avatar_url: c.author?.avatar_url ?? null,
-            date: c.commit.author?.date ?? null,
-            login: c.author?.login ?? null,
-            name: c.commit.author?.name ?? null,
-        },
-        message: c.commit.message.split("\n")[0] ?? c.commit.message,
-        sha: c.sha,
-        url: c.html_url,
-    }));
+    return raw.map((commit) => mapCommit(commit));
 }
 
 /** All PRs (open + closed) where head branch matches. */
@@ -195,6 +185,22 @@ export async function fetchBranchPullRequests(
     );
 
     return raw.map((pr) => mapPullRequest(pr));
+}
+
+/** Single commit by SHA (full or abbreviated). */
+export async function fetchCommitBySha(
+    repoFullName: string,
+    sha: string,
+    token: string,
+    signal?: AbortSignal
+): Promise<GitCommit> {
+    const raw = await githubFetch<RawCommitPayload>(
+        `/repos/${repoFullName}/commits/${encodeURIComponent(sha)}`,
+        token,
+        { signal }
+    );
+
+    return mapCommit(raw);
 }
 
 /** Single pull request by number. */
@@ -315,6 +321,26 @@ export async function mergePullRequest(
     );
 }
 
+/**
+ * Commits whose message mentions a task key (Jira-style smart commits).
+ * Uses GitHub commit search — requires auth; rate-limited separately from REST.
+ */
+export async function searchCommitsByTaskKey(
+    repoFullName: string,
+    taskKey: string,
+    token: string,
+    perPage = 20
+): Promise<GitCommit[]> {
+    type SearchResponse = { items: RawCommitPayload[] };
+
+    const q = `repo:${repoFullName} ${taskKey}`;
+    const raw = await githubFetch<SearchResponse>("/search/commits", token, {
+        parameters: { per_page: String(perPage), q },
+    });
+
+    return raw.items.map((commit) => mapCommit(commit));
+}
+
 async function githubFetch<T>(
     path: string,
     token: string,
@@ -351,6 +377,20 @@ async function githubFetch<T>(
     }
 
     return response.json() as Promise<T>;
+}
+
+function mapCommit(raw: RawCommitPayload): GitCommit {
+    return {
+        author: {
+            avatar_url: raw.author?.avatar_url ?? null,
+            date: raw.commit.author?.date ?? null,
+            login: raw.author?.login ?? null,
+            name: raw.commit.author?.name ?? null,
+        },
+        message: raw.commit.message.split("\n")[0] ?? raw.commit.message,
+        sha: raw.sha,
+        url: raw.html_url,
+    };
 }
 
 function mapPullRequest(pr: RawPrPayload): GitPullRequest {
