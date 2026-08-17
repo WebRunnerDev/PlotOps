@@ -1124,6 +1124,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          linked_commit_sha?: null | string
           parent_id?: null | string
           position?: number
           pr_number?: null | number
@@ -1201,6 +1202,7 @@ export type Database = {
           description: null | string
           estimate: null | number
           id: string
+          linked_commit_sha: null | string
           parent_id: null | string
           position: number
           pr_number: null | number
@@ -1227,6 +1229,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          linked_commit_sha?: null | string
           parent_id?: null | string
           position?: number
           pr_number?: null | number
