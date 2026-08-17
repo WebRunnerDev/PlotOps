@@ -1,5 +1,14 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Archive, CalendarIcon, RotateCcw, Trash2, XIcon } from "lucide-react";
+import {
+    Archive,
+    CalendarIcon,
+    Check,
+    Copy,
+    RotateCcw,
+    Trash2,
+    XIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { enUS, ru } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
@@ -14,11 +23,12 @@ import type { MentionCandidate } from "@/shared/ui/rich-text-editor";
 
 import {
     type BoardColumn,
-    fetchBoardColumns,
+    boardKeys,
     useBoardColumns,
     useProjectBoards,
 } from "@/features/boards";
-import { canFetchGitData } from "@/features/git-integration/lib/can-fetch-git-data";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
+import { canFetchTaskGitTab } from "@/features/git-integration/lib/can-fetch-git-data";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
 import { isGuest } from "@/features/guest-mode";
 import { TaskLabelsField, useProjectLabels } from "@/features/labels";
@@ -32,11 +42,17 @@ import {
     parseIsoDate,
     toIsoDate,
 } from "@/features/tasks/lib/format-deadline";
+import { formatTaskCopyText } from "@/features/tasks/lib/format-task-copy-text";
+import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-for-board";
+import { resolveCachedTaskBoardId } from "@/features/tasks/lib/resolve-cached-task-board-id";
 import { TASK_ESTIMATE_VALUES } from "@/features/tasks/lib/task-estimate";
 import {
     PARENT_GATE_TOAST_KEY,
     parentGateRefusalFromError,
+    subtasksOf,
+    taskDoneRefusalFromError,
 } from "@/features/tasks/lib/task-structure";
+import { toastTaskDoneRefusal } from "@/features/tasks/lib/toast-task-done-refusal";
 import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
@@ -45,6 +61,7 @@ import {
 } from "@/features/tasks/model/constants";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
+import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
 import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
@@ -127,6 +144,7 @@ export function TaskDrawer({
 }: TaskDrawerProperties) {
     const { t } = useTranslation("board");
     const isGuestSessionActive = isGuest();
+    const queryClient = useQueryClient();
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const { columns } = useBoardColumns(projectId, boardId);
     const { labels } = useProjectLabels(projectId);
@@ -134,6 +152,7 @@ export function TaskDrawer({
         archiveTask,
         clearTaskParent,
         deleteTask,
+        isLoading: isBoardTasksLoading,
         moveTaskToOtherBoard,
         restoreTask,
         tasks,
@@ -141,7 +160,6 @@ export function TaskDrawer({
         updateTaskStatus,
     } = useBoardTasks(projectId, boardId);
     const { data: boards = [] } = useProjectBoards(projectId);
-    const currentBoard = boards.find((board) => board.id === boardId);
     const navigate = useNavigate();
     const {
         canCreateTasks,
@@ -162,19 +180,43 @@ export function TaskDrawer({
     const selectTask = useTasksUiStore((state) => state.selectTask);
 
     const boardTask = tasks.find((item) => item.id === selectedTaskId);
-    const { data: archivedTasks = [] } = useArchivedTasks(
+    const lookupMissingOnBoard =
+        Boolean(selectedTaskId) && !boardTask && !isBoardTasksLoading;
+    const archivedQuery = useArchivedTasks(
         projectId,
         boardId,
-        Boolean(selectedTaskId) && !boardTask
+        lookupMissingOnBoard
     );
-    const task =
-        boardTask ?? archivedTasks.find((item) => item.id === selectedTaskId);
+    const archivedTasks = archivedQuery.data ?? [];
+    const archivedTask = archivedTasks.find(
+        (item) => item.id === selectedTaskId
+    );
+    const cachedOtherBoardId =
+        selectedTaskId && lookupMissingOnBoard && !archivedTask
+            ? resolveCachedTaskBoardId(queryClient, projectId, selectedTaskId)
+            : undefined;
+    const { data: projectTasks = [] } = useProjectTasks(
+        projectId,
+        lookupMissingOnBoard &&
+            archivedQuery.isFetched &&
+            !archivedTask &&
+            !cachedOtherBoardId,
+        { includeArchived: true }
+    );
+    const task = boardTask ?? archivedTask;
+    const currentBoard = boards.find((board) => board.id === task?.boardId);
     const isArchived = Boolean(task?.archivedAt);
     const canEdit = isSettled && canEditTasks && !isArchived;
     const canSetEstimate = isSettled && canEditEstimate && !isArchived;
     const canDelete = isSettled && canDeleteTasks;
     const allowCreateLabels = isSettled && canManageBoard;
     const canAddSubtask = canEdit && task?.parentId == undefined;
+    const movingSubtaskCount =
+        task && task.parentId == undefined
+            ? subtasksOf(task.id, tasks).filter(
+                  (child) => child.archivedAt == undefined
+              ).length
+            : 0;
     const canRemoveParent =
         isSettled &&
         canCreateTasks &&
@@ -202,6 +244,7 @@ export function TaskDrawer({
     const [isMoving, setIsMoving] = useState(false);
     const [isLoadingMoveColumns, setIsLoadingMoveColumns] = useState(false);
     const [activityOpen, setActivityOpen] = useState(false);
+    const [copiedTaskText, setCopiedTaskText] = useState(false);
     const previousTaskLinkReference = useRef<
         undefined | { id: string; parentId?: string }
     >(undefined);
@@ -242,6 +285,7 @@ export function TaskDrawer({
 
     useEffect(() => {
         setActivityOpen(false);
+        setCopiedTaskText(false);
         drawerBodyReference.current?.scrollTo({ top: 0 });
         if (!task) {
             previousTaskLinkReference.current = undefined;
@@ -252,6 +296,50 @@ export function TaskDrawer({
             parentId: task.parentId,
         };
     }, [task?.id]);
+
+    useEffect(() => {
+        if (!selectedTaskId || boardTask || isBoardTasksLoading) return;
+        if (archivedTask) return;
+
+        const targetBoardId =
+            cachedOtherBoardId && cachedOtherBoardId !== boardId
+                ? cachedOtherBoardId
+                : projectTasks.find((item) => item.id === selectedTaskId)
+                      ?.boardId;
+        if (!targetBoardId || targetBoardId === boardId) return;
+
+        void navigate({
+            params: {
+                boardId: targetBoardId,
+                projectId,
+            },
+            to: "/projects/$projectId/boards/$boardId",
+        });
+    }, [
+        archivedTask,
+        boardId,
+        boardTask,
+        cachedOtherBoardId,
+        isBoardTasksLoading,
+        navigate,
+        projectId,
+        projectTasks,
+        selectedTaskId,
+    ]);
+
+    const handleCopyTaskText = async () => {
+        const payload = formatTaskCopyText(title, description);
+        if (!payload) return;
+
+        try {
+            await navigator.clipboard.writeText(payload);
+            setCopiedTaskText(true);
+            toast.success(t("fields.copiedTitleAndDescription"));
+            globalThis.setTimeout(() => setCopiedTaskText(false), 1500);
+        } catch {
+            toast.error(t("copyFailed"));
+        }
+    };
 
     const commitTitle = () => {
         if (!task || !canEdit) return;
@@ -345,36 +433,38 @@ export function TaskDrawer({
         if (
             !task ||
             isArchived ||
-            targetBoardId === boardId ||
+            targetBoardId === task.boardId ||
             isLoadingMoveColumns
         )
             return;
 
         setIsLoadingMoveColumns(true);
         try {
-            const targetColumns = await fetchBoardColumns(
-                projectId,
-                targetBoardId
-            );
+            const targetColumns = await resolveBoardsProvider(
+                isGuestSessionActive
+            ).fetchBoardColumns(projectId, targetBoardId);
             if (targetColumns.length === 0) {
                 toast.error(t("boards.taskMoveFailed"));
                 return;
             }
 
-            const sameName = selectedColumn
-                ? targetColumns.find(
-                      (column) =>
-                          column.name.trim().toLowerCase() ===
-                          selectedColumn.name.trim().toLowerCase()
-                  )
-                : undefined;
+            queryClient.setQueryData(
+                boardKeys.columns(projectId, targetBoardId),
+                targetColumns
+            );
+
+            const remappedStatus = remapTaskStatusForBoard(
+                task.status,
+                columns,
+                targetColumns
+            );
 
             setMoveTarget({
                 boardId: targetBoardId,
                 boardName:
                     boards.find((board) => board.id === targetBoardId)?.name ??
                     "",
-                columnId: (sameName?.id ?? targetColumns[0]!.id) as TaskStatus,
+                columnId: remappedStatus,
                 columns: targetColumns.map((column) => ({
                     id: column.id as TaskStatus,
                     isDone: column.isDone,
@@ -410,6 +500,11 @@ export function TaskDrawer({
                 to: "/projects/$projectId/boards/$boardId",
             });
         } catch (error) {
+            const doneReason = taskDoneRefusalFromError(error);
+            if (doneReason) {
+                toastTaskDoneRefusal(t, doneReason);
+                return;
+            }
             const reason = parentGateRefusalFromError(error);
             toast.error(
                 reason
@@ -427,7 +522,12 @@ export function TaskDrawer({
                 onOpenChange={(open) => {
                     if (!open) {
                         commitDescription();
-                        clearSelectedTask();
+                        const selectedIsOnThisBoard = Boolean(
+                            selectedTaskId && (boardTask || archivedTask)
+                        );
+                        if (selectedIsOnThisBoard || !selectedTaskId) {
+                            clearSelectedTask();
+                        }
                     }
                 }}
                 open={Boolean(task)}
@@ -531,13 +631,43 @@ export function TaskDrawer({
                                 <div className="mx-auto grid w-full min-w-0 max-w-7xl grid-cols-1 gap-6 md:grid-cols-[minmax(0,2fr)_auto_minmax(0,1fr)] md:items-stretch md:gap-8">
                                     {/* Title and Description */}
                                     <div className="flex min-w-0 flex-col gap-6">
-                                        <div className="flex flex-col gap-2">
-                                            <Label
-                                                className={FIELD_LABEL_CLASS}
-                                                htmlFor="task-title"
-                                            >
-                                                {t("fields.title")}
-                                            </Label>
+                                        <div className="flex min-w-0 flex-col gap-2">
+                                            <div className="flex min-w-0 items-center justify-between gap-3">
+                                                <Label
+                                                    className={
+                                                        FIELD_LABEL_CLASS
+                                                    }
+                                                    htmlFor="task-title"
+                                                >
+                                                    {t("fields.title")}
+                                                </Label>
+                                                <Button
+                                                    className="shrink-0"
+                                                    onClick={() => {
+                                                        void handleCopyTaskText();
+                                                    }}
+                                                    size="sm"
+                                                    type="button"
+                                                    variant="outline"
+                                                >
+                                                    {copiedTaskText ? (
+                                                        <Check
+                                                            className="text-emerald-500"
+                                                            data-icon="inline-start"
+                                                        />
+                                                    ) : (
+                                                        <Copy data-icon="inline-start" />
+                                                    )}
+                                                    <span className="hidden sm:inline">
+                                                        {t(
+                                                            "fields.copyTitleAndDescription"
+                                                        )}
+                                                    </span>
+                                                    <span className="sm:hidden">
+                                                        {t("fields.copy")}
+                                                    </span>
+                                                </Button>
+                                            </div>
                                             <Input
                                                 className="h-auto min-w-0 text-h3 font-semibold"
                                                 disabled={!canEdit}
@@ -791,6 +921,7 @@ export function TaskDrawer({
                                                             isLoadingMoveColumns ||
                                                             isMoving
                                                         }
+                                                        key={task.id}
                                                         onValueChange={(
                                                             value
                                                         ) => {
@@ -798,7 +929,7 @@ export function TaskDrawer({
                                                                 typeof value !==
                                                                     "string" ||
                                                                 value ===
-                                                                    boardId
+                                                                    task.boardId
                                                             ) {
                                                                 return;
                                                             }
@@ -806,7 +937,7 @@ export function TaskDrawer({
                                                                 value
                                                             );
                                                         }}
-                                                        value={boardId}
+                                                        value={task.boardId}
                                                     >
                                                         <SelectTrigger
                                                             className={
@@ -1150,6 +1281,13 @@ export function TaskDrawer({
                                                         branchName,
                                                     });
                                                 }}
+                                                onLinkedCommitChange={(
+                                                    linkedCommitSha
+                                                ) => {
+                                                    updateTaskDetails(task.id, {
+                                                        linkedCommitSha,
+                                                    });
+                                                }}
                                                 onPrChange={(pr) => {
                                                     updateTaskDetails(task.id, {
                                                         pr,
@@ -1162,20 +1300,27 @@ export function TaskDrawer({
                                         )}
 
                                         {/* Live / fixture Git data — token or guest session */}
-                                        {task.branchName &&
-                                        repoFullName &&
-                                        canFetchGitData({
-                                            branchName: task.branchName,
+                                        {repoFullName &&
+                                        canFetchTaskGitTab({
                                             isGuest: isGuestSessionActive,
                                             repoFullName,
+                                            taskKey: task.key,
                                             token: githubToken,
                                         }) ? (
                                             <TaskGitTab
                                                 branchName={task.branchName}
-                                                isShared={isSharedBranch(
+                                                isShared={
                                                     task.branchName
-                                                )}
+                                                        ? isSharedBranch(
+                                                              task.branchName
+                                                          )
+                                                        : false
+                                                }
+                                                linkedCommitSha={
+                                                    task.linkedCommitSha
+                                                }
                                                 repoFullName={repoFullName}
+                                                taskKey={task.key}
                                                 token={githubToken}
                                             />
                                         ) : undefined}
@@ -1289,6 +1434,20 @@ export function TaskDrawer({
                             {t("boards.moveDescription")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+
+                    {movingSubtaskCount > 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t("boards.moveWithSubtasks", {
+                                count: movingSubtaskCount,
+                            })}
+                        </p>
+                    ) : undefined}
+
+                    {task?.sprintId ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t("boards.moveClearsSprint")}
+                        </p>
+                    ) : undefined}
 
                     {moveTarget ? (
                         <div className="flex flex-col gap-2">

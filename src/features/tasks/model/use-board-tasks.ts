@@ -23,6 +23,7 @@ import type {
 } from "@/features/tasks/model/types";
 
 import { boardKeys } from "@/features/boards";
+import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { isGuest } from "@/features/guest-mode";
 import { resolveLabelNames } from "@/features/labels";
 import {
@@ -49,6 +50,7 @@ import {
     toTaskActivitySnapshot,
 } from "@/features/tasks/lib/build-task-activity-changes";
 import { moveTasksToColumnInMemory } from "@/features/tasks/lib/move-task-to-column-in-memory";
+import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-for-board";
 import {
     reorderTasksInMemory,
     type TaskMoveUpdate,
@@ -59,6 +61,7 @@ import {
     PARENT_GATE_TOAST_KEY,
     parentGateRefusalFromError,
     type ParentGateTask,
+    subtasksOf,
     TASK_DONE_ERROR,
     taskDoneRefusal,
     taskDoneRefusalFromError,
@@ -104,6 +107,8 @@ type TaskDetailsUpdate = {
     estimate?: null | TaskEstimate;
     /** Pass `null` (or `[]`) to clear all labels. */
     labelIds?: null | string[];
+    /** Pass `null` to clear a manually linked commit SHA. */
+    linkedCommitSha?: null | string;
     /** Pass `null` to clear a linked pull request. */
     pr?: null | TaskPullRequest;
     /** Pass `null` to clear priority (“None”). */
@@ -119,6 +124,7 @@ type TaskDetailsUpdate = {
         | "estimate"
         | "id"
         | "labelIds"
+        | "linkedCommitSha"
         | "pr"
         | "priority"
         | "status"
@@ -136,6 +142,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const dragDoneRefusalToasted = useRef(false);
     const guest = isGuest();
     const tasksProvider = resolveTasksProvider(guest);
+    const boardsProvider = resolveBoardsProvider(guest);
 
     const tasksQuery = useQuery({
         enabled: Boolean(projectId && boardId),
@@ -258,6 +265,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             if (details.branchName !== undefined) {
                 patch.branch_name = details.branchName ?? null;
+            }
+            if (details.linkedCommitSha !== undefined) {
+                patch.linked_commit_sha = details.linkedCommitSha ?? null;
             }
             if (details.pr !== undefined) {
                 if (details.pr === null) {
@@ -415,11 +425,15 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const moveTaskToBoardMutation = useMutation({
         mutationFn: async ({
             activityChanges,
+            sourceBoardId,
+            subtaskMoves = [],
             targetBoardId,
             targetStatus,
             taskId,
         }: {
             activityChanges: TaskActivityChange[];
+            sourceBoardId: string;
+            subtaskMoves?: Array<{ targetStatus: TaskStatus; taskId: string }>;
             targetBoardId: string;
             targetStatus: TaskStatus;
             taskId: string;
@@ -429,6 +443,14 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 targetBoardId,
                 targetStatus
             );
+
+            for (const subtask of subtaskMoves) {
+                await tasksProvider.moveTaskToBoard(
+                    subtask.taskId,
+                    targetBoardId,
+                    subtask.targetStatus
+                );
+            }
 
             if (guest) {
                 return;
@@ -443,7 +465,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             const originSnapshot = getBoardSnapshot(
                 queryClient,
                 projectId,
-                boardId
+                sourceBoardId
             );
             const targetColumns = queryClient.getQueryData<BoardColumn[]>(
                 boardKeys.columns(projectId, targetBoardId)
@@ -457,7 +479,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             const moved = lookupTaskForNotification(
                 queryClient,
                 projectId,
-                boardId,
+                sourceBoardId,
                 taskId
             );
             await notifySubtaskChangeBestEffort({
@@ -475,7 +497,28 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId,
             });
         },
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
+            const removedIds = new Set([
+                variables.taskId,
+                ...(variables.subtaskMoves ?? []).map(
+                    (subtask) => subtask.taskId
+                ),
+            ]);
+            setTasksCache(
+                queryClient,
+                projectId,
+                variables.sourceBoardId,
+                (current) => ({
+                    taskPositions: new Map(
+                        [...current.taskPositions].filter(
+                            ([id]) => !removedIds.has(id)
+                        )
+                    ),
+                    tasks: current.tasks.filter(
+                        (task) => !removedIds.has(task.id)
+                    ),
+                })
+            );
             invalidateBoardWorkspace(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: boardKeys.list(projectId),
@@ -981,47 +1024,101 @@ export function useBoardTasks(projectId: string, boardId: string) {
             targetStatus: TaskStatus,
             targetStatusName?: string
         ) => {
-            const task = tasks.find((item) => item.id === taskId);
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
-            if (!task || targetBoardId === boardId) return;
+            const task =
+                snapshot?.tasks.find((item) => item.id === taskId) ??
+                collectCachedTasks(queryClient, projectId, boardId).get(taskId);
 
-            const targetColumns = queryClient.getQueryData<BoardColumn[]>(
+            if (!task) {
+                throw new Error("Task not found");
+            }
+
+            const sourceBoardId = task.boardId;
+            if (targetBoardId === sourceBoardId) {
+                return;
+            }
+
+            const sourceColumns = snapshot?.columns ?? [];
+            let targetColumns = queryClient.getQueryData<BoardColumn[]>(
                 boardKeys.columns(projectId, targetBoardId)
             );
-            const targetIsDone =
-                targetColumns?.some(
-                    (column) => column.id === targetStatus && column.isDone
-                ) === true ||
-                snapshot?.columns.some(
-                    (column) => column.id === targetStatus && column.isDone
-                ) === true;
-            if (targetIsDone) {
+            if (!targetColumns || targetColumns.length === 0) {
+                targetColumns = await boardsProvider.fetchBoardColumns(
+                    projectId,
+                    targetBoardId
+                );
+            }
+            if (!targetColumns || targetColumns.length === 0) {
+                throw new Error("Target board has no columns");
+            }
+
+            queryClient.setQueryData(
+                boardKeys.columns(projectId, targetBoardId),
+                targetColumns
+            );
+
+            const parentGateTasks = collectParentGateTasks(
+                queryClient,
+                projectId,
+                sourceBoardId
+            );
+            const taskLinkEdges = collectTaskLinkEdges(
+                queryClient,
+                projectId,
+                sourceBoardId
+            );
+
+            const assertMayEnterDone = (id: string, status: TaskStatus) => {
+                if (
+                    !targetColumns!.some(
+                        (column) => column.id === status && column.isDone
+                    )
+                ) {
+                    return;
+                }
                 const reason = taskDoneRefusal(
-                    taskId,
-                    collectParentGateTasks(queryClient, projectId, boardId),
-                    collectTaskLinkEdges(queryClient, projectId, boardId)
+                    id,
+                    parentGateTasks,
+                    taskLinkEdges
                 );
                 if (reason) {
                     throw new Error(TASK_DONE_ERROR[reason]);
                 }
-            }
+            };
+
+            assertMayEnterDone(taskId, targetStatus);
+
+            const subtaskMoves =
+                task.parentId == undefined
+                    ? subtasksOf(taskId, snapshot?.tasks ?? []).map(
+                          (subtask) => {
+                              const remapped = remapTaskStatusForBoard(
+                                  subtask.status,
+                                  sourceColumns,
+                                  targetColumns!
+                              );
+                              assertMayEnterDone(subtask.id, remapped);
+                              return {
+                                  targetStatus: remapped,
+                                  taskId: subtask.id,
+                              };
+                          }
+                      )
+                    : [];
 
             const boards = queryClient.getQueryData<ProjectBoardRecord[]>(
                 boardKeys.list(projectId)
             );
             const before = toTaskActivitySnapshot(task, {
                 board: {
-                    id: boardId,
-                    name: resolveBoardName(boards, boardId),
+                    id: sourceBoardId,
+                    name: resolveBoardName(boards, sourceBoardId),
                 },
                 labelNames: resolveLabelNames(
                     snapshot?.labels ?? [],
                     task.labelIds
                 ),
-                statusName: resolveStatusName(
-                    snapshot?.columns ?? [],
-                    task.status
-                ),
+                statusName: resolveStatusName(sourceColumns, task.status),
             });
             const after = {
                 ...before,
@@ -1037,6 +1134,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
             await moveTaskToBoardMutation.mutateAsync({
                 activityChanges: buildTaskActivityChanges(before, after),
+                sourceBoardId,
+                subtaskMoves,
                 targetBoardId,
                 targetStatus,
                 taskId,
@@ -1154,6 +1253,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         description: nextDescription,
                         estimate: nextEstimate,
                         labelIds: nextLabelIds,
+                        linkedCommitSha: nextLinkedCommit,
                         pr: nextPr,
                         priority: nextPriority,
                         ...rest
@@ -1170,6 +1270,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         ...(nextBranch === undefined
                             ? {}
                             : { branchName: nextBranch ?? undefined }),
+                        ...(nextLinkedCommit === undefined
+                            ? {}
+                            : {
+                                  linkedCommitSha:
+                                      nextLinkedCommit ?? undefined,
+                              }),
                         ...(nextDeadline === undefined
                             ? {}
                             : { deadline: nextDeadline ?? undefined }),
