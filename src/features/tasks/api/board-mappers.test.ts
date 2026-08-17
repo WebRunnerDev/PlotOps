@@ -24,6 +24,7 @@ function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
         description: null,
         estimate: null,
         id: "task-1",
+        linked_commit_sha: null,
         parent: null,
         parent_id: null,
         position: 0,
@@ -93,14 +94,15 @@ describe("mapDatabaseTask", () => {
             "parent-elsewhere",
         ]);
 
-        const mapped = withResolvedParentKeys([parent, child]).map(
-            mapDatabaseTask
+        const mapped = withResolvedParentKeys([parent, child]).map((row) =>
+            mapDatabaseTask(row)
         );
         expect(mapped[1]?.parentKey).toBe("FEAT-1");
 
-        const [mappedOther] = withResolvedParentKeys([otherBoardParent], [
-            { id: "parent-elsewhere", task_key: "OPS-9" },
-        ]).map(mapDatabaseTask);
+        const [mappedOther] = withResolvedParentKeys(
+            [otherBoardParent],
+            [{ id: "parent-elsewhere", task_key: "OPS-9" }]
+        ).map((row) => mapDatabaseTask(row));
         expect(mappedOther.parentKey).toBe("OPS-9");
     });
 

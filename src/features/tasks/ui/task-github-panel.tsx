@@ -4,6 +4,7 @@ import {
     Copy,
     ExternalLink,
     GitBranch,
+    GitCommit,
     GitPullRequest,
     Link2,
     Sparkles,
@@ -19,6 +20,7 @@ import type { Task, TaskPullRequest } from "@/features/tasks/model/types";
 import { useAuth } from "@/features/auth";
 import { matchesAllowedHeadPatterns } from "@/features/boards";
 import {
+    fetchCommitBySha,
     fetchPullRequest,
     gitHubWriteErrorKind,
     type GitMergeMethod,
@@ -42,6 +44,7 @@ import {
     isSharedBranch,
     normalizeBranchName,
 } from "@/features/tasks/lib/format-branch";
+import { parseCommitSha } from "@/features/tasks/lib/parse-commit-sha";
 import { parsePrNumber } from "@/features/tasks/lib/parse-pr";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -79,6 +82,7 @@ type TaskGithubPanelProperties = {
     canEdit: boolean;
     githubToken: null | string;
     onBranchChange: (branchName: null | string) => void;
+    onLinkedCommitChange: (linkedCommitSha: null | string) => void;
     onPrChange: (pr: null | TaskPullRequest) => void;
     /** Project id for connect deep-link when repo is missing. */
     projectId: string;
@@ -92,6 +96,7 @@ export function TaskGithubPanel({
     canEdit,
     githubToken,
     onBranchChange,
+    onLinkedCommitChange,
     onPrChange,
     projectId,
     repoFullName,
@@ -107,6 +112,9 @@ export function TaskGithubPanel({
     const [linkingBranch, setLinkingBranch] = useState(false);
     const [branchDraft, setBranchDraft] = useState("");
     const [linkingPr, setLinkingPr] = useState(false);
+    const [linkingCommit, setLinkingCommit] = useState(false);
+    const [commitDraft, setCommitDraft] = useState("");
+    const [commitLoading, setCommitLoading] = useState(false);
     const [prDraft, setPrDraft] = useState("");
     const [prLoading, setPrLoading] = useState(false);
     const [diffOpen, setDiffOpen] = useState(false);
@@ -114,7 +122,9 @@ export function TaskGithubPanel({
     const [mergeOpen, setMergeOpen] = useState(false);
     const [mergeMethod, setMergeMethod] = useState<GitMergeMethod>("squash");
     const prLinkAbort = useRef<AbortController | undefined>(undefined);
+    const commitLinkAbort = useRef<AbortController | undefined>(undefined);
     const prLinkGeneration = useRef(0);
+    const commitLinkGeneration = useRef(0);
 
     const canWritePr =
         isSettled &&
@@ -128,11 +138,17 @@ export function TaskGithubPanel({
     useEffect(() => {
         prLinkAbort.current?.abort();
         prLinkAbort.current = undefined;
+        commitLinkAbort.current?.abort();
+        commitLinkAbort.current = undefined;
         prLinkGeneration.current += 1;
+        commitLinkGeneration.current += 1;
         setCopied(false);
         setLinkingBranch(false);
         setBranchDraft("");
         setLinkingPr(false);
+        setLinkingCommit(false);
+        setCommitDraft("");
+        setCommitLoading(false);
         setPrDraft("");
         setPrLoading(false);
         setDiffOpen(false);
@@ -386,6 +402,84 @@ export function TaskGithubPanel({
         setLinkingPr(false);
         setPrDraft("");
         setDiffOpen(false);
+    };
+
+    const handleLinkCommitConfirm = async () => {
+        if (!canEdit) return;
+        const sha = parseCommitSha(commitDraft);
+        if (!sha) {
+            toast.error(t("github.commitRequired"));
+            return;
+        }
+        if (!githubToken || !repoFullName) {
+            toast.error(t("github.commitNeedsGithub"));
+            return;
+        }
+
+        commitLinkAbort.current?.abort();
+        const controller = new AbortController();
+        commitLinkAbort.current = controller;
+        const generation = ++commitLinkGeneration.current;
+
+        setCommitLoading(true);
+        try {
+            const remote = await fetchCommitBySha(
+                repoFullName,
+                sha,
+                githubToken,
+                controller.signal
+            );
+            if (generation !== commitLinkGeneration.current) return;
+
+            onLinkedCommitChange(remote.sha);
+            setLinkingCommit(false);
+            setCommitDraft("");
+            toast.success(
+                t("github.commitLinkedToast", {
+                    sha: remote.sha.slice(0, 7),
+                })
+            );
+        } catch (error) {
+            if (generation !== commitLinkGeneration.current) return;
+            if (controller.signal.aborted) return;
+
+            if (isGitHubApiError(error)) {
+                switch (error.status) {
+                    case 401:
+                    case 403: {
+                        toast.error(t("github.commitAuthFailed"));
+
+                        break;
+                    }
+                    case 404: {
+                        toast.error(t("github.commitNotFound", { sha }));
+
+                        break;
+                    }
+                    case 429: {
+                        toast.error(t("github.commitRateLimited"));
+
+                        break;
+                    }
+                    default: {
+                        toast.error(t("github.commitLinkFailed", { sha }));
+                    }
+                }
+            } else {
+                toast.error(t("github.commitLinkFailed", { sha }));
+            }
+        } finally {
+            if (generation === commitLinkGeneration.current) {
+                setCommitLoading(false);
+            }
+        }
+    };
+
+    const handleUnlinkCommit = () => {
+        if (!canEdit) return;
+        onLinkedCommitChange(null);
+        setLinkingCommit(false);
+        setCommitDraft("");
     };
 
     const mergeMethodLabel = (method: GitMergeMethod) => {
@@ -718,6 +812,112 @@ export function TaskGithubPanel({
                         )}
                     </>
                 )}
+
+                <div className="flex flex-col gap-2 border-t border-foreground/10 pt-3">
+                    <p className="text-ui text-muted-foreground">
+                        {t("github.smartCommitsHint", { key: task.key })}
+                    </p>
+
+                    {task.linkedCommitSha ? (
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-code text-muted-foreground">
+                                <GitCommit
+                                    aria-hidden
+                                    className="size-3.5 shrink-0"
+                                />
+                                {task.linkedCommitSha.slice(0, 7)}
+                            </span>
+                            {canEdit ? (
+                                <Button
+                                    aria-label={t("github.unlinkCommit")}
+                                    onClick={handleUnlinkCommit}
+                                    size="icon-xs"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <Unlink className="size-3.5" />
+                                </Button>
+                            ) : undefined}
+                        </div>
+                    ) : linkingCommit && canEdit ? (
+                        <div className="flex flex-col gap-2">
+                            <p className="text-ui text-muted-foreground">
+                                {t("github.linkCommitHint")}
+                            </p>
+                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                                <Input
+                                    aria-label={t(
+                                        "github.linkCommitPlaceholder"
+                                    )}
+                                    autoFocus
+                                    className="min-w-0 font-mono text-code"
+                                    disabled={commitLoading}
+                                    onChange={(event) =>
+                                        setCommitDraft(event.target.value)
+                                    }
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            event.preventDefault();
+                                            void handleLinkCommitConfirm();
+                                        }
+                                        if (
+                                            event.key === "Escape" &&
+                                            !commitLoading
+                                        ) {
+                                            setLinkingCommit(false);
+                                            setCommitDraft("");
+                                        }
+                                    }}
+                                    placeholder={t(
+                                        "github.linkCommitPlaceholder"
+                                    )}
+                                    value={commitDraft}
+                                />
+                                <Button
+                                    aria-label={t("github.linkCommitConfirm")}
+                                    disabled={commitLoading}
+                                    onClick={() => {
+                                        void handleLinkCommitConfirm();
+                                    }}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {commitLoading ? <Spinner /> : <Check />}
+                                </Button>
+                                <Button
+                                    aria-label={t("github.linkCancel")}
+                                    disabled={commitLoading}
+                                    onClick={() => {
+                                        setLinkingCommit(false);
+                                        setCommitDraft("");
+                                    }}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <X />
+                                </Button>
+                            </div>
+                        </div>
+                    ) : canEdit ? (
+                        <Button
+                            disabled={!canFetchGithub}
+                            onClick={() => setLinkingCommit(true)}
+                            size="xs"
+                            title={
+                                canFetchGithub
+                                    ? undefined
+                                    : t("github.commitNeedsGithub")
+                            }
+                            type="button"
+                            variant="outline"
+                        >
+                            <Link2 aria-hidden className="size-4" />
+                            {t("github.linkCommit")}
+                        </Button>
+                    ) : undefined}
+                </div>
 
                 {diffOpen && task.pr && githubToken && repoFullName && (
                     <PrDiffDialog

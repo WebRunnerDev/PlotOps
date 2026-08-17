@@ -702,6 +702,164 @@ describe("guest tasks provider happy path", () => {
         ).toBe(true);
     });
 
+    it("moveTaskToBoard moves a Task and remaps status on another Board", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const sourceBoard = sandbox.boards[0]!;
+        const targetBoardId = "b0000000-0000-4000-8000-000000000098";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: sourceBoard.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: targetBoardId,
+                name: "Ops",
+                position: 2,
+                projectId: sourceBoard.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "in_progress",
+            "Move me"
+        );
+        updateGuestSandbox((current) => {
+            const stored = current.tasks.find((task) => task.id === created.id);
+            if (stored) {
+                stored.sprintId = "s0000000-0000-4000-8000-000000000001";
+                stored.sprintPosition = 0;
+            }
+        });
+
+        await provider.moveTaskToBoard(created.id, targetBoardId, "todo");
+
+        const sourceTasks = await provider.fetchBoardTasks(sourceBoard.id);
+        expect(sourceTasks.tasks.some((task) => task.id === created.id)).toBe(
+            false
+        );
+
+        const targetTasks = await provider.fetchBoardTasks(targetBoardId);
+        const moved = targetTasks.tasks.find((task) => task.id === created.id);
+        expect(moved?.boardId).toBe(targetBoardId);
+        expect(moved?.status).toBe("todo");
+        expect(moved?.sprintId).toBeUndefined();
+    });
+
+    it("moveTaskToBoard moves Subtasks when the Parent Task moves", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const sourceBoard = sandbox.boards[0]!;
+        const targetBoardId = "b0000000-0000-4000-8000-000000000097";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: sourceBoard.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: targetBoardId,
+                name: "Platform",
+                position: 3,
+                projectId: sourceBoard.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const parent = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "todo",
+            "Parent"
+        );
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Child",
+            "task"
+        );
+
+        await provider.moveTaskToBoard(parent.id, targetBoardId, "in_progress");
+        await provider.moveTaskToBoard(child.id, targetBoardId, "todo");
+
+        const targetTasks = await provider.fetchBoardTasks(targetBoardId);
+        expect(targetTasks.tasks.some((task) => task.id === parent.id)).toBe(
+            true
+        );
+        expect(targetTasks.tasks.some((task) => task.id === child.id)).toBe(
+            true
+        );
+    });
+
+    it("keeps a blocks Task Link after the blocker moves to another Board", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const sourceBoard = sandbox.boards[0]!;
+        const targetBoardId = "b0000000-0000-4000-8000-000000000096";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: sourceBoard.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: targetBoardId,
+                name: "Support",
+                position: 4,
+                projectId: sourceBoard.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const blocker = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "todo",
+            "Blocker"
+        );
+        const blocked = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "todo",
+            "Blocked"
+        );
+        await provider.createTaskLinkRecord(blocker.id, blocked.id, "blocks");
+
+        await provider.moveTaskToBoard(blocker.id, targetBoardId, "todo");
+
+        const listed = await provider.fetchBoardTasks(sourceBoard.id);
+        const listedBlocked = listed.tasks.find(
+            (task) => task.id === blocked.id
+        );
+        expect(listedBlocked?.hasOpenBlocker).toBe(true);
+        expect(
+            listedBlocked?.relatedTasks?.some(
+                (peer) =>
+                    peer.kind === "blocks" &&
+                    peer.direction === "incoming" &&
+                    peer.otherId === blocker.id
+            )
+        ).toBe(true);
+
+        const doneColumn = sourceBoard.columns.find((column) => column.isDone);
+        await expect(
+            provider.updateTaskRecord(blocked.id, {
+                status: doneColumn!.id,
+            })
+        ).rejects.toThrow(
+            "A Task cannot enter Done while an open blocker exists"
+        );
+    });
+
     it("createTaskLinkRecord adds a blocks link and refuses a cycle", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");

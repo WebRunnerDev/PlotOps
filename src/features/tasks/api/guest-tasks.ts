@@ -125,6 +125,9 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     if (patch.branch_name !== undefined) {
         task.branchName = patch.branch_name ?? undefined;
     }
+    if (patch.linked_commit_sha !== undefined) {
+        task.linkedCommitSha = patch.linked_commit_sha ?? undefined;
+    }
     if (patch.status !== undefined) {
         task.status = patch.status;
     }
@@ -780,6 +783,8 @@ export const guestTasksProvider: TasksProvider = {
             task.boardId = targetBoardId;
             task.status = targetStatus;
             task.position = maxPositionAmong(columnTasks) + 1;
+            delete task.sprintId;
+            delete task.sprintPosition;
         });
 
         return { status: targetStatus };

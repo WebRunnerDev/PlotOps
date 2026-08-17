@@ -40,17 +40,9 @@ export type ProjectBoard = {
     tasks: Task[];
 };
 
-function normalizeTaskTitle(title: string): string {
-    const trimmed = title.trim();
-    if (!trimmed) {
-        throw new Error("Task title is required");
-    }
-    if (trimmed.length > TASK_TITLE_MAX_LENGTH) {
-        throw new Error(
-            `Task title must be at most ${TASK_TITLE_MAX_LENGTH} characters`
-        );
-    }
-    return trimmed;
+async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
+    const [task] = await mapSelectedTaskRows([row]);
+    return task;
 }
 
 async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
@@ -69,9 +61,17 @@ async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
     );
 }
 
-async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
-    const [task] = await mapSelectedTaskRows([row]);
-    return task;
+function normalizeTaskTitle(title: string): string {
+    const trimmed = title.trim();
+    if (!trimmed) {
+        throw new Error("Task title is required");
+    }
+    if (trimmed.length > TASK_TITLE_MAX_LENGTH) {
+        throw new Error(
+            `Task title must be at most ${TASK_TITLE_MAX_LENGTH} characters`
+        );
+    }
+    return trimmed;
 }
 
 const TASK_SELECT = `
@@ -95,6 +95,7 @@ const TASK_SELECT = `
   pr_number,
   pr_state,
   pr_url,
+  linked_commit_sha,
   task_key,
   task_type,
   created_at,
@@ -156,6 +157,7 @@ export type TaskRecordPatch = {
     description?: null | string;
     /** Pass `null` to clear estimate (unestimated). Manager+ only. */
     estimate?: null | TaskEstimate;
+    linked_commit_sha?: null | string;
     position?: number;
     pr_number?: null | number;
     pr_state?: null | string;
