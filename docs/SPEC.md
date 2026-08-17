@@ -250,6 +250,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 
 - Every task **can** be tied to a Git branch (optional).
 - "Generate branch" / "Link branch" / "No dedicated branch" in the task drawer.
+- **Smart commits (Jira-style):** commits whose message contains the task key (e.g. `TASK-12: Fix login`) are listed in the Git tab without a dedicated branch; optional manual link by SHA.
 - Shared/base branches (`main`, `dev`, …) may be linked but do not load full commit/PR lists.
 - Tasks can link a pull request by number/URL (works without a dedicated branch); diff opens in-app.
 - Drag-and-drop between columns updates task status; optionally syncs with linked pull requests.
@@ -440,10 +441,11 @@ Create tables in Supabase admin. Write RLS policies. No frontend until schema is
 ### Stage 4: Git Integration (Week 3)
 
 - Read `provider_token` from Supabase session.
-- Task Git tab: commits + PRs by `branch_name` (skipped for shared/base branches).
+- Task Git tab: commits + PRs by `branch_name` (skipped for shared/base branches); **also** commits discovered by task key in message (no branch required).
 - Code diff viewer for PRs (`@git-diff-view`: split/unified, syntax highlight, file list).
 - Branch name generator, link existing branch, or skip dedicated branch.
 - Link PR by number/URL → persist `pr_*` on task; view diff without a feature branch.
+- Link commit by SHA (`linked_commit_sha`) or rely on smart-commit search by `task_key`.
 - Open PR + Merge from task GitHub panel (ADR 0022); Approve remains deferred.
 
 ### Stage 5: Webhooks (Week 4)
