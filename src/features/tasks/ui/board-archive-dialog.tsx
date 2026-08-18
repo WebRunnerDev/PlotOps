@@ -1,5 +1,5 @@
 import { Archive, PanelBottom, RotateCcw, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -49,12 +49,10 @@ export function BoardArchiveDialog({
     const { deleteTask, restoreTask } = useBoardTasks(projectId, boardId);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
-    const {
-        data: archived = [],
-        isError,
-        isLoading,
-    } = useArchivedTasks(projectId, boardId, open);
-
+    const archiveDialogOpenRequestKey = useTasksUiStore(
+        (state) => state.archiveDialogOpenRequestKey
+    );
+    const lastArchiveOpenRequestKey = useRef(0);
     const [deleteTarget, setDeleteTarget] = useState<null | {
         id: string;
         key: string;
@@ -62,6 +60,22 @@ export function BoardArchiveDialog({
     }>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [busyId, setBusyId] = useState<null | string>(null);
+    const {
+        data: archived = [],
+        isError,
+        isLoading,
+    } = useArchivedTasks(projectId, boardId, open);
+
+    useEffect(() => {
+        if (
+            !archiveDialogOpenRequestKey ||
+            archiveDialogOpenRequestKey === lastArchiveOpenRequestKey.current
+        ) {
+            return;
+        }
+        lastArchiveOpenRequestKey.current = archiveDialogOpenRequestKey;
+        setOpen(true);
+    }, [archiveDialogOpenRequestKey]);
 
     const handleRestore = async (taskId: string, key: string) => {
         if (busyId) return;

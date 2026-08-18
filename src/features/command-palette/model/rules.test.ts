@@ -120,6 +120,7 @@ describe("Command Palette rules seam — visibility", () => {
 
         expect(visibility).toEqual({
             createTask: true,
+            navigateArchive: true,
             navigateBacklog: true,
             navigateBoard: true,
             navigateCicd: true,
@@ -166,17 +167,19 @@ describe("Command Palette rules seam — visibility", () => {
         {
             boardId: null,
             expected: {
+                navigateArchive: false,
                 navigateBacklog: false,
                 navigateBoard: false,
                 navigateCicd: true,
                 navigateSettings: true,
             },
-            label: "CI/Settings with projectId only; Board/Backlog need boardId",
+            label: "CI/Settings with projectId only; Board/Backlog/Archive need boardId",
             projectId: "project-1",
         },
         {
             boardId: "board-1",
             expected: {
+                navigateArchive: true,
                 navigateBacklog: true,
                 navigateBoard: true,
                 navigateCicd: true,
@@ -188,6 +191,7 @@ describe("Command Palette rules seam — visibility", () => {
         {
             boardId: "board-1",
             expected: {
+                navigateArchive: false,
                 navigateBacklog: false,
                 navigateBoard: false,
                 navigateCicd: false,
@@ -205,6 +209,7 @@ describe("Command Palette rules seam — visibility", () => {
             );
 
             expect({
+                navigateArchive: visibility.navigateArchive,
                 navigateBacklog: visibility.navigateBacklog,
                 navigateBoard: visibility.navigateBoard,
                 navigateCicd: visibility.navigateCicd,
@@ -632,6 +637,17 @@ describe("Command Palette rules seam — intents", () => {
             expected: {
                 boardId: "board-1",
                 projectId: "project-1",
+                section: "archive" as const,
+                type: "navigate" as const,
+            },
+            projectId: "project-1",
+            section: "archive" as const,
+        },
+        {
+            boardId: "board-1",
+            expected: {
+                boardId: "board-1",
+                projectId: "project-1",
                 section: "board" as const,
                 type: "navigate" as const,
             },
@@ -682,6 +698,12 @@ describe("Command Palette rules seam — intents", () => {
     );
 
     it.each([
+        {
+            boardId: null,
+            label: "Archive without boardId",
+            projectId: "project-1",
+            section: "archive" as const,
+        },
         {
             boardId: null,
             label: "Board without boardId",
