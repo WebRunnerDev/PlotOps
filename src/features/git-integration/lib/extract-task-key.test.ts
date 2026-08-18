@@ -42,4 +42,22 @@ describe("textReferencesTaskKey", () => {
             false
         );
     });
+
+    it("rejects partial GitHub-search false positives for TASK-4", () => {
+        expect(
+            textReferencesTaskKey(
+                "fix(M-4): mobile backlog and CI/CD pages at 375px",
+                "TASK-4"
+            )
+        ).toBe(false);
+        expect(
+            textReferencesTaskKey(
+                "fix(boards): Wave 4 columns mutations, atomic R…",
+                "TASK-4"
+            )
+        ).toBe(false);
+        expect(
+            textReferencesTaskKey("TASK-4: wire smart commits", "TASK-4")
+        ).toBe(true);
+    });
 });

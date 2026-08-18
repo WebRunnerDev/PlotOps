@@ -1,3 +1,5 @@
+import { textReferencesTaskKey } from "@/features/git-integration/lib/extract-task-key";
+
 const GITHUB_API = "https://api.github.com";
 const PR_FILES_PAGE_SIZE = 100;
 const PR_FILES_MAX_PAGES = 30;
@@ -338,7 +340,9 @@ export async function searchCommitsByTaskKey(
         parameters: { per_page: String(perPage), q },
     });
 
-    return raw.items.map((commit) => mapCommit(commit));
+    return raw.items
+        .map((commit) => mapCommit(commit))
+        .filter((commit) => textReferencesTaskKey(commit.message, taskKey));
 }
 
 async function githubFetch<T>(
