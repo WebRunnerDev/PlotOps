@@ -387,6 +387,8 @@
         "baseBranchHint": "PRs merged here move tasks to Done.",
         "defaultTaskType": "Default task type",
         "defaultTaskTypeHint": "Used when creating tasks from the board (+ New Task). You can still change the type on the task afterward.",
+        "autoAssignToMe": "Auto-assign tasks to me",
+        "autoAssignToMeHint": "New tasks on this board are assigned to you. Shown only when you are the only person on the Team.",
         "allowedPatterns": "Allowed head patterns (one per line)",
         "allowedPatternsHint": "Branches not matching any pattern trigger a soft warning on the task.",
         "settingsTitle": "Boards",

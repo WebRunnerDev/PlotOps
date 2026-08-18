@@ -21,6 +21,7 @@ export type GuestActivityEvent = {
 
 export type GuestBoard = {
     allowedHeadPatterns: string[];
+    autoAssignToCreator?: boolean;
     baseBranch: string;
     columns: GuestBoardColumn[];
     defaultTaskType: "bug" | "feature" | "task";

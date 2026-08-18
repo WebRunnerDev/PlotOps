@@ -52,6 +52,10 @@ _Avoid_: default branch (that term is the repo/GitHub default on the Project), m
 A glob-like rule on a Board that describes which task head-branch names fit that Board's workflow (e.g. `feature/*`, `fix/CORE-*`). An empty list means any branch is allowed. When patterns exist and a linked/generated name does not match, the product warns and may ask for confirmation — it does not hard-block.
 _Avoid_: branch filter, branch whitelist (implies hard deny)
 
+**Auto-assign to creator**:
+A Board setting that assigns new Tasks (and Subtasks) on that Board to the person who created them. Shown in Board settings and applied only when the Team has a single person (Owner and no Members). Distinct from later Assignee edits in the Task drawer.
+_Avoid_: auto-assign to me (UI copy only; persistence is creator-relative)
+
 **Task**:
 A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally be a Subtask of one Parent Task in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket

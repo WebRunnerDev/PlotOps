@@ -273,6 +273,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
     boards: [
         {
             allowedHeadPatterns: ["feature/*", "fix/*", "bugfix/*"],
+            autoAssignToCreator: false,
             baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
             defaultTaskType: "task",
@@ -283,6 +284,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         },
         {
             allowedHeadPatterns: [],
+            autoAssignToCreator: false,
             baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
             defaultTaskType: "task",

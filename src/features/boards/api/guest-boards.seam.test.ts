@@ -87,6 +87,13 @@ describe("guest boards provider happy path", () => {
         const withDefaultType = await provider.fetchBoard(board.id);
         expect(withDefaultType.defaultTaskType).toBe("bug");
 
+        expect(board.autoAssignToCreator).toBe(false);
+        await provider.updateBoard(board.id, {
+            auto_assign_to_creator: true,
+        });
+        const withAutoAssign = await provider.fetchBoard(board.id);
+        expect(withAutoAssign.autoAssignToCreator).toBe(true);
+
         await provider.deleteBoard(board.id);
         const boards = await provider.fetchProjectBoards(projectId);
         expect(boards.some((item) => item.id === board.id)).toBe(false);

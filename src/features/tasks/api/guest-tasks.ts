@@ -12,6 +12,7 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
+import { shouldAutoAssignToCreator } from "@/features/boards";
 import {
     getGuestSandbox,
     GUEST_SEED_ACTOR_ID,
@@ -219,6 +220,17 @@ function firstColumnId(board: {
         throw new Error("Board has no columns");
     }
     return column.id;
+}
+
+function guestCreateAssignee(board: {
+    autoAssignToCreator?: boolean;
+}): GuestPerson | undefined {
+    return shouldAutoAssignToCreator({
+        autoAssignToCreator: board.autoAssignToCreator === true,
+        teamPeopleCount: 1,
+    })
+        ? ACTOR
+        : undefined;
 }
 
 function isActiveTask(task: GuestTask): boolean {
@@ -498,7 +510,9 @@ export const guestTasksProvider: TasksProvider = {
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
 
+            const assignee = guestCreateAssignee(board);
             created = {
+                ...(assignee ? { assignee } : {}),
                 author: ACTOR,
                 boardId: parent.boardId,
                 createdAt: new Date().toISOString(),
@@ -624,7 +638,9 @@ export const guestTasksProvider: TasksProvider = {
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
 
+            const assignee = guestCreateAssignee(board);
             created = {
+                ...(assignee ? { assignee } : {}),
                 author: ACTOR,
                 boardId,
                 createdAt: new Date().toISOString(),

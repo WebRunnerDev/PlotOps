@@ -21,4 +21,12 @@ describe("createTaskRecord sprint assign seam", () => {
         expect(source).toMatch(/default_task_type/);
         expect(source).toMatch(/task_type:\s*resolvedType/);
     });
+
+    it("sets assignee_id from boards.auto_assign_to_creator on a solo Team", () => {
+        const source = readFileSync(path.join(dirname, "tasks-api.ts"), "utf8");
+
+        expect(source).toMatch(/auto_assign_to_creator/);
+        expect(source).toMatch(/shouldAutoAssignToCreator/);
+        expect(source).toMatch(/assignee_id:\s*autoAssigneeId/);
+    });
 });

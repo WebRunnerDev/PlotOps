@@ -310,6 +310,65 @@ describe("guest tasks provider happy path", () => {
         expect(created.sprintPosition).toBeGreaterThanOrEqual(0);
     });
 
+    it("createTaskRecord assigns the creator when the Board auto-assigns and the Team is solo", async () => {
+        const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const provider = resolveTasksProvider(true);
+
+        const unassigned = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Unassigned by default"
+        );
+        expect(unassigned.assignee).toBeUndefined();
+
+        const { updateGuestSandbox } = await import("@/features/guest-mode");
+        updateGuestSandbox((current) => {
+            const target = current.boards.find((item) => item.id === board.id);
+            if (target) {
+                target.autoAssignToCreator = true;
+            }
+        });
+
+        const assigned = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Auto-assigned"
+        );
+        expect(assigned.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
+    });
+
+    it("createSubtaskRecord assigns the creator when the Board auto-assigns", async () => {
+        const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const { updateGuestSandbox } = await import("@/features/guest-mode");
+        updateGuestSandbox((current) => {
+            const board = current.boards.find(
+                (item) => item.id === parent.boardId
+            );
+            if (board) {
+                board.autoAssignToCreator = true;
+            }
+        });
+
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Auto-assigned Subtask"
+        );
+        expect(created.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
+    });
+
     it("restoreTaskRecord joins a Subtask to the Parent Task's live Sprint", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");

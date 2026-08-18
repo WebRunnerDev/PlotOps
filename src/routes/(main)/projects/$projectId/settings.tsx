@@ -3,7 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
-import { ProjectBoardsSettings, useProjectBoards } from "@/features/boards";
+import {
+    countTeamPeople,
+    isSoloTeam,
+    ProjectBoardsSettings,
+    useProjectBoards,
+} from "@/features/boards";
 import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
 import {
     projectHasGithubRepo,
@@ -13,6 +18,10 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { ConnectProjectRepository } from "@/features/projects/ui/connect-project-repository";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
+import {
+    useTeam,
+    useTeamMembers,
+} from "@/features/teams/model/use-team-members";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -43,6 +52,19 @@ function ProjectSettingsRoute() {
         isPending: boardsPending,
     } = useProjectBoards(projectId);
     const { labels } = useProjectLabels(projectId);
+    const teamId = project?.team_id ?? "";
+    const { data: team, isLoading: teamLoading } = useTeam(teamId);
+    const { data: members, isLoading: membersLoading } = useTeamMembers(teamId);
+    const showAutoAssignToCreator =
+        Boolean(teamId) &&
+        !teamLoading &&
+        !membersLoading &&
+        isSoloTeam(
+            countTeamPeople({
+                hasOwner: Boolean(team?.owner_id),
+                memberCount: members?.length ?? 0,
+            })
+        );
     const defaultBoardId = boards[0]?.id ?? "";
     const selectTask = useTasksUiStore((state) => state.selectTask);
 
@@ -211,6 +233,7 @@ function ProjectSettingsRoute() {
                                 project.github_default_branch ?? "main"
                             }
                             projectId={projectId}
+                            showAutoAssignToCreator={showAutoAssignToCreator}
                         />
                     ) : undefined}
                     {activeSection === "labels" &&
