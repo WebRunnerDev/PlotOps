@@ -50,8 +50,6 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type { MentionCandidate } from "@/shared/ui/rich-text-editor/mention-candidate";
-
 import { cn } from "@/shared/lib/utils";
 import { Button, buttonVariants } from "@/shared/shadcn/ui/button";
 import {
@@ -83,6 +81,14 @@ import {
     type ImageUploadFn,
     insertImageFiles,
 } from "@/shared/ui/rich-text-editor/image-upload";
+import {
+    MENTION_DISPLAY_CHAR,
+    type MentionCandidate,
+} from "@/shared/ui/rich-text-editor/mention-candidate";
+import {
+    insertMentionTrigger,
+    isMentionHotkey,
+} from "@/shared/ui/rich-text-editor/mention-hotkey";
 import { ResizableImage } from "@/shared/ui/rich-text-editor/resizable-image";
 import {
     deleteSlashQuery,
@@ -292,6 +298,18 @@ export function RichTextEditor({
             },
             handleKeyDown: (_view, event) => {
                 const current = menuStateReference.current;
+                const currentEditor = editorReference.current;
+
+                if (
+                    isMentionHotkey(event) &&
+                    currentEditor &&
+                    !readOnlyReference.current &&
+                    mentionCandidatesReference.current.length > 0
+                ) {
+                    event.preventDefault();
+                    insertMentionTrigger(currentEditor);
+                    return true;
+                }
 
                 // The selection bubble has no command rows to navigate, but Esc
                 // should still dismiss it.
@@ -381,6 +399,13 @@ export function RichTextEditor({
                 HTMLAttributes: {
                     class: "mention",
                 },
+                renderHTML: ({ node, options }) => [
+                    "span",
+                    options.HTMLAttributes,
+                    `${MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
+                ],
+                renderText: ({ node }) =>
+                    `${MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
                 suggestion: mentionSuggestion,
             }),
             ResizableImage,

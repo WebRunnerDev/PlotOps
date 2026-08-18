@@ -681,7 +681,7 @@
     "copiedCheckout": "Checkout command copied",
     "copyFailed": "Could not copy to clipboard",
     "richText": {
-        "hint": "Select text to format, right-click for context menu, type “/” for blocks, or “@” to mention",
+        "hint": "Select text to format, right-click for context menu, type “/” for blocks, “@” to mention, or Ctrl+M (Ctrl+Ь on a Russian layout)",
         "length": "{{current}} / {{max}}",
         "mention": {
             "empty": "No matching people"
