@@ -27,7 +27,15 @@ export const PRIORITY_DOT_CLASS: Record<TaskPriority, string> = {
     urgent: "bg-red-500",
 };
 
-/** Left rail (via `before:`) accent per task type. */
+/** Left rail (via `before:`) accent per priority on kanban cards. */
+export const PRIORITY_RAIL_CLASS: Record<TaskPriority, string> = {
+    high: "before:bg-orange-500",
+    low: "before:bg-muted-foreground/45",
+    medium: "before:bg-sky-500",
+    urgent: "before:bg-red-500",
+};
+
+/** @deprecated Type is shown via icon; prefer {@link PRIORITY_RAIL_CLASS} on cards. */
 export const TASK_TYPE_CARD_CLASS: Record<TaskType, string> = {
     bug: "before:bg-destructive",
     feature: "before:bg-success",

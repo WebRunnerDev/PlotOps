@@ -5,6 +5,7 @@ import {
     Bug,
     Calendar,
     CheckSquare,
+    Flag,
     GitBranch,
     Sparkles,
     User,
@@ -26,8 +27,7 @@ import {
 } from "@/features/tasks/lib/format-deadline";
 import {
     PRIORITY_CLASS,
-    PRIORITY_DOT_CLASS,
-    TASK_TYPE_CARD_CLASS,
+    PRIORITY_RAIL_CLASS,
     TASK_TYPE_ICON_CLASS,
 } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
@@ -88,8 +88,12 @@ export function TaskCard({
     return (
         <Card
             className={cn(
-                "relative cursor-grab ring-0 transition-colors before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:content-[''] active:cursor-grabbing",
-                TASK_TYPE_CARD_CLASS[task.type]
+                "relative cursor-grab ring-0 transition-colors active:cursor-grabbing",
+                task.priority &&
+                    cn(
+                        "before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:content-['']",
+                        PRIORITY_RAIL_CLASS[task.priority]
+                    )
             )}
             size="sm"
         >
@@ -191,23 +195,6 @@ export function TaskCard({
                                 {task.estimate}
                             </span>
                         )}
-                        {task.priority ? (
-                            <span
-                                className={cn(
-                                    "inline-flex shrink-0 items-center gap-1 text-meta",
-                                    PRIORITY_CLASS[task.priority]
-                                )}
-                            >
-                                <span
-                                    aria-hidden
-                                    className={cn(
-                                        "size-1.5 shrink-0 rounded-full",
-                                        PRIORITY_DOT_CLASS[task.priority]
-                                    )}
-                                />
-                                {t(`priority.${task.priority}`)}
-                            </span>
-                        ) : undefined}
                     </span>
                     {task.pr ? (
                         <a
@@ -270,23 +257,34 @@ export function TaskCard({
             </CardHeader>
 
             <CardContent className="flex items-center justify-between gap-2 pt-0">
-                {task.deadline ? (
-                    <span
-                        className={cn(
-                            "inline-flex min-w-0 items-center gap-1 text-code",
-                            overdue
-                                ? "text-destructive"
-                                : "text-muted-foreground"
-                        )}
-                    >
-                        <Calendar aria-hidden className="size-3 shrink-0" />
-                        <span className="truncate">
-                            {formatDeadline(task.deadline, i18n.language)}
+                <span className="flex min-w-0 items-center gap-2">
+                    {task.deadline ? (
+                        <span
+                            className={cn(
+                                "inline-flex min-w-0 items-center gap-1 text-code",
+                                overdue
+                                    ? "text-destructive"
+                                    : "text-muted-foreground"
+                            )}
+                        >
+                            <Calendar aria-hidden className="size-3 shrink-0" />
+                            <span className="truncate">
+                                {formatDeadline(task.deadline, i18n.language)}
+                            </span>
                         </span>
-                    </span>
-                ) : (
-                    <span />
-                )}
+                    ) : undefined}
+                    {task.priority ? (
+                        <span
+                            className={cn(
+                                "inline-flex shrink-0 items-center gap-1 text-meta",
+                                PRIORITY_CLASS[task.priority]
+                            )}
+                        >
+                            <Flag aria-hidden className="size-3 shrink-0" />
+                            {t(`priority.${task.priority}`)}
+                        </span>
+                    ) : undefined}
+                </span>
 
                 <Avatar size="sm">
                     {task.assignee?.avatarUrl ? (
