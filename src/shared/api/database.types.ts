@@ -188,6 +188,7 @@ export type Database = {
         Args: { p_base_branch: string; p_name: string; p_project_id: string }
         Returns: {
           allowed_head_patterns: string[]
+          auto_assign_to_creator: boolean
           base_branch: string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
@@ -542,6 +543,7 @@ export type Database = {
       boards: {
         Insert: {
           allowed_head_patterns?: string[]
+          auto_assign_to_creator?: boolean
           base_branch?: string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
@@ -561,6 +563,7 @@ export type Database = {
         ]
         Row: {
           allowed_head_patterns: string[]
+          auto_assign_to_creator: boolean
           base_branch: string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
@@ -571,6 +574,7 @@ export type Database = {
         }
         Update: {
           allowed_head_patterns?: string[]
+          auto_assign_to_creator?: boolean
           base_branch?: string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
