@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import {
     Calendar,
+    CircleCheck,
     Flag,
     LayoutGrid,
     ListFilter,
@@ -52,6 +53,8 @@ type BoardTaskFiltersBarProperties = {
     /** Hide the “Filter” legend — use in compact pickers. */
     compact?: boolean;
     filters: BoardTaskFilters;
+    /** When set, show a toggle to hide Tasks in Done columns. */
+    hideCompleted?: boolean;
     labels: ProjectLabel[];
     /**
      * Nested pickers set `false` so a facet menu does not steal the
@@ -59,6 +62,7 @@ type BoardTaskFiltersBarProperties = {
      */
     menuModal?: boolean;
     onChange: (filters: BoardTaskFilters) => void;
+    onHideCompletedChange?: (hideCompleted: boolean) => void;
     people: BoardFilterPerson[];
 };
 
@@ -71,9 +75,11 @@ export function BoardTaskFiltersBar({
     boards,
     compact = false,
     filters,
+    hideCompleted = false,
     labels,
     menuModal = true,
     onChange,
+    onHideCompletedChange,
     people,
 }: BoardTaskFiltersBarProperties) {
     const { t } = useTranslation("board");
@@ -338,6 +344,30 @@ export function BoardTaskFiltersBar({
                     )}
                 </DropdownMenuGroup>
             </FilterMenu>
+
+            {onHideCompletedChange ? (
+                <Button
+                    aria-label={t("filters.hideCompleted")}
+                    aria-pressed={hideCompleted}
+                    className={cn(
+                        "h-7 max-w-full gap-1.5 px-2.5 text-[0.8rem]",
+                        hideCompleted && "border-primary/40 bg-primary/5"
+                    )}
+                    onClick={() => {
+                        onHideCompletedChange(!hideCompleted);
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                >
+                    <CircleCheck aria-hidden className="size-3.5" />
+                    <span className="min-w-0 truncate">
+                        {hideCompleted
+                            ? t("filters.showCompleted")
+                            : t("filters.hideCompleted")}
+                    </span>
+                </Button>
+            ) : undefined}
 
             {active ? (
                 <Button

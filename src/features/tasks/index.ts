@@ -1,6 +1,10 @@
 export { resolveTasksProvider } from "./api/resolve-tasks-provider";
 export type { TasksProvider } from "./api/tasks-provider";
 export {
+    doneColumnIdSet,
+    hideCompletedBoardTasks,
+} from "./lib/board-completed-visibility";
+export {
     parentSubtaskProgress,
     visibleBoardTasks,
 } from "./lib/board-subtask-visibility";
@@ -76,6 +80,7 @@ export type {
     TaskLinkRefusal,
     TaskStructureNode,
 } from "./lib/task-structure";
+export { useBoardCompletedVisibilityStore } from "./model/board-completed-visibility-store";
 export { useBoardSortStore } from "./model/board-sort-store";
 export { useBoardSubtaskVisibilityStore } from "./model/board-subtask-visibility-store";
 export {

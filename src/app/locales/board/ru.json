@@ -243,6 +243,8 @@
         "deselectAll": "Снять выбор",
         "assigneesEmpty": "В этом проекте нет участников.",
         "labelsEmpty": "В проекте пока нет меток.",
+        "hideCompleted": "Скрыть выполненные",
+        "showCompleted": "Показать выполненные",
         "deadline": {
             "overdue": "Просрочено",
             "today": "Сегодня",

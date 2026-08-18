@@ -243,6 +243,8 @@
         "deselectAll": "Deselect all",
         "assigneesEmpty": "No members in this project.",
         "labelsEmpty": "No labels in this project.",
+        "hideCompleted": "Hide completed",
+        "showCompleted": "Show completed",
         "deadline": {
             "overdue": "Overdue",
             "today": "Today",

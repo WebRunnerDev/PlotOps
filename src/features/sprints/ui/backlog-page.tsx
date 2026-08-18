@@ -58,11 +58,14 @@ import {
     BoardSortControl,
     BoardTaskFiltersBar,
     DEFAULT_BOARD_SORT,
+    doneColumnIdSet,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    hideCompletedBoardTasks,
     isBoardFiltersActive,
     sortTasksByBoardSort,
     TaskDrawer,
+    useBoardCompletedVisibilityStore,
     useBoardSortStore,
     useBoardTasks,
     useTasksUiStore,
@@ -135,6 +138,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
     );
     const setBoardSort = useBoardSortStore((state) => state.setBoardSort);
+    const hideCompleted = useBoardCompletedVisibilityStore(
+        (state) => state.hideCompletedByBoardId[boardId] === true
+    );
+    const setHideCompleted = useBoardCompletedVisibilityStore(
+        (state) => state.setHideCompleted
+    );
     const {
         data: sprintsData,
         error: sprintsQueryError,
@@ -200,20 +209,29 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const planningSprints = [...(active ? [active] : []), ...drafts];
 
     const filtersActive =
-        isBoardFiltersActive(filters) || searchQuery.trim().length > 0;
+        isBoardFiltersActive(filters) ||
+        searchQuery.trim().length > 0 ||
+        hideCompleted;
+
+    const doneColumnIds = useMemo(() => doneColumnIdSet(columns), [columns]);
 
     const visibleTasks = useMemo(() => {
         const filtered = filterTasks(tasks, filters);
+        const withoutCompleted = hideCompletedBoardTasks(
+            filtered,
+            doneColumnIds,
+            hideCompleted
+        );
         const query = searchQuery.trim().toLowerCase();
         const searched = query
-            ? filtered.filter(
+            ? withoutCompleted.filter(
                   (task) =>
                       task.key.toLowerCase().includes(query) ||
                       task.title.toLowerCase().includes(query)
               )
-            : filtered;
+            : withoutCompleted;
         return sortTasksByBoardSort(searched, boardSort);
-    }, [boardSort, filters, searchQuery, tasks]);
+    }, [boardSort, doneColumnIds, filters, hideCompleted, searchQuery, tasks]);
 
     const backlogTasks = useMemo(() => {
         const group = visibleTasks.filter((task) => !task.sprintId);
@@ -456,8 +474,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
                         <BoardTaskFiltersBar
                             filters={filters}
+                            hideCompleted={hideCompleted}
                             labels={projectLabels}
                             onChange={setFilters}
+                            onHideCompletedChange={(next) => {
+                                setHideCompleted(boardId, next);
+                            }}
                             people={people}
                         />
                         <BoardSortControl
