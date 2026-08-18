@@ -18,5 +18,6 @@ describe("AuthProvider OAuth boot wait seam", () => {
         expect(source).toMatch(
             /shouldFinishAuthBoot\(\{[\s\S]*?isOAuthCallback[\s\S]*?session:/
         );
+        expect(source).toMatch(/githubProviderTokenFromSession/);
     });
 });
