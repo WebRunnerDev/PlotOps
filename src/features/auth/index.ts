@@ -1,4 +1,4 @@
-export { signInWithGitHub } from "./api/auth-api";
+export { signInWithGitHub, signInWithGoogle } from "./api/auth-api";
 export {
     DEMO_ACCOUNT_BADGE_I18N_KEY,
     demoAccountBadgeVisible,

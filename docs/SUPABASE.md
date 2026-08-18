@@ -68,7 +68,34 @@ npm run db:start
 
 5. Keep `.env.local` pointing at `http://127.0.0.1:54321`, then `npm run dev` → Sign in with GitHub.
 
-Scopes used by the app: `repo read:user` (see `signInWithGitHub`). Without this setup, use email/password on local or remove `.env.local` to hit remote.
+Scopes used by the app: `repo read:user` (see `signInWithGitHub`). Without this setup, use email/password, Google (if configured), on local or remove `.env.local` to hit remote.
+
+### Local Google OAuth
+
+Remote PlotOps already has Google in the cloud Dashboard. Local Auth does **not** reuse that — you need a second Google OAuth client.
+
+1. [Google Cloud Console](https://console.cloud.google.com/auth/clients/create) → **Web application**
+    - Authorized JavaScript origins: `http://127.0.0.1:5173`
+    - Authorized redirect URIs: `http://127.0.0.1:54321/auth/v1/callback`  
+      (local GoTrue, **not** the Vite origin and not the remote `*.supabase.co` callback)
+2. Copy Client ID and Client Secret.
+3. Add to root `.env` (gitignored; CLI reads these when starting local stack):
+
+```env
+SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID=....apps.googleusercontent.com
+SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET=GOCSPX-...
+```
+
+4. Restart local stack so GoTrue picks up secrets:
+
+```bash
+npm run db:stop
+npm run db:start
+```
+
+5. Keep `.env.local` pointing at `http://127.0.0.1:54321`, then `npm run dev` → Sign in with Google.
+
+If local Google fails nonce validation, set `skip_nonce_check = true` under `[auth.external.google]` in `supabase/config.toml`. Without this setup, use GitHub/email on local or remove `.env.local` to hit remote.
 
 ## Remote (PlotOps cloud)
 

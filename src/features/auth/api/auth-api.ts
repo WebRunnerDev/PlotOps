@@ -64,7 +64,7 @@ export async function resendSignupConfirmation(email: string) {
     return supabase.auth.resend({
         email,
         options: {
-            emailRedirectTo: signupEmailRedirectTo(),
+            emailRedirectTo: postAuthRedirectTo(),
         },
         type: "signup",
     });
@@ -77,17 +77,21 @@ export async function resetPasswordForEmail(email: string) {
 }
 
 export async function signInWithGitHub() {
-    const pendingInvite = safeGetItem("sessionStorage", PENDING_INVITE_KEY);
-    const redirectTo = pendingInvite
-        ? `${globalThis.location.origin}/invite/${pendingInvite}`
-        : `${globalThis.location.origin}/home`;
-
     return supabase.auth.signInWithOAuth({
         options: {
-            redirectTo,
+            redirectTo: postAuthRedirectTo(),
             scopes: "repo read:user",
         },
         provider: "github",
+    });
+}
+
+export async function signInWithGoogle() {
+    return supabase.auth.signInWithOAuth({
+        options: {
+            redirectTo: postAuthRedirectTo(),
+        },
+        provider: "google",
     });
 }
 
@@ -107,13 +111,13 @@ export async function signUpWithPassword(credentials: SignUpCredentials) {
                 first_name: credentials.firstName.trim(),
                 last_name: credentials.lastName.trim(),
             },
-            emailRedirectTo: signupEmailRedirectTo(),
+            emailRedirectTo: postAuthRedirectTo(),
         },
         password: credentials.password,
     });
 }
 
-function signupEmailRedirectTo(): string {
+function postAuthRedirectTo(): string {
     const origin = globalThis.location.origin;
     const pendingInvite = safeGetItem("sessionStorage", PENDING_INVITE_KEY);
     if (pendingInvite) {

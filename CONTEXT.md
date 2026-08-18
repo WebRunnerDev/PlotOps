@@ -15,7 +15,7 @@ The user's short handle on PlotOps — typically the GitHub login. A compact ide
 _Avoid_: display name, nickname (when meaning the real-name fields), login (Auth credential sense)
 
 **First name**:
-The user's given name, collected at registration (email or after GitHub sign-in). Part of how the person is shown to others; distinct from Username.
+The user's given name, collected at registration (email or after GitHub/Google sign-in). Part of how the person is shown to others; distinct from Username.
 _Avoid_: display name (prefer First name + Last name), given name (synonym; First name is canonical here)
 
 **Last name**:

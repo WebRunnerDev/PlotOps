@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import {
     getAuthErrorKey,
     resendSignupConfirmation,
+    signInWithGitHub,
+    signInWithGoogle,
     signUpWithPassword,
 } from "@/features/auth/api/auth-api";
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -21,7 +23,12 @@ import {
 } from "@/shared/shadcn/ui/card";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
+import { Separator } from "@/shared/shadcn/ui/separator";
 
+import {
+    type OAuthProviderLoading,
+    OAuthSignInButtons,
+} from "./oauth-sign-in-buttons";
 import { PasswordInput } from "./password-input";
 
 const REDIRECT_TIMEOUT_MS = 8000;
@@ -41,6 +48,8 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState<null | string>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [oauthLoading, setOauthLoading] =
+        useState<OAuthProviderLoading>(null);
     const [isResending, setIsResending] = useState(false);
     const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
@@ -86,6 +95,25 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
             globalThis.clearTimeout(timer);
         };
     }, [awaitingRedirect, t, user]);
+
+    const isBusy = isLoading || Boolean(oauthLoading);
+
+    const handleOAuthSignUp = async (provider: "github" | "google") => {
+        setError(null);
+        setResendMessage(null);
+        leaveGuestSession();
+        setOauthLoading(provider);
+
+        try {
+            const { error: authError } =
+                provider === "github"
+                    ? await signInWithGitHub()
+                    : await signInWithGoogle();
+            if (authError) setError(t(getAuthErrorKey(authError)));
+        } finally {
+            setOauthLoading(null);
+        }
+    };
 
     const handleSignUp = async (event: FormEvent) => {
         event.preventDefault();
@@ -228,6 +256,21 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                     </Alert>
                 ) : undefined}
 
+                <OAuthSignInButtons
+                    disabled={isBusy}
+                    loading={oauthLoading}
+                    onGitHub={() => void handleOAuthSignUp("github")}
+                    onGoogle={() => void handleOAuthSignUp("google")}
+                />
+
+                <div className="flex items-center gap-3">
+                    <Separator className="flex-1" />
+                    <span className="text-meta text-muted-foreground">
+                        {t("or")}
+                    </span>
+                    <Separator className="flex-1" />
+                </div>
+
                 <form className="flex flex-col gap-4" onSubmit={handleSignUp}>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="flex min-w-0 flex-col gap-2">
@@ -311,7 +354,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
                     <Button
                         className="w-full"
-                        disabled={isLoading}
+                        disabled={isBusy}
                         size="lg"
                         type="submit"
                     >
