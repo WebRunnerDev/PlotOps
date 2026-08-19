@@ -13,6 +13,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
@@ -69,6 +70,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
+import { shouldPreferClipboardHtml } from "@/shared/ui/rich-text-editor/clipboard-html";
 import {
     normalizeEditorContent,
     richTextLength,
@@ -95,6 +97,7 @@ import {
     filterSlashCommands,
     type SlashCommand,
 } from "@/shared/ui/rich-text-editor/slash-commands";
+import { TableToolbar } from "@/shared/ui/rich-text-editor/table-toolbar";
 import "@/shared/ui/rich-text-editor/rich-text-editor.css";
 
 const lowlight = createLowlight(common);
@@ -367,6 +370,28 @@ export function RichTextEditor({
 
                 return false;
             },
+            handlePaste: (_view, event) => {
+                const currentEditor = editorReference.current;
+                if (!currentEditor || readOnlyReference.current) {
+                    return false;
+                }
+
+                const html = event.clipboardData?.getData("text/html") ?? "";
+                // Notion/Jira/Word put a PNG screenshot on the clipboard
+                // alongside the table HTML. Prefer the table, not the image.
+                if (shouldPreferClipboardHtml(html)) {
+                    return false;
+                }
+
+                const files = event.clipboardData?.files;
+                if (!files?.length) return false;
+
+                const images = filterImageFiles(files);
+                if (images.length === 0) return false;
+
+                insertImageFiles(currentEditor, images);
+                return true;
+            },
         },
         extensions: [
             StarterKit.configure({
@@ -410,19 +435,24 @@ export function RichTextEditor({
             }),
             ResizableImage,
             ImageUpload,
+            TableKit.configure({
+                table: {
+                    allowTableNodeSelection: true,
+                    renderWrapper: true,
+                    resizable: true,
+                },
+            }),
             FileHandler.configure({
                 // Don't filter by MIME here — Windows drag often has an empty type.
                 // Filtering happens in insertImageFiles / isImageFile.
-                consumePasteEvent: true,
+                // Paste is handled in editorProps so table HTML wins over a
+                // clipboard screenshot of the same table.
                 onDrop: (currentEditor, files, position) => {
                     // FileHandler stops propagation on editor-surface drops, so
                     // the container onDrop never runs — reset the overlay here.
                     dragDepthReference.current = 0;
                     setIsDraggingFile(false);
                     insertImageFiles(currentEditor, files, position);
-                },
-                onPaste: (currentEditor, files) => {
-                    insertImageFiles(currentEditor, files);
                 },
             }),
         ],
@@ -537,6 +567,8 @@ export function RichTextEditor({
         selector: ({ editor: currentEditor }) => {
             if (!currentEditor) {
                 return {
+                    canMergeCells: false,
+                    canSplitCell: false,
                     isAlignCenter: false,
                     isAlignJustify: false,
                     isAlignLeft: false,
@@ -547,11 +579,14 @@ export function RichTextEditor({
                     isItalic: false,
                     isLink: false,
                     isStrike: false,
+                    isTable: false,
                     isUnderline: false,
                 };
             }
 
             return {
+                canMergeCells: currentEditor.can().mergeCells(),
+                canSplitCell: currentEditor.can().splitCell(),
                 isAlignCenter: currentEditor.isActive({ textAlign: "center" }),
                 isAlignJustify: currentEditor.isActive({
                     textAlign: "justify",
@@ -564,6 +599,7 @@ export function RichTextEditor({
                 isItalic: currentEditor.isActive("italic"),
                 isLink: currentEditor.isActive("link"),
                 isStrike: currentEditor.isActive("strike"),
+                isTable: currentEditor.isActive("table"),
                 isUnderline: currentEditor.isActive("underline"),
             };
         },
@@ -984,7 +1020,7 @@ export function RichTextEditor({
                     "[&_.ProseMirror_p]:max-w-full [&_.ProseMirror_h1]:max-w-full [&_.ProseMirror_h2]:max-w-full [&_.ProseMirror_h3]:max-w-full",
                     "[&_.ProseMirror_ul]:max-w-full [&_.ProseMirror_ol]:max-w-full [&_.ProseMirror_blockquote]:max-w-full",
                     "[&_.ProseMirror_pre]:max-w-full [&_.ProseMirror_hr]:max-w-full",
-                    "[&_.ProseMirror_img]:max-w-full [&_.ProseMirror_table]:max-w-full",
+                    "[&_.ProseMirror_img]:max-w-full [&_.ProseMirror_.tableWrapper]:max-w-full",
                     // Image toolbar is wider than a narrow bitmap — do not inherit max-w-full.
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
@@ -1006,6 +1042,14 @@ export function RichTextEditor({
                 )}
                 editor={editor}
             />
+
+            {readOnly || !toolbarState?.isTable ? null : (
+                <TableToolbar
+                    canMerge={Boolean(toolbarState.canMergeCells)}
+                    canSplit={Boolean(toolbarState.canSplitCell)}
+                    editor={editor}
+                />
+            )}
 
             {readOnly ? null : (
                 <div className="mt-1 flex items-start justify-between gap-3 px-1 text-[0.6875rem] leading-tight">
@@ -1042,7 +1086,9 @@ function buildMenuState(
     reference: ReferenceRect,
     query = ""
 ): FloatingMenuState {
-    const commands = filterSlashCommands(query);
+    const commands = filterSlashCommands(query, {
+        inTable: editor.isActive("table"),
+    });
     const activeIds = commands
         .filter((command) => isCommandActive(editor, command.id))
         .map((command) => command.id);
@@ -1171,6 +1217,9 @@ function isCommandActive(editor: Editor, commandId: SlashCommand["id"]) {
             return editor.isActive("taskList");
         }
         default: {
+            if (commandId === "table" || commandId.startsWith("table-")) {
+                return editor.isActive("table");
+            }
             return false;
         }
     }

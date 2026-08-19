@@ -27,4 +27,12 @@ describe("richTextToPlainText", () => {
             )
         ).toBe("A & B <C>");
     });
+
+    it("keeps table rows and separates cells", () => {
+        expect(
+            richTextToPlainText(
+                "<table><tr><th>Name</th><th>Status</th></tr><tr><td>Login</td><td>Done</td></tr></table>"
+            )
+        ).toBe("Name\tStatus\nLogin\tDone");
+    });
 });

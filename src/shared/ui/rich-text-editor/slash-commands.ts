@@ -1,8 +1,15 @@
 import type { Editor } from "@tiptap/react";
 import type { LucideIcon } from "lucide-react";
+
 import {
+    BetweenHorizontalEnd,
+    BetweenHorizontalStart,
+    BetweenVerticalEnd,
+    BetweenVerticalStart,
     CheckSquare,
+    ClipboardCopy,
     Code2,
+    Copy,
     Heading1,
     Heading2,
     Heading3,
@@ -12,9 +19,16 @@ import {
     Minus,
     Pilcrow,
     Quote,
+    SquareMinus,
+    Table2,
+    Trash2,
 } from "lucide-react";
 
 import { pickAndInsertImage } from "@/shared/ui/rich-text-editor/image-upload";
+import {
+    copyTableColumn,
+    copyTableRow,
+} from "@/shared/ui/rich-text-editor/table-selection";
 
 export type SlashCommand = {
     icon: LucideIcon;
@@ -22,6 +36,10 @@ export type SlashCommand = {
     keywords: string[];
     run: (editor: Editor) => void;
     titleKey: string;
+};
+
+export type SlashCommandContext = {
+    inTable?: boolean;
 };
 
 const LIST_ITEM_TYPES = ["listItem", "taskItem"] as const;
@@ -41,6 +59,34 @@ function clearBlockWrappers(editor: Editor) {
     }
 }
 
+function setBlockquoteBlock(editor: Editor) {
+    if (editor.isActive("blockquote")) {
+        if (unwrapBlockquote(editor)) return;
+        editor.chain().focus().toggleBlockquote().run();
+        return;
+    }
+
+    if (wrapListInBlockquote(editor)) return;
+
+    clearBlockWrappers(editor);
+    editor.chain().focus().toggleBlockquote().run();
+}
+
+function setCodeBlock(editor: Editor) {
+    clearBlockWrappers(editor);
+    editor.chain().focus().toggleCodeBlock().run();
+}
+
+function setHeadingBlock(editor: Editor, level: 1 | 2 | 3) {
+    clearBlockWrappers(editor);
+    editor.chain().focus().toggleHeading({ level }).run();
+}
+
+function setParagraphBlock(editor: Editor) {
+    clearBlockWrappers(editor);
+    editor.chain().focus().setParagraph().run();
+}
+
 /** Lift the nearest blockquote ancestor, keeping its children (e.g. a list). */
 function unwrapBlockquote(editor: Editor): boolean {
     const { state } = editor;
@@ -55,13 +101,21 @@ function unwrapBlockquote(editor: Editor): boolean {
         return editor
             .chain()
             .focus()
-            .command(({ tr, dispatch }) => {
+            .command(({ dispatch, tr }) => {
                 const quoteNode = tr.doc.nodeAt(pos);
-                if (!quoteNode || quoteNode.type !== blockquoteType || !dispatch) {
+                if (
+                    !quoteNode ||
+                    quoteNode.type !== blockquoteType ||
+                    !dispatch
+                ) {
                     return Boolean(quoteNode);
                 }
 
-                tr.replaceWith(pos, pos + quoteNode.nodeSize, quoteNode.content);
+                tr.replaceWith(
+                    pos,
+                    pos + quoteNode.nodeSize,
+                    quoteNode.content
+                );
                 return true;
             })
             .run();
@@ -79,7 +133,9 @@ function wrapListInBlockquote(editor: Editor): boolean {
 
     for (let depth = $from.depth; depth > 0; depth -= 1) {
         const node = $from.node(depth);
-        if (!LIST_TYPES.includes(node.type.name as (typeof LIST_TYPES)[number])) {
+        if (
+            !LIST_TYPES.includes(node.type.name as (typeof LIST_TYPES)[number])
+        ) {
             continue;
         }
 
@@ -92,14 +148,14 @@ function wrapListInBlockquote(editor: Editor): boolean {
         return editor
             .chain()
             .focus()
-            .command(({ tr, dispatch }) => {
+            .command(({ dispatch, tr }) => {
                 const listNode = tr.doc.nodeAt(pos);
                 if (!listNode || !dispatch) return Boolean(listNode);
 
                 tr.replaceWith(
                     pos,
                     pos + listNode.nodeSize,
-                    blockquoteType.create(null, listNode),
+                    blockquoteType.create(null, listNode)
                 );
                 return true;
             })
@@ -107,34 +163,6 @@ function wrapListInBlockquote(editor: Editor): boolean {
     }
 
     return false;
-}
-
-function setParagraphBlock(editor: Editor) {
-    clearBlockWrappers(editor);
-    editor.chain().focus().setParagraph().run();
-}
-
-function setHeadingBlock(editor: Editor, level: 1 | 2 | 3) {
-    clearBlockWrappers(editor);
-    editor.chain().focus().toggleHeading({ level }).run();
-}
-
-function setBlockquoteBlock(editor: Editor) {
-    if (editor.isActive("blockquote")) {
-        if (unwrapBlockquote(editor)) return;
-        editor.chain().focus().toggleBlockquote().run();
-        return;
-    }
-
-    if (wrapListInBlockquote(editor)) return;
-
-    clearBlockWrappers(editor);
-    editor.chain().focus().toggleBlockquote().run();
-}
-
-function setCodeBlock(editor: Editor) {
-    clearBlockWrappers(editor);
-    editor.chain().focus().toggleCodeBlock().run();
 }
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -221,6 +249,100 @@ export const SLASH_COMMANDS: SlashCommand[] = [
         titleKey: "richText.slash.image",
     },
     {
+        icon: Table2,
+        id: "table",
+        keywords: ["table", "grid", "spreadsheet"],
+        run: (editor) => {
+            editor
+                .chain()
+                .focus()
+                .insertTable({ cols: 3, rows: 3, withHeaderRow: true })
+                .run();
+        },
+        titleKey: "richText.slash.table",
+    },
+    {
+        icon: BetweenHorizontalStart,
+        id: "table-add-row-before",
+        keywords: ["table", "row", "insert", "above"],
+        run: (editor) => {
+            editor.chain().focus().addRowBefore().run();
+        },
+        titleKey: "richText.table.addRowBefore",
+    },
+    {
+        icon: BetweenHorizontalEnd,
+        id: "table-add-row",
+        keywords: ["table", "row", "insert", "below"],
+        run: (editor) => {
+            editor.chain().focus().addRowAfter().run();
+        },
+        titleKey: "richText.table.addRowAfter",
+    },
+    {
+        icon: Minus,
+        id: "table-delete-row",
+        keywords: ["table", "row", "delete", "remove"],
+        run: (editor) => {
+            editor.chain().focus().deleteRow().run();
+        },
+        titleKey: "richText.table.deleteRow",
+    },
+    {
+        icon: BetweenVerticalStart,
+        id: "table-add-column-before",
+        keywords: ["table", "column", "insert", "left"],
+        run: (editor) => {
+            editor.chain().focus().addColumnBefore().run();
+        },
+        titleKey: "richText.table.addColumnBefore",
+    },
+    {
+        icon: BetweenVerticalEnd,
+        id: "table-add-column",
+        keywords: ["table", "column", "insert", "right"],
+        run: (editor) => {
+            editor.chain().focus().addColumnAfter().run();
+        },
+        titleKey: "richText.table.addColumnAfter",
+    },
+    {
+        icon: SquareMinus,
+        id: "table-delete-column",
+        keywords: ["table", "column", "delete", "remove"],
+        run: (editor) => {
+            editor.chain().focus().deleteColumn().run();
+        },
+        titleKey: "richText.table.deleteColumn",
+    },
+    {
+        icon: Copy,
+        id: "table-copy-column",
+        keywords: ["table", "column", "copy", "vertical"],
+        run: (editor) => {
+            void copyTableColumn(editor);
+        },
+        titleKey: "richText.table.copyColumn",
+    },
+    {
+        icon: ClipboardCopy,
+        id: "table-copy-row",
+        keywords: ["table", "row", "copy"],
+        run: (editor) => {
+            void copyTableRow(editor);
+        },
+        titleKey: "richText.table.copyRow",
+    },
+    {
+        icon: Trash2,
+        id: "table-delete",
+        keywords: ["table", "delete", "remove"],
+        run: (editor) => {
+            editor.chain().focus().deleteTable().run();
+        },
+        titleKey: "richText.table.deleteTable",
+    },
+    {
         icon: Minus,
         id: "divider",
         keywords: ["divider", "line", "hr"],
@@ -231,24 +353,26 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     },
 ];
 
-export function filterSlashCommands(query: string): SlashCommand[] {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return SLASH_COMMANDS;
-
-    return SLASH_COMMANDS.filter((command) => {
-        if (command.id.includes(normalized)) return true;
-        return command.keywords.some((keyword) => keyword.includes(normalized));
-    });
-}
-
 export function deleteSlashQuery(editor: Editor, query: string) {
     const { from } = editor.state.selection;
     const deleteFrom = from - query.length - 1;
     if (deleteFrom < 0) return;
 
-    editor
-        .chain()
-        .focus()
-        .deleteRange({ from: deleteFrom, to: from })
-        .run();
+    editor.chain().focus().deleteRange({ from: deleteFrom, to: from }).run();
+}
+
+export function filterSlashCommands(
+    query: string,
+    context: SlashCommandContext = {}
+): SlashCommand[] {
+    const inTable = Boolean(context.inTable);
+    const normalized = query.trim().toLowerCase();
+
+    return SLASH_COMMANDS.filter((command) => {
+        if (command.id === "table" && inTable) return false;
+        if (command.id.startsWith("table-") && !inTable) return false;
+        if (!normalized) return true;
+        if (command.id.includes(normalized)) return true;
+        return command.keywords.some((keyword) => keyword.includes(normalized));
+    });
 }

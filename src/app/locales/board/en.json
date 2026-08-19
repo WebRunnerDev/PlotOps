@@ -721,6 +721,7 @@
             "quote": "Quote",
             "codeBlock": "Code",
             "image": "Image",
+            "table": "Table",
             "divider": "Divider"
         },
         "media": {
@@ -738,6 +739,22 @@
                 "center": "Align center",
                 "right": "Align right"
             }
+        },
+        "table": {
+            "addRowBefore": "Insert row above",
+            "addRowAfter": "Insert row below",
+            "deleteRow": "Delete row",
+            "addColumnBefore": "Insert column left",
+            "addColumnAfter": "Insert column right",
+            "deleteColumn": "Delete column",
+            "copyColumn": "Copy column",
+            "copyRow": "Copy row",
+            "copiedColumn": "Column copied",
+            "copiedRow": "Row copied",
+            "mergeCells": "Merge cells",
+            "splitCell": "Split cell",
+            "toggleHeaderRow": "Toggle header row",
+            "deleteTable": "Delete table"
         }
     },
     "sprints": {

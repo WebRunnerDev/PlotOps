@@ -38,6 +38,66 @@
     margin-block: 0;
 }
 
+.rich-text-editor .ProseMirror .tableWrapper {
+    max-width: 100%;
+    margin-block: 0.75rem;
+    overflow-x: auto;
+}
+
+.rich-text-editor .ProseMirror table {
+    width: 100%;
+    min-width: 12rem;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+.rich-text-editor .ProseMirror th,
+.rich-text-editor .ProseMirror td {
+    position: relative;
+    min-width: 3rem;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.rich-text-editor .ProseMirror th {
+    background-color: var(--muted);
+    font-weight: 600;
+}
+
+.rich-text-editor .ProseMirror th > p,
+.rich-text-editor .ProseMirror td > p {
+    margin-block: 0;
+}
+
+.rich-text-editor .ProseMirror .selectedCell::after {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    content: "";
+    background-color: color-mix(in oklab, var(--primary) 18%, transparent);
+}
+
+.rich-text-editor .ProseMirror .selectedCell {
+    background-color: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+
+.rich-text-editor .ProseMirror .column-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -2px;
+    bottom: 0;
+    z-index: 2;
+    width: 4px;
+    pointer-events: none;
+    background-color: var(--primary);
+}
+
+.rich-text-editor .ProseMirror.resize-cursor {
+    cursor: col-resize;
+}
+
 .rich-text-editor .ProseMirror img {
     display: block;
     max-width: 100%;

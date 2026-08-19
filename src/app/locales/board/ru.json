@@ -727,6 +727,7 @@
             "quote": "Цитата",
             "codeBlock": "Код",
             "image": "Изображение",
+            "table": "Таблица",
             "divider": "Разделитель"
         },
         "media": {
@@ -744,6 +745,22 @@
                 "center": "По центру",
                 "right": "По правому краю"
             }
+        },
+        "table": {
+            "addRowBefore": "Строка сверху",
+            "addRowAfter": "Строка снизу",
+            "deleteRow": "Удалить строку",
+            "addColumnBefore": "Столбец слева",
+            "addColumnAfter": "Столбец справа",
+            "deleteColumn": "Удалить столбец",
+            "copyColumn": "Копировать столбец",
+            "copyRow": "Копировать строку",
+            "copiedColumn": "Столбец скопирован",
+            "copiedRow": "Строка скопирована",
+            "mergeCells": "Объединить ячейки",
+            "splitCell": "Разделить ячейку",
+            "toggleHeaderRow": "Строка заголовка",
+            "deleteTable": "Удалить таблицу"
         }
     },
     "sprints": {

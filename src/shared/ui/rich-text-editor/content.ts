@@ -45,13 +45,17 @@ export function richTextToPlainText(value: string): string {
 
     const withBreaks = normalized
         .replaceAll(/<br\s*\/?>/gi, "\n")
+        .replaceAll(/<\/(td|th)>/gi, "\t")
         .replaceAll(/<\/(p|h[1-6]|blockquote|pre|li|div|tr)>/gi, "\n")
         .replaceAll(/<img\b[^>]*>/gi, "")
         .replaceAll(/<[^>]+>/g, "");
 
     return decodeHtmlEntities(withBreaks)
         .replaceAll("\r\n", "\n")
-        .replaceAll(/[^\S\n]+/g, " ")
+        .replaceAll(/[^\S\n\t]+/g, " ")
+        .replaceAll(/ *\t */g, "\t")
+        .replaceAll("\n\t", "\t")
+        .replaceAll("\t\n", "\n")
         .replaceAll(/ *\n */g, "\n")
         .replaceAll(/\n{3,}/g, "\n\n")
         .trim();
