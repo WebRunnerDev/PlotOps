@@ -47,6 +47,11 @@
         "signIn": "Войти",
         "signUp": "Создать аккаунт"
     },
+    "openSource": {
+        "github": "GitHub",
+        "githubAria": "PlotOps на GitHub (откроется в новой вкладке)",
+        "line": "Открытый исходный код ({{license}})"
+    },
     "or": "или",
     "password": "Пароль",
     "passwordPlaceholder": "••••••••",
