@@ -389,10 +389,11 @@ export const guestTasksProvider: TasksProvider = {
         let archivedCount = 0;
         updateGuestSandbox((sandbox) => {
             const gates = parentGateTasks(sandbox);
+            const concurrentIds = new Set(uniqueIds);
             for (const taskId of uniqueIds) {
                 const task = sandbox.tasks.find((item) => item.id === taskId);
                 if (!task || task.archivedAt) continue;
-                assertParentArchiveLegal(taskId, gates);
+                assertParentArchiveLegal(taskId, gates, { concurrentIds });
             }
             const now = new Date().toISOString();
             for (const taskId of uniqueIds) {

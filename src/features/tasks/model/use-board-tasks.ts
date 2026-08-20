@@ -58,6 +58,7 @@ import {
 import {
     assertParentArchiveLegal,
     assertParentDeleteLegal,
+    orderTaskIdsChildrenFirst,
     PARENT_GATE_TOAST_KEY,
     parentGateRefusalFromError,
     type ParentGateTask,
@@ -751,8 +752,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
         if (uniqueIds.length === 0) return { archivedCount: 0 };
 
         const gates = collectParentGateTasks(queryClient, projectId, boardId);
+        const concurrentIds = new Set(uniqueIds);
         for (const taskId of uniqueIds) {
-            assertParentArchiveLegal(taskId, gates);
+            assertParentArchiveLegal(taskId, gates, { concurrentIds });
         }
 
         setTasksCache(queryClient, projectId, boardId, (current) => {
@@ -767,6 +769,48 @@ export function useBoardTasks(projectId: string, boardId: string) {
             };
         });
         return archiveTaskMutation.mutateAsync(uniqueIds);
+    };
+
+    const deleteTasks = async (taskIds: string[]) => {
+        const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return;
+
+        const gates = collectParentGateTasks(queryClient, projectId, boardId);
+        const concurrentIds = new Set(uniqueIds);
+        for (const taskId of uniqueIds) {
+            assertParentDeleteLegal(taskId, gates, { concurrentIds });
+        }
+
+        const orderedIds = orderTaskIdsChildrenFirst(uniqueIds, gates);
+        const idSet = new Set(orderedIds);
+        setTasksCache(queryClient, projectId, boardId, (current) => {
+            const nextPositions = new Map(current.taskPositions);
+            for (const taskId of orderedIds) {
+                nextPositions.delete(taskId);
+            }
+            return {
+                taskPositions: nextPositions,
+                tasks: current.tasks.filter((task) => !idSet.has(task.id)),
+            };
+        });
+        void queryClient.setQueryData<Task[]>(
+            taskKeys.archived(projectId, boardId),
+            (current) =>
+                current?.filter((task) => !idSet.has(task.id)) ?? current
+        );
+
+        for (const taskId of orderedIds) {
+            await deleteTaskMutation.mutateAsync(taskId);
+        }
+    };
+
+    const restoreTasks = async (taskIds: string[]) => {
+        const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return;
+
+        for (const taskId of uniqueIds) {
+            await restoreTaskMutation.mutateAsync(taskId);
+        }
     };
 
     const moveTasksToColumn = (
@@ -987,27 +1031,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 targetTaskId,
             }),
         deleteTask: async (taskId: string) => {
-            assertParentDeleteLegal(
-                taskId,
-                collectParentGateTasks(queryClient, projectId, boardId)
-            );
-            setTasksCache(queryClient, projectId, boardId, (current) => {
-                const nextPositions = new Map(current.taskPositions);
-                nextPositions.delete(taskId);
-                return {
-                    taskPositions: nextPositions,
-                    tasks: current.tasks.filter((task) => task.id !== taskId),
-                };
-            });
-            void queryClient.setQueryData<Task[]>(
-                taskKeys.archived(projectId, boardId),
-                (current) =>
-                    current?.filter((task) => task.id !== taskId) ?? current
-            );
-            await deleteTaskMutation.mutateAsync(taskId);
+            await deleteTasks([taskId]);
         },
         deleteTaskLink: (linkId: string) =>
             deleteTaskLinkMutation.mutateAsync(linkId),
+        deleteTasks,
         error: tasksQuery.error ?? null,
         isLoading: tasksQuery.isLoading,
         moveTasksToColumn,
@@ -1182,8 +1210,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
             dragGestureCacheReference.current = null;
         },
         restoreTask: async (taskId: string) => {
-            await restoreTaskMutation.mutateAsync(taskId);
+            await restoreTasks([taskId]);
         },
+        restoreTasks,
         rollbackTaskDragGesture: () => {
             const previousCache = dragGestureCacheReference.current;
             dragGestureCacheReference.current = null;

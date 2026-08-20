@@ -65,7 +65,14 @@
         "badge": "В архиве",
         "drawerDescription": "Задача в архиве. Восстановите, чтобы снова редактировать.",
         "archivedByAt": "Архивировал(а) {{name}} · {{when}}",
-        "archivedAt": "В архиве · {{when}}"
+        "archivedAt": "В архиве · {{when}}",
+        "selectAll": "Выбрать все",
+        "restoreSelected": "Восстановить {{count}}",
+        "deleteSelected": "Удалить {{count}}",
+        "restoredCount": "Восстановлено задач: {{count}}",
+        "deletedCount": "Удалено задач: {{count}}",
+        "bulkDeleteTitle": "Удалить {{count}} задач из архива?",
+        "bulkDeleteDescription": "{{count}} задач будут удалены навсегда. Это нельзя отменить."
     },
     "selection": {
         "toggleTask": "Выбрать задачу {{key}}",

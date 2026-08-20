@@ -11,6 +11,11 @@ export type ParentDeleteRefusal = "subtasks_exist";
 
 export type ParentDoneRefusal = "incomplete_subtasks";
 
+/** Ids in the same archive/delete batch — peers are treated as already handled. */
+export type ParentGateBatchOptions = {
+    concurrentIds?: ReadonlySet<string>;
+};
+
 export type ParentGateTask = {
     archivedAt?: string;
     id: string;
@@ -111,9 +116,10 @@ export const PARENT_LINK_ERROR: Record<ParentLinkRefusal, string> = {
 
 export function assertParentArchiveLegal(
     taskId: string,
-    tasks: readonly ParentGateTask[]
+    tasks: readonly ParentGateTask[],
+    options?: ParentGateBatchOptions
 ): void {
-    const reason = parentArchiveRefusal(taskId, tasks);
+    const reason = parentArchiveRefusal(taskId, tasks, options);
     if (reason) {
         throw new Error(PARENT_GATE_ERROR[reason]);
     }
@@ -121,9 +127,10 @@ export function assertParentArchiveLegal(
 
 export function assertParentDeleteLegal(
     taskId: string,
-    tasks: readonly ParentGateTask[]
+    tasks: readonly ParentGateTask[],
+    options?: ParentGateBatchOptions
 ): void {
-    const reason = parentDeleteRefusal(taskId, tasks);
+    const reason = parentDeleteRefusal(taskId, tasks, options);
     if (reason) {
         throw new Error(PARENT_GATE_ERROR[reason]);
     }
@@ -192,12 +199,41 @@ export function hasOpenBlocker(
     });
 }
 
+/**
+ * Subtasks before Parent Tasks so sequential delete/archive mutations
+ * satisfy single-task lifecycle gates after peers in the batch are gone.
+ */
+export function orderTaskIdsChildrenFirst(
+    taskIds: readonly string[],
+    tasks: readonly Pick<ParentGateTask, "id" | "parentId">[]
+): string[] {
+    const uniqueIds = [...new Set(taskIds.filter(Boolean))];
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+
+    return uniqueIds.toSorted((leftId, rightId) => {
+        const left = byId.get(leftId);
+        const right = byId.get(rightId);
+        if (right?.parentId === leftId) return 1;
+        if (left?.parentId === rightId) return -1;
+        const leftRank = left?.parentId === undefined ? 1 : 0;
+        const rightRank = right?.parentId === undefined ? 1 : 0;
+        return leftRank - rightRank;
+    });
+}
+
 export function parentArchiveRefusal(
     taskId: string,
-    tasks: readonly ParentGateTask[]
+    tasks: readonly ParentGateTask[],
+    options?: ParentGateBatchOptions
 ): null | ParentArchiveRefusal {
+    const concurrentIds = options?.concurrentIds;
     const children = subtasksOf(taskId, tasks);
-    if (children.some((child) => child.archivedAt === undefined)) {
+    if (
+        children.some(
+            (child) =>
+                child.archivedAt === undefined && !concurrentIds?.has(child.id)
+        )
+    ) {
         return "active_subtasks";
     }
     return null;
@@ -205,9 +241,13 @@ export function parentArchiveRefusal(
 
 export function parentDeleteRefusal(
     taskId: string,
-    tasks: readonly ParentGateTask[]
+    tasks: readonly ParentGateTask[],
+    options?: ParentGateBatchOptions
 ): null | ParentDeleteRefusal {
-    if (subtasksOf(taskId, tasks).length > 0) {
+    const concurrentIds = options?.concurrentIds;
+    if (
+        subtasksOf(taskId, tasks).some((child) => !concurrentIds?.has(child.id))
+    ) {
         return "subtasks_exist";
     }
     return null;

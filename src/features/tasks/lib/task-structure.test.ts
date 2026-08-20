@@ -4,6 +4,7 @@ import {
     assertParentLinkLegal,
     assertTaskLinkLegal,
     hasOpenBlocker,
+    orderTaskIdsChildrenFirst,
     parentArchiveRefusal,
     parentDeleteRefusal,
     parentDoneRefusal,
@@ -172,6 +173,22 @@ describe("parentArchiveRefusal — Parent Task cannot be archived while a Subtas
             "active_subtasks"
         );
     });
+
+    it("allows archive when every active Subtask is in the same batch", () => {
+        const parent = gate("parent");
+        const active = gate("active", { isDone: true, parentId: "parent" });
+        const other = gate("other", { parentId: "parent" });
+        expect(
+            parentArchiveRefusal("parent", [parent, active, other], {
+                concurrentIds: new Set(["active", "parent"]),
+            })
+        ).toBe("active_subtasks");
+        expect(
+            parentArchiveRefusal("parent", [parent, active, other], {
+                concurrentIds: new Set(["active", "other", "parent"]),
+            })
+        ).toBeNull();
+    });
 });
 
 describe("parentDeleteRefusal — Parent Task cannot be deleted while a Subtask exists", () => {
@@ -197,6 +214,37 @@ describe("parentDeleteRefusal — Parent Task cannot be deleted while a Subtask 
         expect(parentDeleteRefusal("parent", [parent, child])).toBe(
             "subtasks_exist"
         );
+    });
+
+    it("allows delete when every Subtask is in the same batch", () => {
+        const parent = gate("parent");
+        const child = gate("child", {
+            archivedAt: "2026-08-01T00:00:00.000Z",
+            parentId: "parent",
+        });
+        expect(
+            parentDeleteRefusal("parent", [parent, child], {
+                concurrentIds: new Set(["child", "parent"]),
+            })
+        ).toBeNull();
+        expect(
+            parentDeleteRefusal("parent", [parent, child], {
+                concurrentIds: new Set(["parent"]),
+            })
+        ).toBe("subtasks_exist");
+    });
+});
+
+describe("orderTaskIdsChildrenFirst — Subtasks before Parent Tasks in a batch", () => {
+    it("orders selected Subtasks before their Parent Task", () => {
+        const parent = gate("parent");
+        const child = gate("child", { parentId: "parent" });
+        expect(
+            orderTaskIdsChildrenFirst(["parent", "child"], [parent, child])
+        ).toEqual(["child", "parent"]);
+        expect(
+            orderTaskIdsChildrenFirst(["child", "parent"], [parent, child])
+        ).toEqual(["child", "parent"]);
     });
 });
 

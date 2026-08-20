@@ -133,6 +133,83 @@ describe("guest tasks provider happy path", () => {
         expect(archived.some((task) => task.id === b.id)).toBe(true);
     });
 
+    it("restores and permanently deletes multiple archived guest tasks", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const boardId = board.id;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const restoreA = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Restore A"
+        );
+        const restoreB = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Restore B"
+        );
+        const deleteA = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Delete A"
+        );
+        const deleteB = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Delete B"
+        );
+
+        await provider.archiveTaskRecords([
+            restoreA.id,
+            restoreB.id,
+            deleteA.id,
+            deleteB.id,
+        ]);
+
+        for (const taskId of [restoreA.id, restoreB.id]) {
+            await provider.restoreTaskRecord(taskId, boardId);
+        }
+        for (const taskId of [deleteA.id, deleteB.id]) {
+            await provider.deleteTaskRecord(taskId);
+        }
+
+        const boardTasks = await provider.fetchBoardTasks(boardId);
+        expect(boardTasks.tasks.some((task) => task.id === restoreA.id)).toBe(
+            true
+        );
+        expect(boardTasks.tasks.some((task) => task.id === restoreB.id)).toBe(
+            true
+        );
+        expect(boardTasks.tasks.some((task) => task.id === deleteA.id)).toBe(
+            false
+        );
+        expect(boardTasks.tasks.some((task) => task.id === deleteB.id)).toBe(
+            false
+        );
+
+        const archived = await provider.fetchArchivedTasks(boardId);
+        expect(archived.some((task) => task.id === restoreA.id)).toBe(false);
+        expect(archived.some((task) => task.id === restoreB.id)).toBe(false);
+        expect(archived.some((task) => task.id === deleteA.id)).toBe(false);
+        expect(archived.some((task) => task.id === deleteB.id)).toBe(false);
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === deleteA.id)
+        ).toBe(false);
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === deleteB.id)
+        ).toBe(false);
+    });
+
     it("archive / delete persisted archived task without Supabase", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");
@@ -509,6 +586,76 @@ describe("guest tasks provider happy path", () => {
             getGuestSandbox()!.tasks.find((task) => task.id === parent.id)
                 ?.archivedAt
         ).toBeUndefined();
+    });
+
+    it("archives a Parent Task together with its active Subtasks in one batch", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const parent = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Batch parent"
+        );
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Batch child"
+        );
+
+        const { archivedCount } = await provider.archiveTaskRecords([
+            parent.id,
+            child.id,
+        ]);
+        expect(archivedCount).toBe(2);
+
+        const archived = await provider.fetchArchivedTasks(board.id);
+        expect(archived.some((task) => task.id === parent.id)).toBe(true);
+        expect(archived.some((task) => task.id === child.id)).toBe(true);
+    });
+
+    it("deletes archived Parent and Subtask when Subtasks are removed first", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const parent = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Delete parent"
+        );
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Delete child"
+        );
+
+        await provider.archiveTaskRecords([parent.id, child.id]);
+
+        await expect(provider.deleteTaskRecord(parent.id)).rejects.toThrow(
+            "A Parent Task cannot be deleted while Subtasks exist"
+        );
+
+        await provider.deleteTaskRecord(child.id);
+        await provider.deleteTaskRecord(parent.id);
+
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === parent.id)
+        ).toBe(false);
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === child.id)
+        ).toBe(false);
     });
 
     it("refuses hard-delete of a Parent Task while a Subtask exists", async () => {

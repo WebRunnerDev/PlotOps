@@ -65,7 +65,14 @@
         "badge": "Archived",
         "drawerDescription": "This task is archived. Restore it to edit again.",
         "archivedByAt": "Archived by {{name}} · {{when}}",
-        "archivedAt": "Archived · {{when}}"
+        "archivedAt": "Archived · {{when}}",
+        "selectAll": "Select all",
+        "restoreSelected": "Restore {{count}}",
+        "deleteSelected": "Delete {{count}}",
+        "restoredCount": "Restored {{count}} tasks",
+        "deletedCount": "Deleted {{count}} tasks",
+        "bulkDeleteTitle": "Delete {{count}} archived tasks?",
+        "bulkDeleteDescription": "{{count}} tasks will be permanently removed. This cannot be undone."
     },
     "selection": {
         "toggleTask": "Select task {{key}}",
