@@ -5,6 +5,8 @@ import {
     fetchFixtureBranchCommits,
     fetchFixtureBranchPullRequests,
     fetchFixtureCommitBySha,
+    fetchFixtureCommitFiles,
+    fetchFixturePullRequestCommits,
     fetchFixturePullRequestFiles,
     fetchFixtureTaskKeyCommits,
 } from "@/features/git-integration/api/fixture-git-api";
@@ -12,6 +14,8 @@ import {
     fetchBranchCommits,
     fetchBranchPullRequests,
     fetchCommitBySha,
+    fetchCommitFiles,
+    fetchPullRequestCommits,
     fetchPullRequestFiles,
     searchCommitsByTaskKey,
 } from "@/features/git-integration/api/github-git-api";
@@ -94,6 +98,32 @@ export function useBranchPullRequests({
     });
 }
 
+export function useCommitFiles(
+    repoFullName: string | undefined,
+    sha: string | undefined,
+    token: null | string,
+    enabled = true
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+    const hasAuth = Boolean(token) || guest;
+
+    return useQuery({
+        enabled: Boolean(enabled && hasAuth && repoFullName && sha),
+        queryFn: () =>
+            guest
+                ? fetchFixtureCommitFiles(repoFullName!, sha!)
+                : fetchCommitFiles(repoFullName!, sha!, token!),
+        queryKey: gitKeys.commitFiles(
+            authFingerprint,
+            repoFullName ?? "",
+            sha ?? ""
+        ),
+        staleTime: 5 * 60_000,
+    });
+}
+
 export function useLinkedCommit(
     repoFullName: string | undefined,
     sha: string | undefined,
@@ -117,6 +147,38 @@ export function useLinkedCommit(
             repoFullName ?? "",
             sha ?? "",
         ] as const,
+        staleTime: 5 * 60_000,
+    });
+}
+
+export function usePullRequestCommits(
+    repoFullName: string | undefined,
+    prNumber: number | undefined,
+    token: null | string,
+    enabled = true
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useQuery({
+        enabled:
+            enabled &&
+            canFetchPullRequestFiles({
+                isGuest: guest,
+                prNumber,
+                repoFullName,
+                token,
+            }),
+        queryFn: () =>
+            guest
+                ? fetchFixturePullRequestCommits(repoFullName!, prNumber!)
+                : fetchPullRequestCommits(repoFullName!, prNumber!, token!),
+        queryKey: gitKeys.prCommits(
+            authFingerprint,
+            repoFullName ?? "",
+            prNumber ?? 0
+        ),
         staleTime: 5 * 60_000,
     });
 }

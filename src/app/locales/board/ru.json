@@ -157,6 +157,8 @@
         "parentAsChildRefused": "Родительскую задачу нельзя сделать подзадачей",
         "differentProject": "Родительская задача и подзадача должны быть в одном проекте",
         "parentBadge": "Родитель {{key}}",
+        "parentTitle": "Родительская задача",
+        "parentMissing": "Родительская задача недоступна",
         "openParent": "Открыть родительскую задачу {{key}}",
         "removeParent": "Убрать родителя",
         "removedParent": "{{key}} теперь корневая задача",
@@ -166,9 +168,7 @@
         "deleteRefused": "Родительскую задачу нельзя удалить, пока существуют подзадачи",
         "hideToggle": "Скрыть подзадачи",
         "showToggle": "Показать подзадачи",
-        "progressBadge": "{{done}}/{{total}} в Done",
-        "parentTitle": "Родительская задача",
-        "parentMissing": "Родительская задача недоступна"
+        "progressBadge": "{{done}}/{{total}} в Done"
     },
     "taskLinks": {
         "title": "Связанные задачи",
@@ -678,6 +678,12 @@
         "closeDiff": "Закрыть diff",
         "filesChanged": "Изменено файлов: {{count}}",
         "filesTruncated": "Показаны первые {{count}} файлов — в PR есть ещё изменения",
+        "viewByFiles": "Файлы",
+        "viewByCommits": "Коммиты",
+        "commitsTruncated": "Показаны первые {{count}} коммитов — в PR есть ещё",
+        "loadingCommitFiles": "Загрузка файлов коммита…",
+        "commitFilesFailed": "Не удалось загрузить файлы коммита",
+        "noCommitFiles": "В этом коммите нет изменённых файлов",
         "binaryFile": "Бинарный файл — diff недоступен",
         "diffTooLarge": "Diff слишком большой для отображения в приложении",
         "selectFile": "Выберите файл из списка",
@@ -895,11 +901,14 @@
         "scopeEntire": "Вся доска",
         "scopeLabel": "Область доски",
         "selectAllInSection": "Выбрать все задачи в секции",
+        "selectAllMatching": "Выбрать все {{count}} задач в этой секции",
         "selectedCount": "Выбрано: {{count}}",
         "selectTask": "Выбрать {{key}}",
         "selectToDragHint": "Выберите задачи, затем перетащите в спринт или бэклог",
+        "showAll": "Показать все",
         "showDetails": "Детали",
         "showReport": "Отчёт спринта",
+        "loadMore": "Ещё {{count}}",
         "sizeWithPoints": "{{points}} pts · {{count}} задач",
         "sizeWithPointsPartial": "{{points}} pts · {{unestimated}} без оценки · {{count}} задач",
         "start": "Старт",
@@ -918,9 +927,6 @@
             "draft": "Draft"
         },
         "suggested": "рекомендация",
-        "taskCount": "{{count}} задач",
-        "selectAllMatching": "Выбрать все {{count}} задач в этой секции",
-        "showAll": "Показать все",
-        "loadMore": "Ещё {{count}}"
+        "taskCount": "{{count}} задач"
     }
 }

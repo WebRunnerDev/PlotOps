@@ -1,5 +1,13 @@
 export const gitKeys = {
     all: ["git"] as const,
+    commitFiles: (authFingerprint: string, repoFullName: string, sha: string) =>
+        [
+            ...gitKeys.all,
+            "commit-files",
+            authFingerprint,
+            repoFullName,
+            sha,
+        ] as const,
     commits: (
         authFingerprint: string,
         repoFullName: string,
@@ -11,6 +19,18 @@ export const gitKeys = {
             authFingerprint,
             repoFullName,
             branchName,
+        ] as const,
+    prCommits: (
+        authFingerprint: string,
+        repoFullName: string,
+        prNumber: number
+    ) =>
+        [
+            ...gitKeys.all,
+            "pr-commits",
+            authFingerprint,
+            repoFullName,
+            prNumber,
         ] as const,
     prFiles: (
         authFingerprint: string,

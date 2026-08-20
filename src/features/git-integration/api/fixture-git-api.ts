@@ -2,6 +2,7 @@ import type {
     GitCommit,
     GitPrFile,
     GitPullRequest,
+    PullRequestCommitsResult,
     PullRequestFilesResult,
 } from "@/features/git-integration/api/github-git-api";
 
@@ -101,6 +102,41 @@ export async function fetchFixtureCommitBySha(
                 : `${normalized}000000000000000000000000000`.slice(0, 40),
         url: `https://github.com/${repoFullName}/commit/${normalized}`,
     };
+}
+
+export async function fetchFixtureCommitFiles(
+    repoFullName: string,
+    sha: string
+): Promise<PullRequestFilesResult> {
+    const normalized = sha.toLowerCase();
+    const all = await fetchFixturePullRequestFiles(repoFullName, 1);
+
+    if (normalized.startsWith("bada55")) {
+        return {
+            files: all.files.filter((file) =>
+                file.filename.includes("guest-session")
+            ),
+            truncated: false,
+        };
+    }
+
+    if (normalized.startsWith("deadbeef")) {
+        return { files: [], truncated: false };
+    }
+
+    return {
+        files: all.files.filter((file) => file.filename.includes("login-form")),
+        truncated: false,
+    };
+}
+
+export async function fetchFixturePullRequestCommits(
+    repoFullName: string,
+    prNumber: number
+): Promise<PullRequestCommitsResult> {
+    void prNumber;
+    const commits = await fetchFixtureBranchCommits(repoFullName, "demo-pr");
+    return { commits, truncated: false };
 }
 
 export async function fetchFixturePullRequestFiles(

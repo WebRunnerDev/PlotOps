@@ -1,6 +1,8 @@
 import { textReferencesTaskKey } from "@/features/git-integration/lib/extract-task-key";
 
 const GITHUB_API = "https://api.github.com";
+const PR_COMMITS_PAGE_SIZE = 100;
+const PR_COMMITS_MAX_PAGES = 10;
 const PR_FILES_PAGE_SIZE = 100;
 const PR_FILES_MAX_PAGES = 30;
 
@@ -82,6 +84,12 @@ export type MergePullRequestResult = {
     sha: string;
 };
 
+export type PullRequestCommitsResult = {
+    commits: GitCommit[];
+    /** True when GitHub still had more pages after `PR_COMMITS_MAX_PAGES`. */
+    truncated: boolean;
+};
+
 export type PullRequestFilesResult = {
     files: GitPrFile[];
     /** True when GitHub still had more pages after `PR_FILES_MAX_PAGES`. */
@@ -103,6 +111,16 @@ type RawCommitPayload = {
     };
     html_url: string;
     sha: string;
+};
+
+type RawPrFilePayload = {
+    additions: number;
+    blob_url: string;
+    deletions: number;
+    filename: string;
+    patch?: string;
+    previous_filename?: string;
+    status: string;
 };
 
 type RawPrPayload = {
@@ -205,6 +223,29 @@ export async function fetchCommitBySha(
     return mapCommit(raw);
 }
 
+/** Changed files (with patches) for a single commit. */
+export async function fetchCommitFiles(
+    repoFullName: string,
+    sha: string,
+    token: string,
+    signal?: AbortSignal
+): Promise<PullRequestFilesResult> {
+    type RawCommitWithFiles = RawCommitPayload & {
+        files?: RawPrFilePayload[];
+    };
+
+    const raw = await githubFetch<RawCommitWithFiles>(
+        `/repos/${repoFullName}/commits/${encodeURIComponent(sha)}`,
+        token,
+        { signal }
+    );
+
+    return {
+        files: (raw.files ?? []).map((file) => mapPrFile(file)),
+        truncated: false,
+    };
+}
+
 /** Single pull request by number. */
 export async function fetchPullRequest(
     repoFullName: string,
@@ -221,26 +262,49 @@ export async function fetchPullRequest(
     return mapPullRequest(pr);
 }
 
+/** Commits on a pull request — paginated. */
+export async function fetchPullRequestCommits(
+    repoFullName: string,
+    prNumber: number,
+    token: string
+): Promise<PullRequestCommitsResult> {
+    const commits: GitCommit[] = [];
+    let truncated = false;
+    for (let page = 1; page <= PR_COMMITS_MAX_PAGES; page += 1) {
+        const raw = await githubFetch<RawCommitPayload[]>(
+            `/repos/${repoFullName}/pulls/${prNumber}/commits`,
+            token,
+            {
+                parameters: {
+                    page: String(page),
+                    per_page: String(PR_COMMITS_PAGE_SIZE),
+                },
+            }
+        );
+
+        for (const commit of raw) {
+            commits.push(mapCommit(commit));
+        }
+
+        if (raw.length < PR_COMMITS_PAGE_SIZE) break;
+        if (page === PR_COMMITS_MAX_PAGES) {
+            truncated = true;
+        }
+    }
+
+    return { commits, truncated };
+}
+
 /** Changed files (with unified diff patches) for a PR — paginated. */
 export async function fetchPullRequestFiles(
     repoFullName: string,
     prNumber: number,
     token: string
 ): Promise<PullRequestFilesResult> {
-    type RawFile = {
-        additions: number;
-        blob_url: string;
-        deletions: number;
-        filename: string;
-        patch?: string;
-        previous_filename?: string;
-        status: string;
-    };
-
     const files: GitPrFile[] = [];
     let truncated = false;
     for (let page = 1; page <= PR_FILES_MAX_PAGES; page += 1) {
-        const raw = await githubFetch<RawFile[]>(
+        const raw = await githubFetch<RawPrFilePayload[]>(
             `/repos/${repoFullName}/pulls/${prNumber}/files`,
             token,
             {
@@ -252,15 +316,7 @@ export async function fetchPullRequestFiles(
         );
 
         for (const f of raw) {
-            files.push({
-                additions: f.additions,
-                blob_url: f.blob_url,
-                deletions: f.deletions,
-                filename: f.filename,
-                patch: f.patch,
-                previous_filename: f.previous_filename,
-                status: f.status,
-            });
+            files.push(mapPrFile(f));
         }
 
         if (raw.length < PR_FILES_PAGE_SIZE) break;
@@ -394,6 +450,18 @@ function mapCommit(raw: RawCommitPayload): GitCommit {
         message: raw.commit.message.split("\n")[0] ?? raw.commit.message,
         sha: raw.sha,
         url: raw.html_url,
+    };
+}
+
+function mapPrFile(raw: RawPrFilePayload): GitPrFile {
+    return {
+        additions: raw.additions,
+        blob_url: raw.blob_url,
+        deletions: raw.deletions,
+        filename: raw.filename,
+        patch: raw.patch,
+        previous_filename: raw.previous_filename,
+        status: raw.status,
     };
 }
 

@@ -157,6 +157,8 @@
         "parentAsChildRefused": "A Parent Task cannot become a Subtask",
         "differentProject": "Parent Task and Subtask must be in the same Project",
         "parentBadge": "Parent {{key}}",
+        "parentTitle": "Parent task",
+        "parentMissing": "Parent task unavailable",
         "openParent": "Open Parent Task {{key}}",
         "removeParent": "Remove parent",
         "removedParent": "{{key}} is now a root Task",
@@ -166,9 +168,7 @@
         "deleteRefused": "A Parent Task cannot be deleted while Subtasks exist",
         "hideToggle": "Hide Subtasks",
         "showToggle": "Show Subtasks",
-        "progressBadge": "{{done}}/{{total}} Done",
-        "parentTitle": "Parent task",
-        "parentMissing": "Parent task unavailable"
+        "progressBadge": "{{done}}/{{total}} Done"
     },
     "taskLinks": {
         "title": "Linked tasks",
@@ -672,6 +672,12 @@
         "closeDiff": "Close diff",
         "filesChanged": "{{count}} file(s) changed",
         "filesTruncated": "Showing first {{count}} files — more changes exist in this PR",
+        "viewByFiles": "Files",
+        "viewByCommits": "Commits",
+        "commitsTruncated": "Showing first {{count}} commits — more exist in this PR",
+        "loadingCommitFiles": "Loading commit files…",
+        "commitFilesFailed": "Could not load files for this commit",
+        "noCommitFiles": "No files changed in this commit",
         "binaryFile": "Binary file — no diff available",
         "diffTooLarge": "Diff is too large to display in-app",
         "selectFile": "Select a file from the list",
@@ -889,11 +895,14 @@
         "scopeEntire": "Entire board",
         "scopeLabel": "Board scope",
         "selectAllInSection": "Select all tasks in this section",
+        "selectAllMatching": "Select all {{count}} tasks in this section",
         "selectedCount": "{{count}} selected",
         "selectTask": "Select {{key}}",
         "selectToDragHint": "Select tasks, then drag them to a sprint or Backlog",
+        "showAll": "Show all",
         "showDetails": "Details",
         "showReport": "Sprint report",
+        "loadMore": "Show {{count}} more",
         "sizeWithPoints": "{{points}} pts · {{count}} tasks",
         "sizeWithPointsPartial": "{{points}} pts · {{unestimated}} unestimated · {{count}} tasks",
         "start": "Start",
@@ -912,9 +921,6 @@
             "draft": "Draft"
         },
         "suggested": "suggested",
-        "taskCount": "{{count}} tasks",
-        "selectAllMatching": "Select all {{count}} tasks in this section",
-        "showAll": "Show all",
-        "loadMore": "Show {{count}} more"
+        "taskCount": "{{count}} tasks"
     }
 }
