@@ -159,7 +159,9 @@
         "deleteRefused": "A Parent Task cannot be deleted while Subtasks exist",
         "hideToggle": "Hide Subtasks",
         "showToggle": "Show Subtasks",
-        "progressBadge": "{{done}}/{{total}} Done"
+        "progressBadge": "{{done}}/{{total}} Done",
+        "parentTitle": "Parent task",
+        "parentMissing": "Parent task unavailable"
     },
     "taskLinks": {
         "title": "Linked tasks",

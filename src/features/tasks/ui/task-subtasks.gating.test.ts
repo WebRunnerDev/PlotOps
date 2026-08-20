@@ -22,10 +22,11 @@ describe("Subtask Role gating seam", () => {
 
     it("gates Remove parent on canCreateTasks so Contributors cannot mint a root Task", () => {
         const drawer = readUi("task-drawer.tsx");
+        const section = readUi("task-subtasks-section.tsx");
 
         expect(drawer).toMatch(/canCreateTasks/);
         expect(drawer).toMatch(/canRemoveParent/);
-        expect(drawer).toMatch(/clearTaskParent/);
+        expect(section).toMatch(/clearTaskParent/);
     });
 });
 
@@ -41,11 +42,21 @@ describe("Subtask drawer list seam", () => {
         expect(section).toMatch(/transition-colors/);
     });
 
+    it("shows Parent Task in the Subtasks section when viewing a Subtask", () => {
+        const drawer = readUi("task-drawer.tsx");
+        const section = readUi("task-subtasks-section.tsx");
+
+        expect(drawer).not.toMatch(/subtasks\.parentBadge/);
+        expect(drawer).toMatch(/canRemoveParent={canRemoveParent}/);
+        expect(section).toMatch(/subtasks\.parentTitle/);
+        expect(section).toMatch(/task\.parentId/);
+    });
+
     it("shows status and assignee on each Subtask row", () => {
         const section = readUi("task-subtasks-section.tsx");
 
-        expect(section).toMatch(/child\.status/);
-        expect(section).toMatch(/child\.assignee/);
+        expect(section).toMatch(/task\.status/);
+        expect(section).toMatch(/task\.assignee/);
         expect(section).toMatch(/fields\.memberNone/);
     });
 });

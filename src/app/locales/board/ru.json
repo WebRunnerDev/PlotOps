@@ -159,7 +159,9 @@
         "deleteRefused": "Родительскую задачу нельзя удалить, пока существуют подзадачи",
         "hideToggle": "Скрыть подзадачи",
         "showToggle": "Показать подзадачи",
-        "progressBadge": "{{done}}/{{total}} в Done"
+        "progressBadge": "{{done}}/{{total}} в Done",
+        "parentTitle": "Родительская задача",
+        "parentMissing": "Родительская задача недоступна"
     },
     "taskLinks": {
         "title": "Связанные задачи",

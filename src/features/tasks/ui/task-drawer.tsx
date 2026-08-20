@@ -19,7 +19,10 @@ import type {
     TaskStatus,
     TaskType,
 } from "@/features/tasks/model/types";
-import type { MentionCandidate } from "@/shared/ui/rich-text-editor";
+import type {
+    MentionCandidate,
+    RichTextEditorHandle,
+} from "@/shared/ui/rich-text-editor";
 
 import {
     type BoardColumn,
@@ -150,7 +153,6 @@ export function TaskDrawer({
     const { labels } = useProjectLabels(projectId);
     const {
         archiveTask,
-        clearTaskParent,
         deleteTask,
         isLoading: isBoardTasksLoading,
         moveTaskToOtherBoard,
@@ -177,7 +179,6 @@ export function TaskDrawer({
     const clearSelectedTask = useTasksUiStore(
         (state) => state.clearSelectedTask
     );
-    const selectTask = useTasksUiStore((state) => state.selectTask);
 
     const boardTask = tasks.find((item) => item.id === selectedTaskId);
     const lookupMissingOnBoard =
@@ -249,6 +250,7 @@ export function TaskDrawer({
         undefined | { id: string; parentId?: string }
     >(undefined);
     const drawerBodyReference = useRef<HTMLDivElement>(null);
+    const descriptionEditorReference = useRef<RichTextEditorHandle>(null);
     const previousTaskLink = previousTaskLinkReference.current;
     const shouldAnimateTaskSwap = Boolean(task && previousTaskLink);
     const taskSwapDirection =
@@ -353,9 +355,12 @@ export function TaskDrawer({
         updateTaskDetails(task.id, { title: next });
     };
 
-    const commitDescription = () => {
+    const commitDescription = async (nextDescription?: string) => {
         if (!task || !canEdit) return;
-        const next = description;
+        const next =
+            nextDescription ??
+            (await descriptionEditorReference.current?.waitForIdle()) ??
+            description;
         const current = task.description ?? "";
         if (next === current) {
             setDescriptionDirty(false);
@@ -521,13 +526,15 @@ export function TaskDrawer({
             <Drawer
                 onOpenChange={(open) => {
                     if (!open) {
-                        commitDescription();
                         const selectedIsOnThisBoard = Boolean(
                             selectedTaskId && (boardTask || archivedTask)
                         );
-                        if (selectedIsOnThisBoard || !selectedTaskId) {
-                            clearSelectedTask();
-                        }
+                        void (async () => {
+                            await commitDescription();
+                            if (selectedIsOnThisBoard || !selectedTaskId) {
+                                clearSelectedTask();
+                            }
+                        })();
                     }
                 }}
                 open={Boolean(task)}
@@ -558,58 +565,6 @@ export function TaskDrawer({
                             >
                                 <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
                                     <span>{task.key}</span>
-                                    {task.parentKey && task.parentId ? (
-                                        <button
-                                            aria-label={t(
-                                                "subtasks.openParent",
-                                                {
-                                                    key: task.parentKey,
-                                                }
-                                            )}
-                                            className="truncate font-mono outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                                            onClick={() => {
-                                                selectTask(task.parentId!);
-                                            }}
-                                            type="button"
-                                        >
-                                            {t("subtasks.parentBadge", {
-                                                key: task.parentKey,
-                                            })}
-                                        </button>
-                                    ) : undefined}
-                                    {canRemoveParent ? (
-                                        <Button
-                                            className="h-7 px-2 text-meta"
-                                            onClick={() => {
-                                                void (async () => {
-                                                    try {
-                                                        await clearTaskParent(
-                                                            task.id
-                                                        );
-                                                        toast.success(
-                                                            t(
-                                                                "subtasks.removedParent",
-                                                                {
-                                                                    key: task.key,
-                                                                }
-                                                            )
-                                                        );
-                                                    } catch {
-                                                        toast.error(
-                                                            t(
-                                                                "subtasks.removeParentFailed"
-                                                            )
-                                                        );
-                                                    }
-                                                })();
-                                            }}
-                                            size="sm"
-                                            type="button"
-                                            variant="ghost"
-                                        >
-                                            {t("subtasks.removeParent")}
-                                        </Button>
-                                    ) : undefined}
                                     {isArchived
                                         ? ` · ${t("archive.badge")}`
                                         : undefined}
@@ -709,7 +664,9 @@ export function TaskDrawer({
                                                         ? mentionCandidates
                                                         : undefined
                                                 }
-                                                onBlur={commitDescription}
+                                                onBlur={() => {
+                                                    void commitDescription();
+                                                }}
                                                 onChange={(value) => {
                                                     setDescriptionDirty(true);
                                                     setDescription(value);
@@ -727,18 +684,18 @@ export function TaskDrawer({
                                                     "fields.descriptionPlaceholder"
                                                 )}
                                                 readOnly={!canEdit}
+                                                ref={descriptionEditorReference}
                                                 value={description}
                                             />
                                         </div>
 
-                                        {task.parentId == undefined ? (
-                                            <TaskSubtasksSection
-                                                boardId={boardId}
-                                                canAdd={canAddSubtask}
-                                                parent={task}
-                                                projectId={projectId}
-                                            />
-                                        ) : undefined}
+                                        <TaskSubtasksSection
+                                            boardId={boardId}
+                                            canAdd={canAddSubtask}
+                                            canRemoveParent={canRemoveParent}
+                                            projectId={projectId}
+                                            task={task}
+                                        />
 
                                         <TaskLinksSection
                                             boardId={boardId}
