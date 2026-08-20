@@ -84,9 +84,9 @@ export function BoardSwitcher({
                 <DropdownMenuTrigger
                     render={
                         <Button
-                            className="min-w-40 justify-between font-normal"
+                            className="min-w-36 justify-between font-normal"
                             disabled={isLoading}
-                            size="sm"
+                            size="xs"
                             variant="outline"
                         />
                     }
@@ -97,7 +97,10 @@ export function BoardSwitcher({
                                 ? t("boards.loading")
                                 : t("boards.unknown"))}
                     </span>
-                    <ChevronsUpDown className="size-3.5 opacity-60" />
+                    <ChevronsUpDown
+                        className="opacity-60"
+                        data-icon="inline-end"
+                    />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-48">
                     {boards.map((board) => (

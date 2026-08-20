@@ -126,7 +126,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {branchUrl ? (
                             <a
-                                className="inline-flex min-w-0 items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
+                                className="inline-flex h-6 min-w-0 items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
                                 href={branchUrl}
                                 rel="noreferrer noopener"
                                 target="_blank"
@@ -134,38 +134,40 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                                 {branchLabel}
                             </a>
                         ) : (
-                            <span className="inline-flex min-w-0 items-center gap-1.5 text-code text-muted-foreground">
+                            <span className="inline-flex h-6 min-w-0 items-center gap-1.5 text-code text-muted-foreground">
                                 {branchLabel}
                             </span>
                         )}
-                        <BoardSwitcher
-                            boardId={boardId}
-                            canManage={isSettled && canManageBoard}
-                            defaultBaseBranch={
-                                project.github_default_branch ?? "main"
-                            }
-                            projectId={projectId}
-                        />
-                        <BoardSprintControls
-                            boardId={boardId}
-                            projectId={projectId}
-                        />
-                        <BoardArchiveDialog
-                            boardId={boardId}
-                            projectId={projectId}
-                        />
+                        <div className="flex min-w-0 flex-wrap items-stretch gap-2">
+                            <BoardSwitcher
+                                boardId={boardId}
+                                canManage={isSettled && canManageBoard}
+                                defaultBaseBranch={
+                                    project.github_default_branch ?? "main"
+                                }
+                                projectId={projectId}
+                            />
+                            <BoardSprintControls
+                                boardId={boardId}
+                                projectId={projectId}
+                            />
+                            <BoardArchiveDialog
+                                boardId={boardId}
+                                projectId={projectId}
+                            />
+                        </div>
                         {showNewTaskCta ? (
                             <Button
-                                className="ml-auto min-h-9 min-w-0 shrink gap-1.5 focus-visible:ring-2 sm:min-h-8"
+                                className="ml-auto min-w-0 shrink focus-visible:ring-2"
                                 onClick={() =>
                                     setOpenCreateTaskRequestKey(
                                         (key) => key + 1
                                     )
                                 }
-                                size="sm"
+                                size="xs"
                                 type="button"
                             >
-                                <Plus aria-hidden className="size-4 shrink-0" />
+                                <Plus aria-hidden data-icon="inline-start" />
                                 <span className="truncate">
                                     {t("tasks.newTask")}
                                 </span>
