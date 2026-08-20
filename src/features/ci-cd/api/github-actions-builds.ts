@@ -4,6 +4,8 @@ import type {
     BuildJob,
     BuildLogLine,
     BuildsForProject,
+    ListBuildsOptions,
+    ListBuildsPage,
     ProjectBuild,
 } from "@/features/ci-cd/model/types";
 
@@ -11,11 +13,14 @@ import {
     clearGitHubAccessToken,
     getGitHubAccessToken,
 } from "@/features/auth/model/github-token";
+import {
+    BUILDS_PAGE_SIZE,
+    hasMoreBuilds,
+} from "@/features/ci-cd/model/builds-page";
 import { mapActionsStatus } from "@/features/ci-cd/model/map-actions-status";
 import { fetchProject } from "@/features/projects/api/projects-api";
 
 const GITHUB_API = "https://api.github.com";
-const RUNS_PER_PAGE = "30";
 const STREAM_CHUNK_MS = 16;
 
 const GITHUB_HEADERS = (token: string) => ({
@@ -286,16 +291,32 @@ export const githubActionsBuilds: BuildsForProject = {
         return fetchRunJobs(repoFullName, buildId, token);
     },
 
-    async listBuilds(projectId: string): Promise<ProjectBuild[]> {
+    async listBuilds(
+        projectId: string,
+        options?: ListBuildsOptions
+    ): Promise<ListBuildsPage> {
         const { repoFullName, token } = await resolveRepoContext(projectId);
+        const page = Math.max(1, options?.page ?? 1);
+        const perPage = Math.max(1, options?.perPage ?? BUILDS_PAGE_SIZE);
 
         const raw = await githubJson<RawWorkflowRunsResponse>(
             `/repos/${repoFullName}/actions/runs`,
             token,
-            { per_page: RUNS_PER_PAGE }
+            {
+                page: String(page),
+                per_page: String(perPage),
+            }
         );
 
-        return raw.workflow_runs.map((run) => mapWorkflowRunToBuild(run));
+        return {
+            builds: raw.workflow_runs.map((run) => mapWorkflowRunToBuild(run)),
+            hasMore: hasMoreBuilds({
+                page,
+                perPage,
+                totalCount: raw.total_count,
+            }),
+            page,
+        };
     },
 
     streamBuildLogs(projectId, buildId, onLine) {

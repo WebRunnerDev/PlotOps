@@ -293,6 +293,7 @@
         "connectRepoAction": "Connect a repository",
         "empty": "No workflow runs yet. Push a commit or add a workflow under .github/workflows.",
         "emptyFilter": "No runs match this filter.",
+        "loadingMore": "Loading more runs…",
         "loadFailed": "Could not load workflow runs from GitHub.",
         "failedOn": "Failed on {{reason}}",
         "openLogs": "Open run details for {{branch}}",

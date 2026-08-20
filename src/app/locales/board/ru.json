@@ -293,6 +293,7 @@
         "connectRepoAction": "Подключить репозиторий",
         "empty": "Прогонов пока нет. Сделайте push или добавьте workflow в .github/workflows.",
         "emptyFilter": "Нет прогонов по этому фильтру.",
+        "loadingMore": "Загрузка следующих прогонов…",
         "loadFailed": "Не удалось загрузить прогоны из GitHub.",
         "failedOn": "Ошибка: {{reason}}",
         "openLogs": "Открыть детали прогона {{branch}}",
