@@ -918,6 +918,9 @@
             "draft": "Draft"
         },
         "suggested": "рекомендация",
-        "taskCount": "{{count}} задач"
+        "taskCount": "{{count}} задач",
+        "selectAllMatching": "Выбрать все {{count}} задач в этой секции",
+        "showAll": "Показать все",
+        "loadMore": "Ещё {{count}}"
     }
 }

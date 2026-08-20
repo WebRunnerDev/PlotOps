@@ -912,6 +912,9 @@
             "draft": "Draft"
         },
         "suggested": "suggested",
-        "taskCount": "{{count}} tasks"
+        "taskCount": "{{count}} tasks",
+        "selectAllMatching": "Select all {{count}} tasks in this section",
+        "showAll": "Show all",
+        "loadMore": "Show {{count}} more"
     }
 }

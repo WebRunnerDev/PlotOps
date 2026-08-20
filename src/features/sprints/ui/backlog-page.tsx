@@ -34,12 +34,18 @@ import { todayIsoDate } from "@/features/sprints/api/sprints-api";
 import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
 import { listSprintCompletionTasks } from "@/features/sprints/model/list-sprint-completion-tasks";
+import {
+    BACKLOG_LIST_PAGE_SIZE,
+    windowListItems,
+} from "@/features/sprints/model/list-window";
 import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
+import { useListWindow } from "@/features/sprints/model/use-list-window";
 import {
     useBoardSprints,
     useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
+import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
 import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
 import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
 import {
@@ -54,6 +60,7 @@ import {
     sprintDropId,
     SprintTaskTable,
 } from "@/features/sprints/ui/sprint-task-table";
+import { WindowedSprintTaskTable } from "@/features/sprints/ui/windowed-sprint-task-table";
 import {
     BoardSortControl,
     BoardTaskFiltersBar,
@@ -239,6 +246,24 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             ? sortBySprintPosition(group)
             : group;
     }, [boardSort.field, visibleTasks]);
+
+    const listWindowResetKey = useMemo(
+        () =>
+            JSON.stringify({
+                boardId,
+                boardSort,
+                filters,
+                hideCompleted,
+                searchQuery,
+            }),
+        [boardId, boardSort, filters, hideCompleted, searchQuery]
+    );
+
+    const historyWindow = useListWindow(listWindowResetKey);
+    const windowedPastSprints = windowListItems(
+        pastSprints,
+        historyWindow.visibleCount
+    );
 
     const tasksBySprint = useMemo(() => {
         const map = new Map<string, Task[]>();
@@ -601,6 +626,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         onOpenTask={selectTask}
                                         onRowSelectionChange={setRowSelection}
                                         projectId={projectId}
+                                        resetKey={listWindowResetKey}
                                         rowSelection={rowSelection}
                                         sprint={sprint}
                                         tasks={
@@ -621,7 +647,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                             )}
                                         </p>
                                     </header>
-                                    <SprintTaskTable
+                                    <WindowedSprintTaskTable
                                         canManage={canManage}
                                         containerId={BACKLOG_DROP_ID}
                                         draggingTaskIds={draggingTasks.map(
@@ -630,6 +656,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         labels={projectLabels}
                                         onOpenTask={selectTask}
                                         onRowSelectionChange={setRowSelection}
+                                        resetKey={listWindowResetKey}
                                         rowSelection={rowSelection}
                                         tasks={backlogTasks}
                                     />
@@ -655,19 +682,47 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                                 ({pastSprints.length})
                                             </span>
                                         </button>
-                                        {historyOpen
-                                            ? pastSprints.map((sprint) => (
-                                                  <PastSprintSection
-                                                      boardId={boardId}
-                                                      canManage={canManage}
-                                                      columns={columns}
-                                                      key={sprint.id}
-                                                      projectId={projectId}
-                                                      sprint={sprint}
-                                                      tasks={tasks}
-                                                  />
-                                              ))
-                                            : null}
+                                        {historyOpen ? (
+                                            <>
+                                                {windowedPastSprints.visible.map(
+                                                    (sprint) => (
+                                                        <PastSprintSection
+                                                            boardId={boardId}
+                                                            canManage={
+                                                                canManage
+                                                            }
+                                                            columns={columns}
+                                                            key={sprint.id}
+                                                            projectId={
+                                                                projectId
+                                                            }
+                                                            sprint={sprint}
+                                                            tasks={tasks}
+                                                        />
+                                                    )
+                                                )}
+                                                <ListWindowControls
+                                                    bordered={false}
+                                                    hasMore={
+                                                        windowedPastSprints.hasMore
+                                                    }
+                                                    nextCount={Math.min(
+                                                        BACKLOG_LIST_PAGE_SIZE,
+                                                        windowedPastSprints.remaining
+                                                    )}
+                                                    onLoadMore={() => {
+                                                        historyWindow.loadMore(
+                                                            pastSprints.length
+                                                        );
+                                                    }}
+                                                    onShowAll={() => {
+                                                        historyWindow.showAll(
+                                                            pastSprints.length
+                                                        );
+                                                    }}
+                                                />
+                                            </>
+                                        ) : null}
                                     </section>
                                 ) : null}
                             </div>
@@ -1132,6 +1187,7 @@ function SprintSection({
     onOpenTask,
     onRowSelectionChange,
     projectId,
+    resetKey,
     rowSelection,
     sprint,
     tasks,
@@ -1147,6 +1203,7 @@ function SprintSection({
     onOpenTask: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
     projectId: string;
+    resetKey: string;
     rowSelection: RowSelectionState;
     sprint: Sprint;
     tasks: Task[];
@@ -1282,13 +1339,14 @@ function SprintSection({
                 />
             ) : null}
 
-            <SprintTaskTable
+            <WindowedSprintTaskTable
                 canManage={canManage}
                 containerId={sprintDropId(sprint.id)}
                 draggingTaskIds={draggingTaskIds}
                 labels={labels}
                 onOpenTask={onOpenTask}
                 onRowSelectionChange={onRowSelectionChange}
+                resetKey={resetKey}
                 rowSelection={rowSelection}
                 tasks={tasks}
             />
