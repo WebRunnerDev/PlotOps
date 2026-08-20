@@ -75,6 +75,7 @@ export function ImageNodeView({
     const bottomSentinelReference = useRef<HTMLSpanElement | null>(null);
     const aspectReference = useRef<null | number>(null);
     const [isResizing, setIsResizing] = useState(false);
+    const [editorFocused, setEditorFocused] = useState(() => editor.isFocused);
     const [toolbarPlacement, setToolbarPlacement] = useState<
         "bottom" | "hidden" | "top"
     >("top");
@@ -89,7 +90,22 @@ export function ImageNodeView({
     const align = (node.attrs.align as Alignment | null) ?? "left";
     const uploading = Boolean(node.attrs.uploading);
     const isEditable = editor.isEditable;
-    const showControls = isEditable && selected && !uploading;
+    // Boot/`setContent` can leave a NodeSelection on a leading image without the
+    // editor being focused (task drawer open). Only show chrome while focused.
+    const isActivelySelected = selected && editorFocused;
+    const showControls = isEditable && isActivelySelected && !uploading;
+
+    useEffect(() => {
+        const handleFocus = () => setEditorFocused(true);
+        const handleBlur = () => setEditorFocused(false);
+        editor.on("focus", handleFocus);
+        editor.on("blur", handleBlur);
+        setEditorFocused(editor.isFocused);
+        return () => {
+            editor.off("focus", handleFocus);
+            editor.off("blur", handleBlur);
+        };
+    }, [editor]);
 
     const getAspectRatio = useCallback(() => {
         if (aspectReference.current) return aspectReference.current;
@@ -360,14 +376,14 @@ export function ImageNodeView({
             className="rich-text-image-view"
             contentEditable={false}
             data-align={align}
-            data-selected={selected ? "true" : undefined}
+            data-selected={isActivelySelected ? "true" : undefined}
             ref={wrapperReference}
             style={{ textAlign: align }}
         >
             <span
                 className={cn(
                     "rich-text-image-frame",
-                    selected && "is-selected",
+                    isActivelySelected && "is-selected",
                     isResizing && "is-resizing"
                 )}
                 ref={frameReference}

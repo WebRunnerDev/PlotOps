@@ -38,10 +38,12 @@ import {
 } from "lucide-react";
 import {
     type DragEvent,
+    forwardRef,
     type MouseEvent as ReactMouseEvent,
     type ReactNode,
     useCallback,
     useEffect,
+    useImperativeHandle,
     useLayoutEffect,
     useMemo,
     useRef,
@@ -70,6 +72,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
+import { clearBootNodeSelection } from "@/shared/ui/rich-text-editor/boot-selection";
 import { shouldPreferClipboardHtml } from "@/shared/ui/rich-text-editor/clipboard-html";
 import {
     normalizeEditorContent,
@@ -77,6 +80,7 @@ import {
     toEditorContent,
 } from "@/shared/ui/rich-text-editor/content";
 import { createMentionSuggestion } from "@/shared/ui/rich-text-editor/create-mention-suggestion";
+import { shouldApplyExternalContent } from "@/shared/ui/rich-text-editor/external-content-sync";
 import {
     filterImageFiles,
     ImageUpload,
@@ -126,6 +130,11 @@ const SLASH_SHORTCUTS: Record<string, string> = {
     "task-list": shortcut(MOD_KEY, SHIFT_KEY, "9"),
 };
 
+/** Imperative API for callers that must commit only after uploads settle. */
+export type RichTextEditorHandle = {
+    waitForIdle: () => Promise<string>;
+};
+
 type FloatingMenuState = {
     activeIds: string[];
     activeIndex: number;
@@ -166,19 +175,25 @@ const EMPTY_MENU: FloatingMenuState = {
     source: null,
 };
 
-export function RichTextEditor({
-    className,
-    compact = false,
-    id,
-    maxLength,
-    mentionCandidates,
-    onBlur,
-    onChange,
-    onUploadImage,
-    placeholder,
-    readOnly = false,
-    value,
-}: RichTextEditorProperties) {
+export const RichTextEditor = forwardRef<
+    RichTextEditorHandle,
+    RichTextEditorProperties
+>(function RichTextEditor(
+    {
+        className,
+        compact = false,
+        id,
+        maxLength,
+        mentionCandidates,
+        onBlur,
+        onChange,
+        onUploadImage,
+        placeholder,
+        readOnly = false,
+        value,
+    },
+    reference
+) {
     const { t } = useTranslation("board");
     const [menu, setMenu] = useState<FloatingMenuState>(EMPTY_MENU);
     const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -189,6 +204,11 @@ export function RichTextEditor({
     const menuReference = useRef<HTMLDivElement | null>(null);
     const editorReference = useRef<Editor | null>(null);
     const dragDepthReference = useRef(0);
+    const blurWhilePendingReference = useRef(false);
+    const onBlurReference = useRef(onBlur);
+    onBlurReference.current = onBlur;
+    const onChangeReference = useRef(onChange);
+    onChangeReference.current = onChange;
     const menuStateReference = useRef(menu);
     menuStateReference.current = menu;
     const mentionCandidatesReference = useRef(mentionCandidates ?? []);
@@ -458,7 +478,20 @@ export function RichTextEditor({
         ],
         immediatelyRender: false,
         onBlur: () => {
-            onBlur?.();
+            const currentEditor = editorReference.current;
+            if (
+                currentEditor &&
+                currentEditor.storage.imageUpload.pending > 0
+            ) {
+                // File picker / drop steals focus mid-upload. Commit after the
+                // permanent URL is flushed so blur does not persist pre-image HTML.
+                blurWhilePendingReference.current = true;
+                return;
+            }
+            onBlurReference.current?.();
+        },
+        onCreate: ({ editor: currentEditor }) => {
+            clearBootNodeSelection(currentEditor);
         },
         onSelectionUpdate: ({ editor: currentEditor }) => {
             const current = menuStateReference.current;
@@ -495,7 +528,13 @@ export function RichTextEditor({
             // temporary blob URL of the loading placeholder is never persisted.
             if (currentEditor.storage.imageUpload.pending === 0) {
                 const next = normalizeEditorContent(currentEditor.getHTML());
-                onChange?.(next);
+                onChangeReference.current?.(next);
+                if (blurWhilePendingReference.current) {
+                    blurWhilePendingReference.current = false;
+                    // Parent onChange updates its draft ref synchronously; commit
+                    // in the same turn so blur does not read a stale React state.
+                    onBlurReference.current?.();
+                }
             }
 
             const slashMenu = resolveSlashMenu(currentEditor);
@@ -516,6 +555,30 @@ export function RichTextEditor({
             }
         },
     });
+
+    useImperativeHandle(
+        reference,
+        () => ({
+            waitForIdle: async () => {
+                const currentEditor = editorReference.current;
+                if (!currentEditor || currentEditor.isDestroyed) {
+                    return normalizeEditorContent(value);
+                }
+
+                while (currentEditor.storage.imageUpload.pending > 0) {
+                    if (currentEditor.isDestroyed) {
+                        return normalizeEditorContent(value);
+                    }
+                    await new Promise<void>((resolve) => {
+                        globalThis.setTimeout(resolve, 32);
+                    });
+                }
+
+                return normalizeEditorContent(currentEditor.getHTML());
+            },
+        }),
+        [value]
+    );
 
     useEffect(() => {
         if (!editor) return;
@@ -611,9 +674,20 @@ export function RichTextEditor({
         if (!editor) return;
 
         const current = normalizeEditorContent(editor.getHTML());
-        if (current === editorContent) return;
+        if (
+            !shouldApplyExternalContent({
+                currentHtml: current,
+                nextHtml: editorContent,
+                pendingUploads: editor.storage.imageUpload.pending,
+            })
+        ) {
+            return;
+        }
 
         editor.commands.setContent(editorContent, { emitUpdate: false });
+        // `setContent` resets selection to doc start — clear atom NodeSelection
+        // the same way `onCreate` does so image chrome does not flash on sync.
+        clearBootNodeSelection(editor);
     }, [editor, editorContent]);
 
     const runSlashCommand = (command: SlashCommand) => {
@@ -1078,7 +1152,7 @@ export function RichTextEditor({
             )}
         </div>
     );
-}
+});
 
 function buildMenuState(
     editor: Editor,
