@@ -44,6 +44,7 @@ Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** b
 | Top bar                                                       | ✅ Done (logo→/home, Team→Project breadcrumbs, project section tabs Board/Backlog/CI/CD/Settings, avatar menu; compact board-local toolbar)                                                                                                                                                                                                                                                                                                                                                                         |
 | Notifications (Watch + assignment)                            | ✅ Done (MVP + structural expansion #35–#39; Parent Task `subtask_change` #200)                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Mentions (Description + Comment → always-on)                  | 🟡 Schema + RPC (#41) + editor/extract (#42) + inbox/deep-link (#43) done; polish/verify as needed                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Custom text fields (Project-scoped)                           | 📋 Specced (ADR 0024) — not implemented; ≤10 text defs per Project; `applies_to` Task types; drawer filtered by type; Settings CRUD + transfer; hard-delete cascade                                                                                                                                                                                                                                                                                                                                                 |
 
 ## Notifications (MVP → structural expansion)
 
@@ -130,6 +131,20 @@ Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** b
 
 MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app + webhook fan-out paths, bell + `/notifications`, Watchers list.
 
+## Custom text fields (Project-scoped)
+
+> Domain glossary: `CONTEXT.md` (Custom field, Task type, Project, Label). Decision: `docs/adr/0024-project-custom-text-fields.md`.
+
+**Model:** Custom field ⊆ Project (like Label), filtered by Task type. Manager+ CRUD in Project Settings (≤10 text definitions; each has `applies_to` ⊆ `{task, bug, feature}`, ≥1). Drawer shows only fields matching the Task’s current type (e.g. repro steps on `bug` only). Type change keeps values, hides non-applicable fields. Contributor+ edits values. Transfer copies definition + `applies_to` (no Task values). Delete definition hard-cascades values — no soft-archive (Free-tier). Name-only Projects (#175) for non-dev work; no Board-scoped schemas.
+
+### Implementation plan
+
+1. **Schema + RLS** — `custom_field_definitions` (`applies_to` / equivalent), `task_custom_field_values`; unique name per Project; ≤10 definitions; cascade on delete; Manager+ manage defs, Contributor+ upsert values.
+2. **API + hooks** — feature module (or `features/custom-fields`); Query keys; filter helpers by Task type; Guest provider stub optional.
+3. **Settings UI** — Project Settings section (CRUD + reorder + `applies_to` checkboxes + transfer dialog, mirror Labels transfer).
+4. **Task drawer** — render fields for current type; persist values; on type change re-filter without clearing stored values; optional Activity for value changes.
+5. **Progress** — mark Done when the slice above ships.
+
 ## Sprints (MVP)
 
 > Domain glossary: `CONTEXT.md` (Planning). Decision: `docs/adr/0008`.
@@ -173,18 +188,19 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 >
 > **Roadmap (order, size, nested plans):** [`docs/deferred/`](deferred/README.md) — Wave 0 Guest Mode → Wave 1 UX → Wave 2 invites → Wave 3 sprints → Waves 4+ on explicit pull only.
 
-| Item                                 | Notes                                                                                                                                   |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Merge / move Projects between Teams  | 1:1 migration only; no Team merge or Project transfer UI in this slice.                                                                 |
-| Board-level permission overrides     | Notion `view` / `edit` / `manage` per board beyond Team Role.                                                                           |
-| Assigned-only Contributor edits      | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                  |
-| Granular permission flags per Member | Roles only for MVP; no custom `tasks:create`-style flags.                                                                               |
-| Story points / estimates on Tasks    | Shipped (wave 3.3 / ADR 0020): Fibonacci `tasks.estimate`, Manager+ edit, points + unestimated on reports.                              |
-| Sprint burndown chart                | Shipped (wave 3.4): client-side daily series from Commitment + `sprint_events`; points preferred, count fallback; SVG in sprint report. |
-| Sprint KPI / velocity dashboards     | Shipped (wave 3.5): Backlog Insights — Velocity + Commitment accuracy over last N Closed; client-side; no reporting export.             |
-| In-app Approve / request review      | Open PR + Merge shipped (ADR 0022 / Wave 7 MVP). Approve and request-review remain parked.                                              |
-| Group Mentions (`@everyone` / Roles) | Mentions MVP is single-user only (ADR 0014).                                                                                            |
-| Comment events without Mention       | Plain Comments stay out of Notifications; only Mentions fan out.                                                                        |
+| Item                                 | Notes                                                                                                                                                           |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Merge / move Projects between Teams  | 1:1 migration only; no Team merge or Project transfer UI in this slice.                                                                                         |
+| Board-level permission overrides     | Notion `view` / `edit` / `manage` per board beyond Team Role.                                                                                                   |
+| Assigned-only Contributor edits      | Rejected for MVP (Contributor may update any Task); revisit if needed.                                                                                          |
+| Granular permission flags per Member | Roles only for MVP; no custom `tasks:create`-style flags.                                                                                                       |
+| Story points / estimates on Tasks    | Shipped (wave 3.3 / ADR 0020): Fibonacci `tasks.estimate`, Manager+ edit, points + unestimated on reports.                                                      |
+| Sprint burndown chart                | Shipped (wave 3.4): client-side daily series from Commitment + `sprint_events`; points preferred, count fallback; SVG in sprint report.                         |
+| Sprint KPI / velocity dashboards     | Shipped (wave 3.5): Backlog Insights — Velocity + Commitment accuracy over last N Closed; client-side; no reporting export.                                     |
+| In-app Approve / request review      | Open PR + Merge shipped (ADR 0022 / Wave 7 MVP). Approve and request-review remain parked.                                                                      |
+| Group Mentions (`@everyone` / Roles) | Mentions MVP is single-user only (ADR 0014).                                                                                                                    |
+| Comment events without Mention       | Plain Comments stay out of Notifications; only Mentions fan out.                                                                                                |
+| Custom field types beyond text       | Text MVP is Project-scoped + Task-type filtered (ADR 0024). Number / select / date, required, filters, Kanban chips, user-defined Task types — pull separately. |
 
 ### Ideas to revisit (Command Palette)
 
@@ -359,18 +375,20 @@ Tokens live in `src/app/styles/index.css` (`text-h1` … `text-meta`). Pick by *
 
 ## Database Schema
 
-| Table           | Key columns                                                                                                                                                                                                                                  |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `profiles`      | `id` (uuid → auth.users), `username`, `avatar_url`                                                                                                                                                                                           |
-| `projects`      | `id`, `name`, `slug`, `owner_id` → profiles                                                                                                                                                                                                  |
-| `boards`        | `id`, `project_id`, `name`, `position`, `base_branch`, `allowed_head_patterns`                                                                                                                                                               |
-| `board_columns` | `(board_id, id)` PK, `project_id`, `name`, `position`                                                                                                                                                                                        |
-| `tasks`         | `id`, `project_id`, `board_id`, `sprint_id` (nullable → sprints), `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id`, `author_id`, `archived_at`, `archived_by`                                          |
-| `sprints`       | `id`, `board_id`, `project_id`, `name`, `goal`, `state` (`draft`/`active`/`closed`/`canceled`), `starts_on`, `ends_on`, `committed_task_ids` (uuid[]), `completed_task_ids` (uuid[]), `started_at`, `closed_at`, `canceled_at`, `created_at` |
-| `sprint_events` | `id`, `sprint_id`, `project_id`, `actor_id`, `event_type` (`task_added`/`task_removed`/`started`/`closed`/`canceled`), `task_id` (nullable), `payload` (jsonb), `created_at`                                                                 |
-| `task_comments` | `id`, `task_id`, `project_id`, `author_id`, `body`, `created_at`, `updated_at`                                                                                                                                                               |
-| `labels`        | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`)                                                                                                                                                 |
-| `activity_log`  | `id`, `task_id`, `project_id`, `user_id` → profiles, `action` (text), `metadata` (jsonb), `created_at`                                                                                                                                       |
+| Table                      | Key columns                                                                                                                                                                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profiles`                 | `id` (uuid → auth.users), `username`, `avatar_url`                                                                                                                                                                                           |
+| `projects`                 | `id`, `name`, `slug`, `owner_id` → profiles                                                                                                                                                                                                  |
+| `boards`                   | `id`, `project_id`, `name`, `position`, `base_branch`, `allowed_head_patterns`                                                                                                                                                               |
+| `board_columns`            | `(board_id, id)` PK, `project_id`, `name`, `position`                                                                                                                                                                                        |
+| `tasks`                    | `id`, `project_id`, `board_id`, `sprint_id` (nullable → sprints), `title`, `description`, `status`, `priority`, `deadline`, `branch_name`, `assignee_id`, `author_id`, `archived_at`, `archived_by`                                          |
+| `sprints`                  | `id`, `board_id`, `project_id`, `name`, `goal`, `state` (`draft`/`active`/`closed`/`canceled`), `starts_on`, `ends_on`, `committed_task_ids` (uuid[]), `completed_task_ids` (uuid[]), `started_at`, `closed_at`, `canceled_at`, `created_at` |
+| `sprint_events`            | `id`, `sprint_id`, `project_id`, `actor_id`, `event_type` (`task_added`/`task_removed`/`started`/`closed`/`canceled`), `task_id` (nullable), `payload` (jsonb), `created_at`                                                                 |
+| `task_comments`            | `id`, `task_id`, `project_id`, `author_id`, `body`, `created_at`, `updated_at`                                                                                                                                                               |
+| `labels`                   | `id`, `project_id`, `name`, `color` (project-scoped; tasks reference via join / `label_ids`)                                                                                                                                                 |
+| `custom_field_definitions` | `id`, `project_id`, `name`, `position`, `applies_to` (`task_type[]`, ≥1), `created_at` (≤10 per Project; drawer filters by Task type — ADR 0024; not shipped yet)                                                                            |
+| `task_custom_field_values` | `(task_id, field_id)` PK, `value` text (cascade on definition or task delete; kept across Task type changes; not shipped yet)                                                                                                                |
+| `activity_log`             | `id`, `task_id`, `project_id`, `user_id` → profiles, `action` (text), `metadata` (jsonb), `created_at`                                                                                                                                       |
 
 Enable RLS and base policies before writing frontend code.
 

@@ -37,7 +37,7 @@ The unit of ownership and collaboration. Members, Roles, and Invites belong to a
 _Avoid_: Workspace, Organization, Project (when meaning the access boundary)
 
 **Project**:
-A unit of work inside exactly one Team: Boards, Tasks, Labels, and a linked GitHub repository. Does not own Members or Roles — those live on the Team. Created by connecting a GitHub repository (Projects without a repo are out of scope for now).
+A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, and optionally a linked GitHub repository. Does not own Members or Roles — those live on the Team. May be created by connecting a GitHub repository or as a name-only Project without a repo (Git/CI surfaces gated until a repo is attached).
 _Avoid_: Team, Workspace, repository (the GitHub repo is linked to the Project, not the same concept)
 
 **Board**:
@@ -57,8 +57,12 @@ A Board setting that assigns new Tasks (and Subtasks) on that Board to the perso
 _Avoid_: auto-assign to me (UI copy only; persistence is creator-relative)
 
 **Task**:
-A unit of work that always belongs to exactly one Board (and thus to that Board's Project). May optionally be a Subtask of one Parent Task in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
+A unit of work that always belongs to exactly one Board (and thus to that Board's Project). Has a Task type (`task`, `bug`, or `feature`). May optionally be a Subtask of one Parent Task in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared (Backlog on the target Board). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
+
+**Task type**:
+A fixed classification on a Task: `task`, `bug`, or `feature`. Chosen on create (Board may set a default); editable later. Drives branch-name prefix conventions and which Custom fields appear in the drawer. Not a user-defined issue-type catalog.
+_Avoid_: issue type (Jira), kind (ambiguous with Task Link kinds)
 
 **Priority**:
 How urgently a Task should be handled relative to others: urgent, high, medium, or low. Default on create is medium. Distinct from Board column status.
@@ -75,6 +79,10 @@ _Avoid_: filter (filters hide Tasks; Board sort only reorders), Manual order, co
 **Label**:
 A Project-scoped tag attachable to any Task in the Project, regardless of Board. Not owned by a Board.
 _Avoid_: Board label, tag (prefer Label)
+
+**Custom field**:
+A Project-scoped named text slot whose definition lists which Task types it applies to (`task` / `bug` / `feature`; at least one). The Task drawer shows the field only when the Task’s type is in that list (e.g. “Steps to reproduce” → bug only). Values live on the Task and survive Board moves and Task-type changes (hidden when not applicable, not cleared). Definitions are managed in Project Settings (add / rename / reorder / delete / `applies_to`; ≤10 per Project). A definition may be copied to another Project (transfer, including `applies_to`); Task values are not copied. Not owned by a Board. Distinct from Label (multi-select tags) and from built-in fields (Priority, Deadline, Estimate, Description).
+_Avoid_: Board custom field, property (Notion), custom attribute (generic)
 
 ### Structure
 
@@ -160,7 +168,7 @@ _Avoid_: Admin, Project owner
 A Role that manages Members, Invites, Team settings, creating Projects, and Git repo connection on Projects — but cannot delete a Project, delete the Team, transfer ownership, or grant/revoke the Admin Role (Owner only). May invite and assign Manager, Contributor, or Viewer. Also has Manager-level Board/Task powers on every Project in the Team.
 
 **Manager**:
-A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, Estimates (Fibonacci story points), and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
+A Role that plans work inside the Team's Projects: creates, edits, and deletes Tasks and Boards; manages Board columns, Base branch, Allowed head patterns, Labels, Custom fields, Estimates (Fibonacci story points), and Sprints (create/edit Draft, Start, Close, Cancel, backlog membership and order). Cannot manage Members, Invites, Git repo connection, Team settings, or create/delete Projects. Cannot delete a Board that still has Tasks, or a Project's last Board.
 
 **Contributor**:
 A Role that executes work on any Task in the Team's Projects (status, assignee, git fields, description) and runs the git flow — cannot create or delete root Tasks or Boards, cannot change Board columns, Base branch, Allowed head patterns, Labels, Estimates, or Sprint membership/lifecycle, and cannot Start/Close/Cancel a Sprint. May create Subtasks under an existing Parent Task and create or remove Task Links (including **blocks**). May view Sprints and Sprint reports.
