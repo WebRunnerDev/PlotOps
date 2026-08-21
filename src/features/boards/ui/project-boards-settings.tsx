@@ -392,7 +392,7 @@ function BoardSettingsCard({
     return (
         <li>
             <Collapsible onOpenChange={onExpandedChange} open={expanded}>
-                <div className="rounded-md border border-border bg-card/40">
+                <div className="rounded-md border border-border bg-card">
                     <CollapsibleTrigger className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring">
                         <ChevronDown
                             aria-hidden

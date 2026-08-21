@@ -1007,7 +1007,7 @@ export const RichTextEditor = forwardRef<
             className={cn(
                 "group/rich-text relative min-w-0 max-w-full overflow-hidden rounded-lg border border-transparent bg-transparent transition-colors",
                 "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
-                "dark:bg-input/20",
+                "dark:bg-background",
                 isDraggingFile &&
                     "border-dashed border-primary bg-primary/5 ring-3 ring-primary/30",
                 className
@@ -1112,7 +1112,7 @@ export const RichTextEditor = forwardRef<
                     "[&_.ProseMirror_a]:break-all [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:cursor-pointer [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-4",
                     "[&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-border",
                     "[&_.ProseMirror_mark]:rounded-sm [&_.ProseMirror_mark]:bg-amber-200/70 [&_.ProseMirror_mark]:px-0.5 [&_.ProseMirror_mark]:text-foreground",
-                    "dark:[&_.ProseMirror_mark]:bg-amber-400/25"
+                    "dark:[&_.ProseMirror_mark]:bg-card"
                 )}
                 editor={editor}
             />
