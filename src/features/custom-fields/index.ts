@@ -38,3 +38,4 @@ export { useCustomFieldValueUsage } from "./model/use-custom-field-value-usage";
 export { useProjectCustomFields } from "./model/use-project-custom-fields";
 export { useTaskCustomFieldValues } from "./model/use-task-custom-field-values";
 export { ProjectCustomFieldsSettings } from "./ui/project-custom-fields-settings";
+export { TaskCustomFieldsSection } from "./ui/task-custom-fields-section";

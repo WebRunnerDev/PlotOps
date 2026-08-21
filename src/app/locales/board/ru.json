@@ -114,7 +114,10 @@
         "assignee": "Исполнитель",
         "memberNone": "Не назначен",
         "memberNoResults": "Участники не найдены",
-        "labels": "Метки"
+        "labels": "Метки",
+        "customFields": "Пользовательские поля",
+        "customFieldPlaceholder": "Добавьте текст…",
+        "customFieldSaveFailed": "Не удалось сохранить поле"
     },
     "watchers": {
         "title": "Наблюдатели",

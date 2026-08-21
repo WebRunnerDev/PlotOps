@@ -114,7 +114,10 @@
         "assignee": "Assignee",
         "memberNone": "Unassigned",
         "memberNoResults": "No members found",
-        "labels": "Labels"
+        "labels": "Labels",
+        "customFields": "Custom fields",
+        "customFieldPlaceholder": "Add text…",
+        "customFieldSaveFailed": "Could not save this field"
     },
     "watchers": {
         "title": "Watchers",
