@@ -90,21 +90,26 @@ describe("guest custom fields provider", () => {
         expect(listed.some((field) => field.id === created.id)).toBe(false);
     });
 
-    it("enforces ≤10 definitions per Project", async () => {
+    it("enforces ≤10 non-system definitions per Project", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");
+        const { countCapCustomFields } =
+            await import("@/features/custom-fields/model/constants");
 
         startGuestSession();
         const projectId = getGuestSandbox()!.projects[0]!.id;
         const provider = resolveCustomFieldsProvider(true);
 
-        // Seed already has one on the git project — fill to 10 then reject.
-        const existing = await provider.fetchProjectCustomFields(projectId);
-        for (let index = existing.length; index < 10; index += 1) {
+        // Seed has Description (system) + one custom — fill custom slots to 10.
+        let listed = await provider.fetchProjectCustomFields(projectId);
+        let index = 0;
+        while (countCapCustomFields(listed) < 10) {
             await provider.createProjectCustomField(projectId, {
                 appliesTo: ["task"],
                 name: `Extra ${index}`,
             });
+            index += 1;
+            listed = await provider.fetchProjectCustomFields(projectId);
         }
 
         await expect(
@@ -116,5 +121,29 @@ describe("guest custom fields provider", () => {
             code: "P0001",
             message: expect.stringContaining("at most 10"),
         });
+    });
+
+    it("rejects deleting or copying the Description system field", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const projectId = sandbox.projects[0]!.id;
+        const otherProjectId = sandbox.projects[1]!.id;
+        const provider = resolveCustomFieldsProvider(true);
+        const fields = await provider.fetchProjectCustomFields(projectId);
+        const description = fields.find(
+            (field) => field.systemKey === "description"
+        );
+        expect(description).toBeDefined();
+
+        await expect(
+            provider.deleteProjectCustomField(description!.id)
+        ).rejects.toThrow(/cannot be deleted/i);
+
+        await expect(
+            provider.copyProjectCustomField(description!.id, otherProjectId!)
+        ).rejects.toThrow(/cannot be copied/i);
     });
 });

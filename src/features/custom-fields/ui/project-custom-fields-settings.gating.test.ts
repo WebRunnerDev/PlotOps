@@ -23,6 +23,9 @@ describe("ProjectCustomFieldsSettings usage guards", () => {
         expect(source).toMatch(/customFieldSettings\.usageLoadFailed/);
         expect(source).toMatch(/customFieldSettings\.transferDuplicate/);
         expect(source).toMatch(/copyCustomFieldToProject/);
+        expect(source).toMatch(/isSystemCustomField/);
+        expect(source).toMatch(/customFieldSettings\.systemBadge/);
+        expect(source).toMatch(/countCapCustomFields/);
         expect(source).not.toMatch(/moveCustomField/);
     });
 });

@@ -55,6 +55,7 @@ export type GuestCustomFieldDefinition = {
     name: string;
     position: number;
     projectId: string;
+    systemKey?: "description";
 };
 
 export type GuestCustomFieldValue = {

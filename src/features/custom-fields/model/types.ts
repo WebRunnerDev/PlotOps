@@ -1,3 +1,6 @@
+/** Built-in definition key — values for `description` live on `tasks.description`. */
+export type CustomFieldSystemKey = "description";
+
 /** Built-in Task type — mirrors `public.task_type` / tasks.TaskType. */
 export type CustomFieldTaskType = "bug" | "feature" | "task";
 
@@ -17,6 +20,8 @@ export type ProjectCustomField = {
     name: string;
     position: number;
     projectId: string;
+    /** Non-null for built-in rows (Description). */
+    systemKey?: CustomFieldSystemKey;
 };
 
 /** Stored value for one definition on one Task. */

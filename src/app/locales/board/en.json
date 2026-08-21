@@ -117,6 +117,8 @@
         "labels": "Labels",
         "customFields": "Custom fields",
         "customFieldPlaceholder": "Add text…",
+        "customFieldHint": "Changes save when you leave the field",
+        "customFieldTooLong": "This field is too long. Shorten the text and try again.",
         "customFieldSaveFailed": "Could not save this field"
     },
     "watchers": {
@@ -583,12 +585,13 @@
     },
     "customFieldSettings": {
         "title": "Custom fields",
-        "description": "Project-scoped text fields shown on Tasks by type (e.g. bug-only repro steps). Values move with the Task between boards.",
+        "description": "Project-scoped text fields shown on Tasks by type (e.g. bug-only repro steps). Description is built-in and always present; extra fields are capped at 10. Values move with the Task between boards.",
         "addSection": "Add field",
         "name": "Name",
         "newPlaceholder": "e.g. Steps to reproduce",
         "create": "Add",
         "appliesTo": "Applies to Task types",
+        "systemBadge": "Built-in",
         "types": {
             "task": "task",
             "bug": "bug",
@@ -597,7 +600,7 @@
         "searchPlaceholder": "Search fields…",
         "noSearchMatches": "No fields match this search.",
         "emptyTitle": "No custom fields yet",
-        "emptyDescription": "Add a text field above. Choose which Task types it appears on.",
+        "emptyDescription": "Every project has a built-in Description field. Add more text fields above and choose which Task types they appear on.",
         "loadFailed": "Could not load custom fields",
         "usageLoadFailed": "Could not load which tasks have values for these fields. Retry before deleting a field.",
         "retry": "Retry",
@@ -613,7 +616,7 @@
         "deleteFailed": "Could not delete this field",
         "updateFailed": "Could not update this field",
         "duplicateName": "A field with this name already exists in this project",
-        "capReached": "A project can have at most 10 custom fields",
+        "capReached": "A project can have at most 10 custom fields (plus the built-in Description)",
         "page": "Page {{page}} of {{total}}",
         "prevPage": "Previous page",
         "nextPage": "Next page",

@@ -8,7 +8,10 @@ import type {
 import type { GuestCustomFieldDefinition } from "@/features/guest-mode";
 
 import {
+    countCapCustomFields,
     CUSTOM_FIELD_DEFINITIONS_CAP,
+    CUSTOM_FIELD_VALUE_MAX_LENGTH,
+    isSystemCustomField,
     sortCustomFieldsByPosition,
 } from "@/features/custom-fields/model/constants";
 import { getGuestSandbox, updateGuestSandbox } from "@/features/guest-mode";
@@ -17,9 +20,11 @@ function assertCap(
     definitions: GuestCustomFieldDefinition[],
     projectId: string
 ) {
-    const count = definitions.filter(
-        (field) => field.projectId === projectId
-    ).length;
+    const count = countCapCustomFields(
+        definitions
+            .filter((field) => field.projectId === projectId)
+            .map((field) => mapDefinition(field))
+    );
     if (count >= CUSTOM_FIELD_DEFINITIONS_CAP) {
         const error = new Error(
             "A Project may have at most 10 custom field definitions"
@@ -58,6 +63,7 @@ function mapDefinition(field: GuestCustomFieldDefinition): ProjectCustomField {
         name: field.name,
         position: field.position,
         projectId: field.projectId,
+        systemKey: field.systemKey,
     };
 }
 
@@ -99,6 +105,9 @@ export const guestCustomFieldsProvider: CustomFieldsProvider = {
             sandbox.customFieldDefinitions,
             fieldId
         );
+        if (source.systemKey) {
+            throw new Error("System custom fields cannot be copied");
+        }
         return guestCustomFieldsProvider.createProjectCustomField(
             targetProjectId,
             {
@@ -150,6 +159,10 @@ export const guestCustomFieldsProvider: CustomFieldsProvider = {
             if (index === -1) {
                 throw new Error("Custom field definition not found");
             }
+            const field = sandbox.customFieldDefinitions[index]!;
+            if (field.systemKey) {
+                throw new Error("System custom fields cannot be deleted");
+            }
             sandbox.customFieldDefinitions.splice(index, 1);
             sandbox.customFieldValues = sandbox.customFieldValues.filter(
                 (value) => value.fieldId !== fieldId
@@ -172,7 +185,9 @@ export const guestCustomFieldsProvider: CustomFieldsProvider = {
         if (!sandbox) throw new Error("No Guest Session");
         const fieldIds = new Set(
             sandbox.customFieldDefinitions
-                .filter((field) => field.projectId === projectId)
+                .filter(
+                    (field) => field.projectId === projectId && !field.systemKey
+                )
                 .map((field) => field.id)
         );
         const usage: CustomFieldValueUsage[] = [];
@@ -243,6 +258,9 @@ export const guestCustomFieldsProvider: CustomFieldsProvider = {
     },
 
     async upsertTaskCustomFieldValue(taskId, fieldId, value) {
+        if (value.length > CUSTOM_FIELD_VALUE_MAX_LENGTH) {
+            throw new Error("Custom field value exceeds maximum length");
+        }
         const trimmed = value.trim();
         updateGuestSandbox((sandbox) => {
             const task = sandbox.tasks.find((item) => item.id === taskId);
@@ -256,6 +274,11 @@ export const guestCustomFieldsProvider: CustomFieldsProvider = {
                 sandbox.customFieldDefinitions,
                 fieldId
             );
+            if (isSystemCustomField(mapDefinition(field))) {
+                throw new Error(
+                    "System custom fields do not store values in task_custom_field_values"
+                );
+            }
             if (field.projectId !== task.projectId) {
                 throw new Error(
                     "Custom field values must stay inside the same Project"

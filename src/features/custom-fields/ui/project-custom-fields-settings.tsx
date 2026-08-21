@@ -20,8 +20,10 @@ import type {
 import type { Project } from "@/features/projects/model/types";
 
 import {
+    countCapCustomFields,
     CUSTOM_FIELD_DEFINITIONS_CAP,
     CUSTOM_FIELD_TASK_TYPES,
+    isSystemCustomField,
     sortCustomFieldsByPosition,
 } from "@/features/custom-fields/model/constants";
 import { useCustomFieldValueUsage } from "@/features/custom-fields/model/use-custom-field-value-usage";
@@ -110,7 +112,8 @@ export function ProjectCustomFieldsSettings({
     const [searchQuery, setSearchQuery] = useState("");
 
     const usageKnown = !usageLoading && !usageError;
-    const atCap = fieldsApi.fields.length >= CUSTOM_FIELD_DEFINITIONS_CAP;
+    const atCap =
+        countCapCustomFields(fieldsApi.fields) >= CUSTOM_FIELD_DEFINITIONS_CAP;
 
     const projectFields = useMemo(
         () =>
@@ -413,6 +416,7 @@ function FieldRow({
         renameCustomField,
         setCustomFieldAppliesTo,
     } = fieldsApi;
+    const isSystem = isSystemCustomField(field);
 
     const [draft, setDraft] = useState(field.name);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -562,7 +566,14 @@ function FieldRow({
                     value={draft}
                 />
 
-                {usageKnown ? (
+                {isSystem ? (
+                    <Badge
+                        className="shrink-0 font-mono text-[0.625rem]"
+                        variant="secondary"
+                    >
+                        {t("customFieldSettings.systemBadge")}
+                    </Badge>
+                ) : usageKnown ? (
                     <Badge
                         className="shrink-0 font-mono text-[0.625rem]"
                         variant="outline"
@@ -571,28 +582,32 @@ function FieldRow({
                     </Badge>
                 ) : undefined}
 
-                <Button
-                    aria-label={t("customFieldSettings.transfer")}
-                    disabled={otherProjects.length === 0}
-                    onClick={() => setTransferOpen(true)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                >
-                    <ArrowRightLeft className="size-3.5" />
-                </Button>
+                {isSystem ? undefined : (
+                    <>
+                        <Button
+                            aria-label={t("customFieldSettings.transfer")}
+                            disabled={otherProjects.length === 0}
+                            onClick={() => setTransferOpen(true)}
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            <ArrowRightLeft className="size-3.5" />
+                        </Button>
 
-                <Button
-                    aria-label={t("customFieldSettings.delete")}
-                    className="text-muted-foreground hover:text-destructive"
-                    disabled={!usageKnown}
-                    onClick={() => setDeleteOpen(true)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                >
-                    <X className="size-3.5" />
-                </Button>
+                        <Button
+                            aria-label={t("customFieldSettings.delete")}
+                            className="text-muted-foreground hover:text-destructive"
+                            disabled={!usageKnown}
+                            onClick={() => setDeleteOpen(true)}
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            <X className="size-3.5" />
+                        </Button>
+                    </>
+                )}
             </div>
 
             <AppliesToEditor
@@ -600,193 +615,214 @@ function FieldRow({
                 selected={field.appliesTo}
             />
 
-            <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
-                <AlertDialogContent
-                    className={usageCount > 0 ? "sm:max-w-md" : undefined}
-                    size="sm"
-                >
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            {t("customFieldSettings.deleteTitle", {
-                                name: field.name,
-                            })}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {usageKnown
-                                ? usageCount > 0
-                                    ? t(
-                                          "customFieldSettings.deleteWithValues",
-                                          {
-                                              count: usageCount,
-                                          }
-                                      )
-                                    : t("customFieldSettings.deleteEmpty")
-                                : t("customFieldSettings.usageLoadFailed")}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
+            {isSystem ? undefined : (
+                <>
+                    <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
+                        <AlertDialogContent
+                            className={
+                                usageCount > 0 ? "sm:max-w-md" : undefined
+                            }
+                            size="sm"
+                        >
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    {t("customFieldSettings.deleteTitle", {
+                                        name: field.name,
+                                    })}
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    {usageKnown
+                                        ? usageCount > 0
+                                            ? t(
+                                                  "customFieldSettings.deleteWithValues",
+                                                  {
+                                                      count: usageCount,
+                                                  }
+                                              )
+                                            : t(
+                                                  "customFieldSettings.deleteEmpty"
+                                              )
+                                        : t(
+                                              "customFieldSettings.usageLoadFailed"
+                                          )}
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
 
-                    {usageCount > 0 ? (
-                        <div className="flex flex-col gap-2">
-                            <ul className="flex flex-col gap-1">
-                                {pageTasks.map((task) => (
-                                    <li
-                                        className="flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-sm"
-                                        key={`${task.taskId}-${task.fieldId}`}
-                                    >
-                                        <button
-                                            className="min-w-0 flex-1 truncate text-left hover:underline"
-                                            onClick={() => openTask(task)}
-                                            type="button"
-                                        >
-                                            {task.title}
-                                        </button>
-                                        {task.archivedAt ? (
-                                            <Badge
-                                                className="shrink-0 font-mono text-[0.625rem]"
+                            {usageCount > 0 ? (
+                                <div className="flex flex-col gap-2">
+                                    <ul className="flex flex-col gap-1">
+                                        {pageTasks.map((task) => (
+                                            <li
+                                                className="flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-sm"
+                                                key={`${task.taskId}-${task.fieldId}`}
+                                            >
+                                                <button
+                                                    className="min-w-0 flex-1 truncate text-left hover:underline"
+                                                    onClick={() =>
+                                                        openTask(task)
+                                                    }
+                                                    type="button"
+                                                >
+                                                    {task.title}
+                                                </button>
+                                                {task.archivedAt ? (
+                                                    <Badge
+                                                        className="shrink-0 font-mono text-[0.625rem]"
+                                                        variant="outline"
+                                                    >
+                                                        {t("archive.badge")}
+                                                    </Badge>
+                                                ) : undefined}
+                                                <span className="shrink-0 font-mono text-[0.625rem] text-muted-foreground">
+                                                    {task.taskKey}
+                                                </span>
+                                                <Button
+                                                    aria-label={t(
+                                                        "archive.view"
+                                                    )}
+                                                    onClick={() =>
+                                                        openTask(task)
+                                                    }
+                                                    size="icon-sm"
+                                                    type="button"
+                                                    variant="ghost"
+                                                >
+                                                    <PanelBottom className="size-3.5" />
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    {totalTaskPages > 1 ? (
+                                        <div className="flex items-center justify-between">
+                                            <Button
+                                                aria-label={t(
+                                                    "customFieldSettings.prevPage"
+                                                )}
+                                                disabled={taskPage === 0}
+                                                onClick={() =>
+                                                    setTaskPage((page) =>
+                                                        Math.max(0, page - 1)
+                                                    )
+                                                }
+                                                size="icon-sm"
+                                                type="button"
                                                 variant="outline"
                                             >
-                                                {t("archive.badge")}
-                                            </Badge>
-                                        ) : undefined}
-                                        <span className="shrink-0 font-mono text-[0.625rem] text-muted-foreground">
-                                            {task.taskKey}
-                                        </span>
-                                        <Button
-                                            aria-label={t("archive.view")}
-                                            onClick={() => openTask(task)}
-                                            size="icon-sm"
-                                            type="button"
-                                            variant="ghost"
-                                        >
-                                            <PanelBottom className="size-3.5" />
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ul>
-
-                            {totalTaskPages > 1 ? (
-                                <div className="flex items-center justify-between">
-                                    <Button
-                                        aria-label={t(
-                                            "customFieldSettings.prevPage"
-                                        )}
-                                        disabled={taskPage === 0}
-                                        onClick={() =>
-                                            setTaskPage((page) =>
-                                                Math.max(0, page - 1)
-                                            )
-                                        }
-                                        size="icon-sm"
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        <ChevronLeft className="size-4" />
-                                    </Button>
-                                    <span className="text-meta text-muted-foreground">
-                                        {t("customFieldSettings.page", {
-                                            page: taskPage + 1,
-                                            total: totalTaskPages,
-                                        })}
-                                    </span>
-                                    <Button
-                                        aria-label={t(
-                                            "customFieldSettings.nextPage"
-                                        )}
-                                        disabled={
-                                            taskPage >= totalTaskPages - 1
-                                        }
-                                        onClick={() =>
-                                            setTaskPage((page) =>
-                                                Math.min(
-                                                    totalTaskPages - 1,
-                                                    page + 1
-                                                )
-                                            )
-                                        }
-                                        size="icon-sm"
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        <ChevronRight className="size-4" />
-                                    </Button>
+                                                <ChevronLeft className="size-4" />
+                                            </Button>
+                                            <span className="text-meta text-muted-foreground">
+                                                {t("customFieldSettings.page", {
+                                                    page: taskPage + 1,
+                                                    total: totalTaskPages,
+                                                })}
+                                            </span>
+                                            <Button
+                                                aria-label={t(
+                                                    "customFieldSettings.nextPage"
+                                                )}
+                                                disabled={
+                                                    taskPage >=
+                                                    totalTaskPages - 1
+                                                }
+                                                onClick={() =>
+                                                    setTaskPage((page) =>
+                                                        Math.min(
+                                                            totalTaskPages - 1,
+                                                            page + 1
+                                                        )
+                                                    )
+                                                }
+                                                size="icon-sm"
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                <ChevronRight className="size-4" />
+                                            </Button>
+                                        </div>
+                                    ) : undefined}
                                 </div>
                             ) : undefined}
-                        </div>
-                    ) : undefined}
 
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>
-                            {t("customFieldSettings.cancel")}
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            disabled={!usageKnown}
-                            onClick={() => void handleConfirmDelete()}
-                            variant="destructive"
-                        >
-                            {t("customFieldSettings.delete")}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>
+                                    {t("customFieldSettings.cancel")}
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                    disabled={!usageKnown}
+                                    onClick={() => void handleConfirmDelete()}
+                                    variant="destructive"
+                                >
+                                    {t("customFieldSettings.delete")}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
 
-            <Dialog onOpenChange={setTransferOpen} open={transferOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {t("customFieldSettings.transferTitle", {
-                                name: field.name,
-                            })}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {t("customFieldSettings.transferDescription")}
-                        </DialogDescription>
-                    </DialogHeader>
+                    <Dialog onOpenChange={setTransferOpen} open={transferOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>
+                                    {t("customFieldSettings.transferTitle", {
+                                        name: field.name,
+                                    })}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    {t(
+                                        "customFieldSettings.transferDescription"
+                                    )}
+                                </DialogDescription>
+                            </DialogHeader>
 
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor={`transfer-target-${field.id}`}>
-                            {t("customFieldSettings.targetProject")}
-                        </Label>
-                        <Select
-                            onValueChange={(value) => {
-                                if (typeof value === "string") {
-                                    setTargetProjectId(value);
-                                }
-                            }}
-                            value={targetProjectId}
-                        >
-                            <SelectTrigger
-                                className="w-full"
-                                id={`transfer-target-${field.id}`}
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent alignItemWithTrigger={false}>
-                                {otherProjects.map((project) => (
-                                    <SelectItem
-                                        key={project.id}
-                                        value={project.id}
+                            <div className="flex flex-col gap-2">
+                                <Label htmlFor={`transfer-target-${field.id}`}>
+                                    {t("customFieldSettings.targetProject")}
+                                </Label>
+                                <Select
+                                    onValueChange={(value) => {
+                                        if (typeof value === "string") {
+                                            setTargetProjectId(value);
+                                        }
+                                    }}
+                                    value={targetProjectId}
+                                >
+                                    <SelectTrigger
+                                        className="w-full"
+                                        id={`transfer-target-${field.id}`}
                                     >
-                                        {project.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent alignItemWithTrigger={false}>
+                                        {otherProjects.map((project) => (
+                                            <SelectItem
+                                                key={project.id}
+                                                value={project.id}
+                                            >
+                                                {project.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                    <DialogFooter>
-                        <DialogClose render={<Button variant="outline" />}>
-                            {t("customFieldSettings.cancel")}
-                        </DialogClose>
-                        <Button
-                            disabled={!targetProjectId}
-                            onClick={() => void handleCopy()}
-                            type="button"
-                        >
-                            {t("customFieldSettings.copy")}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                            <DialogFooter>
+                                <DialogClose
+                                    render={<Button variant="outline" />}
+                                >
+                                    {t("customFieldSettings.cancel")}
+                                </DialogClose>
+                                <Button
+                                    disabled={!targetProjectId}
+                                    onClick={() => void handleCopy()}
+                                    type="button"
+                                >
+                                    {t("customFieldSettings.copy")}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </>
+            )}
         </li>
     );
 }

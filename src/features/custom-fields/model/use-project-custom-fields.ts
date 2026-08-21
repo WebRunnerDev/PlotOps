@@ -138,6 +138,7 @@ export function useProjectCustomFields(projectId: string) {
         ) => {
             const field = fields.find((item) => item.id === fieldId);
             if (!field || field.projectId === targetProjectId) return;
+            if (field.systemKey) return;
             try {
                 const created = await copyMutation.mutateAsync({
                     fieldId,
@@ -150,8 +151,15 @@ export function useProjectCustomFields(projectId: string) {
                 throw error;
             }
         },
-        deleteCustomField: (fieldId: string) =>
-            deleteMutation.mutateAsync(fieldId),
+        deleteCustomField: (fieldId: string) => {
+            const field = fields.find((item) => item.id === fieldId);
+            if (field?.systemKey) {
+                return Promise.reject(
+                    new Error("System custom fields cannot be deleted")
+                );
+            }
+            return deleteMutation.mutateAsync(fieldId);
+        },
         error: fieldsQuery.error ?? null,
         fields,
         isLoading: fieldsQuery.isLoading,

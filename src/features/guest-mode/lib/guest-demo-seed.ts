@@ -29,6 +29,8 @@ const LABEL_CI = "b0000000-0000-4000-8000-000000000032";
 const LABEL_DOCS = "b0000000-0000-4000-8000-000000000033";
 const LABEL_DESIGN = "b0000000-0000-4000-8000-000000000034";
 const FIELD_REPRO = "b0000000-0000-4000-8000-000000000040";
+const FIELD_DESC_GIT = "b0000000-0000-4000-8000-000000000041";
+const FIELD_DESC_PLAIN = "b0000000-0000-4000-8000-000000000042";
 
 const T01 = "b0000000-0000-4000-8000-000000000101";
 const T02 = "b0000000-0000-4000-8000-000000000102";
@@ -326,11 +328,27 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
     ],
     customFieldDefinitions: [
         {
+            appliesTo: ["task", "bug", "feature"],
+            id: FIELD_DESC_GIT,
+            name: "Description",
+            position: 0,
+            projectId: PROJ_GIT_ID,
+            systemKey: "description",
+        },
+        {
             appliesTo: ["bug"],
             id: FIELD_REPRO,
             name: "Steps to reproduce",
-            position: 0,
+            position: 1,
             projectId: PROJ_GIT_ID,
+        },
+        {
+            appliesTo: ["task", "bug", "feature"],
+            id: FIELD_DESC_PLAIN,
+            name: "Description",
+            position: 0,
+            projectId: PROJ_PLAIN_ID,
+            systemKey: "description",
         },
     ],
     customFieldValues: [

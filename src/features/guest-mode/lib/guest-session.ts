@@ -59,6 +59,7 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!Array.isArray(sandbox.customFieldValues)) {
         sandbox.customFieldValues = [];
     }
+    ensureGuestDescriptionFields(sandbox);
     return sandbox;
 }
 
@@ -126,6 +127,55 @@ export function writeGuestSandbox(sandbox: GuestSandbox): void {
         return;
     }
     persistSession(session.identity, structuredClone(sandbox));
+}
+
+function ensureGuestDescriptionFields(sandbox: GuestSandbox): void {
+    const projectIds = new Set(sandbox.projects.map((project) => project.id));
+    for (const projectId of projectIds) {
+        const hasDescription = sandbox.customFieldDefinitions.some(
+            (field) =>
+                field.projectId === projectId &&
+                field.systemKey === "description"
+        );
+        if (hasDescription) continue;
+
+        const namedDescription = sandbox.customFieldDefinitions.find(
+            (field) =>
+                field.projectId === projectId &&
+                !field.systemKey &&
+                field.name.toLowerCase() === "description"
+        );
+        if (namedDescription) {
+            namedDescription.systemKey = "description";
+            continue;
+        }
+
+        for (const field of sandbox.customFieldDefinitions) {
+            if (field.projectId === projectId && !field.systemKey) {
+                field.position += 1;
+            }
+        }
+
+        let name = "Description";
+        if (
+            sandbox.customFieldDefinitions.some(
+                (field) =>
+                    field.projectId === projectId &&
+                    field.name.toLowerCase() === name.toLowerCase()
+            )
+        ) {
+            name = "Task description";
+        }
+
+        sandbox.customFieldDefinitions.push({
+            appliesTo: ["task", "bug", "feature"],
+            id: crypto.randomUUID(),
+            name,
+            position: 0,
+            projectId,
+            systemKey: "description",
+        });
+    }
 }
 
 function isGuestSandbox(value: unknown): value is GuestSandbox {

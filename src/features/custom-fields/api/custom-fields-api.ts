@@ -5,7 +5,10 @@ import type {
     TaskCustomFieldValue,
 } from "@/features/custom-fields/model/types";
 
-import { sortCustomFieldsByPosition } from "@/features/custom-fields/model/constants";
+import {
+    CUSTOM_FIELD_VALUE_MAX_LENGTH,
+    sortCustomFieldsByPosition,
+} from "@/features/custom-fields/model/constants";
 import { supabase } from "@/shared/api/supabase";
 
 import {
@@ -14,7 +17,7 @@ import {
 } from "./custom-field-mappers";
 
 const DEFINITION_COLUMNS =
-    "id, project_id, name, position, applies_to" as const;
+    "id, project_id, name, position, applies_to, system_key" as const;
 
 export async function copyProjectCustomField(
     fieldId: string,
@@ -30,6 +33,9 @@ export async function copyProjectCustomField(
     const mapped = mapDatabaseCustomField(
         source as DatabaseCustomFieldDefinition
     );
+    if (mapped.systemKey) {
+        throw new Error("System custom fields cannot be copied");
+    }
 
     return createProjectCustomField(targetProjectId, {
         appliesTo: mapped.appliesTo,
@@ -104,7 +110,8 @@ export async function fetchProjectCustomFieldValueUsage(
     const { data: definitions, error: definitionsError } = await supabase
         .from("custom_field_definitions")
         .select("id")
-        .eq("project_id", projectId);
+        .eq("project_id", projectId)
+        .is("system_key", null);
 
     if (definitionsError) throw definitionsError;
     const fieldIds = (definitions ?? []).map((row) => row.id);
@@ -234,6 +241,9 @@ export async function upsertTaskCustomFieldValue(
     fieldId: string,
     value: string
 ): Promise<void> {
+    if (value.length > CUSTOM_FIELD_VALUE_MAX_LENGTH) {
+        throw new Error("Custom field value exceeds maximum length");
+    }
     const trimmed = value.trim();
     if (trimmed === "") {
         const { error } = await supabase

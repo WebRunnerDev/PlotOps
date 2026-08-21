@@ -116,7 +116,6 @@ import {
     SelectItem,
     SelectTrigger,
 } from "@/shared/shadcn/ui/select";
-import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
 
 /** Mobile: bottom sheet (swipe down + snap). Desktop: same shell, two-column body at md+. */
@@ -647,48 +646,40 @@ export function TaskDrawer({
                                             />
                                         </div>
 
-                                        <div className="flex min-w-0 flex-col gap-2">
-                                            <Label
-                                                className={FIELD_LABEL_CLASS}
-                                                htmlFor="task-description"
-                                                id="task-description-label"
-                                            >
-                                                {t("fields.description")}
-                                            </Label>
-                                            <RichTextEditor
-                                                id="task-description"
-                                                maxLength={
-                                                    TASK_DESCRIPTION_MAX_LENGTH
-                                                }
-                                                mentionCandidates={
-                                                    canEdit
-                                                        ? mentionCandidates
-                                                        : undefined
-                                                }
-                                                onBlur={() => {
+                                        <TaskCustomFieldsSection
+                                            canEdit={canEdit}
+                                            description={{
+                                                editorReference:
+                                                    descriptionEditorReference,
+                                                maxLength:
+                                                    TASK_DESCRIPTION_MAX_LENGTH,
+                                                mentionCandidates: canEdit
+                                                    ? mentionCandidates
+                                                    : undefined,
+                                                onBlur: () => {
                                                     void commitDescription();
-                                                }}
-                                                onChange={(value) => {
+                                                },
+                                                onChange: (value) => {
                                                     setDescriptionDirty(true);
                                                     setDescription(value);
-                                                }}
-                                                onUploadImage={
-                                                    canEdit
-                                                        ? (file) =>
-                                                              uploadTaskMedia(
-                                                                  file,
-                                                                  task.id
-                                                              )
-                                                        : undefined
-                                                }
-                                                placeholder={t(
+                                                },
+                                                onUploadImage: canEdit
+                                                    ? (file) =>
+                                                          uploadTaskMedia(
+                                                              file,
+                                                              task.id
+                                                          )
+                                                    : undefined,
+                                                placeholder: t(
                                                     "fields.descriptionPlaceholder"
-                                                )}
-                                                readOnly={!canEdit}
-                                                ref={descriptionEditorReference}
-                                                value={description}
-                                            />
-                                        </div>
+                                                ),
+                                                readOnly: !canEdit,
+                                                value: description,
+                                            }}
+                                            projectId={projectId}
+                                            taskId={task.id}
+                                            taskType={task.type}
+                                        />
 
                                         <TaskSubtasksSection
                                             boardId={boardId}
@@ -1212,13 +1203,6 @@ export function TaskDrawer({
                                                 }
                                             />
                                         </div>
-
-                                        <TaskCustomFieldsSection
-                                            canEdit={canEdit}
-                                            projectId={projectId}
-                                            taskId={task.id}
-                                            taskType={task.type}
-                                        />
 
                                         {isArchived ? (
                                             task.branchName || task.pr ? (
