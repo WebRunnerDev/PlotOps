@@ -297,6 +297,10 @@ export type Database = {
         Returns: undefined
       }
       delete_task_link: { Args: { p_link_id: string }; Returns: undefined }
+      ensure_project_description_field: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -617,6 +621,7 @@ export type Database = {
           name: string
           position?: number
           project_id: string
+          system_key?: null | string
         }
         Relationships: [
           {
@@ -634,6 +639,7 @@ export type Database = {
           name: string
           position: number
           project_id: string
+          system_key: null | string
         }
         Update: {
           applies_to?: Database["public"]["Enums"]["task_type"][]
@@ -642,6 +648,7 @@ export type Database = {
           name?: string
           position?: number
           project_id?: string
+          system_key?: null | string
         }
       }
       labels: {
