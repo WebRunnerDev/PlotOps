@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
+    InfoIcon,
     LogOutIcon,
     MoonIcon,
     RotateCcwIcon,
@@ -141,25 +142,30 @@ export function UserMenu() {
                     className="w-56"
                     sideOffset={8}
                 >
-                    {guest ? null : (
-                        <>
-                            <DropdownMenuGroup>
-                                <DropdownMenuLabel>
-                                    {t("nav.settings")}
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                    className="cursor-pointer"
-                                    onClick={() =>
-                                        void navigate({ to: "/settings" })
-                                    }
-                                >
-                                    <SettingsIcon />
-                                    {t("platformSettings")}
-                                </DropdownMenuItem>
-                            </DropdownMenuGroup>
-                            <DropdownMenuSeparator />
-                        </>
-                    )}
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                            {t("nav.settings")}
+                        </DropdownMenuLabel>
+                        {guest ? null : (
+                            <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() =>
+                                    void navigate({ to: "/settings" })
+                                }
+                            >
+                                <SettingsIcon />
+                                {t("platformSettings")}
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                            className="cursor-pointer"
+                            onClick={() => void navigate({ to: "/about" })}
+                        >
+                            <InfoIcon />
+                            {t("aboutPlotOps")}
+                        </DropdownMenuItem>
+                    </DropdownMenuGroup>
+                    <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup
                         onValueChange={(value) =>
                             void i18n.changeLanguage(value)

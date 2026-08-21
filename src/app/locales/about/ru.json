@@ -1,4 +1,6 @@
 {
-  "description": "Проект использует файловую маршрутизацию на TanStack Router.",
-  "title": "О проекте"
+    "description": "PlotOps — git-native трекер задач с канбаном, GitHub и CI: портфолио-пет-проект с открытым исходным кодом.",
+    "openSource": "Открытый исходный код ({{license}})",
+    "title": "О проекте",
+    "viewOnGitHub": "Смотреть на GitHub"
 }
