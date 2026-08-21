@@ -31,6 +31,7 @@ import {
     useProjectBoards,
 } from "@/features/boards";
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
+import { TaskCustomFieldsSection } from "@/features/custom-fields";
 import { canFetchTaskGitTab } from "@/features/git-integration/lib/can-fetch-git-data";
 import { TaskGitTab } from "@/features/git-integration/ui/task-git-tab";
 import { isGuest } from "@/features/guest-mode";
@@ -1211,6 +1212,13 @@ export function TaskDrawer({
                                                 }
                                             />
                                         </div>
+
+                                        <TaskCustomFieldsSection
+                                            canEdit={canEdit}
+                                            projectId={projectId}
+                                            taskId={task.id}
+                                            taskType={task.type}
+                                        />
 
                                         {isArchived ? (
                                             task.branchName || task.pr ? (

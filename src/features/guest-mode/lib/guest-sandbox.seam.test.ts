@@ -150,6 +150,8 @@ describe("Guest sandbox seed store", () => {
             activity: [],
             boards: [],
             comments: [],
+            customFieldDefinitions: [],
+            customFieldValues: [],
             labels: [],
             notifications: [],
             projects: [],

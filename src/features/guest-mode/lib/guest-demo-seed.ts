@@ -28,6 +28,7 @@ const LABEL_BACKEND = "b0000000-0000-4000-8000-000000000031";
 const LABEL_CI = "b0000000-0000-4000-8000-000000000032";
 const LABEL_DOCS = "b0000000-0000-4000-8000-000000000033";
 const LABEL_DESIGN = "b0000000-0000-4000-8000-000000000034";
+const FIELD_REPRO = "b0000000-0000-4000-8000-000000000040";
 
 const T01 = "b0000000-0000-4000-8000-000000000101";
 const T02 = "b0000000-0000-4000-8000-000000000102";
@@ -321,6 +322,22 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_GIT_ID,
             taskId: T03,
             updatedAt: "2026-08-04T15:00:00.000Z",
+        },
+    ],
+    customFieldDefinitions: [
+        {
+            appliesTo: ["bug"],
+            id: FIELD_REPRO,
+            name: "Steps to reproduce",
+            position: 0,
+            projectId: PROJ_GIT_ID,
+        },
+    ],
+    customFieldValues: [
+        {
+            fieldId: FIELD_REPRO,
+            taskId: T11,
+            value: "1. Open board on slow 3G\n2. Toggle offline then online\n3. Drag a card — subscription drops",
         },
     ],
     labels: [

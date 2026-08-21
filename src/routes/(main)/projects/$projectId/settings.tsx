@@ -9,6 +9,10 @@ import {
     ProjectBoardsSettings,
     useProjectBoards,
 } from "@/features/boards";
+import {
+    ProjectCustomFieldsSettings,
+    useProjectCustomFields,
+} from "@/features/custom-fields";
 import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
 import {
     projectHasGithubRepo,
@@ -30,7 +34,7 @@ export const Route = createFileRoute("/(main)/projects/$projectId/settings")({
     component: ProjectSettingsRoute,
 });
 
-type SettingsSection = "boards" | "labels";
+type SettingsSection = "boards" | "customFields" | "labels";
 
 function ProjectSettingsRoute() {
     const { projectId } = Route.useParams();
@@ -52,6 +56,7 @@ function ProjectSettingsRoute() {
         isPending: boardsPending,
     } = useProjectBoards(projectId);
     const { labels } = useProjectLabels(projectId);
+    const { fields: customFields } = useProjectCustomFields(projectId);
     const teamId = project?.team_id ?? "";
     const { data: team, isLoading: teamLoading } = useTeam(teamId);
     const { data: members, isLoading: membersLoading } = useTeamMembers(teamId);
@@ -94,6 +99,12 @@ function ProjectSettingsRoute() {
                 label: t("settings.nav.labels"),
                 visible: isSettled && canManageBoard,
             },
+            {
+                count: customFields.length,
+                id: "customFields",
+                label: t("settings.nav.customFields"),
+                visible: isSettled && canManageBoard,
+            },
         ];
         return items.filter((item) => item.visible);
     }, [
@@ -101,6 +112,7 @@ function ProjectSettingsRoute() {
         boardsError,
         boardsPending,
         canManageBoard,
+        customFields.length,
         isSettled,
         projectLabels.length,
         t,
@@ -240,6 +252,14 @@ function ProjectSettingsRoute() {
                     isSettled &&
                     canManageBoard ? (
                         <ProjectLabelsSettings
+                            onOpenTask={selectTask}
+                            projectId={projectId}
+                        />
+                    ) : undefined}
+                    {activeSection === "customFields" &&
+                    isSettled &&
+                    canManageBoard ? (
+                        <ProjectCustomFieldsSettings
                             onOpenTask={selectTask}
                             projectId={projectId}
                         />

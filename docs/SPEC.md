@@ -44,7 +44,7 @@ Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** b
 | Top bar                                                       | ✅ Done (logo→/home, Team→Project breadcrumbs, project section tabs Board/Backlog/CI/CD/Settings, avatar menu; compact board-local toolbar)                                                                                                                                                                                                                                                                                                                                                                         |
 | Notifications (Watch + assignment)                            | ✅ Done (MVP + structural expansion #35–#39; Parent Task `subtask_change` #200)                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Mentions (Description + Comment → always-on)                  | 🟡 Schema + RPC (#41) + editor/extract (#42) + inbox/deep-link (#43) done; polish/verify as needed                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Custom text fields (Project-scoped)                           | 🟡 Schema + RLS done (ADR 0024); API/Settings/drawer still open — ≤10 text defs; `applies_to` Task types; drawer filter; Settings CRUD + transfer; hard-delete cascade                                                                                                                                                                                                                                                                                                                                              |
+| Custom text fields (Project-scoped)                           | ✅ Done (ADR 0024) — Project-scoped text defs ≤10; `applies_to` Task types; Settings CRUD + copy transfer; drawer filtered by type; values kept on type change; Guest stub seed                                                                                                                                                                                                                                                                                                                                     |
 
 ## Notifications (MVP → structural expansion)
 
@@ -140,10 +140,10 @@ MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app +
 ### Implementation plan
 
 1. **Schema + RLS** — `custom_field_definitions` (`applies_to` / equivalent), `task_custom_field_values`; unique name per Project; ≤10 definitions; cascade on delete; Manager+ manage defs, Contributor+ upsert values. ✅
-2. **API + hooks** — feature module (or `features/custom-fields`); Query keys; filter helpers by Task type; Guest provider stub optional.
-3. **Settings UI** — Project Settings section (CRUD + reorder + `applies_to` checkboxes + transfer dialog, mirror Labels transfer).
-4. **Task drawer** — render fields for current type; persist values; on type change re-filter without clearing stored values; optional Activity for value changes.
-5. **Progress** — mark Done when the slice above ships.
+2. **API + hooks** — feature module (or `features/custom-fields`); Query keys; filter helpers by Task type; Guest provider stub optional. ✅
+3. **Settings UI** — Project Settings section (CRUD + reorder + `applies_to` checkboxes + transfer dialog, mirror Labels transfer). ✅
+4. **Task drawer** — render fields for current type; persist values; on type change re-filter without clearing stored values; optional Activity for value changes. ✅
+5. **Progress** — mark Done when the slice above ships. ✅
 
 ## Sprints (MVP)
 
