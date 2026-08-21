@@ -20,6 +20,18 @@ export const gitKeys = {
             repoFullName,
             branchName,
         ] as const,
+    prChecks: (
+        authFingerprint: string,
+        repoFullName: string,
+        prNumber: number
+    ) =>
+        [
+            ...gitKeys.all,
+            "pr-checks",
+            authFingerprint,
+            repoFullName,
+            prNumber,
+        ] as const,
     prCommits: (
         authFingerprint: string,
         repoFullName: string,

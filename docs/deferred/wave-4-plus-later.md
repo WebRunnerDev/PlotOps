@@ -78,6 +78,7 @@ Low portfolio demo value — pull only with real org pain.
 | Item                            | Size  | Own plan | Notes                                                                                                   |
 | ------------------------------- | ----- | -------- | ------------------------------------------------------------------------------------------------------- |
 | In-app Open PR + Merge          | **M** | ADR 0022 | ✅ Shipped — client `provider_token`; Owner/Admin any; Manager/Contributor author\|assignee; guest hide |
+| PR checks in task drawer        | **S** | ADR 0025 | ✅ Shipped — live Check Runs rollup + list; guest fixtures; no webhook/DB                               |
 | In-app Approve / request review | **M** | yes      | Parked — same token + UI confirmations; not in Open+Merge MVP                                           |
 
 ### Prerequisites (done for Open+Merge)

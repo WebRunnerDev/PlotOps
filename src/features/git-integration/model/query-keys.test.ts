@@ -37,6 +37,13 @@ describe("git query keys auth fingerprint", () => {
             "org/repo",
             42,
         ]);
+        expect(gitKeys.prChecks(userA, "org/repo", 42)).toEqual([
+            "git",
+            "pr-checks",
+            userA,
+            "org/repo",
+            42,
+        ]);
         expect(gitKeys.commitFiles(userA, "org/repo", "abc")).toEqual([
             "git",
             "commit-files",

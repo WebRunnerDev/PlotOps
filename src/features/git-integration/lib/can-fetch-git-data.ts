@@ -33,6 +33,13 @@ export function canFetchGitData({
     return Boolean(hasAuth && repoFullName && branchName);
 }
 
+/** Whether PR check runs may be loaded (same gate as PR files/diff). */
+export function canFetchPullRequestChecks(
+    input: CanFetchPullRequestFilesInput
+): boolean {
+    return canFetchPullRequestFiles(input);
+}
+
 export function canFetchPullRequestFiles({
     isGuest,
     prNumber,

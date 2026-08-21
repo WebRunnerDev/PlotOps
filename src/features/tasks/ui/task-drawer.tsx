@@ -1268,6 +1268,7 @@ export function TaskDrawer({
                                                 linkedCommitSha={
                                                     task.linkedCommitSha
                                                 }
+                                                linkedPrNumber={task.pr?.number}
                                                 repoFullName={repoFullName}
                                                 taskKey={task.key}
                                                 token={githubToken}

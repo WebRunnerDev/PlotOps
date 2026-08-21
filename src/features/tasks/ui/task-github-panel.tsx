@@ -26,12 +26,14 @@ import {
     type GitMergeMethod,
     isGitHubApiError,
 } from "@/features/git-integration/api/github-git-api";
+import { canFetchPullRequestFiles } from "@/features/git-integration/lib/can-fetch-git-data";
 import { canWriteGithubPr } from "@/features/git-integration/lib/can-write-github-pr";
 import { defaultPullRequestTitle } from "@/features/git-integration/lib/default-pull-request-title";
 import {
     useCreatePullRequest,
     useMergePullRequest,
 } from "@/features/git-integration/model/use-github-pr-writes";
+import { PrChecksSummary } from "@/features/git-integration/ui/pr-checks-summary";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
 import { isGuest } from "@/features/guest-mode";
 import {
@@ -162,6 +164,12 @@ export function TaskGithubPanel({
         ? `git checkout ${branchName}`
         : undefined;
     const canFetchGithub = Boolean(githubToken && repoFullName);
+    const canViewDiff = canFetchPullRequestFiles({
+        isGuest: isGuest(),
+        prNumber: task.pr?.number,
+        repoFullName,
+        token: githubToken,
+    });
     const headIsShared = Boolean(branchName && isSharedBranch(branchName));
     const canOpenPr =
         canWritePr &&
@@ -498,28 +506,43 @@ export function TaskGithubPanel({
 
     const prSection = task.pr ? (
         <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-                <a
-                    className={cn(
-                        "inline-flex min-w-0 items-center gap-1.5 text-ui underline-offset-4 hover:underline",
-                        PR_STATE_CLASS[task.pr.state]
-                    )}
-                    href={task.pr.url}
-                    rel="noreferrer"
-                    target="_blank"
-                >
-                    <GitPullRequest aria-hidden className="size-3.5 shrink-0" />
-                    <span className="truncate">
-                        {t("github.prLink", {
-                            number: task.pr.number,
-                            state: t(`prState.${task.pr.state}`),
-                        })}
-                    </span>
-                    <ExternalLink aria-hidden className="size-3 shrink-0" />
-                </a>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <a
+                        className={cn(
+                            "inline-flex min-w-0 items-center gap-1.5 text-ui underline-offset-4 hover:underline",
+                            PR_STATE_CLASS[task.pr.state]
+                        )}
+                        href={task.pr.url}
+                        rel="noreferrer"
+                        target="_blank"
+                    >
+                        <GitPullRequest
+                            aria-hidden
+                            className="size-3.5 shrink-0"
+                        />
+                        <span className="truncate">
+                            {t("github.prLink", {
+                                number: task.pr.number,
+                                state: t(`prState.${task.pr.state}`),
+                            })}
+                        </span>
+                        <ExternalLink aria-hidden className="size-3 shrink-0" />
+                    </a>
+                    {canViewDiff ? (
+                        <button
+                            className="shrink-0 rounded-sm text-meta text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => setDiffOpen(true)}
+                            type="button"
+                        >
+                            {t("git.viewDiff")}
+                        </button>
+                    ) : undefined}
+                </div>
                 {canEdit ? (
                     <Button
                         aria-label={t("github.unlinkPr")}
+                        className="shrink-0"
                         onClick={handleUnlinkPr}
                         size="icon-xs"
                         type="button"
@@ -529,18 +552,13 @@ export function TaskGithubPanel({
                     </Button>
                 ) : undefined}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-                {canFetchGithub ? (
-                    <Button
-                        onClick={() => setDiffOpen(true)}
-                        size="xs"
-                        type="button"
-                        variant="outline"
-                    >
-                        {t("git.viewDiff")}
-                    </Button>
-                ) : undefined}
-                {canMergePr ? (
+            <PrChecksSummary
+                githubToken={githubToken}
+                prNumber={task.pr.number}
+                repoFullName={repoFullName}
+            />
+            {canMergePr ? (
+                <div className="flex flex-wrap items-center gap-2">
                     <Button
                         disabled={mergePr.isPending}
                         onClick={() => setMergeOpen(true)}
@@ -553,8 +571,8 @@ export function TaskGithubPanel({
                         ) : undefined}
                         {t("github.mergePr")}
                     </Button>
-                ) : undefined}
-            </div>
+                </div>
+            ) : undefined}
         </div>
     ) : linkingPr && canEdit ? (
         <div className="flex flex-col gap-2">
@@ -919,7 +937,7 @@ export function TaskGithubPanel({
                     ) : undefined}
                 </div>
 
-                {diffOpen && task.pr && githubToken && repoFullName && (
+                {diffOpen && task.pr && canViewDiff && repoFullName ? (
                     <PrDiffDialog
                         onClose={() => setDiffOpen(false)}
                         open
@@ -931,7 +949,7 @@ export function TaskGithubPanel({
                         repoFullName={repoFullName}
                         token={githubToken}
                     />
-                )}
+                ) : undefined}
             </div>
 
             <AlertDialog

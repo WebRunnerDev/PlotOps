@@ -698,6 +698,29 @@
         "commitRateLimited": "GitHub rate limit hit — wait a moment and try again",
         "commitLinkFailed": "Could not link commit {{sha}}",
         "commitLinkedToast": "Linked commit {{sha}}",
+        "checks": {
+            "loading": "Loading checks…",
+            "count": "{{count}} checks",
+            "empty": "No checks reported for this pull request yet.",
+            "truncated": "Some checks were omitted — open the PR on GitHub for the full list.",
+            "openDetails": "Open details for {{name}}",
+            "authFailed": "GitHub rejected the request — reconnect GitHub and try again",
+            "notFound": "Checks were not found for this pull request",
+            "rateLimited": "GitHub rate limit hit — wait a moment and try again",
+            "failed": "Could not load checks",
+            "rollup": {
+                "success": "All checks passed",
+                "pending": "Checks in progress",
+                "failure": "Checks failed",
+                "neutral": "No checks"
+            },
+            "status": {
+                "success": "Passed",
+                "pending": "Pending",
+                "failure": "Failed",
+                "neutral": "Neutral"
+            }
+        },
         "writeError": {
             "auth": "GitHub session expired — reconnect GitHub and try again",
             "forbidden": "GitHub denied this action — check repo permissions",

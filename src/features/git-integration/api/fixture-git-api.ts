@@ -2,11 +2,13 @@ import type {
     GitCommit,
     GitPrFile,
     GitPullRequest,
+    PullRequestChecksResult,
     PullRequestCommitsResult,
     PullRequestFilesResult,
 } from "@/features/git-integration/api/github-git-api";
 
 import { textReferencesTaskKey } from "@/features/git-integration/lib/extract-task-key";
+import { mapCheckRollup } from "@/features/git-integration/lib/map-check-rollup";
 
 const FIXTURE_AUTHOR = {
     avatar_url: null as null | string,
@@ -126,6 +128,80 @@ export async function fetchFixtureCommitFiles(
 
     return {
         files: all.files.filter((file) => file.filename.includes("login-form")),
+        truncated: false,
+    };
+}
+
+/**
+ * Canned check runs for Guest Mode — mix of CI + a fake agent check.
+ * Odd PR numbers include a failing lint check so rollup demos failure.
+ */
+export async function fetchFixturePullRequestChecks(
+    repoFullName: string,
+    prNumber: number
+): Promise<PullRequestChecksResult> {
+    const sha = "c0ffee1a2b3c4d5e6f708192a3b4c5d6e7f8091a";
+    const base = `https://github.com/${repoFullName}`;
+    const failing = prNumber % 2 === 1;
+
+    const checks = [
+        {
+            completedAt: "2026-07-28T14:25:00.000Z",
+            conclusion: "success" as const,
+            detailsUrl: `${base}/actions/runs/1`,
+            htmlUrl: `${base}/runs/1`,
+            id: 1,
+            name: "CI / test",
+            startedAt: "2026-07-28T14:22:00.000Z",
+            status: "completed" as const,
+        },
+        failing
+            ? {
+                  completedAt: "2026-07-28T14:24:00.000Z",
+                  conclusion: "failure" as const,
+                  detailsUrl: `${base}/actions/runs/2`,
+                  htmlUrl: `${base}/runs/2`,
+                  id: 2,
+                  name: "CI / lint",
+                  startedAt: "2026-07-28T14:22:30.000Z",
+                  status: "completed" as const,
+              }
+            : {
+                  completedAt: null,
+                  conclusion: null,
+                  detailsUrl: `${base}/actions/runs/2`,
+                  htmlUrl: `${base}/runs/2`,
+                  id: 2,
+                  name: "CI / lint",
+                  startedAt: "2026-07-28T14:22:30.000Z",
+                  status: "in_progress" as const,
+              },
+        {
+            completedAt: "2026-07-28T14:26:00.000Z",
+            conclusion: "success" as const,
+            detailsUrl: `${base}/pull/${prNumber}/checks`,
+            htmlUrl: `${base}/runs/3`,
+            id: 3,
+            name: "PlotOps Agent Review",
+            startedAt: "2026-07-28T14:23:00.000Z",
+            status: "completed" as const,
+        },
+        {
+            completedAt: "2026-07-28T14:23:00.000Z",
+            conclusion: "success" as const,
+            detailsUrl: `${base}/pull/${prNumber}/checks`,
+            htmlUrl: `${base}/runs/4`,
+            id: 4,
+            name: "Bugbot",
+            startedAt: "2026-07-28T14:22:10.000Z",
+            status: "completed" as const,
+        },
+    ];
+
+    return {
+        checks,
+        rollup: mapCheckRollup(checks),
+        sha,
         truncated: false,
     };
 }

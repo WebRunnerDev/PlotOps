@@ -704,6 +704,29 @@
         "commitRateLimited": "Лимит GitHub — подождите и повторите",
         "commitLinkFailed": "Не удалось привязать коммит {{sha}}",
         "commitLinkedToast": "Коммит {{sha}} привязан",
+        "checks": {
+            "loading": "Загрузка проверок…",
+            "count": "{{count}} проверок",
+            "empty": "Для этого pull request пока нет проверок.",
+            "truncated": "Часть проверок скрыта — полный список на GitHub.",
+            "openDetails": "Открыть детали: {{name}}",
+            "authFailed": "GitHub отклонил запрос — переподключите GitHub и повторите",
+            "notFound": "Проверки для этого pull request не найдены",
+            "rateLimited": "Лимит GitHub — подождите и повторите",
+            "failed": "Не удалось загрузить проверки",
+            "rollup": {
+                "success": "Все проверки прошли",
+                "pending": "Проверки выполняются",
+                "failure": "Проверки не прошли",
+                "neutral": "Нет проверок"
+            },
+            "status": {
+                "success": "Успех",
+                "pending": "Ожидание",
+                "failure": "Ошибка",
+                "neutral": "Нейтрально"
+            }
+        },
         "writeError": {
             "auth": "Сессия GitHub истекла — переподключите GitHub и повторите",
             "forbidden": "GitHub отклонил действие — проверьте права на репозиторий",

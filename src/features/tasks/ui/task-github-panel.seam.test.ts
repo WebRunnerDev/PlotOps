@@ -26,6 +26,15 @@ describe("TaskGithubPanel Open/Merge seam", () => {
         expect(panel).not.toMatch(/approve/i);
     });
 
+    it("shows Diff for guests and authed sessions via canFetchPullRequestFiles", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+
+        expect(panel).toMatch(/canFetchPullRequestFiles/);
+        expect(panel).toMatch(/canViewDiff/);
+        expect(panel).toMatch(/git\.viewDiff/);
+        expect(panel).toMatch(/PrDiffDialog/);
+    });
+
     it("board locales include write action + error keys", () => {
         const en = read("src/app/locales/board/en.json");
         const ru = read("src/app/locales/board/ru.json");

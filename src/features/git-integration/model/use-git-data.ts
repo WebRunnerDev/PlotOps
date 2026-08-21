@@ -6,6 +6,7 @@ import {
     fetchFixtureBranchPullRequests,
     fetchFixtureCommitBySha,
     fetchFixtureCommitFiles,
+    fetchFixturePullRequestChecks,
     fetchFixturePullRequestCommits,
     fetchFixturePullRequestFiles,
     fetchFixtureTaskKeyCommits,
@@ -15,12 +16,14 @@ import {
     fetchBranchPullRequests,
     fetchCommitBySha,
     fetchCommitFiles,
+    fetchPullRequestChecks,
     fetchPullRequestCommits,
     fetchPullRequestFiles,
     searchCommitsByTaskKey,
 } from "@/features/git-integration/api/github-git-api";
 import {
     canFetchGitData,
+    canFetchPullRequestChecks,
     canFetchPullRequestFiles,
     canFetchTaskGitTab,
 } from "@/features/git-integration/lib/can-fetch-git-data";
@@ -148,6 +151,37 @@ export function useLinkedCommit(
             sha ?? "",
         ] as const,
         staleTime: 5 * 60_000,
+    });
+}
+
+export function usePullRequestChecks(
+    repoFullName: string | undefined,
+    prNumber: number | undefined,
+    token: null | string
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useQuery({
+        enabled: canFetchPullRequestChecks({
+            isGuest: guest,
+            prNumber,
+            repoFullName,
+            token,
+        }),
+        queryFn: () =>
+            guest
+                ? fetchFixturePullRequestChecks(repoFullName!, prNumber!)
+                : fetchPullRequestChecks(repoFullName!, prNumber!, token!),
+        queryKey: gitKeys.prChecks(
+            authFingerprint,
+            repoFullName ?? "",
+            prNumber ?? 0
+        ),
+        refetchInterval: (query) =>
+            query.state.data?.rollup === "pending" ? 15_000 : false,
+        staleTime: 30_000,
     });
 }
 

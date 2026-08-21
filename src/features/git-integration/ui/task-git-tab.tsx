@@ -29,6 +29,11 @@ type TaskGitTabProperties = {
     isShared?: boolean;
     /** Manually linked commit SHA (optional). */
     linkedCommitSha?: string;
+    /**
+     * Task-linked PR number from the GitHub panel.
+     * When set, the branch PR list is hidden (panel is the single PR surface).
+     */
+    linkedPrNumber?: number;
     repoFullName: string;
     taskKey: string;
     /** Null for guest demos (fixtures load when session is guest). */
@@ -45,6 +50,7 @@ export function TaskGitTab({
     branchName,
     isShared = false,
     linkedCommitSha,
+    linkedPrNumber,
     repoFullName,
     taskKey,
     token,
@@ -53,6 +59,8 @@ export function TaskGitTab({
     const [diffPr, setDiffPr] = useState<GitPR | undefined>();
 
     const branchEnabled = Boolean(branchName) && !isShared;
+    /** Panel owns the linked PR — only list branch PRs when none is linked yet. */
+    const showBranchPrs = branchEnabled && linkedPrNumber == undefined;
 
     const {
         data: prs = [],
@@ -60,7 +68,7 @@ export function TaskGitTab({
         isLoading: prsLoading,
         refetch: refetchPrs,
     } = useBranchPullRequests({
-        branchName: branchEnabled ? branchName : undefined,
+        branchName: showBranchPrs ? branchName : undefined,
         repoFullName,
         token,
     });
@@ -109,50 +117,15 @@ export function TaskGitTab({
     const handleRefresh = () => {
         void refetchTaskKeyCommits();
         if (branchEnabled) {
-            void refetchPrs();
             void refetchBranchCommits();
+        }
+        if (showBranchPrs) {
+            void refetchPrs();
         }
     };
 
     return (
         <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex flex-col gap-0.5">
-                    <p className="text-meta text-muted-foreground">
-                        {t("git.taskKeyLabel")}
-                        <span className="ml-1 font-mono text-foreground">
-                            {taskKey}
-                        </span>
-                    </p>
-                    {branchName ? (
-                        <p className="text-meta text-muted-foreground">
-                            {t("git.branchLabel")}
-                            <span className="ml-1 font-mono text-foreground">
-                                {branchName}
-                            </span>
-                        </p>
-                    ) : undefined}
-                </div>
-                <Button
-                    aria-label={t("git.refresh")}
-                    onClick={handleRefresh}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                >
-                    <RefreshCw className="size-3.5" />
-                </Button>
-            </div>
-
-            {branchName ? undefined : (
-                <Alert>
-                    <AlertTitle>{t("git.smartCommitsTitle")}</AlertTitle>
-                    <AlertDescription>
-                        {t("git.smartCommitsBody", { key: taskKey })}
-                    </AlertDescription>
-                </Alert>
-            )}
-
             {isShared ? (
                 <Alert>
                     <AlertTitle>{t("git.sharedBranchTitle")}</AlertTitle>
@@ -162,7 +135,7 @@ export function TaskGitTab({
                 </Alert>
             ) : undefined}
 
-            {branchEnabled ? (
+            {showBranchPrs ? (
                 <section className="flex flex-col gap-2">
                     <p className="flex items-center gap-1.5 text-ui font-medium">
                         <GitPullRequest aria-hidden className="size-3.5" />
@@ -213,14 +186,14 @@ export function TaskGitTab({
                                                     #{pr.number} ·{" "}
                                                     {t(`prState.${state}`)}
                                                 </Badge>
-                                                {pr.draft && (
+                                                {pr.draft ? (
                                                     <Badge
                                                         className="shrink-0 text-meta"
                                                         variant="outline"
                                                     >
                                                         {t("git.draft")}
                                                     </Badge>
-                                                )}
+                                                ) : undefined}
                                             </div>
                                             <p className="line-clamp-2 text-ui">
                                                 {pr.title}
@@ -263,10 +236,21 @@ export function TaskGitTab({
             ) : undefined}
 
             <section className="flex flex-col gap-2">
-                <p className="flex items-center gap-1.5 text-ui font-medium">
-                    <GitCommit aria-hidden className="size-3.5" />
-                    {t("git.commits")}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                    <p className="flex min-w-0 items-center gap-1.5 text-ui font-medium">
+                        <GitCommit aria-hidden className="size-3.5" />
+                        {t("git.commits")}
+                    </p>
+                    <Button
+                        aria-label={t("git.refresh")}
+                        onClick={handleRefresh}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                    >
+                        <RefreshCw className="size-3.5" />
+                    </Button>
+                </div>
 
                 {commitsLoading ? (
                     <div className="flex items-center gap-2 text-ui text-muted-foreground">
@@ -314,7 +298,7 @@ export function TaskGitTab({
                 )}
             </section>
 
-            {diffPr && (
+            {diffPr ? (
                 <PrDiffDialog
                     onClose={() => setDiffPr(undefined)}
                     open
@@ -323,7 +307,7 @@ export function TaskGitTab({
                     repoFullName={repoFullName}
                     token={token}
                 />
-            )}
+            ) : undefined}
         </div>
     );
 }
