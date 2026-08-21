@@ -53,6 +53,12 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!Array.isArray(sandbox.taskLinks)) {
         sandbox.taskLinks = [];
     }
+    if (!Array.isArray(sandbox.customFieldDefinitions)) {
+        sandbox.customFieldDefinitions = [];
+    }
+    if (!Array.isArray(sandbox.customFieldValues)) {
+        sandbox.customFieldValues = [];
+    }
     return sandbox;
 }
 
@@ -132,9 +138,17 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
         record.comments === undefined || Array.isArray(record.comments);
     const taskLinksOk =
         record.taskLinks === undefined || Array.isArray(record.taskLinks);
+    const customFieldsOk =
+        record.customFieldDefinitions === undefined ||
+        Array.isArray(record.customFieldDefinitions);
+    const customFieldValuesOk =
+        record.customFieldValues === undefined ||
+        Array.isArray(record.customFieldValues);
     return (
         commentsOk &&
         taskLinksOk &&
+        customFieldsOk &&
+        customFieldValuesOk &&
         Array.isArray(record.teams) &&
         Array.isArray(record.projects) &&
         Array.isArray(record.boards) &&

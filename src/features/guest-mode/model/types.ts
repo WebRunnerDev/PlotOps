@@ -48,6 +48,21 @@ export type GuestComment = {
     updatedAt: string;
 };
 
+/** Project-scoped custom text field definition (Guest sandbox). */
+export type GuestCustomFieldDefinition = {
+    appliesTo: Array<"bug" | "feature" | "task">;
+    id: string;
+    name: string;
+    position: number;
+    projectId: string;
+};
+
+export type GuestCustomFieldValue = {
+    fieldId: string;
+    taskId: string;
+    value: string;
+};
+
 export type GuestLabel = {
     color: string;
     /** Custom hex (`#rrggbb`); overrides the preset when set. */
@@ -101,6 +116,8 @@ export type GuestSandbox = {
     activity: GuestActivityEvent[];
     boards: GuestBoard[];
     comments: GuestComment[];
+    customFieldDefinitions: GuestCustomFieldDefinition[];
+    customFieldValues: GuestCustomFieldValue[];
     labels: GuestLabel[];
     notifications: GuestNotification[];
     projects: GuestProject[];
