@@ -358,7 +358,8 @@
             "project": "Project",
             "members": "Members",
             "boards": "Boards",
-            "labels": "Labels"
+            "labels": "Labels",
+            "customFields": "Custom fields"
         }
     },
     "teamSettings": {
@@ -576,6 +577,53 @@
         "copied": "Copied “{{name}}” to “{{target}}”",
         "moved": "Moved “{{name}}” to “{{target}}”",
         "transferDuplicate": "The target project already has a label with this name"
+    },
+    "customFieldSettings": {
+        "title": "Custom fields",
+        "description": "Project-scoped text fields shown on Tasks by type (e.g. bug-only repro steps). Values move with the Task between boards.",
+        "addSection": "Add field",
+        "name": "Name",
+        "newPlaceholder": "e.g. Steps to reproduce",
+        "create": "Add",
+        "appliesTo": "Applies to Task types",
+        "types": {
+            "task": "task",
+            "bug": "bug",
+            "feature": "feature"
+        },
+        "searchPlaceholder": "Search fields…",
+        "noSearchMatches": "No fields match this search.",
+        "emptyTitle": "No custom fields yet",
+        "emptyDescription": "Add a text field above. Choose which Task types it appears on.",
+        "loadFailed": "Could not load custom fields",
+        "usageLoadFailed": "Could not load which tasks have values for these fields. Retry before deleting a field.",
+        "retry": "Retry",
+        "usage": "{{count}} tasks",
+        "renameAria": "Rename custom field",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "transfer": "Copy to another project",
+        "delete": "Delete",
+        "deleteTitle": "Delete “{{name}}”?",
+        "deleteWithValues": "This field has values on {{count}} task(s). Deleting it permanently removes those values.",
+        "deleteEmpty": "This field has no stored values and will be permanently removed.",
+        "deleteFailed": "Could not delete this field",
+        "updateFailed": "Could not update this field",
+        "duplicateName": "A field with this name already exists in this project",
+        "capReached": "A project can have at most 10 custom fields",
+        "page": "Page {{page}} of {{total}}",
+        "prevPage": "Previous page",
+        "nextPage": "Next page",
+        "cancel": "Cancel",
+        "deleted": "Field “{{name}}” deleted",
+        "created": "Field “{{name}}” created",
+        "transferTitle": "Copy “{{name}}”",
+        "transferDescription": "Copies the field definition (name, order, Task types) into another project. Task values are not copied.",
+        "targetProject": "Target project",
+        "copy": "Copy",
+        "copied": "Copied “{{name}}” to “{{target}}”",
+        "transferDuplicate": "The target project already has a field with this name",
+        "transferCap": "The target project already has 10 custom fields"
     },
     "github": {
         "title": "GitHub",
