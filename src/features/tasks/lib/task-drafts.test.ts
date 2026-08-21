@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    clearCreateBacklogTaskDraft,
     clearCreateTaskDraft,
+    createBacklogTaskDraftKey,
     createTaskDraftKey,
+    getCreateBacklogTaskDraft,
     getCreateTaskDraft,
+    setCreateBacklogTaskDraft,
     setCreateTaskDraft,
 } from "./task-drafts";
 
@@ -54,5 +58,29 @@ describe("task drafts", () => {
             "{not-json"
         );
         expect(getCreateTaskDraft("board-a", "todo")).toBeNull();
+    });
+
+    it("scopes backlog create drafts per board section (backlog vs sprint)", () => {
+        setCreateBacklogTaskDraft("board-a", null, "  Backlog item  ");
+        setCreateBacklogTaskDraft("board-a", "sprint-1", "Sprint item");
+
+        expect(getCreateBacklogTaskDraft("board-a", null)).toEqual({
+            title: "Backlog item",
+            updatedAt: expect.any(Number),
+            v: 1,
+        });
+        expect(getCreateBacklogTaskDraft("board-a", "sprint-1")).toEqual({
+            title: "Sprint item",
+            updatedAt: expect.any(Number),
+            v: 1,
+        });
+        expect(getCreateBacklogTaskDraft("board-a", "sprint-2")).toBeNull();
+        expect(createBacklogTaskDraftKey("board-a", null)).toBe(
+            "plotops:task-draft:create-backlog:board-a:none"
+        );
+
+        clearCreateBacklogTaskDraft("board-a", null);
+        expect(getCreateBacklogTaskDraft("board-a", null)).toBeNull();
+        expect(getCreateBacklogTaskDraft("board-a", "sprint-1")).not.toBeNull();
     });
 });

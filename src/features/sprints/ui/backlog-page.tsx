@@ -45,6 +45,7 @@ import {
     useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
+import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
 import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
 import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
 import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
@@ -433,6 +434,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     }
 
     const showBodySpinner = isLoading || sprintsLoading || boardsLoading;
+    const firstColumnId = columns[0]?.id;
 
     return (
         <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
@@ -621,6 +623,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         draggingTaskIds={draggingTasks.map(
                                             (task) => task.id
                                         )}
+                                        firstColumnId={firstColumnId}
                                         key={sprint.id}
                                         labels={projectLabels}
                                         onOpenTask={selectTask}
@@ -660,6 +663,14 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         rowSelection={rowSelection}
                                         tasks={backlogTasks}
                                     />
+                                    {firstColumnId ? (
+                                        <BacklogAddTask
+                                            boardId={boardId}
+                                            projectId={projectId}
+                                            sprintId={null}
+                                            status={firstColumnId}
+                                        />
+                                    ) : null}
                                 </section>
 
                                 {pastSprints.length > 0 ? (
@@ -1183,6 +1194,7 @@ function SprintSection({
     columns,
     drafts,
     draggingTaskIds,
+    firstColumnId,
     labels,
     onOpenTask,
     onRowSelectionChange,
@@ -1199,6 +1211,7 @@ function SprintSection({
     columns: Array<{ id: string; isDone: boolean }>;
     drafts: Sprint[];
     draggingTaskIds: string[];
+    firstColumnId?: string;
     labels: Parameters<typeof SprintTaskTable>[0]["labels"];
     onOpenTask: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
@@ -1350,6 +1363,14 @@ function SprintSection({
                 rowSelection={rowSelection}
                 tasks={tasks}
             />
+            {firstColumnId ? (
+                <BacklogAddTask
+                    boardId={boardId}
+                    projectId={projectId}
+                    sprintId={sprint.id}
+                    status={firstColumnId}
+                />
+            ) : null}
 
             <StartSprintDialog
                 boardId={boardId}
