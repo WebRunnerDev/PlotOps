@@ -124,9 +124,17 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
             <div className="flex h-full w-max min-w-full flex-col gap-3 pt-2">
                 <header className="sticky left-0 z-10 w-[100cqw] shrink-0 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm sm:px-12">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <BoardSwitcher
+                            boardId={boardId}
+                            canManage={isSettled && canManageBoard}
+                            defaultBaseBranch={
+                                project.github_default_branch ?? "main"
+                            }
+                            projectId={projectId}
+                        />
                         {branchUrl ? (
                             <a
-                                className="inline-flex h-6 min-w-0 items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
+                                className="inline-flex h-8 min-w-0 items-center gap-1.5 text-code text-muted-foreground hover:text-foreground hover:underline focus-visible:ring-2"
                                 href={branchUrl}
                                 rel="noreferrer noopener"
                                 target="_blank"
@@ -134,19 +142,11 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                                 {branchLabel}
                             </a>
                         ) : (
-                            <span className="inline-flex h-6 min-w-0 items-center gap-1.5 text-code text-muted-foreground">
+                            <span className="inline-flex h-8 min-w-0 items-center gap-1.5 text-code text-muted-foreground">
                                 {branchLabel}
                             </span>
                         )}
                         <div className="flex min-w-0 flex-wrap items-stretch gap-2">
-                            <BoardSwitcher
-                                boardId={boardId}
-                                canManage={isSettled && canManageBoard}
-                                defaultBaseBranch={
-                                    project.github_default_branch ?? "main"
-                                }
-                                projectId={projectId}
-                            />
                             <BoardSprintControls
                                 boardId={boardId}
                                 projectId={projectId}

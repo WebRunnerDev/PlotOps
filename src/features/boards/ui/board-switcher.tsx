@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, LayoutGrid, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -55,6 +55,9 @@ export function BoardSwitcher({
     const [baseBranch, setBaseBranch] = useState(defaultBaseBranch);
 
     const current = boards.find((board) => board.id === boardId);
+    const currentName =
+        current?.name ??
+        (isLoading ? t("boards.loading") : t("boards.unknown"));
 
     const goToBoard = (next: ProjectBoardRecord) => {
         writeLastBoardId(projectId, next.id);
@@ -80,61 +83,68 @@ export function BoardSwitcher({
 
     return (
         <>
-            <DropdownMenu>
-                <DropdownMenuTrigger
-                    render={
-                        <Button
-                            className="min-w-36 justify-between font-normal"
-                            disabled={isLoading}
-                            size="xs"
-                            variant="outline"
-                        />
-                    }
-                >
-                    <span className="truncate">
-                        {current?.name ??
-                            (isLoading
-                                ? t("boards.loading")
-                                : t("boards.unknown"))}
-                    </span>
-                    <ChevronsUpDown
-                        className="opacity-60"
-                        data-icon="inline-end"
-                    />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-48">
-                    {boards.map((board) => (
-                        <DropdownMenuItem
-                            key={board.id}
-                            onClick={() => goToBoard(board)}
-                        >
-                            <Check
-                                className={cn(
-                                    "size-3.5",
-                                    board.id === boardId
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                )}
+            <div className="flex min-w-0 items-center gap-2">
+                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                    {t("boards.label")}
+                </span>
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        render={
+                            <Button
+                                aria-label={`${t("boards.label")}: ${currentName}`}
+                                className="min-w-36 justify-between font-normal"
+                                disabled={isLoading}
+                                size="sm"
+                                variant="outline"
                             />
-                            <span className="truncate">{board.name}</span>
-                        </DropdownMenuItem>
-                    ))}
-                    {canManage ? (
-                        <>
-                            <DropdownMenuSeparator />
+                        }
+                    >
+                        <LayoutGrid
+                            aria-hidden
+                            className="opacity-70"
+                            data-icon="inline-start"
+                        />
+                        <span className="min-w-0 truncate">{currentName}</span>
+                        <ChevronsUpDown
+                            aria-hidden
+                            className="opacity-60"
+                            data-icon="inline-end"
+                        />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-48">
+                        {boards.map((board) => (
                             <DropdownMenuItem
-                                onClick={() => {
-                                    setBaseBranch(defaultBaseBranch);
-                                    setCreateOpen(true);
-                                }}
+                                key={board.id}
+                                onClick={() => goToBoard(board)}
                             >
-                                <Plus className="size-3.5" />
-                                {t("boards.create")}
+                                <Check
+                                    className={cn(
+                                        "size-3.5",
+                                        board.id === boardId
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                    )}
+                                />
+                                <span className="truncate">{board.name}</span>
                             </DropdownMenuItem>
-                        </>
-                    ) : undefined}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                        ))}
+                        {canManage ? (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        setBaseBranch(defaultBaseBranch);
+                                        setCreateOpen(true);
+                                    }}
+                                >
+                                    <Plus className="size-3.5" />
+                                    {t("boards.create")}
+                                </DropdownMenuItem>
+                            </>
+                        ) : undefined}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
             <Dialog onOpenChange={setCreateOpen} open={createOpen}>
                 <DialogContent>

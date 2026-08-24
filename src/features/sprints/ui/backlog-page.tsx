@@ -439,22 +439,19 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     return (
         <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
             <header className="flex flex-col gap-3 border-b border-border pb-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h1 className="truncate text-sm font-semibold">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <BoardSwitcher
+                        boardId={boardId}
+                        canManage={canManage}
+                        defaultBaseBranch={
+                            project?.github_default_branch ?? "main"
+                        }
+                        destination="backlog"
+                        projectId={projectId}
+                    />
+                    <h1 className="min-w-0 truncate text-sm font-semibold">
                         {t("sprints.backlogTitle")}
                     </h1>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <BoardSwitcher
-                            boardId={boardId}
-                            canManage={canManage}
-                            defaultBaseBranch={
-                                project?.github_default_branch ?? "main"
-                            }
-                            destination="backlog"
-                            projectId={projectId}
-                        />
-                    </div>
                 </div>
 
                 {canManage ? (

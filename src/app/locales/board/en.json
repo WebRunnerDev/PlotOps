@@ -388,6 +388,7 @@
         "deleteBlocked": "Remove all projects from this Team before deleting it."
     },
     "boards": {
+        "label": "Board",
         "loading": "Board…",
         "unknown": "Unknown board",
         "create": "New board",
