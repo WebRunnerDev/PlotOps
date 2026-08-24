@@ -5,6 +5,8 @@ import {
     pointerWithin,
 } from "@dnd-kit/core";
 
+import { columnTaskDropId } from "@/features/tasks/lib/board-drop-target-id";
+
 /**
  * Column drags must never fall through to task droppables. An unscoped
  * `closestCorners` fallback (gaps between wide columns) makes `over` thrash
@@ -46,7 +48,42 @@ export const boardCollisionDetection: CollisionDetection = (arguments_) => {
             ...arguments_,
             droppableContainers: filterByType("column"),
         });
-        if (columnPointerHits.length > 0) return columnPointerHits;
+        if (columnPointerHits.length > 0) {
+            const columnId = String(columnPointerHits[0]!.id);
+            const taskZoneId = columnTaskDropId(columnId);
+            const taskZone = arguments_.droppableContainers.find(
+                (container) => container.id === taskZoneId
+            );
+            if (taskZone) {
+                return [{ data: taskZone.data, id: taskZoneId }];
+            }
+            return columnPointerHits;
+        }
+
+        const columnDropTargets = [
+            ...filterByType("column-tasks"),
+            ...filterByType("column"),
+        ];
+        const closestColumnTarget = closestCenter({
+            ...arguments_,
+            droppableContainers: columnDropTargets,
+        });
+        if (closestColumnTarget.length > 0) {
+            const hitId = String(closestColumnTarget[0]!.id);
+            const hitContainer = arguments_.droppableContainers.find(
+                (container) => container.id === hitId
+            );
+            if (hitContainer?.data.current?.type === "column") {
+                const taskZoneId = columnTaskDropId(hitId);
+                const taskZone = arguments_.droppableContainers.find(
+                    (container) => container.id === taskZoneId
+                );
+                if (taskZone) {
+                    return [{ data: taskZone.data, id: taskZoneId }];
+                }
+            }
+            return closestColumnTarget;
+        }
     }
 
     return closestCorners(arguments_);
