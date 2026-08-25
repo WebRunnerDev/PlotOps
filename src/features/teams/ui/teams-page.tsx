@@ -38,12 +38,12 @@ export function TeamsPage() {
     const [view, setView] = useState<HomeView>("teams");
     const {
         data: teams = [],
-        error: teamsError,
+        isError: teamsError,
         isLoading: teamsLoading,
     } = useTeams();
     const {
         data: projects = [],
-        error: projectsError,
+        isError: projectsError,
         isLoading: projectsLoading,
     } = useProjects();
 
@@ -54,7 +54,7 @@ export function TeamsPage() {
     const isLoading = isTeamsView
         ? teamsLoading
         : projectsLoading || teamsLoading;
-    const error = isTeamsView ? teamsError : projectsError;
+    const isError = isTeamsView ? teamsError : projectsError;
 
     return (
         <div className="flex flex-col gap-8">
@@ -121,7 +121,7 @@ export function TeamsPage() {
                 </div>
             )}
 
-            {error && (
+            {isError && !isLoading && (
                 <Alert variant="destructive">
                     <AlertDescription>
                         {isTeamsView ? t("teamsError") : t("projectsError")}
@@ -129,7 +129,7 @@ export function TeamsPage() {
                 </Alert>
             )}
 
-            {isTeamsView && !isLoading && !error && teams.length === 0 && (
+            {isTeamsView && !isLoading && !isError && teams.length === 0 && (
                 <Empty className="border border-dashed">
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
@@ -155,7 +155,7 @@ export function TeamsPage() {
 
             {!isTeamsView &&
                 !isLoading &&
-                !error &&
+                !isError &&
                 allProjectRows.length === 0 && (
                     <Empty className="border border-dashed">
                         <EmptyHeader>

@@ -28,7 +28,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     const {
         data: project,
         error,
-        isLoading: projectLoading,
+        isPending: projectLoading,
     } = useProject(projectId);
     const {
         data: boards = [],

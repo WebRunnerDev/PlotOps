@@ -26,9 +26,10 @@ function TeamSettingsRoute() {
         canView,
         isError: accessError,
         isLoading: accessLoading,
+        isSettled,
     } = useTeamAccess(teamId);
 
-    if (isLoading || accessLoading) {
+    if (isLoading || accessLoading || !isSettled) {
         return (
             <div className="flex justify-center py-16">
                 <Spinner className="size-8 text-primary" />

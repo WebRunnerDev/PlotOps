@@ -47,7 +47,7 @@ export function ProjectsPage() {
     const [projectToRemove, setProjectToRemove] = useState<null | Project>(
         null
     );
-    const { data: projects = [], error, isLoading } = useProjects();
+    const { data: projects = [], isError, isLoading } = useProjects();
     const deleteProject = useDeleteProject();
 
     const handleConfirmRemove = async () => {
@@ -106,13 +106,13 @@ export function ProjectsPage() {
                 </div>
             )}
 
-            {error && (
+            {isError && !isLoading && (
                 <Alert variant="destructive">
                     <AlertDescription>{t("projectsError")}</AlertDescription>
                 </Alert>
             )}
 
-            {!isLoading && !error && projects.length === 0 && (
+            {!isLoading && !isError && projects.length === 0 && (
                 <Empty className="border border-dashed">
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
