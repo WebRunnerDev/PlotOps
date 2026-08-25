@@ -1,1 +1,7 @@
+#!/usr/bin/env sh
+set -e
+
+# Block commits that stage secrets (API keys, tokens, etc.)
+npx --no-install gitleaks git --staged --redact --verbose
+
 npx lint-staged
