@@ -156,7 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         }
 
+        // Remount (Strict Mode, retry, dep change) must not clear bootError
+        // while isLoading stays false — AppRouter would flash error → shell
+        // and run route queries before the new boot finishes.
         setBootError(false);
+        setIsLoading(true);
 
         const oauthWaitTimeout = isOAuthCallback
             ? globalThis.setTimeout(() => {
