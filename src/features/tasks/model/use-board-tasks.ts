@@ -75,7 +75,14 @@ import {
     invalidateBoardWorkspaceSlice,
     setTasksCache,
 } from "@/features/tasks/model/board-query-cache";
-import { taskKeys } from "@/features/tasks/model/query-keys";
+import {
+    taskKeys,
+    taskMoveMutationKey,
+} from "@/features/tasks/model/query-keys";
+import {
+    createTasksRealtimeInvalidationController,
+    type TasksRealtimeInvalidationController,
+} from "@/features/tasks/model/tasks-realtime-invalidation";
 import { activityKey } from "@/features/tasks/model/use-task-activity";
 import { supabase } from "@/shared/api/supabase";
 
@@ -83,6 +90,12 @@ import { supabase } from "@/shared/api/supabase";
 const taskChannels = new Map<
     string,
     { channel: RealtimeChannel; subscribers: number }
+>();
+
+/** One coalescing invalidation controller per Project (shared with the channel). */
+const taskInvalidationControllers = new Map<
+    string,
+    TasksRealtimeInvalidationController
 >();
 
 /** Author transfer for Notification fan-out — not an Activity feed field. */
@@ -154,9 +167,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
     useEffect(() => {
         if (!projectId || guest) return;
 
-        return subscribeTasksChannel(projectId, () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
-        });
+        return subscribeTasksChannel(projectId, queryClient);
     }, [guest, projectId, queryClient]);
 
     const moveTaskMutation = useMutation({
@@ -210,6 +221,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 });
             }
         },
+        mutationKey: taskMoveMutationKey(projectId),
         onError: (error, variables) => {
             if (variables.previousCache) {
                 queryClient.setQueryData(
@@ -230,6 +242,18 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
         },
         onSettled: () => {
+            // Guest has no Realtime — invalidate immediately.
+            // Authenticated: coalesce with Realtime echo so drop animation
+            // is not followed by a second sortable layout pass.
+            if (guest) {
+                invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+                return;
+            }
+            const controller = taskInvalidationControllers.get(projectId);
+            if (controller) {
+                controller.onMoveSettled();
+                return;
+            }
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
         },
     });
@@ -1564,6 +1588,26 @@ function doneColumnIdSet(columns: BoardColumn[]): Set<string> {
     );
 }
 
+function ensureTasksInvalidationController(
+    projectId: string,
+    queryClient: QueryClient
+): TasksRealtimeInvalidationController {
+    const existing = taskInvalidationControllers.get(projectId);
+    if (existing) return existing;
+
+    const controller = createTasksRealtimeInvalidationController({
+        invalidate: () => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+        },
+        pendingMoveCount: () =>
+            queryClient.isMutating({
+                mutationKey: taskMoveMutationKey(projectId),
+            }),
+    });
+    taskInvalidationControllers.set(projectId, controller);
+    return controller;
+}
+
 function extractStatusTransition(
     activityChanges: TaskActivityChange[]
 ): null | { from: IdNameSnapshot; to: IdNameSnapshot } {
@@ -1780,6 +1824,12 @@ function releaseTasksChannel(projectId: string) {
 
     taskChannels.delete(projectId);
     void supabase.removeChannel(entry.channel);
+
+    const controller = taskInvalidationControllers.get(projectId);
+    if (controller) {
+        controller.dispose();
+        taskInvalidationControllers.delete(projectId);
+    }
 }
 
 function resolveBoardName(
@@ -1795,13 +1845,18 @@ function resolveStatusName(columns: BoardColumn[], status: TaskStatus) {
 
 function subscribeTasksChannel(
     projectId: string,
-    onTasksChange: () => void
+    queryClient: QueryClient
 ): () => void {
     const existing = taskChannels.get(projectId);
     if (existing) {
         existing.subscribers += 1;
         return () => releaseTasksChannel(projectId);
     }
+
+    const controller = ensureTasksInvalidationController(
+        projectId,
+        queryClient
+    );
 
     const channel = supabase
         // Unique topic: `supabase.channel(name)` reuses an existing channel, and
@@ -1815,7 +1870,9 @@ function subscribeTasksChannel(
                 schema: "public",
                 table: "tasks",
             },
-            onTasksChange
+            () => {
+                controller.requestInvalidation();
+            }
         )
         .subscribe();
 

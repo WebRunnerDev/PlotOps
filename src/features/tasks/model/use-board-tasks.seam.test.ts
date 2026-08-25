@@ -25,6 +25,18 @@ describe("useBoardTasks mutation error + clear seams", () => {
         expect(source).toMatch(/previousCache/);
     });
 
+    it("coalesces Realtime + move settle invalidation to avoid duplicate drag animation", () => {
+        const source = readModel("use-board-tasks.ts");
+
+        expect(source).toMatch(/taskMoveMutationKey/);
+        expect(source).toMatch(/createTasksRealtimeInvalidationController/);
+        expect(source).toMatch(/requestInvalidation/);
+        expect(source).toMatch(/onMoveSettled/);
+        expect(source).toMatch(
+            /moveTaskMutation[\s\S]*onSettled:[\s\S]*guest[\s\S]*onMoveSettled/
+        );
+    });
+
     it("persists description/priority/label clears via null sentinel", () => {
         const source = readModel("use-board-tasks.ts");
 

@@ -11,3 +11,8 @@ export const taskKeys = {
     project: (projectId: string, includeArchived = false) =>
         [...taskKeys.all, "project", projectId, includeArchived] as const,
 };
+
+/** Local drag/status move mutations — used to gate Realtime task invalidation. */
+export function taskMoveMutationKey(projectId: string) {
+    return [...taskKeys.all, "move", projectId] as const;
+}
