@@ -548,7 +548,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
                     {canManage && selectedCount > 0 ? (
                         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
-                            <div className="pointer-events-auto flex w-full min-w-0 max-w-full flex-col items-stretch gap-2 rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+                            <div className="pointer-events-auto flex w-full min-w-0 max-w-6xl flex-col items-stretch gap-2 rounded-md border border-primary bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
                                 <p className="text-ui whitespace-nowrap">
                                     {t("sprints.selectedCount", {
                                         count: selectedCount,

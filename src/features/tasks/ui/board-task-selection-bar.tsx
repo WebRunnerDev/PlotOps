@@ -93,7 +93,7 @@ export function BoardTaskSelectionBar({
                 className="pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center px-4"
                 data-slot="board-task-selection-bar"
             >
-                <div className="pointer-events-auto flex min-w-0 max-w-full items-center gap-2 rounded-lg border border-border bg-popover px-3 py-2 shadow-md">
+                <div className="pointer-events-auto flex min-w-0 max-w-full items-center gap-2 border border-primary bg-popover px-3 py-2 shadow-md">
                     <span className="min-w-0 truncate text-ui text-muted-foreground">
                         {t("selection.count", { count })}
                     </span>
