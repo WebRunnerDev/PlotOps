@@ -39,8 +39,12 @@
         "newTask": "Новая задача",
         "addPlaceholder": "Название задачи…",
         "createFailed": "Не удалось создать задачу",
+        "labelsApplyFailed": "Задача создана, но метки сохранить не удалось",
         "draft": "Черновик",
         "unsaved": "Не сохранено",
+        "quickAdd": {
+            "clearLabels": "Сбросить метки"
+        },
         "delete": "Удалить задачу",
         "deleteTitle": "Удалить {{key}}?",
         "deleteDescription": "«{{title}}» будет удалена безвозвратно. Это действие нельзя отменить.",

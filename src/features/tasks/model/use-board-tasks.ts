@@ -552,34 +552,61 @@ export function useBoardTasks(projectId: string, boardId: string) {
     });
 
     const createTaskMutation = useMutation({
-        mutationFn: ({
+        mutationFn: async ({
+            assigneeId,
+            labelIds,
+            priority,
             sprintId,
             status,
             taskType,
             title,
         }: {
+            assigneeId?: null | string;
+            labelIds?: string[];
+            priority?: null | TaskPriority;
             sprintId?: string;
             status: TaskStatus;
             taskType?: TaskType;
             title: string;
-        }) =>
-            tasksProvider.createTaskRecord(
+        }) => {
+            const task = await tasksProvider.createTaskRecord(
                 projectId,
                 boardId,
                 status,
                 title,
                 taskType,
-                sprintId
-            ),
-        onSuccess: (task) => {
+                sprintId,
+                {
+                    ...(assigneeId === undefined ? {} : { assigneeId }),
+                    ...(priority === undefined ? {} : { priority }),
+                }
+            );
+            return { labelIds, task };
+        },
+        onSuccess: ({ labelIds, task }) => {
+            const withLabels =
+                labelIds && labelIds.length > 0
+                    ? { ...task, labelIds: [...labelIds] }
+                    : task;
             setTasksCache(queryClient, projectId, boardId, (current) => ({
                 taskPositions: new Map([
                     ...current.taskPositions,
-                    [task.id, current.taskPositions.get(task.id) ?? 0],
+                    [
+                        withLabels.id,
+                        current.taskPositions.get(withLabels.id) ?? 0,
+                    ],
                 ]),
-                tasks: [...current.tasks, task],
+                tasks: [...current.tasks, withLabels],
             }));
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+
+            if (labelIds && labelIds.length > 0) {
+                void tasksProvider
+                    .updateTaskDetails(withLabels.id, {}, labelIds)
+                    .catch(() => {
+                        toast.error(t("tasks.labelsApplyFailed"));
+                    });
+            }
         },
     });
 
@@ -1033,17 +1060,28 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskType: options?.taskType,
                 title,
             }),
-        createTask: (
+        createTask: async (
             status: TaskStatus,
             title: string,
-            options?: { sprintId?: string; taskType?: TaskType }
-        ) =>
-            createTaskMutation.mutateAsync({
+            options?: {
+                assigneeId?: null | string;
+                labelIds?: string[];
+                priority?: null | TaskPriority;
+                sprintId?: string;
+                taskType?: TaskType;
+            }
+        ) => {
+            const { task } = await createTaskMutation.mutateAsync({
+                assigneeId: options?.assigneeId,
+                labelIds: options?.labelIds,
+                priority: options?.priority,
                 sprintId: options?.sprintId,
                 status,
                 taskType: options?.taskType,
                 title,
-            }),
+            });
+            return task;
+        },
         createTaskLink: (
             sourceTaskId: string,
             targetTaskId: string,
