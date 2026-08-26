@@ -827,6 +827,8 @@
             "dropHint": "Drop image to upload",
             "width": "Width",
             "height": "Height",
+            "copy": "Copy image",
+            "copied": "Image copied",
             "toggleBorder": "Toggle border",
             "align": {
                 "left": "Align left",

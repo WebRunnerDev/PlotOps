@@ -20,12 +20,20 @@ describe("richTextToPlainText", () => {
         ).toBe("Hello world\nNext");
     });
 
-    it("decodes entities and drops images", () => {
+    it("decodes entities and keeps image urls", () => {
         expect(
             richTextToPlainText(
                 '<p>A &amp; B &lt;C&gt;</p><p><img src="/x.png" alt="shot"></p>'
             )
-        ).toBe("A & B <C>");
+        ).toBe("A & B <C>\n![shot](/x.png)");
+    });
+
+    it("keeps bare image src when alt is missing", () => {
+        expect(
+            richTextToPlainText(
+                '<p>See</p><img src="https://cdn.example/a.png">'
+            )
+        ).toBe("See\nhttps://cdn.example/a.png");
     });
 
     it("keeps table rows and separates cells", () => {

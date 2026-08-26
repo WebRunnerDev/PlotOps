@@ -79,6 +79,7 @@ import {
     richTextLength,
     toEditorContent,
 } from "@/shared/ui/rich-text-editor/content";
+import { copyImageSourceToClipboard } from "@/shared/ui/rich-text-editor/copy-image";
 import { createMentionSuggestion } from "@/shared/ui/rich-text-editor/create-mention-suggestion";
 import { shouldApplyExternalContent } from "@/shared/ui/rich-text-editor/external-content-sync";
 import {
@@ -285,6 +286,23 @@ export const RichTextEditor = forwardRef<
                         return false;
                     }
 
+                    // Images need the browser menu ("Copy image"). Our format
+                    // menu is text-oriented; NodeSelection has no text marks.
+                    const target = event.target;
+                    if (
+                        target instanceof Element &&
+                        target.closest(
+                            ".rich-text-image-view, img.rich-text-image"
+                        )
+                    ) {
+                        return false;
+                    }
+                    if (
+                        currentEditor.state.selection instanceof NodeSelection
+                    ) {
+                        return false;
+                    }
+
                     event.preventDefault();
 
                     const selectionRect = getSelectionRect(currentEditor);
@@ -300,6 +318,27 @@ export const RichTextEditor = forwardRef<
                     setMenu(
                         buildMenuState(currentEditor, "context", reference)
                     );
+                    return true;
+                },
+                copy: (_view, event) => {
+                    const currentEditor = editorReference.current;
+                    if (!currentEditor) return false;
+
+                    const { selection } = currentEditor.state;
+                    if (!(selection instanceof NodeSelection)) return false;
+                    if (selection.node.type.name !== "image") return false;
+
+                    const source = selection.node.attrs.src;
+                    if (typeof source !== "string" || source.length === 0) {
+                        return false;
+                    }
+
+                    event.preventDefault();
+                    void copyImageSourceToClipboard(source).then((result) => {
+                        if (result === "failed") {
+                            toast.error(t("copyFailed"));
+                        }
+                    });
                     return true;
                 },
                 mousedown: (_view, event) => {

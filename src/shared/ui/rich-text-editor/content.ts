@@ -47,7 +47,14 @@ export function richTextToPlainText(value: string): string {
         .replaceAll(/<br\s*\/?>/gi, "\n")
         .replaceAll(/<\/(td|th)>/gi, "\t")
         .replaceAll(/<\/(p|h[1-6]|blockquote|pre|li|div|tr)>/gi, "\n")
-        .replaceAll(/<img\b[^>]*>/gi, "")
+        .replaceAll(/<img\b[^>]*>/gi, (tag) => {
+            const source = readHtmlAttribute(tag, "src");
+            if (!source) return "";
+            const alt = readHtmlAttribute(tag, "alt");
+            // Keep a recoverable reference in plain-text clipboard payloads
+            // (task copy button, messengers). Prefer markdown so alt survives.
+            return alt ? ` ![${alt}](${source}) ` : ` ${source} `;
+        })
         .replaceAll(/<[^>]+>/g, "");
 
     return decodeHtmlEntities(withBreaks)
@@ -83,4 +90,14 @@ function decodeHtmlEntities(value: string): string {
         .replaceAll("&quot;", '"')
         .replaceAll("&#39;", "'")
         .replaceAll("&amp;", "&");
+}
+
+function readHtmlAttribute(tag: string, name: string): string {
+    const pattern = new RegExp(
+        String.raw`\b${name}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))`,
+        "i"
+    );
+    const match = pattern.exec(tag);
+    if (!match) return "";
+    return decodeHtmlEntities(match[1] ?? match[2] ?? match[3] ?? "").trim();
 }
