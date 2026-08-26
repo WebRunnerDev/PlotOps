@@ -610,7 +610,8 @@ export const guestTasksProvider: TasksProvider = {
         status,
         title,
         taskType,
-        sprintId
+        sprintId,
+        extras
     ) {
         const normalizedTitle = normalizeTaskTitle(title);
         let created: GuestTask | undefined;
@@ -639,7 +640,18 @@ export const guestTasksProvider: TasksProvider = {
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
 
-            const assignee = guestCreateAssignee(board);
+            const assignee =
+                extras?.assigneeId === undefined
+                    ? guestCreateAssignee(board)
+                    : extras.assigneeId === null
+                      ? undefined
+                      : extras.assigneeId === ACTOR.id
+                        ? ACTOR
+                        : { id: extras.assigneeId, name: extras.assigneeId };
+            const priority =
+                extras?.priority === undefined
+                    ? DEFAULT_TASK_PRIORITY
+                    : (extras.priority ?? undefined);
             created = {
                 ...(assignee ? { assignee } : {}),
                 author: ACTOR,
@@ -648,7 +660,7 @@ export const guestTasksProvider: TasksProvider = {
                 id: crypto.randomUUID(),
                 key: nextTaskKey(sandbox.tasks, resolvedType),
                 position: maxPosition + 1,
-                priority: DEFAULT_TASK_PRIORITY,
+                ...(priority ? { priority } : {}),
                 projectId,
                 ...(sprintId ? { sprintId, sprintPosition } : {}),
                 status,

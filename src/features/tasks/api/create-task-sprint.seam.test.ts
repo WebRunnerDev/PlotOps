@@ -27,6 +27,15 @@ describe("createTaskRecord sprint assign seam", () => {
 
         expect(source).toMatch(/auto_assign_to_creator/);
         expect(source).toMatch(/shouldAutoAssignToCreator/);
-        expect(source).toMatch(/assignee_id:\s*autoAssigneeId/);
+        expect(source).toMatch(/assignee_id:\s*resolvedAssigneeId/);
+    });
+
+    it("accepts optional priority and assigneeId overrides on create", () => {
+        const source = readFileSync(path.join(dirname, "tasks-api.ts"), "utf8");
+
+        expect(source).toMatch(/assigneeId\?:\s*null\s*\|\s*string/);
+        expect(source).toMatch(/priority\?:\s*null\s*\|\s*TaskPriority/);
+        expect(source).toMatch(/assigneeId\s*!==\s*undefined/);
+        expect(source).toMatch(/priority\s*!==\s*undefined/);
     });
 });

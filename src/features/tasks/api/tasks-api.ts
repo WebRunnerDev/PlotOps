@@ -180,6 +180,14 @@ const TASK_SELECT = `
   )
 `;
 
+/** Optional create overrides for column / backlog quick-add. */
+export type CreateTaskRecordExtras = {
+    /** Pass `null` to force Unassigned (skips board auto-assign). */
+    assigneeId?: null | string;
+    /** Pass `null` for priority None. */
+    priority?: null | TaskPriority;
+};
+
 export type TaskRecordPatch = {
     assignee_id?: null | string;
     author_id?: null | string;
@@ -292,7 +300,8 @@ export async function createTaskRecord(
     status: TaskStatus,
     title: string,
     taskType?: TaskType,
-    sprintId?: string
+    sprintId?: string,
+    extras?: CreateTaskRecordExtras
 ) {
     const { data: boardRow, error: boardError } = await supabase
         .from("boards")
@@ -315,7 +324,10 @@ export async function createTaskRecord(
     } = await supabase.auth.getUser();
 
     let teamPeopleCount = 0;
-    if (boardRow?.auto_assign_to_creator === true) {
+    if (
+        extras?.assigneeId === undefined &&
+        boardRow?.auto_assign_to_creator === true
+    ) {
         teamPeopleCount = await fetchProjectTeamPeopleCount(projectId);
     }
     const autoAssigneeId = shouldAutoAssignToCreator({
@@ -324,6 +336,13 @@ export async function createTaskRecord(
     })
         ? (user?.id ?? null)
         : null;
+
+    const resolvedAssigneeId =
+        extras?.assigneeId === undefined ? autoAssigneeId : extras.assigneeId;
+    const resolvedPriority =
+        extras?.priority === undefined
+            ? DEFAULT_TASK_PRIORITY
+            : extras.priority;
 
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
@@ -356,11 +375,11 @@ export async function createTaskRecord(
         .from("tasks")
         // task_key is NOT NULL but filled by trg_set_task_key before insert.
         .insert({
-            assignee_id: autoAssigneeId,
+            assignee_id: resolvedAssigneeId,
             author_id: user?.id ?? null,
             board_id: boardId,
             position,
-            priority: DEFAULT_TASK_PRIORITY,
+            priority: resolvedPriority,
             project_id: projectId,
             ...(sprintId
                 ? { sprint_id: sprintId, sprint_position: sprintPosition }

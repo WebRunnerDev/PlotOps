@@ -1,5 +1,6 @@
 import type {
     BoardTasksCache,
+    CreateTaskRecordExtras,
     TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
 import type {
@@ -34,7 +35,8 @@ export type TasksProvider = {
         status: TaskStatus,
         title: string,
         taskType?: TaskType,
-        sprintId?: string
+        sprintId?: string,
+        extras?: CreateTaskRecordExtras
     ): Promise<Task>;
     deleteTaskLinkRecord(linkId: string): Promise<void>;
     deleteTaskRecord(taskId: string): Promise<void>;

@@ -421,6 +421,41 @@ describe("guest tasks provider happy path", () => {
         expect(assigned.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
     });
 
+    it("createTaskRecord applies priority and assigneeId overrides from quick-add", async () => {
+        const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const provider = resolveTasksProvider(true);
+
+        const high = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "High priority",
+            "bug",
+            undefined,
+            { assigneeId: GUEST_SEED_ACTOR_ID, priority: "high" }
+        );
+        expect(high.type).toBe("bug");
+        expect(high.priority).toBe("high");
+        expect(high.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
+
+        const cleared = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Cleared meta",
+            undefined,
+            undefined,
+            { assigneeId: null, priority: null }
+        );
+        expect(cleared.assignee).toBeUndefined();
+        expect(cleared.priority).toBeUndefined();
+    });
+
     it("createSubtaskRecord assigns the creator when the Board auto-assigns", async () => {
         const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
             await import("@/features/guest-mode");
