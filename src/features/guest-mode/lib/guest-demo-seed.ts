@@ -309,6 +309,16 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         },
         {
             author: ACTOR,
+            body: "<p>Agreed — keep the demo CTA copy short.</p>",
+            createdAt: "2026-08-03T11:45:00.000Z",
+            id: "e0000000-0000-4000-8000-000000000404",
+            parentId: "e0000000-0000-4000-8000-000000000401",
+            projectId: PROJ_GIT_ID,
+            taskId: T01,
+            updatedAt: "2026-08-03T11:45:00.000Z",
+        },
+        {
+            author: ACTOR,
             body: "<p>Fixtures look good on the CI tab — retry once to see the stream animation.</p>",
             createdAt: "2026-08-04T12:00:00.000Z",
             id: "e0000000-0000-4000-8000-000000000402",

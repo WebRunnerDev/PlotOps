@@ -43,6 +43,8 @@ export type GuestComment = {
     body: string;
     createdAt: string;
     id: string;
+    /** Thread root id when this Comment is a reply; null/undefined for roots. */
+    parentId?: null | string;
     projectId: string;
     taskId: string;
     updatedAt: string;

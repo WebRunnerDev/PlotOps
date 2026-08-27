@@ -17,6 +17,7 @@ type DatabaseTaskComment = {
     body: string;
     created_at: string;
     id: string;
+    parent_id: null | string;
     project_id: string;
     task_id: string;
     updated_at: string;
@@ -27,6 +28,7 @@ const COMMENT_SELECT = `
   task_id,
   project_id,
   author_id,
+  parent_id,
   body,
   created_at,
   updated_at,
@@ -41,6 +43,7 @@ const COMMENT_SELECT = `
 
 export async function createTaskComment(input: {
     body: string;
+    parentId?: null | string;
     projectId: string;
     taskId: string;
 }) {
@@ -57,6 +60,7 @@ export async function createTaskComment(input: {
         .insert({
             author_id: user.id,
             body: input.body,
+            parent_id: input.parentId ?? null,
             project_id: input.projectId,
             task_id: input.taskId,
         })
@@ -127,6 +131,7 @@ function mapComment(row: DatabaseTaskComment): TaskComment {
         body: row.body,
         createdAt: row.created_at,
         id: row.id,
+        parentId: row.parent_id,
         taskId: row.task_id,
         updatedAt: row.updated_at,
     };

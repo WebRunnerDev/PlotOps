@@ -9,6 +9,7 @@ import {
 
 export function createGuestTaskComment(input: {
     body: string;
+    parentId?: null | string;
     projectId: string;
     taskId: string;
 }): TaskComment {
@@ -18,6 +19,7 @@ export function createGuestTaskComment(input: {
         body: input.body,
         createdAt: now,
         id: crypto.randomUUID(),
+        parentId: input.parentId ?? null,
         projectId: input.projectId,
         taskId: input.taskId,
         updatedAt: now,
@@ -32,8 +34,10 @@ export function createGuestTaskComment(input: {
 
 export function deleteGuestTaskComment(commentId: string): void {
     updateGuestSandbox((sandbox) => {
+        // Mirror ON DELETE CASCADE: removing a root drops its replies.
         sandbox.comments = sandbox.comments.filter(
-            (comment) => comment.id !== commentId
+            (comment) =>
+                comment.id !== commentId && comment.parentId !== commentId
         );
     });
 }
@@ -96,6 +100,7 @@ function mapComment(row: {
     body: string;
     createdAt: string;
     id: string;
+    parentId?: null | string;
     taskId: string;
     updatedAt: string;
 }): TaskComment {
@@ -110,6 +115,7 @@ function mapComment(row: {
         body: row.body,
         createdAt: row.createdAt,
         id: row.id,
+        parentId: row.parentId ?? null,
         taskId: row.taskId,
         updatedAt: row.updatedAt,
     };

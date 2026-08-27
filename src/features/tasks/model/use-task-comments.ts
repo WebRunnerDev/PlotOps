@@ -21,13 +21,23 @@ export function useCreateTaskComment(taskId: string, projectId: string) {
     const guest = isGuest();
 
     return useMutation({
-        mutationFn: async (body: string) => {
+        mutationFn: async (input: {
+            body: string;
+            parentId?: null | string;
+        }) => {
+            const { body, parentId } = input;
             if (guest) {
-                return createGuestTaskComment({ body, projectId, taskId });
+                return createGuestTaskComment({
+                    body,
+                    parentId,
+                    projectId,
+                    taskId,
+                });
             }
 
             const { data, error } = await createTaskComment({
                 body,
+                parentId,
                 projectId,
                 taskId,
             });

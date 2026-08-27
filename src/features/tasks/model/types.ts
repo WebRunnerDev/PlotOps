@@ -92,6 +92,8 @@ export type TaskComment = {
     body: string;
     createdAt: string;
     id: string;
+    /** Thread root id when this Comment is a reply; null/undefined for roots. */
+    parentId?: null | string;
     taskId: string;
     updatedAt: string;
 };

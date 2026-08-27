@@ -478,34 +478,48 @@ begin
     );
 
   insert into public.task_comments (
+    id,
     task_id,
     project_id,
     author_id,
+    parent_id,
     body,
     created_at,
     updated_at
   )
   values
     (
-      t01, proj_git_id, guest_id,
+      'e0000000-0000-4000-8000-000000000401'::uuid,
+      t01, proj_git_id, guest_id, null,
       '<p>CTA should sit next to GitHub OAuth and use the env credentials.</p>',
       now() - interval '30 hours',
       now() - interval '30 hours'
     ),
     (
-      t02, proj_git_id, guest_id,
+      'e0000000-0000-4000-8000-000000000404'::uuid,
+      t01, proj_git_id, guest_id,
+      'e0000000-0000-4000-8000-000000000401'::uuid,
+      '<p>Agreed — keep the demo CTA copy short.</p>',
+      now() - interval '29 hours',
+      now() - interval '29 hours'
+    ),
+    (
+      'e0000000-0000-4000-8000-000000000402'::uuid,
+      t02, proj_git_id, guest_id, null,
       '<p>Reuse the existing mock builds provider from CI tests.</p>',
       now() - interval '18 hours',
       now() - interval '18 hours'
     ),
     (
-      t03, proj_git_id, guest_id,
+      'e0000000-0000-4000-8000-000000000403'::uuid,
+      t03, proj_git_id, guest_id, null,
       '<p>Fixed UUIDs so remote SQL Editor seed matches local db:reset.</p>',
       now() - interval '10 hours',
       now() - interval '10 hours'
     ),
     (
-      t15, proj_plain_id, guest_id,
+      'e0000000-0000-4000-8000-000000000405'::uuid,
+      t15, proj_plain_id, guest_id, null,
       '<p>Reproduced on iPhone SE — first tap does nothing.</p>',
       now() - interval '8 hours',
       now() - interval '8 hours'
