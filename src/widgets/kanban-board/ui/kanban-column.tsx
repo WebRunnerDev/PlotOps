@@ -349,7 +349,7 @@ export function KanbanColumn({
                     className="scrollbar-board flex min-h-0 flex-1 flex-col overflow-y-auto"
                     ref={setTaskListDropReference}
                 >
-                    <div className="flex min-h-0 flex-1 flex-col gap-2">
+                    <div className="flex flex-col gap-2">
                         <SortableContext
                             items={tasks.map((task) => task.id)}
                             strategy={
@@ -372,20 +372,17 @@ export function KanbanColumn({
                                 />
                             ))}
                         </SortableContext>
-                        {tasks.length === 0 ? (
-                            <div
-                                aria-hidden
-                                className="min-h-0 flex-1 shrink-0"
-                            />
-                        ) : undefined}
+                        <KanbanAddTask
+                            boardId={boardId}
+                            createSprintId={createSprintId}
+                            projectId={projectId}
+                            startOpen={startAddingTask}
+                            status={status}
+                        />
                     </div>
-                    <KanbanAddTask
-                        boardId={boardId}
-                        createSprintId={createSprintId}
-                        projectId={projectId}
-                        startOpen={startAddingTask}
-                        status={status}
-                    />
+                    {tasks.length === 0 ? (
+                        <div aria-hidden className="min-h-0 flex-1 shrink-0" />
+                    ) : undefined}
                 </div>
             </section>
 
