@@ -1,18 +1,11 @@
 import { Bug, Flag, Lightbulb, SquareCheck, Tag, User } from "lucide-react";
-import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { QuickAddFields } from "@/features/tasks/lib/resolve-quick-add-defaults";
-import type { TaskAssignee } from "@/features/tasks/model/types";
 
-import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { getLabelDotProperties } from "@/features/labels/model/constants";
 import { useProjectLabels } from "@/features/labels/model/use-project-labels";
-import {
-    useProjectMembers,
-    useProjectOwnerProfile,
-} from "@/features/projects/model/use-project-members";
-import { useProject } from "@/features/projects/model/use-projects";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import {
     PRIORITY_CLASS,
     TASK_PRIORITIES,
@@ -61,35 +54,7 @@ export function TaskQuickAddChips({
 }: TaskQuickAddChipsProperties) {
     const { t } = useTranslation("board");
     const { labels } = useProjectLabels(projectId);
-    const { data: project } = useProject(projectId);
-    const { data: members = [] } = useProjectMembers(projectId);
-    const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
-
-    const people = useMemo(() => {
-        const byId = new Map<string, TaskAssignee>();
-        if (ownerProfile) {
-            byId.set(ownerProfile.id, {
-                avatarUrl: ownerProfile.avatar_url ?? undefined,
-                id: ownerProfile.id,
-                name:
-                    formatProfileDisplayName(ownerProfile) ||
-                    t("members.unknownUser"),
-            });
-        }
-        for (const member of members) {
-            if (!member.profile) continue;
-            byId.set(member.user_id, {
-                avatarUrl: member.profile.avatar_url ?? undefined,
-                id: member.user_id,
-                name:
-                    formatProfileDisplayName(member.profile) ||
-                    t("members.unknownUser"),
-            });
-        }
-        return [...byId.values()].toSorted((left, right) =>
-            left.name.localeCompare(right.name)
-        );
-    }, [members, ownerProfile, t]);
+    const people = useProjectPeople(projectId);
 
     const selectedLabels = labels.filter((label) =>
         fields.labelIds.includes(label.id)
