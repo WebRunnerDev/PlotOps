@@ -96,6 +96,8 @@ export function BacklogAddTask({
     });
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurSubmit = useRef(false);
+    const defaultsReference = useRef(defaults);
+    defaultsReference.current = defaults;
 
     useEffect(() => {
         setDraftTitle(
@@ -105,16 +107,17 @@ export function BacklogAddTask({
 
     useEffect(() => {
         if (!open) return;
+        const currentDefaults = defaultsReference.current;
         const draft = getCreateBacklogTaskDraft(boardId, sprintId);
         if (draft) {
             setTitle(draft.title);
             setDraftTitle(draft.title);
-            setFields(quickAddFieldsFromDraft(draft, defaults));
+            setFields(quickAddFieldsFromDraft(draft, currentDefaults));
         } else {
-            setFields(defaults);
+            setFields(currentDefaults);
         }
         inputReference.current?.focus();
-    }, [boardId, defaults, open, sprintId]);
+    }, [boardId, open, sprintId]);
 
     useEffect(() => {
         if (!open || chipMenuOpen) return;

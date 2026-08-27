@@ -102,6 +102,8 @@ export function KanbanAddTask({
     });
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurSubmit = useRef(false);
+    const defaultsReference = useRef(defaults);
+    defaultsReference.current = defaults;
 
     useEffect(() => {
         setDraftTitle(getCreateTaskDraft(boardId, status)?.title ?? null);
@@ -117,16 +119,17 @@ export function KanbanAddTask({
 
     useEffect(() => {
         if (!open) return;
+        const currentDefaults = defaultsReference.current;
         const draft = getCreateTaskDraft(boardId, status);
         if (draft) {
             setTitle(draft.title);
             setDraftTitle(draft.title);
-            setFields(quickAddFieldsFromDraft(draft, defaults));
+            setFields(quickAddFieldsFromDraft(draft, currentDefaults));
         } else {
-            setFields(defaults);
+            setFields(currentDefaults);
         }
         inputReference.current?.focus();
-    }, [boardId, defaults, open, status]);
+    }, [boardId, open, status]);
 
     useEffect(() => {
         if (!open || chipMenuOpen) return;
