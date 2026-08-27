@@ -36,6 +36,8 @@
     "firstNamePlaceholder": "Ada",
     "githubRedirecting": "Redirecting...",
     "githubSignIn": "Sign in with GitHub",
+    "googleRedirecting": "Redirecting...",
+    "googleSignIn": "Sign in with Google",
     "lastName": "Last name",
     "lastNamePlaceholder": "Lovelace",
     "links": {
@@ -44,6 +46,11 @@
         "noAccount": "No account yet?",
         "signIn": "Sign in",
         "signUp": "Create account"
+    },
+    "openSource": {
+        "github": "GitHub",
+        "githubAria": "PlotOps on GitHub (opens in a new tab)",
+        "line": "Open source ({{license}})"
     },
     "or": "or",
     "password": "Password",
@@ -56,17 +63,17 @@
         "save": "Save changes",
         "saved": "Profile updated",
         "saving": "Saving...",
-        "usernameHint": "Handle from GitHub or signup — not editable here."
+        "usernameHint": "Handle from GitHub, Google, or signup — not editable here."
     },
     "signIn": "Sign in",
     "signInLoading": "Signing in...",
-    "signInSubtitle": "Sign in with GitHub, try the demo, or use email and password",
+    "signInSubtitle": "Sign in with GitHub or Google, try the demo, or use email and password",
     "signInTitle": "Sign in to PlotOps",
     "tryDemo": "Try demo without registration",
     "tryDemoLoading": "Opening demo...",
     "signUp": "Create account",
     "signUpLoading": "Creating account...",
-    "signUpSubtitle": "Register with email — required for project invites without GitHub",
+    "signUpSubtitle": "Register with GitHub, Google, or email — email is required for project invites without GitHub",
     "signUpTitle": "Create your PlotOps account",
     "username": "Username"
 }

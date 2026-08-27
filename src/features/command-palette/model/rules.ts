@@ -42,7 +42,7 @@ export type CommandPaletteMember = {
 };
 
 export type CommandPaletteNavigateSection =
-    "backlog" | "board" | "cicd" | "settings";
+    "archive" | "backlog" | "board" | "cicd" | "settings";
 
 export type CommandPaletteProject = {
     id: string;
@@ -78,6 +78,7 @@ export type CommandPaletteTaskType = "bug" | "feature" | "task";
 
 export type CommandPaletteVisibility = {
     createTask: boolean;
+    navigateArchive: boolean;
     navigateBacklog: boolean;
     navigateBoard: boolean;
     navigateCicd: boolean;
@@ -221,6 +222,7 @@ export function resolveCommandPaletteVisibility(
 
     return {
         createTask: canOfferCreateTask(context),
+        navigateArchive: hasProject && hasBoard,
         navigateBacklog: hasProject && hasBoard,
         navigateBoard: hasProject && hasBoard,
         navigateCicd: hasProject,
@@ -315,7 +317,7 @@ export function resolveNavigateIntent(
         return null;
     }
 
-    if (section === "board" || section === "backlog") {
+    if (section === "board" || section === "backlog" || section === "archive") {
         if (!context.boardId) {
             return null;
         }

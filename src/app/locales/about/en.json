@@ -1,4 +1,6 @@
 {
-  "description": "This project uses file-based routing with TanStack Router.",
-  "title": "About"
+    "description": "PlotOps is a git-native project tracker with Kanban, GitHub, and CI — an open-source portfolio pet project.",
+    "openSource": "Open source ({{license}})",
+    "title": "About",
+    "viewOnGitHub": "View on GitHub"
 }

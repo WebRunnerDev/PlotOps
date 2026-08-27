@@ -1,9 +1,19 @@
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { QuickAddFields } from "@/features/tasks/lib/resolve-quick-add-defaults";
+
+import { useAuth } from "@/features/auth";
+import { countTeamPeople, useProjectBoards } from "@/features/boards";
+import { GUEST_SEED_ACTOR_ID, isGuest } from "@/features/guest-mode";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import {
+    useProjectMembers,
+    useProjectOwnerProfile,
+} from "@/features/projects/model/use-project-members";
+import { useProject } from "@/features/projects/model/use-projects";
 import {
     TASK_TITLE_MAX_LENGTH,
     type TaskStatus,
@@ -11,10 +21,16 @@ import {
     useTasksUiStore,
 } from "@/features/tasks";
 import {
+    quickAddFieldsFromDraft,
+    resolveQuickAddDefaults,
+    toQuickAddDraftMeta,
+} from "@/features/tasks/lib/resolve-quick-add-defaults";
+import {
     clearCreateTaskDraft,
     getCreateTaskDraft,
     setCreateTaskDraft,
 } from "@/features/tasks/lib/task-drafts";
+import { TaskQuickAddChips } from "@/features/tasks/ui/task-quick-add-chips";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
@@ -38,6 +54,8 @@ export function KanbanAddTask({
     status,
 }: KanbanAddTaskProperties) {
     const { t } = useTranslation("board");
+    const { user } = useAuth();
+    const guest = isGuest();
     const { createTask } = useBoardTasks(projectId, boardId);
     const { canCreateTasks, isSettled } = useProjectAccess(projectId);
     const canCreate = resolveBoardNewTaskCtaVisible({
@@ -45,14 +63,47 @@ export function KanbanAddTask({
         isSettled,
     });
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const { data: boards = [] } = useProjectBoards(projectId);
+    const board = boards.find((item) => item.id === boardId);
+    const { data: project } = useProject(projectId);
+    const { data: members = [] } = useProjectMembers(projectId);
+    const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
+
+    const defaults = useMemo(() => {
+        const teamPeopleCount = guest
+            ? 1
+            : countTeamPeople({
+                  hasOwner: Boolean(ownerProfile ?? project?.owner_id),
+                  memberCount: members.length,
+              });
+        return resolveQuickAddDefaults({
+            autoAssignToCreator: board?.autoAssignToCreator === true,
+            currentUserId: guest ? GUEST_SEED_ACTOR_ID : (user?.id ?? null),
+            defaultTaskType: board?.defaultTaskType,
+            teamPeopleCount,
+        });
+    }, [
+        board?.autoAssignToCreator,
+        board?.defaultTaskType,
+        guest,
+        members.length,
+        ownerProfile,
+        project?.owner_id,
+        user?.id,
+    ]);
+
     const [open, setOpen] = useState(startOpen);
     const [title, setTitle] = useState("");
+    const [fields, setFields] = useState<QuickAddFields>(defaults);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [chipMenuOpen, setChipMenuOpen] = useState(false);
     const [draftTitle, setDraftTitle] = useState<null | string>(() => {
         return getCreateTaskDraft(boardId, status)?.title ?? null;
     });
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurSubmit = useRef(false);
+    const defaultsReference = useRef(defaults);
+    defaultsReference.current = defaults;
 
     useEffect(() => {
         setDraftTitle(getCreateTaskDraft(boardId, status)?.title ?? null);
@@ -61,7 +112,6 @@ export function KanbanAddTask({
     useEffect(() => {
         if (!startOpen) return;
         setOpen(true);
-        // Re-focus even when the composer was already open.
         queueMicrotask(() => {
             inputReference.current?.focus();
         });
@@ -69,25 +119,44 @@ export function KanbanAddTask({
 
     useEffect(() => {
         if (!open) return;
+        const currentDefaults = defaultsReference.current;
         const draft = getCreateTaskDraft(boardId, status);
         if (draft) {
             setTitle(draft.title);
             setDraftTitle(draft.title);
+            setFields(quickAddFieldsFromDraft(draft, currentDefaults));
+        } else {
+            setFields(currentDefaults);
         }
         inputReference.current?.focus();
     }, [boardId, open, status]);
 
-    const closeComposer = () => {
-        const trimmed = title.trim();
+    useEffect(() => {
+        if (!open || chipMenuOpen) return;
+        inputReference.current?.focus();
+    }, [chipMenuOpen, open]);
+
+    const persistDraft = (nextTitle: string, nextFields: QuickAddFields) => {
+        const trimmed = nextTitle.trim();
         if (trimmed) {
-            setCreateTaskDraft(boardId, status, trimmed);
+            setCreateTaskDraft(
+                boardId,
+                status,
+                trimmed,
+                toQuickAddDraftMeta(nextFields)
+            );
             setDraftTitle(trimmed);
         } else {
             clearCreateTaskDraft(boardId, status);
             setDraftTitle(null);
         }
+    };
+
+    const closeComposer = () => {
+        persistDraft(title, fields);
         setOpen(false);
         setTitle("");
+        setFields(defaults);
     };
 
     const submit = async () => {
@@ -97,6 +166,7 @@ export function KanbanAddTask({
             setDraftTitle(null);
             setOpen(false);
             setTitle("");
+            setFields(defaults);
             return;
         }
         if (isSubmitting) return;
@@ -104,13 +174,18 @@ export function KanbanAddTask({
         setIsSubmitting(true);
         try {
             const task = await createTask(status, trimmed, {
+                assigneeId: fields.assigneeId,
+                labelIds: fields.labelIds,
+                priority: fields.priority,
                 sprintId: createSprintId,
+                taskType: fields.type,
             });
             clearCreateTaskDraft(boardId, status);
             setDraftTitle(null);
             selectTask(task.id);
             setOpen(false);
             setTitle("");
+            setFields(defaults);
         } catch {
             toast.error(t("tasks.createFailed"));
         } finally {
@@ -147,7 +222,7 @@ export function KanbanAddTask({
     }
 
     return (
-        <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1.5">
             {draftTitle || title.trim() ? (
                 <div className="flex justify-end">
                     <Badge
@@ -168,19 +243,13 @@ export function KanbanAddTask({
                         skipBlurSubmit.current = false;
                         return;
                     }
-                    // Persist draft on accidental blur/navigation; create only on Enter.
+                    if (chipMenuOpen) return;
                     closeComposer();
                 }}
                 onChange={(event) => {
                     const next = event.target.value;
                     setTitle(next);
-                    if (next.trim()) {
-                        setCreateTaskDraft(boardId, status, next);
-                        setDraftTitle(next.trim());
-                    } else {
-                        clearCreateTaskDraft(boardId, status);
-                        setDraftTitle(null);
-                    }
+                    persistDraft(next, fields);
                 }}
                 onKeyDown={(event) => {
                     if (event.key === "Enter") {
@@ -197,6 +266,16 @@ export function KanbanAddTask({
                 placeholder={t("tasks.addPlaceholder")}
                 ref={inputReference}
                 value={title}
+            />
+            <TaskQuickAddChips
+                disabled={isSubmitting}
+                fields={fields}
+                onFieldsChange={(next) => {
+                    setFields(next);
+                    persistDraft(title, next);
+                }}
+                onMenuOpenChange={setChipMenuOpen}
+                projectId={projectId}
             />
         </div>
     );

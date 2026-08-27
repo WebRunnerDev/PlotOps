@@ -34,12 +34,19 @@ import { todayIsoDate } from "@/features/sprints/api/sprints-api";
 import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
 import { listSprintCompletionTasks } from "@/features/sprints/model/list-sprint-completion-tasks";
+import {
+    BACKLOG_LIST_PAGE_SIZE,
+    windowListItems,
+} from "@/features/sprints/model/list-window";
 import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
+import { useListWindow } from "@/features/sprints/model/use-list-window";
 import {
     useBoardSprints,
     useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
+import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
+import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
 import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
 import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
 import {
@@ -54,15 +61,19 @@ import {
     sprintDropId,
     SprintTaskTable,
 } from "@/features/sprints/ui/sprint-task-table";
+import { WindowedSprintTaskTable } from "@/features/sprints/ui/windowed-sprint-task-table";
 import {
     BoardSortControl,
     BoardTaskFiltersBar,
     DEFAULT_BOARD_SORT,
+    doneColumnIdSet,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    hideCompletedBoardTasks,
     isBoardFiltersActive,
     sortTasksByBoardSort,
     TaskDrawer,
+    useBoardCompletedVisibilityStore,
     useBoardSortStore,
     useBoardTasks,
     useTasksUiStore,
@@ -135,6 +146,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
     );
     const setBoardSort = useBoardSortStore((state) => state.setBoardSort);
+    const hideCompleted = useBoardCompletedVisibilityStore(
+        (state) => state.hideCompletedByBoardId[boardId] === true
+    );
+    const setHideCompleted = useBoardCompletedVisibilityStore(
+        (state) => state.setHideCompleted
+    );
     const {
         data: sprintsData,
         error: sprintsQueryError,
@@ -200,20 +217,29 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const planningSprints = [...(active ? [active] : []), ...drafts];
 
     const filtersActive =
-        isBoardFiltersActive(filters) || searchQuery.trim().length > 0;
+        isBoardFiltersActive(filters) ||
+        searchQuery.trim().length > 0 ||
+        hideCompleted;
+
+    const doneColumnIds = useMemo(() => doneColumnIdSet(columns), [columns]);
 
     const visibleTasks = useMemo(() => {
         const filtered = filterTasks(tasks, filters);
+        const withoutCompleted = hideCompletedBoardTasks(
+            filtered,
+            doneColumnIds,
+            hideCompleted
+        );
         const query = searchQuery.trim().toLowerCase();
         const searched = query
-            ? filtered.filter(
+            ? withoutCompleted.filter(
                   (task) =>
                       task.key.toLowerCase().includes(query) ||
                       task.title.toLowerCase().includes(query)
               )
-            : filtered;
+            : withoutCompleted;
         return sortTasksByBoardSort(searched, boardSort);
-    }, [boardSort, filters, searchQuery, tasks]);
+    }, [boardSort, doneColumnIds, filters, hideCompleted, searchQuery, tasks]);
 
     const backlogTasks = useMemo(() => {
         const group = visibleTasks.filter((task) => !task.sprintId);
@@ -221,6 +247,24 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             ? sortBySprintPosition(group)
             : group;
     }, [boardSort.field, visibleTasks]);
+
+    const listWindowResetKey = useMemo(
+        () =>
+            JSON.stringify({
+                boardId,
+                boardSort,
+                filters,
+                hideCompleted,
+                searchQuery,
+            }),
+        [boardId, boardSort, filters, hideCompleted, searchQuery]
+    );
+
+    const historyWindow = useListWindow(listWindowResetKey);
+    const windowedPastSprints = windowListItems(
+        pastSprints,
+        historyWindow.visibleCount
+    );
 
     const tasksBySprint = useMemo(() => {
         const map = new Map<string, Task[]>();
@@ -390,26 +434,24 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     }
 
     const showBodySpinner = isLoading || sprintsLoading || boardsLoading;
+    const firstColumnId = columns[0]?.id;
 
     return (
         <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
             <header className="flex flex-col gap-3 border-b border-border pb-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h1 className="truncate text-sm font-semibold">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <BoardSwitcher
+                        boardId={boardId}
+                        canManage={canManage}
+                        defaultBaseBranch={
+                            project?.github_default_branch ?? "main"
+                        }
+                        destination="backlog"
+                        projectId={projectId}
+                    />
+                    <h1 className="min-w-0 truncate text-sm font-semibold">
                         {t("sprints.backlogTitle")}
                     </h1>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        <BoardSwitcher
-                            boardId={boardId}
-                            canManage={canManage}
-                            defaultBaseBranch={
-                                project?.github_default_branch ?? "main"
-                            }
-                            destination="backlog"
-                            projectId={projectId}
-                        />
-                    </div>
                 </div>
 
                 {canManage ? (
@@ -456,8 +498,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
                         <BoardTaskFiltersBar
                             filters={filters}
+                            hideCompleted={hideCompleted}
                             labels={projectLabels}
                             onChange={setFilters}
+                            onHideCompletedChange={(next) => {
+                                setHideCompleted(boardId, next);
+                            }}
                             people={people}
                         />
                         <BoardSortControl
@@ -502,7 +548,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
                     {canManage && selectedCount > 0 ? (
                         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
-                            <div className="pointer-events-auto flex w-full min-w-0 max-w-full flex-col items-stretch gap-2 rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+                            <div className="pointer-events-auto flex w-full min-w-0 max-w-6xl flex-col items-stretch gap-2 rounded-md border border-primary bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
                                 <p className="text-ui whitespace-nowrap">
                                     {t("sprints.selectedCount", {
                                         count: selectedCount,
@@ -574,11 +620,13 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         draggingTaskIds={draggingTasks.map(
                                             (task) => task.id
                                         )}
+                                        firstColumnId={firstColumnId}
                                         key={sprint.id}
                                         labels={projectLabels}
                                         onOpenTask={selectTask}
                                         onRowSelectionChange={setRowSelection}
                                         projectId={projectId}
+                                        resetKey={listWindowResetKey}
                                         rowSelection={rowSelection}
                                         sprint={sprint}
                                         tasks={
@@ -599,7 +647,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                             )}
                                         </p>
                                     </header>
-                                    <SprintTaskTable
+                                    <WindowedSprintTaskTable
                                         canManage={canManage}
                                         containerId={BACKLOG_DROP_ID}
                                         draggingTaskIds={draggingTasks.map(
@@ -608,9 +656,18 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         labels={projectLabels}
                                         onOpenTask={selectTask}
                                         onRowSelectionChange={setRowSelection}
+                                        resetKey={listWindowResetKey}
                                         rowSelection={rowSelection}
                                         tasks={backlogTasks}
                                     />
+                                    {firstColumnId ? (
+                                        <BacklogAddTask
+                                            boardId={boardId}
+                                            projectId={projectId}
+                                            sprintId={null}
+                                            status={firstColumnId}
+                                        />
+                                    ) : null}
                                 </section>
 
                                 {pastSprints.length > 0 ? (
@@ -633,19 +690,47 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                                 ({pastSprints.length})
                                             </span>
                                         </button>
-                                        {historyOpen
-                                            ? pastSprints.map((sprint) => (
-                                                  <PastSprintSection
-                                                      boardId={boardId}
-                                                      canManage={canManage}
-                                                      columns={columns}
-                                                      key={sprint.id}
-                                                      projectId={projectId}
-                                                      sprint={sprint}
-                                                      tasks={tasks}
-                                                  />
-                                              ))
-                                            : null}
+                                        {historyOpen ? (
+                                            <>
+                                                {windowedPastSprints.visible.map(
+                                                    (sprint) => (
+                                                        <PastSprintSection
+                                                            boardId={boardId}
+                                                            canManage={
+                                                                canManage
+                                                            }
+                                                            columns={columns}
+                                                            key={sprint.id}
+                                                            projectId={
+                                                                projectId
+                                                            }
+                                                            sprint={sprint}
+                                                            tasks={tasks}
+                                                        />
+                                                    )
+                                                )}
+                                                <ListWindowControls
+                                                    bordered={false}
+                                                    hasMore={
+                                                        windowedPastSprints.hasMore
+                                                    }
+                                                    nextCount={Math.min(
+                                                        BACKLOG_LIST_PAGE_SIZE,
+                                                        windowedPastSprints.remaining
+                                                    )}
+                                                    onLoadMore={() => {
+                                                        historyWindow.loadMore(
+                                                            pastSprints.length
+                                                        );
+                                                    }}
+                                                    onShowAll={() => {
+                                                        historyWindow.showAll(
+                                                            pastSprints.length
+                                                        );
+                                                    }}
+                                                />
+                                            </>
+                                        ) : null}
                                     </section>
                                 ) : null}
                             </div>
@@ -1106,10 +1191,12 @@ function SprintSection({
     columns,
     drafts,
     draggingTaskIds,
+    firstColumnId,
     labels,
     onOpenTask,
     onRowSelectionChange,
     projectId,
+    resetKey,
     rowSelection,
     sprint,
     tasks,
@@ -1121,10 +1208,12 @@ function SprintSection({
     columns: Array<{ id: string; isDone: boolean }>;
     drafts: Sprint[];
     draggingTaskIds: string[];
+    firstColumnId?: string;
     labels: Parameters<typeof SprintTaskTable>[0]["labels"];
     onOpenTask: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
     projectId: string;
+    resetKey: string;
     rowSelection: RowSelectionState;
     sprint: Sprint;
     tasks: Task[];
@@ -1260,16 +1349,25 @@ function SprintSection({
                 />
             ) : null}
 
-            <SprintTaskTable
+            <WindowedSprintTaskTable
                 canManage={canManage}
                 containerId={sprintDropId(sprint.id)}
                 draggingTaskIds={draggingTaskIds}
                 labels={labels}
                 onOpenTask={onOpenTask}
                 onRowSelectionChange={onRowSelectionChange}
+                resetKey={resetKey}
                 rowSelection={rowSelection}
                 tasks={tasks}
             />
+            {firstColumnId ? (
+                <BacklogAddTask
+                    boardId={boardId}
+                    projectId={projectId}
+                    sprintId={sprint.id}
+                    status={firstColumnId}
+                />
+            ) : null}
 
             <StartSprintDialog
                 boardId={boardId}

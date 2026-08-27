@@ -1,6 +1,10 @@
 export { resolveTasksProvider } from "./api/resolve-tasks-provider";
 export type { TasksProvider } from "./api/tasks-provider";
 export {
+    doneColumnIdSet,
+    hideCompletedBoardTasks,
+} from "./lib/board-completed-visibility";
+export {
     parentSubtaskProgress,
     visibleBoardTasks,
 } from "./lib/board-subtask-visibility";
@@ -26,6 +30,8 @@ export {
 } from "./lib/format-branch";
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export { isWithinColumnDragEnabled } from "./lib/is-within-column-drag-enabled";
+export { resolveCachedTaskBoardId } from "./lib/resolve-cached-task-board-id";
+export { matchesTaskSearchQuery } from "./lib/search-tasks";
 export {
     DEFAULT_BOARD_SORT,
     sortTasksByBoardSort,
@@ -74,6 +80,7 @@ export type {
     TaskLinkRefusal,
     TaskStructureNode,
 } from "./lib/task-structure";
+export { useBoardCompletedVisibilityStore } from "./model/board-completed-visibility-store";
 export { useBoardSortStore } from "./model/board-sort-store";
 export { useBoardSubtaskVisibilityStore } from "./model/board-subtask-visibility-store";
 export {
@@ -81,6 +88,7 @@ export {
     DEFAULT_TASK_PRIORITY,
     PRIORITY_CLASS,
     PRIORITY_DOT_CLASS,
+    PRIORITY_RAIL_CLASS,
     TASK_PRIORITIES,
     TASK_TITLE_MAX_LENGTH,
     TASK_TYPE_CARD_CLASS,
@@ -102,8 +110,13 @@ export { BoardArchiveDialog } from "./ui/board-archive-dialog";
 export { BoardSortControl } from "./ui/board-sort-control";
 export { BoardSubtaskVisibilityControl } from "./ui/board-subtask-visibility-control";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";
+export type {
+    BoardFilterBoard,
+    BoardFilterPerson,
+} from "./ui/board-task-filters";
 export { BoardTaskSelectionBar } from "./ui/board-task-selection-bar";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
 export { TaskGithubPanel } from "./ui/task-github-panel";
+export { TaskSearchPicker } from "./ui/task-search-picker";

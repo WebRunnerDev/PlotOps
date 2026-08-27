@@ -12,6 +12,7 @@ import type {
     TaskType,
 } from "@/features/tasks/model/types";
 
+import { shouldAutoAssignToCreator } from "@/features/boards";
 import {
     getGuestSandbox,
     GUEST_SEED_ACTOR_ID,
@@ -125,6 +126,9 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     if (patch.branch_name !== undefined) {
         task.branchName = patch.branch_name ?? undefined;
     }
+    if (patch.linked_commit_sha !== undefined) {
+        task.linkedCommitSha = patch.linked_commit_sha ?? undefined;
+    }
     if (patch.status !== undefined) {
         task.status = patch.status;
     }
@@ -216,6 +220,17 @@ function firstColumnId(board: {
         throw new Error("Board has no columns");
     }
     return column.id;
+}
+
+function guestCreateAssignee(board: {
+    autoAssignToCreator?: boolean;
+}): GuestPerson | undefined {
+    return shouldAutoAssignToCreator({
+        autoAssignToCreator: board.autoAssignToCreator === true,
+        teamPeopleCount: 1,
+    })
+        ? ACTOR
+        : undefined;
 }
 
 function isActiveTask(task: GuestTask): boolean {
@@ -374,10 +389,11 @@ export const guestTasksProvider: TasksProvider = {
         let archivedCount = 0;
         updateGuestSandbox((sandbox) => {
             const gates = parentGateTasks(sandbox);
+            const concurrentIds = new Set(uniqueIds);
             for (const taskId of uniqueIds) {
                 const task = sandbox.tasks.find((item) => item.id === taskId);
                 if (!task || task.archivedAt) continue;
-                assertParentArchiveLegal(taskId, gates);
+                assertParentArchiveLegal(taskId, gates, { concurrentIds });
             }
             const now = new Date().toISOString();
             for (const taskId of uniqueIds) {
@@ -495,7 +511,9 @@ export const guestTasksProvider: TasksProvider = {
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
 
+            const assignee = guestCreateAssignee(board);
             created = {
+                ...(assignee ? { assignee } : {}),
                 author: ACTOR,
                 boardId: parent.boardId,
                 createdAt: new Date().toISOString(),
@@ -592,7 +610,8 @@ export const guestTasksProvider: TasksProvider = {
         status,
         title,
         taskType,
-        sprintId
+        sprintId,
+        extras
     ) {
         const normalizedTitle = normalizeTaskTitle(title);
         let created: GuestTask | undefined;
@@ -621,14 +640,27 @@ export const guestTasksProvider: TasksProvider = {
                 sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
             }
 
+            const assignee =
+                extras?.assigneeId === undefined
+                    ? guestCreateAssignee(board)
+                    : extras.assigneeId === null
+                      ? undefined
+                      : extras.assigneeId === ACTOR.id
+                        ? ACTOR
+                        : { id: extras.assigneeId, name: extras.assigneeId };
+            const priority =
+                extras?.priority === undefined
+                    ? DEFAULT_TASK_PRIORITY
+                    : (extras.priority ?? undefined);
             created = {
+                ...(assignee ? { assignee } : {}),
                 author: ACTOR,
                 boardId,
                 createdAt: new Date().toISOString(),
                 id: crypto.randomUUID(),
                 key: nextTaskKey(sandbox.tasks, resolvedType),
                 position: maxPosition + 1,
-                priority: DEFAULT_TASK_PRIORITY,
+                ...(priority ? { priority } : {}),
                 projectId,
                 ...(sprintId ? { sprintId, sprintPosition } : {}),
                 status,
@@ -780,6 +812,8 @@ export const guestTasksProvider: TasksProvider = {
             task.boardId = targetBoardId;
             task.status = targetStatus;
             task.position = maxPositionAmong(columnTasks) + 1;
+            delete task.sprintId;
+            delete task.sprintPosition;
         });
 
         return { status: targetStatus };

@@ -346,38 +346,43 @@ export function KanbanColumn({
                 </header>
 
                 <div
-                    className="scrollbar-board flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
+                    className="scrollbar-board flex min-h-0 flex-1 flex-col overflow-y-auto"
                     ref={setTaskListDropReference}
                 >
-                    <SortableContext
-                        items={tasks.map((task) => task.id)}
-                        strategy={
-                            withinColumnDragEnabled
-                                ? verticalListSortingStrategy
-                                : staticTaskSortingStrategy
-                        }
-                    >
-                        {tasks.map((task) => (
-                            <DraggableTaskCard
-                                boardId={boardId}
-                                canDrag={canEdit}
-                                key={task.id}
-                                labels={labelsByTaskId.get(task.id) ?? []}
-                                selectionEnabled={canSelectForArchive}
-                                subtaskProgress={subtaskProgressByTaskId?.get(
-                                    task.id
-                                )}
-                                task={task}
-                            />
-                        ))}
-                    </SortableContext>
-                    <KanbanAddTask
-                        boardId={boardId}
-                        createSprintId={createSprintId}
-                        projectId={projectId}
-                        startOpen={startAddingTask}
-                        status={status}
-                    />
+                    <div className="flex flex-col gap-2">
+                        <SortableContext
+                            items={tasks.map((task) => task.id)}
+                            strategy={
+                                withinColumnDragEnabled
+                                    ? verticalListSortingStrategy
+                                    : staticTaskSortingStrategy
+                            }
+                        >
+                            {tasks.map((task) => (
+                                <DraggableTaskCard
+                                    boardId={boardId}
+                                    canDrag={canEdit}
+                                    key={task.id}
+                                    labels={labelsByTaskId.get(task.id) ?? []}
+                                    selectionEnabled={canSelectForArchive}
+                                    subtaskProgress={subtaskProgressByTaskId?.get(
+                                        task.id
+                                    )}
+                                    task={task}
+                                />
+                            ))}
+                        </SortableContext>
+                        <KanbanAddTask
+                            boardId={boardId}
+                            createSprintId={createSprintId}
+                            projectId={projectId}
+                            startOpen={startAddingTask}
+                            status={status}
+                        />
+                    </div>
+                    {tasks.length === 0 ? (
+                        <div aria-hidden className="min-h-0 flex-1 shrink-0" />
+                    ) : undefined}
                 </div>
             </section>
 

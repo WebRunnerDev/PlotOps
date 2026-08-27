@@ -28,6 +28,9 @@ const LABEL_BACKEND = "b0000000-0000-4000-8000-000000000031";
 const LABEL_CI = "b0000000-0000-4000-8000-000000000032";
 const LABEL_DOCS = "b0000000-0000-4000-8000-000000000033";
 const LABEL_DESIGN = "b0000000-0000-4000-8000-000000000034";
+const FIELD_REPRO = "b0000000-0000-4000-8000-000000000040";
+const FIELD_DESC_GIT = "b0000000-0000-4000-8000-000000000041";
+const FIELD_DESC_PLAIN = "b0000000-0000-4000-8000-000000000042";
 
 const T01 = "b0000000-0000-4000-8000-000000000101";
 const T02 = "b0000000-0000-4000-8000-000000000102";
@@ -273,6 +276,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
     boards: [
         {
             allowedHeadPatterns: ["feature/*", "fix/*", "bugfix/*"],
+            autoAssignToCreator: false,
             baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
             defaultTaskType: "task",
@@ -283,6 +287,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         },
         {
             allowedHeadPatterns: [],
+            autoAssignToCreator: false,
             baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
             defaultTaskType: "task",
@@ -304,6 +309,16 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         },
         {
             author: ACTOR,
+            body: "<p>Agreed — keep the demo CTA copy short.</p>",
+            createdAt: "2026-08-03T11:45:00.000Z",
+            id: "e0000000-0000-4000-8000-000000000404",
+            parentId: "e0000000-0000-4000-8000-000000000401",
+            projectId: PROJ_GIT_ID,
+            taskId: T01,
+            updatedAt: "2026-08-03T11:45:00.000Z",
+        },
+        {
+            author: ACTOR,
             body: "<p>Fixtures look good on the CI tab — retry once to see the stream animation.</p>",
             createdAt: "2026-08-04T12:00:00.000Z",
             id: "e0000000-0000-4000-8000-000000000402",
@@ -319,6 +334,38 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_GIT_ID,
             taskId: T03,
             updatedAt: "2026-08-04T15:00:00.000Z",
+        },
+    ],
+    customFieldDefinitions: [
+        {
+            appliesTo: ["task", "bug", "feature"],
+            id: FIELD_DESC_GIT,
+            name: "Description",
+            position: 0,
+            projectId: PROJ_GIT_ID,
+            systemKey: "description",
+        },
+        {
+            appliesTo: ["bug"],
+            id: FIELD_REPRO,
+            name: "Steps to reproduce",
+            position: 1,
+            projectId: PROJ_GIT_ID,
+        },
+        {
+            appliesTo: ["task", "bug", "feature"],
+            id: FIELD_DESC_PLAIN,
+            name: "Description",
+            position: 0,
+            projectId: PROJ_PLAIN_ID,
+            systemKey: "description",
+        },
+    ],
+    customFieldValues: [
+        {
+            fieldId: FIELD_REPRO,
+            taskId: T11,
+            value: "1. Open board on slow 3G\n2. Toggle offline then online\n3. Drag a card — subscription drops",
         },
     ],
     labels: [

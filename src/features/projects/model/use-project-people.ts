@@ -16,18 +16,22 @@ export type ProjectPerson = {
     name: string;
 };
 
+const EMPTY_MEMBERS: never[] = [];
+const EMPTY_PEOPLE: ProjectPerson[] = [];
+
 /** Current Project Owner + Members (including Viewer) for Mention picker. */
 export function useProjectPeople(projectId: string): ProjectPerson[] {
     const { t } = useTranslation("board");
     const guest = isGuest();
     const { data: project } = useProject(projectId);
-    const { data: members = [] } = useProjectMembers(projectId);
+    const { data: membersData } = useProjectMembers(projectId);
+    const members = membersData ?? EMPTY_MEMBERS;
     const { data: ownerProfile } = useProjectOwnerProfile(
         guest ? undefined : project?.owner_id
     );
 
     const guestPeople = useMemo(
-        () => (guest ? listGuestProjectPeople(projectId) : []),
+        () => (guest ? listGuestProjectPeople(projectId) : EMPTY_PEOPLE),
         [guest, projectId]
     );
 

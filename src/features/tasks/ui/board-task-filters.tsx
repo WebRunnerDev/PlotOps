@@ -1,6 +1,15 @@
 import type { ReactNode } from "react";
 
-import { Calendar, Flag, ListFilter, Tag, User, X } from "lucide-react";
+import {
+    Calendar,
+    CircleCheck,
+    Flag,
+    LayoutGrid,
+    ListFilter,
+    Tag,
+    User,
+    X,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { getLabelDotProperties, type ProjectLabel } from "@/features/labels";
@@ -27,6 +36,11 @@ import {
     DropdownMenuTrigger,
 } from "@/shared/shadcn/ui/dropdown-menu";
 
+export type BoardFilterBoard = {
+    id: string;
+    name: string;
+};
+
 export type BoardFilterPerson = {
     avatarUrl?: string;
     id: string;
@@ -34,9 +48,21 @@ export type BoardFilterPerson = {
 };
 
 type BoardTaskFiltersBarProperties = {
+    /** When set and length > 1, show a Board facet (project-wide pickers). */
+    boards?: BoardFilterBoard[];
+    /** Hide the “Filter” legend — use in compact pickers. */
+    compact?: boolean;
     filters: BoardTaskFilters;
+    /** When set, show a toggle to hide Tasks in Done columns. */
+    hideCompleted?: boolean;
     labels: ProjectLabel[];
+    /**
+     * Nested pickers set `false` so a facet menu does not steal the
+     * Combobox popup (dropdown portals outside the searcher).
+     */
+    menuModal?: boolean;
     onChange: (filters: BoardTaskFilters) => void;
+    onHideCompletedChange?: (hideCompleted: boolean) => void;
     people: BoardFilterPerson[];
 };
 
@@ -46,18 +72,25 @@ const PRIORITY_FILTER_VALUES: PriorityFilterValue[] = [
 ];
 
 export function BoardTaskFiltersBar({
+    boards,
+    compact = false,
     filters,
+    hideCompleted = false,
     labels,
+    menuModal = true,
     onChange,
+    onHideCompletedChange,
     people,
 }: BoardTaskFiltersBarProperties) {
     const { t } = useTranslation("board");
     const active = isBoardFiltersActive(filters);
+    const showBoardFilter = (boards?.length ?? 0) > 1;
 
     const assigneeOptions = [
         UNASSIGNED_ASSIGNEE_FILTER,
         ...people.map((person) => person.id),
     ];
+    const boardOptions = boards?.map((board) => board.id) ?? [];
     const labelOptions = labels.map((label) => label.id);
 
     const clearFilters = () => {
@@ -66,15 +99,61 @@ export function BoardTaskFiltersBar({
 
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-meta text-muted-foreground">
-                <ListFilter aria-hidden className="size-3.5" />
-                {t("filters.label")}
-            </span>
+            {compact ? undefined : (
+                <span className="inline-flex items-center gap-1.5 text-meta text-muted-foreground">
+                    <ListFilter aria-hidden className="size-3.5" />
+                    {t("filters.label")}
+                </span>
+            )}
+
+            {showBoardFilter && boards ? (
+                <FilterMenu
+                    activeCount={filters.boardIds.length}
+                    icon={<LayoutGrid className="size-3.5" />}
+                    label={t("fields.board")}
+                    modal={menuModal}
+                >
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                            {t("fields.board")}
+                        </DropdownMenuLabel>
+                        <SelectAllCheckboxItem
+                            allValues={boardOptions}
+                            onChange={(next) => {
+                                onChange({
+                                    ...filters,
+                                    boardIds: next,
+                                });
+                            }}
+                            selected={filters.boardIds}
+                        />
+                        <DropdownMenuSeparator />
+                        {boards.map((board) => (
+                            <DropdownMenuCheckboxItem
+                                checked={filters.boardIds.includes(board.id)}
+                                key={board.id}
+                                onCheckedChange={() => {
+                                    onChange({
+                                        ...filters,
+                                        boardIds: toggleFilterValue(
+                                            filters.boardIds,
+                                            board.id
+                                        ),
+                                    });
+                                }}
+                            >
+                                {board.name}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                    </DropdownMenuGroup>
+                </FilterMenu>
+            ) : undefined}
 
             <FilterMenu
                 activeCount={filters.priorities.length}
                 icon={<Flag className="size-3.5" />}
                 label={t("fields.priority")}
+                modal={menuModal}
             >
                 <DropdownMenuGroup>
                     <DropdownMenuLabel>
@@ -112,6 +191,7 @@ export function BoardTaskFiltersBar({
                 activeCount={filters.assigneeIds.length}
                 icon={<User className="size-3.5" />}
                 label={t("fields.assignee")}
+                modal={menuModal}
             >
                 <DropdownMenuGroup>
                     <DropdownMenuLabel>
@@ -173,6 +253,7 @@ export function BoardTaskFiltersBar({
                 activeCount={filters.deadlines.length}
                 icon={<Calendar className="size-3.5" />}
                 label={t("fields.deadline")}
+                modal={menuModal}
             >
                 <DropdownMenuGroup>
                     <DropdownMenuLabel>
@@ -211,6 +292,7 @@ export function BoardTaskFiltersBar({
                 disabled={labels.length === 0}
                 icon={<Tag className="size-3.5" />}
                 label={t("fields.labels")}
+                modal={menuModal}
             >
                 <DropdownMenuGroup>
                     <DropdownMenuLabel>{t("fields.labels")}</DropdownMenuLabel>
@@ -263,6 +345,30 @@ export function BoardTaskFiltersBar({
                 </DropdownMenuGroup>
             </FilterMenu>
 
+            {onHideCompletedChange ? (
+                <Button
+                    aria-label={t("filters.hideCompleted")}
+                    aria-pressed={hideCompleted}
+                    className={cn(
+                        "h-7 max-w-full gap-1.5 px-2.5 text-[0.8rem]",
+                        hideCompleted && "border-primary/40 bg-primary/5"
+                    )}
+                    onClick={() => {
+                        onHideCompletedChange(!hideCompleted);
+                    }}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                >
+                    <CircleCheck aria-hidden className="size-3.5" />
+                    <span className="min-w-0 truncate">
+                        {hideCompleted
+                            ? t("filters.showCompleted")
+                            : t("filters.hideCompleted")}
+                    </span>
+                </Button>
+            ) : undefined}
+
             {active ? (
                 <Button
                     onClick={clearFilters}
@@ -284,15 +390,17 @@ function FilterMenu({
     disabled = false,
     icon,
     label,
+    modal = true,
 }: {
     activeCount: number;
     children: ReactNode;
     disabled?: boolean;
     icon: ReactNode;
     label: string;
+    modal?: boolean;
 }) {
     return (
-        <DropdownMenu>
+        <DropdownMenu modal={modal}>
             <DropdownMenuTrigger
                 className={cn(
                     "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-[min(var(--radius-md),12px)] border border-border bg-background px-2.5 text-[0.8rem] font-medium outline-none select-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-expanded:bg-muted",

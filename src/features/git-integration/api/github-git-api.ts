@@ -1,4 +1,11 @@
+import { textReferencesTaskKey } from "@/features/git-integration/lib/extract-task-key";
+import { mapCheckRollup } from "@/features/git-integration/lib/map-check-rollup";
+
 const GITHUB_API = "https://api.github.com";
+const PR_CHECKS_PAGE_SIZE = 100;
+const PR_CHECKS_MAX_PAGES = 5;
+const PR_COMMITS_PAGE_SIZE = 100;
+const PR_COMMITS_MAX_PAGES = 10;
 const PR_FILES_PAGE_SIZE = 100;
 const PR_FILES_MAX_PAGES = 30;
 
@@ -17,6 +24,36 @@ export type CreatePullRequestInput = {
     title: string;
     token: string;
 };
+
+export type GitCheckConclusion =
+    | "action_required"
+    | "cancelled"
+    | "failure"
+    | "neutral"
+    | "skipped"
+    | "success"
+    | "timed_out";
+
+export type GitCheckRollup = "failure" | "neutral" | "pending" | "success";
+
+export type GitCheckRun = {
+    completedAt: null | string;
+    conclusion: GitCheckConclusion | null;
+    detailsUrl: null | string;
+    htmlUrl: string;
+    id: number;
+    name: string;
+    startedAt: null | string;
+    status: GitCheckStatus;
+};
+
+export type GitCheckStatus =
+    | "completed"
+    | "in_progress"
+    | "pending"
+    | "queued"
+    | "requested"
+    | "waiting";
 
 export type GitCommit = {
     author: {
@@ -80,6 +117,20 @@ export type MergePullRequestResult = {
     sha: string;
 };
 
+export type PullRequestChecksResult = {
+    checks: GitCheckRun[];
+    rollup: GitCheckRollup;
+    sha: string;
+    /** True when GitHub still had more pages after `PR_CHECKS_MAX_PAGES`. */
+    truncated: boolean;
+};
+
+export type PullRequestCommitsResult = {
+    commits: GitCommit[];
+    /** True when GitHub still had more pages after `PR_COMMITS_MAX_PAGES`. */
+    truncated: boolean;
+};
+
 export type PullRequestFilesResult = {
     files: GitPrFile[];
     /** True when GitHub still had more pages after `PR_FILES_MAX_PAGES`. */
@@ -93,11 +144,47 @@ type GithubFetchOptions = {
     signal?: AbortSignal;
 };
 
+type RawCheckRunPayload = {
+    completed_at: null | string;
+    conclusion: null | string;
+    details_url: null | string;
+    html_url: string;
+    id: number;
+    name: string;
+    started_at: null | string;
+    status: string;
+};
+
+type RawCheckRunsResponse = {
+    check_runs: RawCheckRunPayload[];
+    total_count: number;
+};
+
+type RawCommitPayload = {
+    author: null | { avatar_url: string; login: string };
+    commit: {
+        author: null | { date: string; name: string };
+        message: string;
+    };
+    html_url: string;
+    sha: string;
+};
+
+type RawPrFilePayload = {
+    additions: number;
+    blob_url: string;
+    deletions: number;
+    filename: string;
+    patch?: string;
+    previous_filename?: string;
+    status: string;
+};
+
 type RawPrPayload = {
     body: null | string;
     created_at: string;
     draft: boolean;
-    head: { ref: string };
+    head: { ref: string; sha: string };
     html_url: string;
     mergeable?: boolean | null;
     merged_at: null | string;
@@ -146,33 +233,13 @@ export async function fetchBranchCommits(
     token: string,
     perPage = 20
 ): Promise<GitCommit[]> {
-    type RawCommit = {
-        author: null | { avatar_url: string; login: string };
-        commit: {
-            author: null | { date: string; name: string };
-            message: string;
-        };
-        html_url: string;
-        sha: string;
-    };
-
-    const raw = await githubFetch<RawCommit[]>(
+    const raw = await githubFetch<RawCommitPayload[]>(
         `/repos/${repoFullName}/commits`,
         token,
         { parameters: { per_page: String(perPage), sha: branchName } }
     );
 
-    return raw.map((c) => ({
-        author: {
-            avatar_url: c.author?.avatar_url ?? null,
-            date: c.commit.author?.date ?? null,
-            login: c.author?.login ?? null,
-            name: c.commit.author?.name ?? null,
-        },
-        message: c.commit.message.split("\n")[0] ?? c.commit.message,
-        sha: c.sha,
-        url: c.html_url,
-    }));
+    return raw.map((commit) => mapCommit(commit));
 }
 
 /** All PRs (open + closed) where head branch matches. */
@@ -197,6 +264,45 @@ export async function fetchBranchPullRequests(
     return raw.map((pr) => mapPullRequest(pr));
 }
 
+/** Single commit by SHA (full or abbreviated). */
+export async function fetchCommitBySha(
+    repoFullName: string,
+    sha: string,
+    token: string,
+    signal?: AbortSignal
+): Promise<GitCommit> {
+    const raw = await githubFetch<RawCommitPayload>(
+        `/repos/${repoFullName}/commits/${encodeURIComponent(sha)}`,
+        token,
+        { signal }
+    );
+
+    return mapCommit(raw);
+}
+
+/** Changed files (with patches) for a single commit. */
+export async function fetchCommitFiles(
+    repoFullName: string,
+    sha: string,
+    token: string,
+    signal?: AbortSignal
+): Promise<PullRequestFilesResult> {
+    type RawCommitWithFiles = RawCommitPayload & {
+        files?: RawPrFilePayload[];
+    };
+
+    const raw = await githubFetch<RawCommitWithFiles>(
+        `/repos/${repoFullName}/commits/${encodeURIComponent(sha)}`,
+        token,
+        { signal }
+    );
+
+    return {
+        files: (raw.files ?? []).map((file) => mapPrFile(file)),
+        truncated: false,
+    };
+}
+
 /** Single pull request by number. */
 export async function fetchPullRequest(
     repoFullName: string,
@@ -213,26 +319,100 @@ export async function fetchPullRequest(
     return mapPullRequest(pr);
 }
 
+/**
+ * Check runs for a PR head commit (Actions + app/agent checks).
+ * Resolves `head.sha` from the pull, then paginates check-runs.
+ */
+export async function fetchPullRequestChecks(
+    repoFullName: string,
+    prNumber: number,
+    token: string,
+    signal?: AbortSignal
+): Promise<PullRequestChecksResult> {
+    const pr = await githubFetch<RawPrPayload>(
+        `/repos/${repoFullName}/pulls/${prNumber}`,
+        token,
+        { signal }
+    );
+    const sha = pr.head.sha;
+    const checks: GitCheckRun[] = [];
+    let truncated = false;
+
+    for (let page = 1; page <= PR_CHECKS_MAX_PAGES; page += 1) {
+        const raw = await githubFetch<RawCheckRunsResponse>(
+            `/repos/${repoFullName}/commits/${encodeURIComponent(sha)}/check-runs`,
+            token,
+            {
+                parameters: {
+                    page: String(page),
+                    per_page: String(PR_CHECKS_PAGE_SIZE),
+                },
+                signal,
+            }
+        );
+
+        for (const run of raw.check_runs) {
+            checks.push(mapCheckRun(run));
+        }
+
+        if (checks.length >= raw.total_count) break;
+        if (raw.check_runs.length < PR_CHECKS_PAGE_SIZE) break;
+        if (page === PR_CHECKS_MAX_PAGES) {
+            truncated = true;
+        }
+    }
+
+    return {
+        checks,
+        rollup: mapCheckRollup(checks),
+        sha,
+        truncated,
+    };
+}
+
+/** Commits on a pull request — paginated. */
+export async function fetchPullRequestCommits(
+    repoFullName: string,
+    prNumber: number,
+    token: string
+): Promise<PullRequestCommitsResult> {
+    const commits: GitCommit[] = [];
+    let truncated = false;
+    for (let page = 1; page <= PR_COMMITS_MAX_PAGES; page += 1) {
+        const raw = await githubFetch<RawCommitPayload[]>(
+            `/repos/${repoFullName}/pulls/${prNumber}/commits`,
+            token,
+            {
+                parameters: {
+                    page: String(page),
+                    per_page: String(PR_COMMITS_PAGE_SIZE),
+                },
+            }
+        );
+
+        for (const commit of raw) {
+            commits.push(mapCommit(commit));
+        }
+
+        if (raw.length < PR_COMMITS_PAGE_SIZE) break;
+        if (page === PR_COMMITS_MAX_PAGES) {
+            truncated = true;
+        }
+    }
+
+    return { commits, truncated };
+}
+
 /** Changed files (with unified diff patches) for a PR — paginated. */
 export async function fetchPullRequestFiles(
     repoFullName: string,
     prNumber: number,
     token: string
 ): Promise<PullRequestFilesResult> {
-    type RawFile = {
-        additions: number;
-        blob_url: string;
-        deletions: number;
-        filename: string;
-        patch?: string;
-        previous_filename?: string;
-        status: string;
-    };
-
     const files: GitPrFile[] = [];
     let truncated = false;
     for (let page = 1; page <= PR_FILES_MAX_PAGES; page += 1) {
-        const raw = await githubFetch<RawFile[]>(
+        const raw = await githubFetch<RawPrFilePayload[]>(
             `/repos/${repoFullName}/pulls/${prNumber}/files`,
             token,
             {
@@ -244,15 +424,7 @@ export async function fetchPullRequestFiles(
         );
 
         for (const f of raw) {
-            files.push({
-                additions: f.additions,
-                blob_url: f.blob_url,
-                deletions: f.deletions,
-                filename: f.filename,
-                patch: f.patch,
-                previous_filename: f.previous_filename,
-                status: f.status,
-            });
+            files.push(mapPrFile(f));
         }
 
         if (raw.length < PR_FILES_PAGE_SIZE) break;
@@ -315,6 +487,28 @@ export async function mergePullRequest(
     );
 }
 
+/**
+ * Commits whose message mentions a task key (Jira-style smart commits).
+ * Uses GitHub commit search — requires auth; rate-limited separately from REST.
+ */
+export async function searchCommitsByTaskKey(
+    repoFullName: string,
+    taskKey: string,
+    token: string,
+    perPage = 20
+): Promise<GitCommit[]> {
+    type SearchResponse = { items: RawCommitPayload[] };
+
+    const q = `repo:${repoFullName} ${taskKey}`;
+    const raw = await githubFetch<SearchResponse>("/search/commits", token, {
+        parameters: { per_page: String(perPage), q },
+    });
+
+    return raw.items
+        .map((commit) => mapCommit(commit))
+        .filter((commit) => textReferencesTaskKey(commit.message, taskKey));
+}
+
 async function githubFetch<T>(
     path: string,
     token: string,
@@ -353,6 +547,79 @@ async function githubFetch<T>(
     return response.json() as Promise<T>;
 }
 
+function mapCheckConclusion(value: null | string): GitCheckConclusion | null {
+    if (value == undefined) return null;
+    switch (value) {
+        case "action_required":
+        case "cancelled":
+        case "failure":
+        case "neutral":
+        case "skipped":
+        case "success":
+        case "timed_out": {
+            return value;
+        }
+        default: {
+            return "neutral";
+        }
+    }
+}
+
+function mapCheckRun(raw: RawCheckRunPayload): GitCheckRun {
+    return {
+        completedAt: raw.completed_at,
+        conclusion: mapCheckConclusion(raw.conclusion),
+        detailsUrl: raw.details_url,
+        htmlUrl: raw.html_url,
+        id: raw.id,
+        name: raw.name,
+        startedAt: raw.started_at,
+        status: mapCheckStatus(raw.status),
+    };
+}
+
+function mapCheckStatus(value: string): GitCheckStatus {
+    switch (value) {
+        case "completed":
+        case "in_progress":
+        case "pending":
+        case "queued":
+        case "requested":
+        case "waiting": {
+            return value;
+        }
+        default: {
+            return "queued";
+        }
+    }
+}
+
+function mapCommit(raw: RawCommitPayload): GitCommit {
+    return {
+        author: {
+            avatar_url: raw.author?.avatar_url ?? null,
+            date: raw.commit.author?.date ?? null,
+            login: raw.author?.login ?? null,
+            name: raw.commit.author?.name ?? null,
+        },
+        message: raw.commit.message.split("\n")[0] ?? raw.commit.message,
+        sha: raw.sha,
+        url: raw.html_url,
+    };
+}
+
+function mapPrFile(raw: RawPrFilePayload): GitPrFile {
+    return {
+        additions: raw.additions,
+        blob_url: raw.blob_url,
+        deletions: raw.deletions,
+        filename: raw.filename,
+        patch: raw.patch,
+        previous_filename: raw.previous_filename,
+        status: raw.status,
+    };
+}
+
 function mapPullRequest(pr: RawPrPayload): GitPullRequest {
     return {
         body: pr.body,
@@ -368,3 +635,5 @@ function mapPullRequest(pr: RawPrPayload): GitPullRequest {
         url: pr.html_url,
     };
 }
+
+export { mapCheckRollup } from "@/features/git-integration/lib/map-check-rollup";

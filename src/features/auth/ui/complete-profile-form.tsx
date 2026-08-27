@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { updateProfileNames } from "@/features/auth/api/profile-api";
 import { mergeCompleteProfilePrefill } from "@/features/auth/lib/complete-profile-prefill";
-import { splitFullName } from "@/features/auth/lib/user-display";
+import { profileNamesFromUserMetadata } from "@/features/auth/lib/user-display";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
@@ -44,9 +44,9 @@ export function CompleteProfileForm({
             };
         }
 
-        const githubName = user?.user_metadata?.name;
-        if (typeof githubName === "string" && githubName.trim()) {
-            return splitFullName(githubName);
+        const oauthNames = profileNamesFromUserMetadata(user?.user_metadata);
+        if (oauthNames.firstName || oauthNames.lastName) {
+            return oauthNames;
         }
 
         return { firstName: "", lastName: "" };

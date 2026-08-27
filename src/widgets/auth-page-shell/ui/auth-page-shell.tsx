@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { AuthLanguageSwitcher } from "@/features/auth";
 import { cn } from "@/shared/lib/utils";
 
+import { AuthOpenSourceFooter } from "./auth-open-source-footer";
+
 type AuthPageShellProperties = {
     children: ReactNode;
     className?: string;
@@ -16,7 +18,7 @@ export function AuthPageShell({
     return (
         <div
             className={cn(
-                "relative flex min-h-[60vh] w-full min-w-0 items-center justify-center px-4 py-8 sm:py-12",
+                "relative flex min-h-[60vh] w-full min-w-0 flex-col items-center justify-center gap-6 px-4 py-8 sm:py-12",
                 className
             )}
         >
@@ -24,6 +26,7 @@ export function AuthPageShell({
                 <AuthLanguageSwitcher />
             </div>
             {children}
+            <AuthOpenSourceFooter />
         </div>
     );
 }

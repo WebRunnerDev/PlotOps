@@ -21,6 +21,7 @@ export type GuestActivityEvent = {
 
 export type GuestBoard = {
     allowedHeadPatterns: string[];
+    autoAssignToCreator?: boolean;
     baseBranch: string;
     columns: GuestBoardColumn[];
     defaultTaskType: "bug" | "feature" | "task";
@@ -42,9 +43,27 @@ export type GuestComment = {
     body: string;
     createdAt: string;
     id: string;
+    /** Thread root id when this Comment is a reply; null/undefined for roots. */
+    parentId?: null | string;
     projectId: string;
     taskId: string;
     updatedAt: string;
+};
+
+/** Project-scoped custom text field definition (Guest sandbox). */
+export type GuestCustomFieldDefinition = {
+    appliesTo: Array<"bug" | "feature" | "task">;
+    id: string;
+    name: string;
+    position: number;
+    projectId: string;
+    systemKey?: "description";
+};
+
+export type GuestCustomFieldValue = {
+    fieldId: string;
+    taskId: string;
+    value: string;
 };
 
 export type GuestLabel = {
@@ -100,6 +119,8 @@ export type GuestSandbox = {
     activity: GuestActivityEvent[];
     boards: GuestBoard[];
     comments: GuestComment[];
+    customFieldDefinitions: GuestCustomFieldDefinition[];
+    customFieldValues: GuestCustomFieldValue[];
     labels: GuestLabel[];
     notifications: GuestNotification[];
     projects: GuestProject[];
@@ -143,6 +164,7 @@ export type GuestTask = {
     id: string;
     key: string;
     labelIds?: string[];
+    linkedCommitSha?: string;
     /** Present when this Task is a Subtask of a Parent Task. */
     parentId?: string;
     position: number;

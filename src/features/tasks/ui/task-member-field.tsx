@@ -4,12 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import type { TaskAssignee } from "@/features/tasks/model/types";
 
-import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
-import {
-    useProjectMembers,
-    useProjectOwnerProfile,
-} from "@/features/projects/model/use-project-members";
-import { useProject } from "@/features/projects/model/use-projects";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import {
@@ -34,6 +29,22 @@ type TaskMemberFieldProperties = {
     value: TaskMemberOption | undefined;
 };
 
+/** Next assignee for the field, or `undefined` when the selection is a no-op. */
+export function resolveMemberFieldChange(input: {
+    currentId: null | string;
+    next: null | TaskMemberOption | undefined;
+}): null | TaskMemberOption | undefined {
+    const nextId =
+        !input.next || input.next.id === NONE_ID ? null : input.next.id;
+    if (nextId === input.currentId) {
+        return undefined;
+    }
+    if (nextId === null) {
+        return null;
+    }
+    return input.next ?? null;
+}
+
 export function TaskMemberField({
     disabled = false,
     id,
@@ -42,38 +53,7 @@ export function TaskMemberField({
     value,
 }: TaskMemberFieldProperties) {
     const { t } = useTranslation("board");
-    const { data: project } = useProject(projectId);
-    const { data: members = [] } = useProjectMembers(projectId);
-    const { data: ownerProfile } = useProjectOwnerProfile(project?.owner_id);
-
-    const people = useMemo(() => {
-        const byId = new Map<string, TaskMemberOption>();
-
-        if (ownerProfile) {
-            byId.set(ownerProfile.id, {
-                avatarUrl: ownerProfile.avatar_url ?? undefined,
-                id: ownerProfile.id,
-                name:
-                    formatProfileDisplayName(ownerProfile) ||
-                    t("members.unknownUser"),
-            });
-        }
-
-        for (const member of members) {
-            if (!member.profile) continue;
-            byId.set(member.user_id, {
-                avatarUrl: member.profile.avatar_url ?? undefined,
-                id: member.user_id,
-                name:
-                    formatProfileDisplayName(member.profile) ||
-                    t("members.unknownUser"),
-            });
-        }
-
-        return [...byId.values()].toSorted((left, right) =>
-            left.name.localeCompare(right.name)
-        );
-    }, [members, ownerProfile, t]);
+    const people = useProjectPeople(projectId);
 
     const noneOption: TaskMemberOption = useMemo(
         () => ({
@@ -93,15 +73,18 @@ export function TaskMemberField({
     return (
         <Combobox
             disabled={disabled}
-            isItemEqualToValue={(left, right) => left.id === right.id}
+            isItemEqualToValue={isSameMemberId}
             items={items}
-            itemToStringLabel={(item) => item.name}
+            itemToStringLabel={memberToLabel}
             onValueChange={(next) => {
-                if (!next || next.id === NONE_ID) {
-                    onChange(null);
+                const resolved = resolveMemberFieldChange({
+                    currentId: value?.id ?? null,
+                    next,
+                });
+                if (resolved === undefined) {
                     return;
                 }
-                onChange(next);
+                onChange(resolved);
             }}
             value={selected}
         >
@@ -146,6 +129,13 @@ function initials(name: string) {
     return name.slice(0, 2).toUpperCase();
 }
 
+function isSameMemberId(
+    left: TaskMemberOption,
+    right: TaskMemberOption
+): boolean {
+    return left.id === right.id;
+}
+
 function MemberAvatar({
     className,
     member,
@@ -167,4 +157,8 @@ function MemberAvatar({
             </AvatarFallback>
         </Avatar>
     );
+}
+
+function memberToLabel(item: TaskMemberOption): string {
+    return item.name;
 }

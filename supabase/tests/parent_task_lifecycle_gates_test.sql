@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(8);
+select plan(9);
 
 select set_config('test.owner', 'e1111111-1111-1111-1111-111111111111', true);
 select set_config('test.team', 'e2222222-2222-2222-2222-222222222222', true);
@@ -167,6 +167,26 @@ select throws_ok(
   'A Parent Task cannot be archived while Subtasks are still active',
   'archive_tasks refuses a Parent Task while a Subtask is active'
 );
+
+select lives_ok(
+  format(
+    $sql$
+      select public.archive_tasks(array[
+        %L::uuid,
+        (select id from public.tasks where parent_id = %L::uuid limit 1)
+      ])
+    $sql$,
+    current_setting('test.parent'),
+    current_setting('test.parent')
+  ),
+  'archive_tasks accepts Parent Task together with its Subtasks in one batch'
+);
+
+-- Restore the Parent+Subtask pair for the remaining Done/delete cases.
+update public.tasks as t
+set archived_at = null, archived_by = null
+where t.id = current_setting('test.parent')::uuid
+   or t.parent_id = current_setting('test.parent')::uuid;
 
 update public.tasks as t
 set status = 'done'

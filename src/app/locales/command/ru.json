@@ -15,6 +15,7 @@
     "includeArchived": "Включать архив",
     "members": "Участники",
     "navigate": {
+        "archive": "Перейти в архив",
         "backlog": "Перейти в бэклог",
         "board": "Перейти на доску",
         "cicd": "Перейти в CI/CD",
@@ -23,8 +24,8 @@
     "open": "Открыть палитру команд",
     "placeholder": "Команда или поиск…",
     "projects": "Проекты",
-    "shortcut": "Ctrl K",
-    "shortcutMac": "⌘K",
+    "shortcut": "Ctrl Л",
+    "shortcutMac": "⌘Л",
     "tasks": "Задачи",
     "title": "Палитра команд",
     "unknownMember": "Неизвестный пользователь"

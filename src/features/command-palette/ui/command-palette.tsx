@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
+    ArchiveIcon,
     BanIcon,
     BugIcon,
     CornerUpLeftIcon,
@@ -22,6 +23,7 @@ import { toast } from "sonner";
 import { useTheme } from "@/app/model/theme";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { useBoardColumns } from "@/features/boards";
+import { isCommandPaletteShortcut } from "@/features/command-palette/model/command-palette-shortcut";
 import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
 import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
 import {
@@ -74,6 +76,7 @@ import { Label } from "@/shared/shadcn/ui/label";
 const NAVIGATE_SECTIONS: CommandPaletteNavigateSection[] = [
     "board",
     "backlog",
+    "archive",
     "cicd",
     "settings",
 ];
@@ -125,6 +128,9 @@ export function CommandPalette() {
         { includeArchived: true }
     );
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const requestOpenArchiveDialog = useTasksUiStore(
+        (state) => state.requestOpenArchiveDialog
+    );
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
     const isOpen = useCommandPaletteStore((state) => state.isOpen);
     const close = useCommandPaletteStore((state) => state.close);
@@ -232,10 +238,7 @@ export function CommandPalette() {
 
     useEffect(() => {
         function onKeyDown(event: KeyboardEvent) {
-            if (
-                (event.metaKey || event.ctrlKey) &&
-                event.key.toLowerCase() === "k"
-            ) {
+            if (isCommandPaletteShortcut(event)) {
                 event.preventDefault();
                 toggle();
             }
@@ -315,6 +318,18 @@ export function CommandPalette() {
         intent: Extract<CommandPaletteIntent, { type: "navigate" }>
     ) {
         switch (intent.section) {
+            case "archive": {
+                if (!intent.boardId) return;
+                requestOpenArchiveDialog();
+                void navigate({
+                    params: {
+                        boardId: intent.boardId,
+                        projectId: intent.projectId,
+                    },
+                    to: "/projects/$projectId/boards/$boardId",
+                });
+                break;
+            }
             case "backlog": {
                 if (!intent.boardId) return;
                 void navigate({
@@ -670,6 +685,7 @@ function matchesNavigateQuery(
     }
 
     const keywords: Record<CommandPaletteNavigateSection, string[]> = {
+        archive: ["archive", "archived", "архив"],
         backlog: ["backlog", "бэклог", "бэклоги"],
         board: ["board", "доска", "kanban"],
         cicd: ["ci", "cicd", "ci/cd", "pipeline", "ci cd"],
@@ -685,6 +701,9 @@ function matchesNavigateQuery(
 
 function navigateSectionIcon(section: CommandPaletteNavigateSection) {
     switch (section) {
+        case "archive": {
+            return <ArchiveIcon />;
+        }
         case "backlog": {
             return <LayoutListIcon />;
         }

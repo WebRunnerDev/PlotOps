@@ -25,6 +25,11 @@ describe("Team settings placement seam", () => {
         expect(route).toMatch(/TeamDangerZone/);
     });
 
+    it("Team settings route includes name edit for owners", () => {
+        const route = read("src/routes/(main)/teams/$teamId/settings.tsx");
+        expect(route).toMatch(/TeamNameSettings/);
+    });
+
     it("Project settings no longer owns Members/Invites UI", () => {
         const route = read(
             "src/routes/(main)/projects/$projectId/settings.tsx"

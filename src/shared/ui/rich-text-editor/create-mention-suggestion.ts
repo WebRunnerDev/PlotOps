@@ -4,7 +4,10 @@ import type {
     SuggestionProps,
 } from "@tiptap/suggestion";
 
-import type { MentionCandidate } from "@/shared/ui/rich-text-editor/mention-candidate";
+import {
+    MENTION_DISPLAY_CHAR,
+    type MentionCandidate,
+} from "@/shared/ui/rich-text-editor/mention-candidate";
 
 const POPUP_CLASS =
     "z-70 flex w-72 flex-col gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md ring-1 ring-foreground/10";
@@ -25,7 +28,7 @@ export function createMentionSuggestion(options: {
 }): MentionOptions<MentionCandidate>["suggestion"] {
     return {
         allow: ({ editor }) => options.isEnabled() && editor.isEditable,
-        char: "@",
+        char: MENTION_DISPLAY_CHAR,
         items: ({ query }) => filterCandidates(options.getCandidates(), query),
         render: () => {
             let element: HTMLDivElement | null = null;

@@ -7,6 +7,7 @@ import { supabase } from "@/shared/api/supabase";
 
 type DatabaseBoard = {
     allowed_head_patterns: null | string[];
+    auto_assign_to_creator: boolean | null;
     base_branch: string;
     default_task_type: null | string;
     id: string;
@@ -16,7 +17,7 @@ type DatabaseBoard = {
 };
 
 const BOARD_SELECT =
-    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type";
+    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator";
 
 const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
 
@@ -84,6 +85,7 @@ export async function updateBoard(
     boardId: string,
     patch: {
         allowed_head_patterns?: string[];
+        auto_assign_to_creator?: boolean;
         base_branch?: string;
         default_task_type?: BoardDefaultTaskType;
         name?: string;
@@ -104,6 +106,7 @@ export async function updateBoard(
 function mapDatabaseBoard(row: DatabaseBoard): ProjectBoardRecord {
     return {
         allowedHeadPatterns: row.allowed_head_patterns ?? [],
+        autoAssignToCreator: row.auto_assign_to_creator === true,
         baseBranch: row.base_branch,
         defaultTaskType: toDefaultTaskType(row.default_task_type),
         id: row.id,

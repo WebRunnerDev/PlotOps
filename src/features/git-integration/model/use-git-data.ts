@@ -4,16 +4,28 @@ import { useAuth } from "@/features/auth";
 import {
     fetchFixtureBranchCommits,
     fetchFixtureBranchPullRequests,
+    fetchFixtureCommitBySha,
+    fetchFixtureCommitFiles,
+    fetchFixturePullRequestChecks,
+    fetchFixturePullRequestCommits,
     fetchFixturePullRequestFiles,
+    fetchFixtureTaskKeyCommits,
 } from "@/features/git-integration/api/fixture-git-api";
 import {
     fetchBranchCommits,
     fetchBranchPullRequests,
+    fetchCommitBySha,
+    fetchCommitFiles,
+    fetchPullRequestChecks,
+    fetchPullRequestCommits,
     fetchPullRequestFiles,
+    searchCommitsByTaskKey,
 } from "@/features/git-integration/api/github-git-api";
 import {
     canFetchGitData,
+    canFetchPullRequestChecks,
     canFetchPullRequestFiles,
+    canFetchTaskGitTab,
 } from "@/features/git-integration/lib/can-fetch-git-data";
 import { isGuest } from "@/features/guest-mode";
 
@@ -22,6 +34,12 @@ import { gitAuthFingerprint, gitKeys } from "./query-keys";
 type GitQueryOptions = {
     branchName: string | undefined;
     repoFullName: string | undefined;
+    token: null | string;
+};
+
+type TaskKeyCommitsOptions = {
+    repoFullName: string | undefined;
+    taskKey: string | undefined;
     token: null | string;
 };
 
@@ -83,6 +101,122 @@ export function useBranchPullRequests({
     });
 }
 
+export function useCommitFiles(
+    repoFullName: string | undefined,
+    sha: string | undefined,
+    token: null | string,
+    enabled = true
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+    const hasAuth = Boolean(token) || guest;
+
+    return useQuery({
+        enabled: Boolean(enabled && hasAuth && repoFullName && sha),
+        queryFn: () =>
+            guest
+                ? fetchFixtureCommitFiles(repoFullName!, sha!)
+                : fetchCommitFiles(repoFullName!, sha!, token!),
+        queryKey: gitKeys.commitFiles(
+            authFingerprint,
+            repoFullName ?? "",
+            sha ?? ""
+        ),
+        staleTime: 5 * 60_000,
+    });
+}
+
+export function useLinkedCommit(
+    repoFullName: string | undefined,
+    sha: string | undefined,
+    token: null | string
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+    const hasAuth = Boolean(token) || guest;
+
+    return useQuery({
+        enabled: Boolean(hasAuth && repoFullName && sha),
+        queryFn: () =>
+            guest
+                ? fetchFixtureCommitBySha(repoFullName!, sha!)
+                : fetchCommitBySha(repoFullName!, sha!, token!),
+        queryKey: [
+            ...gitKeys.all,
+            "linked-commit",
+            authFingerprint,
+            repoFullName ?? "",
+            sha ?? "",
+        ] as const,
+        staleTime: 5 * 60_000,
+    });
+}
+
+export function usePullRequestChecks(
+    repoFullName: string | undefined,
+    prNumber: number | undefined,
+    token: null | string
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useQuery({
+        enabled: canFetchPullRequestChecks({
+            isGuest: guest,
+            prNumber,
+            repoFullName,
+            token,
+        }),
+        queryFn: () =>
+            guest
+                ? fetchFixturePullRequestChecks(repoFullName!, prNumber!)
+                : fetchPullRequestChecks(repoFullName!, prNumber!, token!),
+        queryKey: gitKeys.prChecks(
+            authFingerprint,
+            repoFullName ?? "",
+            prNumber ?? 0
+        ),
+        refetchInterval: (query) =>
+            query.state.data?.rollup === "pending" ? 15_000 : false,
+        staleTime: 30_000,
+    });
+}
+
+export function usePullRequestCommits(
+    repoFullName: string | undefined,
+    prNumber: number | undefined,
+    token: null | string,
+    enabled = true
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useQuery({
+        enabled:
+            enabled &&
+            canFetchPullRequestFiles({
+                isGuest: guest,
+                prNumber,
+                repoFullName,
+                token,
+            }),
+        queryFn: () =>
+            guest
+                ? fetchFixturePullRequestCommits(repoFullName!, prNumber!)
+                : fetchPullRequestCommits(repoFullName!, prNumber!, token!),
+        queryKey: gitKeys.prCommits(
+            authFingerprint,
+            repoFullName ?? "",
+            prNumber ?? 0
+        ),
+        staleTime: 5 * 60_000,
+    });
+}
+
 export function usePullRequestFiles(
     repoFullName: string | undefined,
     prNumber: number | undefined,
@@ -109,5 +243,34 @@ export function usePullRequestFiles(
             prNumber ?? 0
         ),
         staleTime: 5 * 60_000,
+    });
+}
+
+export function useTaskKeyCommits({
+    repoFullName,
+    taskKey,
+    token,
+}: TaskKeyCommitsOptions) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useQuery({
+        enabled: canFetchTaskGitTab({
+            isGuest: guest,
+            repoFullName,
+            taskKey,
+            token,
+        }),
+        queryFn: () =>
+            guest
+                ? fetchFixtureTaskKeyCommits(repoFullName!, taskKey!)
+                : searchCommitsByTaskKey(repoFullName!, taskKey!, token!),
+        queryKey: gitKeys.taskKeyCommits(
+            authFingerprint,
+            repoFullName ?? "",
+            taskKey ?? ""
+        ),
+        staleTime: 60_000,
     });
 }

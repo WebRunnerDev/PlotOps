@@ -80,3 +80,46 @@ describe("filterTasks assignees", () => {
         ).toEqual(["a-urgent"]);
     });
 });
+
+describe("filterTasks boards", () => {
+    const tasks = [
+        task("a", { boardId: "board-a" }),
+        task("b", { boardId: "board-b" }),
+        task("c", { boardId: "board-c" }),
+    ];
+
+    it("is inactive when boardIds is empty", () => {
+        expect(
+            filterTasks(tasks, {
+                ...EMPTY_BOARD_FILTERS,
+                boardIds: [],
+            })
+        ).toEqual(tasks);
+    });
+
+    it("matches selected boards (OR within group)", () => {
+        expect(
+            filterTasks(tasks, {
+                ...EMPTY_BOARD_FILTERS,
+                boardIds: ["board-a", "board-c"],
+            }).map((item) => item.id)
+        ).toEqual(["a", "c"]);
+    });
+
+    it("ANDs board with assignee filters", () => {
+        const alice = { id: "alice", name: "Alice" };
+        const mixed = [
+            task("a", { assignee: alice, boardId: "board-a" }),
+            task("b", { assignee: alice, boardId: "board-b" }),
+            task("c", { boardId: "board-a" }),
+        ];
+
+        expect(
+            filterTasks(mixed, {
+                ...EMPTY_BOARD_FILTERS,
+                assigneeIds: [alice.id],
+                boardIds: ["board-a"],
+            }).map((item) => item.id)
+        ).toEqual(["a"]);
+    });
+});

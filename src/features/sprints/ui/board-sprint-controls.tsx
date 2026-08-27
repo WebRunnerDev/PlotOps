@@ -9,6 +9,7 @@ import { useSprintsUiStore } from "@/features/sprints/model/use-sprints-ui-store
 import { StartSprintDialog } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
 import { useBoardTasks } from "@/features/tasks";
 import { Button } from "@/shared/shadcn/ui/button";
+import { ButtonGroup } from "@/shared/shadcn/ui/button-group";
 
 type BoardSprintControlsProperties = {
     boardId: string;
@@ -58,7 +59,7 @@ export function BoardSprintControls({
 
     if (sprintsError) {
         return (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex h-6 flex-wrap items-stretch gap-2">
                 <p className="text-meta text-destructive">
                     {t("sprints.loadFailed")}
                 </p>
@@ -75,7 +76,7 @@ export function BoardSprintControls({
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-stretch gap-2">
             {showStart && startCandidate ? (
                 <Button
                     onClick={() => setStartOpen(true)}
@@ -87,19 +88,15 @@ export function BoardSprintControls({
                 </Button>
             ) : null}
 
-            <div
-                aria-label={t("sprints.scopeLabel")}
-                className="inline-flex rounded-md border border-border p-0.5"
-                role="group"
-            >
+            <ButtonGroup aria-label={t("sprints.scopeLabel")} className="h-6">
                 <Button
+                    aria-pressed={effectiveScope === "active"}
+                    className="aria-pressed:bg-secondary aria-pressed:text-secondary-foreground"
                     disabled={!active}
                     onClick={() => setBoardSprintScope("active")}
                     size="xs"
                     type="button"
-                    variant={
-                        effectiveScope === "active" ? "secondary" : "ghost"
-                    }
+                    variant="outline"
                 >
                     {t("sprints.scopeActive")}
                     {active ? (
@@ -109,16 +106,16 @@ export function BoardSprintControls({
                     ) : null}
                 </Button>
                 <Button
+                    aria-pressed={effectiveScope === "entire"}
+                    className="aria-pressed:bg-secondary aria-pressed:text-secondary-foreground"
                     onClick={() => setBoardSprintScope("entire")}
                     size="xs"
                     type="button"
-                    variant={
-                        effectiveScope === "entire" ? "secondary" : "ghost"
-                    }
+                    variant="outline"
                 >
                     {t("sprints.scopeEntire")}
                 </Button>
-            </div>
+            </ButtonGroup>
 
             {startCandidate ? (
                 <StartSprintDialog

@@ -55,6 +55,7 @@ describe("boards feature query seam", () => {
         queryClient.setQueryData(listKey, [
             {
                 allowedHeadPatterns: [],
+                autoAssignToCreator: false,
                 baseBranch: "main",
                 defaultTaskType: "task",
                 id: boardId,

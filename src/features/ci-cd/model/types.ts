@@ -20,7 +20,10 @@ export type BuildLogLine = {
 export type BuildsForProject = {
     /** Jobs for a run — used by the detail dialog checklist. */
     listBuildJobs(projectId: string, buildId: string): Promise<BuildJob[]>;
-    listBuilds(projectId: string): Promise<ProjectBuild[]>;
+    listBuilds(
+        projectId: string,
+        options?: ListBuildsOptions
+    ): Promise<ListBuildsPage>;
     /**
      * Progressive log lines for a build. Calls `onLine` as lines “stream” in.
      * Returns unsubscribe to stop the stream (e.g. on unmount / close).
@@ -34,6 +37,20 @@ export type BuildsForProject = {
 
 /** Outcome of a CI run for a branch — MVP statuses only. */
 export type BuildStatus = "failure" | "queued" | "running" | "success";
+
+export type ListBuildsOptions = {
+    /** 1-based page index. Defaults to 1. */
+    page?: number;
+    /** Page size. Provider default applies when omitted. */
+    perPage?: number;
+};
+
+/** One page of workflow runs from `listBuilds`. */
+export type ListBuildsPage = {
+    builds: ProjectBuild[];
+    hasMore: boolean;
+    page: number;
+};
 
 /**
  * One build / workflow run for a Project. Branch is the scannable key;

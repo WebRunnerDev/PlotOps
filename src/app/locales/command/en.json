@@ -15,6 +15,7 @@
     "includeArchived": "Include archived",
     "members": "Members",
     "navigate": {
+        "archive": "Go to Archive",
         "backlog": "Go to Backlog",
         "board": "Go to Board",
         "cicd": "Go to CI/CD",

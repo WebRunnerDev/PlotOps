@@ -10,6 +10,8 @@ export type BoardDefaultTaskType = "bug" | "feature" | "task";
 
 export type ProjectBoardRecord = {
     allowedHeadPatterns: string[];
+    /** Assign new Tasks on this Board to the creator when the Team is solo. */
+    autoAssignToCreator: boolean;
     baseBranch: string;
     /** Prefill for new Tasks created on this board when type is omitted. */
     defaultTaskType: BoardDefaultTaskType;

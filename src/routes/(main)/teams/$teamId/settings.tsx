@@ -6,6 +6,7 @@ import { useTeamAccess } from "@/features/teams/model/use-team-access";
 import { useTeam } from "@/features/teams/model/use-team-members";
 import { TeamDangerZone } from "@/features/teams/ui/team-danger-zone";
 import { TeamMembersSettings } from "@/features/teams/ui/team-members-settings";
+import { TeamNameSettings } from "@/features/teams/ui/team-name-settings";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -25,9 +26,10 @@ function TeamSettingsRoute() {
         canView,
         isError: accessError,
         isLoading: accessLoading,
+        isSettled,
     } = useTeamAccess(teamId);
 
-    if (isLoading || accessLoading) {
+    if (isLoading || accessLoading || !isSettled) {
         return (
             <div className="flex justify-center py-16">
                 <Spinner className="size-8 text-primary" />
@@ -85,6 +87,7 @@ function TeamSettingsRoute() {
                 </p>
             </header>
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+                <TeamNameSettings teamId={teamId} />
                 <TeamMembersSettings teamId={teamId} />
                 <TeamDangerZone teamId={teamId} />
             </div>

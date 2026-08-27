@@ -27,9 +27,13 @@ export function AppRouter() {
     // RouterProvider updates context, but beforeLoad does not re-run unless
     // we invalidate — so session loss mid-route must kick the auth gates
     // (e.g. `/(main)` → `/sign-in` when no Auth user and no Guest Session).
+    // Skip while auth is still booting: this effect runs before the
+    // `auth.isLoading` early return that mounts RouterProvider, and an early
+    // invalidate would load matches with the createRouter placeholder context.
     useEffect(() => {
+        if (auth.isLoading) return;
         void router.invalidate();
-    }, [auth.profileNamesComplete, auth.user]);
+    }, [auth.isLoading, auth.profileNamesComplete, auth.user]);
 
     useEffect(() => {
         return subscribeGitHubAccessToken(() => {

@@ -1,7 +1,7 @@
 import type { TeamRow } from "@/features/teams/api/team-members-api";
 import type { TeamsProvider } from "@/features/teams/api/teams-provider";
 
-import { getGuestSandbox } from "@/features/guest-mode";
+import { getGuestSandbox, writeGuestSandbox } from "@/features/guest-mode";
 
 function mapTeam(team: {
     createdAt: string;
@@ -33,6 +33,33 @@ export const guestTeamsProvider: TeamsProvider = {
             data: null,
             error: new Error("Deleting teams is not available in Guest Mode"),
         };
+    },
+
+    async updateTeam(teamId, name) {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            return { data: null, error: new Error("No Guest Session") };
+        }
+        const index = sandbox.teams.findIndex((item) => item.id === teamId);
+        if (index === -1) {
+            return { data: null, error: new Error("Team not found") };
+        }
+        const trimmed = name.trim();
+        if (trimmed.length === 0) {
+            return {
+                data: null,
+                error: new Error("Team name cannot be empty"),
+            };
+        }
+        const updated = structuredClone(sandbox);
+        const now = new Date().toISOString();
+        updated.teams[index] = {
+            ...updated.teams[index]!,
+            name: trimmed,
+            updatedAt: now,
+        };
+        writeGuestSandbox(updated);
+        return { data: mapTeam(updated.teams[index]!), error: null };
     },
 
     async fetchTeam(teamId) {

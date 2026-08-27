@@ -58,13 +58,13 @@ PlotOps is a **personal / portfolio product**, not a hosted SaaS competitor to L
 
 Most trackers treat Git as an afterthought: you jump out to GitHub for the branch, the PR, the Actions run, then back to update the card. PlotOps keeps that loop on one board:
 
-| Pain today                         | What PlotOps does                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| Card ≠ branch / PR                 | Link a Task to a branch and PR; generate a branch name from the Task           |
-| “Did the build pass?” → new tab    | CI/CD tab reads GitHub Actions (jobs + logs) for the linked repo               |
-| Merge happened, board is stale     | Webhook moves the Task when a PR merges onto the Board’s base branch           |
-| Review means leaving the tracker   | In-app diff, Open PR, and Merge from the Task panel                            |
-| Small team, no need for enterprise | Teams, roles, invites, sprints, estimates — enough for a real side project     |
+| Pain today                         | What PlotOps does                                                          |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| Card ≠ branch / PR                 | Link a Task to a branch and PR; generate a branch name from the Task       |
+| “Did the build pass?” → new tab    | CI/CD tab reads GitHub Actions (jobs + logs) for the linked repo           |
+| Merge happened, board is stale     | Webhook moves the Task when a PR merges onto the Board’s base branch       |
+| Review means leaving the tracker   | In-app diff, Open PR, and Merge from the Task panel                        |
+| Small team, no need for enterprise | Teams, roles, invites, sprints, estimates — enough for a real side project |
 
 ### Who it fits
 
@@ -156,7 +156,7 @@ flowchart LR
 2. **`main` push** — [`supabase-migrate`](.github/workflows/supabase-migrate.yml) links PlotOps, runs `supabase db push`, then POSTs the Cloudflare Pages Deploy Hook.
 3. **Cloudflare** — automatic production deploys stay off so the UI never races ahead of schema.
 
-Local safety net: **Husky + lint-staged** on pre-commit (ESLint `--fix`, Prettier) via `npm install` → `prepare`.
+Local safety net: **Husky** on pre-commit — **gitleaks** (`protect --staged`) then **lint-staged** (ESLint `--fix`, Prettier). Hooks install via `npm install` → `prepare`. If gitleaks’ postinstall was blocked, run `npm rebuild @b12k/gitleaks` (or `npm approve-scripts @b12k/gitleaks` then rebuild).
 
 Details / secrets: [`docs/SUPABASE.md`](docs/SUPABASE.md).
 
@@ -222,24 +222,26 @@ With `.env.local` present, the app talks to local Supabase (`127.0.0.1:54321`). 
 
 ### Other scripts
 
-| Script                         | Purpose                                      |
-| ------------------------------ | -------------------------------------------- |
-| `npm run build`                | Typecheck + production build                 |
-| `npm run typecheck`            | TypeScript project build check               |
-| `npm run lint`                 | ESLint                                       |
-| `npm run format`               | Format with Prettier                         |
-| `npm test`                     | Run Vitest once                              |
-| `npm run test:watch`           | Vitest watch mode                            |
-| `npm run db:status`            | List remote vs local migrations (read-only)  |
-| `npm run db:start` / `db:stop` | Local Supabase (Docker)                      |
-| `npm run db:reset`             | Reset local DB from migrations               |
-| `npm run db:local-status`      | Local URL + keys                             |
-| `npm run db:new -- <name>`     | Create a new migration                       |
-| `npm run db:push`              | Emergency remote apply only (not day-to-day) |
-| `npm run shadcn:add -- <name>` | Add a shadcn/ui component                    |
-| `npm run shadcn:exports`       | Regenerate shadcn barrel exports             |
+| Script                         | Purpose                                       |
+| ------------------------------ | --------------------------------------------- |
+| `npm run build`                | Typecheck + production build                  |
+| `npm run typecheck`            | TypeScript project build check                |
+| `npm run lint`                 | ESLint                                        |
+| `npm run format`               | Format with Prettier                          |
+| `npm test`                     | Run Vitest once                               |
+| `npm run test:watch`           | Vitest watch mode                             |
+| `npm run db:status`            | List remote vs local migrations (read-only)   |
+| `npm run db:start` / `db:stop` | Local Supabase (Docker)                       |
+| `npm run db:reset`             | Reset local DB from migrations                |
+| `npm run db:local-status`      | Local URL + keys                              |
+| `npm run db:new -- <name>`     | Create a new migration                        |
+| `npm run db:push`              | Emergency remote apply only (not day-to-day)  |
+| `npm run shadcn:add -- <name>` | Add a shadcn/ui component                     |
+| `npm run shadcn:exports`       | Regenerate shadcn barrel exports              |
+| `npm run secrets:scan`         | gitleaks on staged files (same as pre-commit) |
+| `npm run secrets:scan:history` | gitleaks full git history scan                |
 
-Pre-commit (Husky + lint-staged): ESLint `--fix` and Prettier on staged files. Hooks install via `npm install` (`prepare`).
+Pre-commit (Husky): gitleaks on staged changes, then lint-staged (ESLint `--fix` + Prettier). Hooks install via `npm install` (`prepare`).
 
 ## Design
 

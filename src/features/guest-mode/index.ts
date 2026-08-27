@@ -23,6 +23,8 @@ export type {
     GuestBoard,
     GuestBoardColumn,
     GuestComment,
+    GuestCustomFieldDefinition,
+    GuestCustomFieldValue,
     GuestLabel,
     GuestNotification,
     GuestPerson,

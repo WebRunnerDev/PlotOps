@@ -58,6 +58,8 @@ describe("Command palette navigate + typed create seam", () => {
         );
         expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/ci-cd"/);
         expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/settings"/);
+        expect(source).toMatch(/requestOpenArchiveDialog/);
+        expect(source).toMatch(/"archive"/);
     });
 
     it("threads create-task taskType into createTask options", () => {
@@ -98,6 +100,15 @@ describe("Command palette Search Members seam", () => {
         expect(source).toMatch(/to:\s*"\/teams\/\$teamId\/settings"/);
         expect(source).toMatch(/command:members/);
         expect(source).toMatch(/visibility\.searchMembers/);
+    });
+});
+
+describe("Command palette keyboard shortcut seam", () => {
+    it("opens via layout-independent KeyK helper (Ctrl+K / Ctrl+Л)", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/isCommandPaletteShortcut/);
+        expect(source).not.toMatch(/event\.key\.toLowerCase\(\)\s*===\s*"k"/);
     });
 });
 

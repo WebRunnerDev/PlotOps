@@ -46,6 +46,7 @@ export type BoardsProvider = {
         boardId: string,
         patch: {
             allowed_head_patterns?: string[];
+            auto_assign_to_creator?: boolean;
             base_branch?: string;
             default_task_type?: ProjectBoardRecord["defaultTaskType"];
             name?: string;

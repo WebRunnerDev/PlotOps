@@ -12,6 +12,7 @@ import {
     getUserAvatarUrl,
     getUserUsername,
     isProfileNamesComplete,
+    profileNamesFromUserMetadata,
 } from "@/features/auth/lib/user-display";
 import { supabase } from "@/shared/api/supabase";
 
@@ -33,15 +34,14 @@ export async function ensureUserProfile(user: User) {
         const existingProfile = parseProfileNameRow(existingRow);
         if (isProfileNamesComplete(existingProfile)) return;
 
-        const first_name = metadataName(user, "first_name");
-        const last_name = metadataName(user, "last_name");
+        const names = profileNamesFromUserMetadata(user.user_metadata);
         const patch: ProfileUpdate = {};
 
-        if (first_name && !existingProfile.first_name) {
-            patch.first_name = first_name;
+        if (names.firstName && !existingProfile.first_name) {
+            patch.first_name = names.firstName;
         }
-        if (last_name && !existingProfile.last_name) {
-            patch.last_name = last_name;
+        if (names.lastName && !existingProfile.last_name) {
+            patch.last_name = names.lastName;
         }
         if (Object.keys(patch).length === 0) return;
 
@@ -54,11 +54,12 @@ export async function ensureUserProfile(user: User) {
         return;
     }
 
+    const names = profileNamesFromUserMetadata(user.user_metadata);
     const insertRow: ProfileInsert = {
         avatar_url: getUserAvatarUrl(user),
-        first_name: metadataName(user, "first_name"),
+        first_name: names.firstName || null,
         id: user.id,
-        last_name: metadataName(user, "last_name"),
+        last_name: names.lastName || null,
         username: getUserUsername(user),
     };
 
@@ -117,14 +118,4 @@ export async function updateProfileNames(input: {
     if (metaError) throw metaError;
 
     return parseUserProfile(data);
-}
-
-function metadataName(
-    user: User,
-    key: "first_name" | "last_name"
-): null | string {
-    const value = user.user_metadata[key];
-    if (typeof value !== "string") return null;
-    const trimmed = value.trim();
-    return trimmed || null;
 }

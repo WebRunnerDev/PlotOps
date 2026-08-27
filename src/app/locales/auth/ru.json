@@ -36,6 +36,8 @@
     "firstNamePlaceholder": "Ада",
     "githubRedirecting": "Перенаправление...",
     "githubSignIn": "Войти через GitHub",
+    "googleRedirecting": "Перенаправление...",
+    "googleSignIn": "Войти через Google",
     "lastName": "Фамилия",
     "lastNamePlaceholder": "Лавлейс",
     "links": {
@@ -44,6 +46,11 @@
         "noAccount": "Нет аккаунта?",
         "signIn": "Войти",
         "signUp": "Создать аккаунт"
+    },
+    "openSource": {
+        "github": "GitHub",
+        "githubAria": "PlotOps на GitHub (откроется в новой вкладке)",
+        "line": "Открытый исходный код ({{license}})"
     },
     "or": "или",
     "password": "Пароль",
@@ -56,17 +63,17 @@
         "save": "Сохранить",
         "saved": "Профиль обновлён",
         "saving": "Сохранение...",
-        "usernameHint": "Handle из GitHub или регистрации — здесь не меняется."
+        "usernameHint": "Handle из GitHub, Google или регистрации — здесь не меняется."
     },
     "signIn": "Войти",
     "signInLoading": "Вход...",
-    "signInSubtitle": "Войдите через GitHub, попробуйте демо или используйте email и пароль",
+    "signInSubtitle": "Войдите через GitHub или Google, попробуйте демо или используйте email и пароль",
     "signInTitle": "Войти в PlotOps",
     "tryDemo": "Попробовать демо без регистрации",
     "tryDemoLoading": "Открываем демо...",
     "signUp": "Создать аккаунт",
     "signUpLoading": "Создание аккаунта...",
-    "signUpSubtitle": "Регистрация по email — нужна для приглашений без GitHub",
+    "signUpSubtitle": "Регистрация через GitHub, Google или email — email нужен для приглашений без GitHub",
     "signUpTitle": "Создать аккаунт PlotOps",
     "username": "Username"
 }

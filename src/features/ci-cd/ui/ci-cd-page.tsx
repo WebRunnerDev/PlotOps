@@ -14,6 +14,7 @@ import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-bu
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
+import { BuildsLoadMoreSentinel } from "@/features/ci-cd/ui/builds-load-more-sentinel";
 import { isGuest } from "@/features/guest-mode";
 import {
     projectHasGithubRepo,
@@ -51,9 +52,12 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         projectId,
     });
     const {
-        data: builds = [],
+        builds,
         error: buildsError,
+        fetchNextPage,
+        hasNextPage,
         isFetching: buildsFetching,
+        isFetchingNextPage,
         isLoading: buildsLoading,
     } = useProjectBuilds(projectId, project?.github_repo_id);
     const [selectedBuild, setSelectedBuild] = useState<
@@ -122,7 +126,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                             {project.github_full_name ?? project.name}
                         </span>
                     </div>
-                    {buildsFetching && !buildsLoading ? (
+                    {buildsFetching && !buildsLoading && !isFetchingNextPage ? (
                         <span className="text-meta uppercase tracking-wide text-muted-foreground">
                             {t("cicd.refreshing")}
                         </span>
@@ -246,75 +250,111 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                         ))}
                     </div>
 
-                    {filteredBuilds.length === 0 ? (
+                    {filteredBuilds.length === 0 &&
+                    !hasNextPage &&
+                    !isFetchingNextPage ? (
                         <p className="py-8 text-center text-ui text-muted-foreground">
                             {builds.length === 0
                                 ? t("cicd.empty")
                                 : t("cicd.emptyFilter")}
                         </p>
                     ) : (
-                        <ul className="divide-y divide-border border border-border">
-                            {filteredBuilds.map((build) => {
-                                const statusLabel = t(
-                                    `cicd.status.${build.status}`
-                                );
+                        <>
+                            {filteredBuilds.length > 0 ? (
+                                <ul className="divide-y divide-border border border-border">
+                                    {filteredBuilds.map((build) => {
+                                        const statusLabel = t(
+                                            `cicd.status.${build.status}`
+                                        );
 
-                                return (
-                                    <li key={build.id}>
-                                        <button
-                                            aria-label={t("cicd.openLogs", {
-                                                branch: build.branch,
-                                            })}
-                                            className={cn(
-                                                "flex w-full cursor-pointer flex-col gap-1 border-l-2 px-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                                build.status === "success" &&
-                                                    "border-l-emerald-500",
-                                                build.status === "failure" &&
-                                                    "border-l-red-500",
-                                                build.status === "running" &&
-                                                    "border-l-amber-400",
-                                                build.status === "queued" &&
-                                                    "border-l-border"
-                                            )}
-                                            onClick={() => {
-                                                setSelectedBuild(build);
-                                            }}
-                                            type="button"
-                                        >
-                                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                                                <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                                                    <span className="min-w-0 text-ui font-medium wrap-break-word">
-                                                        {build.workflowName}
-                                                    </span>
-                                                    <span className="font-mono text-code text-muted-foreground">
-                                                        {build.branch}
-                                                    </span>
-                                                </div>
-                                                <BuildStatusBadge
-                                                    build={build}
-                                                    label={statusLabel}
-                                                />
-                                            </div>
-                                            <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3 sm:gap-y-0.5">
-                                                <span className="min-w-0 text-ui text-muted-foreground wrap-break-word">
-                                                    {build.commitMessage}
-                                                </span>
-                                                <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                                    {build.commitSha}
-                                                </span>
-                                                <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                                    {formatRelativeOrAbsolute(
-                                                        build.finishedAt ??
-                                                            build.startedAt,
-                                                        i18n.language
+                                        return (
+                                            <li key={build.id}>
+                                                <button
+                                                    aria-label={t(
+                                                        "cicd.openLogs",
+                                                        {
+                                                            branch: build.branch,
+                                                        }
                                                     )}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
+                                                    className={cn(
+                                                        "flex w-full cursor-pointer flex-col gap-1 border-l-2 px-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                                        build.status ===
+                                                            "success" &&
+                                                            "border-l-emerald-500",
+                                                        build.status ===
+                                                            "failure" &&
+                                                            "border-l-red-500",
+                                                        build.status ===
+                                                            "running" &&
+                                                            "border-l-amber-400",
+                                                        build.status ===
+                                                            "queued" &&
+                                                            "border-l-border"
+                                                    )}
+                                                    onClick={() => {
+                                                        setSelectedBuild(build);
+                                                    }}
+                                                    type="button"
+                                                >
+                                                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                                                        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                                                            <span className="min-w-0 text-ui font-medium wrap-break-word">
+                                                                {
+                                                                    build.workflowName
+                                                                }
+                                                            </span>
+                                                            <span className="font-mono text-code text-muted-foreground">
+                                                                {build.branch}
+                                                            </span>
+                                                        </div>
+                                                        <BuildStatusBadge
+                                                            build={build}
+                                                            label={statusLabel}
+                                                        />
+                                                    </div>
+                                                    <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3 sm:gap-y-0.5">
+                                                        <span className="min-w-0 text-ui text-muted-foreground wrap-break-word">
+                                                            {
+                                                                build.commitMessage
+                                                            }
+                                                        </span>
+                                                        <span className="shrink-0 font-mono text-meta text-muted-foreground">
+                                                            {build.commitSha}
+                                                        </span>
+                                                        <span className="shrink-0 font-mono text-meta text-muted-foreground">
+                                                            {formatRelativeOrAbsolute(
+                                                                build.finishedAt ??
+                                                                    build.startedAt,
+                                                                i18n.language
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : undefined}
+
+                            {hasNextPage || isFetchingNextPage ? (
+                                <div className="flex flex-col items-center gap-2 py-3">
+                                    <BuildsLoadMoreSentinel
+                                        enabled={
+                                            hasNextPage && !isFetchingNextPage
+                                        }
+                                        onVisible={() => {
+                                            void fetchNextPage();
+                                        }}
+                                    />
+                                    {isFetchingNextPage ? (
+                                        <div className="flex items-center gap-2 text-meta text-muted-foreground">
+                                            <Spinner className="size-4" />
+                                            <span>{t("cicd.loadingMore")}</span>
+                                        </div>
+                                    ) : undefined}
+                                </div>
+                            ) : undefined}
+                        </>
                     )}
                 </>
             ) : undefined}

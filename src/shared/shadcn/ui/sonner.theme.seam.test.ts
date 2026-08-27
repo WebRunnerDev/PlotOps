@@ -14,6 +14,8 @@ describe("Sonner theme seam", () => {
         );
         expect(source).not.toMatch(/next-themes/);
         expect(source).toMatch(/const\s+\{\s*theme\s*\}\s*=\s*useTheme\(\)/);
-        expect(source).toMatch(/visibleToasts=\{3\}/);
+        expect(source).toMatch(/visibleToasts=\{4\}/);
+        expect(source).toMatch(/className="plotops-toaster toaster group"/);
+        expect(source).toMatch(/closeButton/);
     });
 });

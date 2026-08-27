@@ -133,6 +133,83 @@ describe("guest tasks provider happy path", () => {
         expect(archived.some((task) => task.id === b.id)).toBe(true);
     });
 
+    it("restores and permanently deletes multiple archived guest tasks", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const boardId = board.id;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const restoreA = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Restore A"
+        );
+        const restoreB = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Restore B"
+        );
+        const deleteA = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Delete A"
+        );
+        const deleteB = await provider.createTaskRecord(
+            board.projectId,
+            boardId,
+            columnIds[0]!,
+            "Delete B"
+        );
+
+        await provider.archiveTaskRecords([
+            restoreA.id,
+            restoreB.id,
+            deleteA.id,
+            deleteB.id,
+        ]);
+
+        for (const taskId of [restoreA.id, restoreB.id]) {
+            await provider.restoreTaskRecord(taskId, boardId);
+        }
+        for (const taskId of [deleteA.id, deleteB.id]) {
+            await provider.deleteTaskRecord(taskId);
+        }
+
+        const boardTasks = await provider.fetchBoardTasks(boardId);
+        expect(boardTasks.tasks.some((task) => task.id === restoreA.id)).toBe(
+            true
+        );
+        expect(boardTasks.tasks.some((task) => task.id === restoreB.id)).toBe(
+            true
+        );
+        expect(boardTasks.tasks.some((task) => task.id === deleteA.id)).toBe(
+            false
+        );
+        expect(boardTasks.tasks.some((task) => task.id === deleteB.id)).toBe(
+            false
+        );
+
+        const archived = await provider.fetchArchivedTasks(boardId);
+        expect(archived.some((task) => task.id === restoreA.id)).toBe(false);
+        expect(archived.some((task) => task.id === restoreB.id)).toBe(false);
+        expect(archived.some((task) => task.id === deleteA.id)).toBe(false);
+        expect(archived.some((task) => task.id === deleteB.id)).toBe(false);
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === deleteA.id)
+        ).toBe(false);
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === deleteB.id)
+        ).toBe(false);
+    });
+
     it("archive / delete persisted archived task without Supabase", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");
@@ -310,6 +387,100 @@ describe("guest tasks provider happy path", () => {
         expect(created.sprintPosition).toBeGreaterThanOrEqual(0);
     });
 
+    it("createTaskRecord assigns the creator when the Board auto-assigns and the Team is solo", async () => {
+        const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const provider = resolveTasksProvider(true);
+
+        const unassigned = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Unassigned by default"
+        );
+        expect(unassigned.assignee).toBeUndefined();
+
+        const { updateGuestSandbox } = await import("@/features/guest-mode");
+        updateGuestSandbox((current) => {
+            const target = current.boards.find((item) => item.id === board.id);
+            if (target) {
+                target.autoAssignToCreator = true;
+            }
+        });
+
+        const assigned = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Auto-assigned"
+        );
+        expect(assigned.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
+    });
+
+    it("createTaskRecord applies priority and assigneeId overrides from quick-add", async () => {
+        const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const provider = resolveTasksProvider(true);
+
+        const high = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "High priority",
+            "bug",
+            undefined,
+            { assigneeId: GUEST_SEED_ACTOR_ID, priority: "high" }
+        );
+        expect(high.type).toBe("bug");
+        expect(high.priority).toBe("high");
+        expect(high.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
+
+        const cleared = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            board.columns[0]!.id,
+            "Cleared meta",
+            undefined,
+            undefined,
+            { assigneeId: null, priority: null }
+        );
+        expect(cleared.assignee).toBeUndefined();
+        expect(cleared.priority).toBeUndefined();
+    });
+
+    it("createSubtaskRecord assigns the creator when the Board auto-assigns", async () => {
+        const { getGuestSandbox, GUEST_SEED_ACTOR_ID, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const parent = sandbox.tasks.find((task) => !task.parentId)!;
+        const { updateGuestSandbox } = await import("@/features/guest-mode");
+        updateGuestSandbox((current) => {
+            const board = current.boards.find(
+                (item) => item.id === parent.boardId
+            );
+            if (board) {
+                board.autoAssignToCreator = true;
+            }
+        });
+
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createSubtaskRecord(
+            parent.id,
+            "Auto-assigned Subtask"
+        );
+        expect(created.assignee?.id).toBe(GUEST_SEED_ACTOR_ID);
+    });
+
     it("restoreTaskRecord joins a Subtask to the Parent Task's live Sprint", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");
@@ -450,6 +621,76 @@ describe("guest tasks provider happy path", () => {
             getGuestSandbox()!.tasks.find((task) => task.id === parent.id)
                 ?.archivedAt
         ).toBeUndefined();
+    });
+
+    it("archives a Parent Task together with its active Subtasks in one batch", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const parent = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Batch parent"
+        );
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Batch child"
+        );
+
+        const { archivedCount } = await provider.archiveTaskRecords([
+            parent.id,
+            child.id,
+        ]);
+        expect(archivedCount).toBe(2);
+
+        const archived = await provider.fetchArchivedTasks(board.id);
+        expect(archived.some((task) => task.id === parent.id)).toBe(true);
+        expect(archived.some((task) => task.id === child.id)).toBe(true);
+    });
+
+    it("deletes archived Parent and Subtask when Subtasks are removed first", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const board = sandbox.boards[0]!;
+        const columnIds = board.columns.map((column) => column.id);
+        const provider = resolveTasksProvider(true);
+
+        const parent = await provider.createTaskRecord(
+            board.projectId,
+            board.id,
+            columnIds[0]!,
+            "Delete parent"
+        );
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Delete child"
+        );
+
+        await provider.archiveTaskRecords([parent.id, child.id]);
+
+        await expect(provider.deleteTaskRecord(parent.id)).rejects.toThrow(
+            "A Parent Task cannot be deleted while Subtasks exist"
+        );
+
+        await provider.deleteTaskRecord(child.id);
+        await provider.deleteTaskRecord(parent.id);
+
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === parent.id)
+        ).toBe(false);
+        expect(
+            getGuestSandbox()!.tasks.some((task) => task.id === child.id)
+        ).toBe(false);
     });
 
     it("refuses hard-delete of a Parent Task while a Subtask exists", async () => {
@@ -700,6 +941,164 @@ describe("guest tasks provider happy path", () => {
         expect(
             updated.relatedTasks?.some((peer) => peer.otherId === target.id)
         ).toBe(true);
+    });
+
+    it("moveTaskToBoard moves a Task and remaps status on another Board", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const sourceBoard = sandbox.boards[0]!;
+        const targetBoardId = "b0000000-0000-4000-8000-000000000098";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: sourceBoard.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: targetBoardId,
+                name: "Ops",
+                position: 2,
+                projectId: sourceBoard.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const created = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "in_progress",
+            "Move me"
+        );
+        updateGuestSandbox((current) => {
+            const stored = current.tasks.find((task) => task.id === created.id);
+            if (stored) {
+                stored.sprintId = "s0000000-0000-4000-8000-000000000001";
+                stored.sprintPosition = 0;
+            }
+        });
+
+        await provider.moveTaskToBoard(created.id, targetBoardId, "todo");
+
+        const sourceTasks = await provider.fetchBoardTasks(sourceBoard.id);
+        expect(sourceTasks.tasks.some((task) => task.id === created.id)).toBe(
+            false
+        );
+
+        const targetTasks = await provider.fetchBoardTasks(targetBoardId);
+        const moved = targetTasks.tasks.find((task) => task.id === created.id);
+        expect(moved?.boardId).toBe(targetBoardId);
+        expect(moved?.status).toBe("todo");
+        expect(moved?.sprintId).toBeUndefined();
+    });
+
+    it("moveTaskToBoard moves Subtasks when the Parent Task moves", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const sourceBoard = sandbox.boards[0]!;
+        const targetBoardId = "b0000000-0000-4000-8000-000000000097";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: sourceBoard.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: targetBoardId,
+                name: "Platform",
+                position: 3,
+                projectId: sourceBoard.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const parent = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "todo",
+            "Parent"
+        );
+        const child = await provider.createSubtaskRecord(
+            parent.id,
+            "Child",
+            "task"
+        );
+
+        await provider.moveTaskToBoard(parent.id, targetBoardId, "in_progress");
+        await provider.moveTaskToBoard(child.id, targetBoardId, "todo");
+
+        const targetTasks = await provider.fetchBoardTasks(targetBoardId);
+        expect(targetTasks.tasks.some((task) => task.id === parent.id)).toBe(
+            true
+        );
+        expect(targetTasks.tasks.some((task) => task.id === child.id)).toBe(
+            true
+        );
+    });
+
+    it("keeps a blocks Task Link after the blocker moves to another Board", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const sourceBoard = sandbox.boards[0]!;
+        const targetBoardId = "b0000000-0000-4000-8000-000000000096";
+        updateGuestSandbox((current) => {
+            current.boards.push({
+                allowedHeadPatterns: [],
+                baseBranch: "main",
+                columns: sourceBoard.columns.map((column) => ({ ...column })),
+                defaultTaskType: "task",
+                id: targetBoardId,
+                name: "Support",
+                position: 4,
+                projectId: sourceBoard.projectId,
+            });
+        });
+
+        const provider = resolveTasksProvider(true);
+        const blocker = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "todo",
+            "Blocker"
+        );
+        const blocked = await provider.createTaskRecord(
+            sourceBoard.projectId,
+            sourceBoard.id,
+            "todo",
+            "Blocked"
+        );
+        await provider.createTaskLinkRecord(blocker.id, blocked.id, "blocks");
+
+        await provider.moveTaskToBoard(blocker.id, targetBoardId, "todo");
+
+        const listed = await provider.fetchBoardTasks(sourceBoard.id);
+        const listedBlocked = listed.tasks.find(
+            (task) => task.id === blocked.id
+        );
+        expect(listedBlocked?.hasOpenBlocker).toBe(true);
+        expect(
+            listedBlocked?.relatedTasks?.some(
+                (peer) =>
+                    peer.kind === "blocks" &&
+                    peer.direction === "incoming" &&
+                    peer.otherId === blocker.id
+            )
+        ).toBe(true);
+
+        const doneColumn = sourceBoard.columns.find((column) => column.isDone);
+        await expect(
+            provider.updateTaskRecord(blocked.id, {
+                status: doneColumn!.id,
+            })
+        ).rejects.toThrow(
+            "A Task cannot enter Done while an open blocker exists"
+        );
     });
 
     it("createTaskLinkRecord adds a blocks link and refuses a cycle", async () => {

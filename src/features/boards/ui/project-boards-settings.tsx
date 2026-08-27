@@ -29,6 +29,7 @@ import {
 } from "@/shared/shadcn/ui/alert-dialog";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Collapsible,
     CollapsibleContent,
@@ -56,11 +57,13 @@ import { Textarea } from "@/shared/shadcn/ui/textarea";
 type ProjectBoardsSettingsProperties = {
     defaultBaseBranch?: string;
     projectId: string;
+    showAutoAssignToCreator?: boolean;
 };
 
 export function ProjectBoardsSettings({
     defaultBaseBranch = "main",
     projectId,
+    showAutoAssignToCreator = false,
 }: ProjectBoardsSettingsProperties) {
     const { t } = useTranslation("board");
     const navigate = useNavigate();
@@ -162,6 +165,9 @@ export function ProjectBoardsSettings({
                             initialAllowed={board.allowedHeadPatterns.join(
                                 "\n"
                             )}
+                            initialAutoAssignToCreator={
+                                board.autoAssignToCreator
+                            }
                             initialBase={board.baseBranch}
                             initialDefaultTaskType={board.defaultTaskType}
                             initialName={board.name}
@@ -175,6 +181,7 @@ export function ProjectBoardsSettings({
                                 await updateBoard(board.id, patch);
                                 toast.success(t("boards.saved"));
                             }}
+                            showAutoAssignToCreator={showAutoAssignToCreator}
                         />
                     ))}
                 </ul>
@@ -313,6 +320,7 @@ function BoardSettingsCard({
     canDelete,
     expanded,
     initialAllowed,
+    initialAutoAssignToCreator,
     initialBase,
     initialDefaultTaskType,
     initialName,
@@ -320,11 +328,13 @@ function BoardSettingsCard({
     onDelete,
     onExpandedChange,
     onSave,
+    showAutoAssignToCreator,
 }: {
     boardId: string;
     canDelete: boolean;
     expanded: boolean;
     initialAllowed: string;
+    initialAutoAssignToCreator: boolean;
     initialBase: string;
     initialDefaultTaskType: BoardDefaultTaskType;
     initialName: string;
@@ -333,10 +343,12 @@ function BoardSettingsCard({
     onExpandedChange: (open: boolean) => void;
     onSave: (patch: {
         allowed_head_patterns?: string[];
+        auto_assign_to_creator?: boolean;
         base_branch?: string;
         default_task_type?: BoardDefaultTaskType;
         name?: string;
     }) => Promise<void>;
+    showAutoAssignToCreator: boolean;
 }) {
     const { t } = useTranslation("board");
     const [name, setName] = useState(initialName);
@@ -344,19 +356,31 @@ function BoardSettingsCard({
     const [defaultTaskType, setDefaultTaskType] = useState(
         initialDefaultTaskType
     );
+    const [autoAssignToCreator, setAutoAssignToCreator] = useState(
+        initialAutoAssignToCreator
+    );
     const [allowedRaw, setAllowedRaw] = useState(initialAllowed);
 
     useEffect(() => {
         setName(initialName);
         setBaseBranch(initialBase);
         setDefaultTaskType(initialDefaultTaskType);
+        setAutoAssignToCreator(initialAutoAssignToCreator);
         setAllowedRaw(initialAllowed);
-    }, [initialAllowed, initialBase, initialDefaultTaskType, initialName]);
+    }, [
+        initialAllowed,
+        initialAutoAssignToCreator,
+        initialBase,
+        initialDefaultTaskType,
+        initialName,
+    ]);
 
     const dirty =
         name.trim() !== initialName ||
         baseBranch.trim() !== initialBase ||
         defaultTaskType !== initialDefaultTaskType ||
+        (showAutoAssignToCreator &&
+            autoAssignToCreator !== initialAutoAssignToCreator) ||
         parseAllowedHeadPatterns(allowedRaw).join("\n") !==
             parseAllowedHeadPatterns(initialAllowed).join("\n");
 
@@ -368,7 +392,7 @@ function BoardSettingsCard({
     return (
         <li>
             <Collapsible onOpenChange={onExpandedChange} open={expanded}>
-                <div className="rounded-md border border-border bg-card/40">
+                <div className="rounded-md border border-border bg-card">
                     <CollapsibleTrigger className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring">
                         <ChevronDown
                             aria-hidden
@@ -481,6 +505,32 @@ function BoardSettingsCard({
                                 </p>
                             </div>
 
+                            {showAutoAssignToCreator ? (
+                                <div className="flex items-start gap-3">
+                                    <Checkbox
+                                        checked={autoAssignToCreator}
+                                        className="mt-0.5"
+                                        id={`board-auto-assign-${boardId}`}
+                                        onCheckedChange={(checked) => {
+                                            setAutoAssignToCreator(
+                                                checked === true
+                                            );
+                                        }}
+                                    />
+                                    <div className="flex min-w-0 flex-col gap-1">
+                                        <Label
+                                            className="cursor-pointer"
+                                            htmlFor={`board-auto-assign-${boardId}`}
+                                        >
+                                            {t("boards.autoAssignToMe")}
+                                        </Label>
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.autoAssignToMeHint")}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : undefined}
+
                             <div className="flex flex-col gap-1.5">
                                 <Label htmlFor={`board-patterns-${boardId}`}>
                                     {t("boards.allowedPatterns")}
@@ -523,6 +573,12 @@ function BoardSettingsCard({
                                                 parseAllowedHeadPatterns(
                                                     allowedRaw
                                                 ),
+                                            ...(showAutoAssignToCreator
+                                                ? {
+                                                      auto_assign_to_creator:
+                                                          autoAssignToCreator,
+                                                  }
+                                                : {}),
                                             base_branch: baseBranch.trim(),
                                             default_task_type: defaultTaskType,
                                             name: name.trim(),

@@ -67,11 +67,32 @@ export type Database = {
           to: "team_members"
         }
       }
+      archive_tasks: { Args: { p_task_ids: string[] }; Returns: number }
+      assert_parent_task_may_archive: {
+        Args: { p_task_id: string }
+        Returns: undefined
+      }
+      assert_parent_task_may_delete: {
+        Args: { p_task_id: string }
+        Returns: undefined
+      }
+      assert_parent_task_may_enter_done: {
+        Args: { p_task_id: string }
+        Returns: undefined
+      }
+      assert_task_may_enter_done: {
+        Args: { p_task_id: string }
+        Returns: undefined
+      }
       assert_task_not_archived: {
         Args: { task_uuid: string }
         Returns: undefined
       }
       assign_tasks_to_sprint: { Args: { p_updates: Json }; Returns: undefined }
+      blocks_link_would_cycle: {
+        Args: { p_source_task_id: string; p_target_task_id: string }
+        Returns: boolean
+      }
       can_create_project: { Args: { team_uuid: string }; Returns: boolean }
       can_create_tasks: { Args: { project_uuid: string }; Returns: boolean }
       can_delete_tasks: { Args: { project_uuid: string }; Returns: boolean }
@@ -188,6 +209,7 @@ export type Database = {
         Args: { p_base_branch: string; p_name: string; p_project_id: string }
         Returns: {
           allowed_head_patterns: string[]
+          auto_assign_to_creator: boolean
           base_branch: string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
@@ -275,6 +297,10 @@ export type Database = {
         Returns: undefined
       }
       delete_task_link: { Args: { p_link_id: string }; Returns: undefined }
+      ensure_project_description_field: {
+        Args: { p_project_id: string }
+        Returns: undefined
+      }
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -289,6 +315,10 @@ export type Database = {
           team_id: string
           team_name: string
         }[]
+      }
+      has_open_blocker: {
+        Args: { p_task: Database["public"]["Tables"]["tasks"]["Row"] }
+        Returns: boolean
       }
       has_project_role: {
         Args: {
@@ -542,6 +572,7 @@ export type Database = {
       boards: {
         Insert: {
           allowed_head_patterns?: string[]
+          auto_assign_to_creator?: boolean
           base_branch?: string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
@@ -561,6 +592,7 @@ export type Database = {
         ]
         Row: {
           allowed_head_patterns: string[]
+          auto_assign_to_creator: boolean
           base_branch: string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
@@ -571,6 +603,7 @@ export type Database = {
         }
         Update: {
           allowed_head_patterns?: string[]
+          auto_assign_to_creator?: boolean
           base_branch?: string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
@@ -578,6 +611,44 @@ export type Database = {
           name?: string
           position?: number
           project_id?: string
+        }
+      }
+      custom_field_definitions: {
+        Insert: {
+          applies_to: Database["public"]["Enums"]["task_type"][]
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          project_id: string
+          system_key?: null | string
+        }
+        Relationships: [
+          {
+            columns: ["project_id"]
+            foreignKeyName: "custom_field_definitions_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+        ]
+        Row: {
+          applies_to: Database["public"]["Enums"]["task_type"][]
+          created_at: string
+          id: string
+          name: string
+          position: number
+          project_id: string
+          system_key: null | string
+        }
+        Update: {
+          applies_to?: Database["public"]["Enums"]["task_type"][]
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          project_id?: string
+          system_key?: null | string
         }
       }
       labels: {
@@ -926,6 +997,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          parent_id?: null | string
           project_id: string
           task_id: string
           updated_at?: string
@@ -937,6 +1009,13 @@ export type Database = {
             isOneToOne: false
             referencedColumns: ["id"]
             referencedRelation: "profiles"
+          },
+          {
+            columns: ["parent_id"]
+            foreignKeyName: "task_comments_parent_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "task_comments"
           },
           {
             columns: ["project_id"]
@@ -958,6 +1037,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          parent_id: null | string
           project_id: string
           task_id: string
           updated_at: string
@@ -967,9 +1047,43 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          parent_id?: null | string
           project_id?: string
           task_id?: string
           updated_at?: string
+        }
+      }
+      task_custom_field_values: {
+        Insert: {
+          field_id: string
+          task_id: string
+          value?: string
+        }
+        Relationships: [
+          {
+            columns: ["field_id"]
+            foreignKeyName: "task_custom_field_values_field_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "custom_field_definitions"
+          },
+          {
+            columns: ["task_id"]
+            foreignKeyName: "task_custom_field_values_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+        ]
+        Row: {
+          field_id: string
+          task_id: string
+          value: string
+        }
+        Update: {
+          field_id?: string
+          task_id?: string
+          value?: string
         }
       }
       task_labels: {
@@ -1124,6 +1238,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          linked_commit_sha?: null | string
           parent_id?: null | string
           position?: number
           pr_number?: null | number
@@ -1201,6 +1316,7 @@ export type Database = {
           description: null | string
           estimate: null | number
           id: string
+          linked_commit_sha: null | string
           parent_id: null | string
           position: number
           pr_number: null | number
@@ -1227,6 +1343,7 @@ export type Database = {
           description?: null | string
           estimate?: null | number
           id?: string
+          linked_commit_sha?: null | string
           parent_id?: null | string
           position?: number
           pr_number?: null | number

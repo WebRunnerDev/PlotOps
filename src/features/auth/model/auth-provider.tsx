@@ -19,6 +19,7 @@ import {
     fetchOwnProfile,
     type UserProfile,
 } from "@/features/auth/api/profile-api";
+import { githubProviderTokenFromSession } from "@/features/auth/lib/github-provider-token";
 import {
     isOAuthCallbackLocation,
     shouldFinishAuthBoot,
@@ -135,9 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             const userId = nextSession.user.id;
+            const githubToken = githubProviderTokenFromSession(nextSession);
 
-            if (nextSession.provider_token) {
-                setGitHubAccessToken(nextSession.provider_token, userId);
+            if (githubToken) {
+                setGitHubAccessToken(githubToken, userId);
                 return;
             }
 
@@ -154,7 +156,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         }
 
+        // Remount (Strict Mode, retry, dep change) must not clear bootError
+        // while isLoading stays false — AppRouter would flash error → shell
+        // and run route queries before the new boot finishes.
         setBootError(false);
+        setIsLoading(true);
 
         const oauthWaitTimeout = isOAuthCallback
             ? globalThis.setTimeout(() => {

@@ -1,8 +1,15 @@
 import type {
     BuildLogLine,
     BuildsForProject,
+    ListBuildsOptions,
+    ListBuildsPage,
     ProjectBuild,
 } from "@/features/ci-cd/model/types";
+
+import {
+    BUILDS_PAGE_SIZE,
+    hasMoreBuilds,
+} from "@/features/ci-cd/model/builds-page";
 
 /**
  * Deterministic mock builds for unit tests and Guest Mode.
@@ -136,9 +143,27 @@ export const mockBuildsForProject: BuildsForProject = {
         return build?.jobs?.map((job) => ({ ...job })) ?? [];
     },
 
-    async listBuilds(projectId: string): Promise<ProjectBuild[]> {
+    async listBuilds(
+        projectId: string,
+        options?: ListBuildsOptions
+    ): Promise<ListBuildsPage> {
         void projectId;
-        return MOCK_BUILDS.map((build) => ({ ...build }));
+        const page = Math.max(1, options?.page ?? 1);
+        const perPage = Math.max(1, options?.perPage ?? BUILDS_PAGE_SIZE);
+        const start = (page - 1) * perPage;
+        const builds = MOCK_BUILDS.slice(start, start + perPage).map(
+            (build) => ({ ...build })
+        );
+
+        return {
+            builds,
+            hasMore: hasMoreBuilds({
+                page,
+                perPage,
+                totalCount: MOCK_BUILDS.length,
+            }),
+            page,
+        };
     },
 
     streamBuildLogs(projectId, buildId, onLine) {

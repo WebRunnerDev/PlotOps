@@ -53,6 +53,13 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!Array.isArray(sandbox.taskLinks)) {
         sandbox.taskLinks = [];
     }
+    if (!Array.isArray(sandbox.customFieldDefinitions)) {
+        sandbox.customFieldDefinitions = [];
+    }
+    if (!Array.isArray(sandbox.customFieldValues)) {
+        sandbox.customFieldValues = [];
+    }
+    ensureGuestDescriptionFields(sandbox);
     return sandbox;
 }
 
@@ -122,6 +129,55 @@ export function writeGuestSandbox(sandbox: GuestSandbox): void {
     persistSession(session.identity, structuredClone(sandbox));
 }
 
+function ensureGuestDescriptionFields(sandbox: GuestSandbox): void {
+    const projectIds = new Set(sandbox.projects.map((project) => project.id));
+    for (const projectId of projectIds) {
+        const hasDescription = sandbox.customFieldDefinitions.some(
+            (field) =>
+                field.projectId === projectId &&
+                field.systemKey === "description"
+        );
+        if (hasDescription) continue;
+
+        const namedDescription = sandbox.customFieldDefinitions.find(
+            (field) =>
+                field.projectId === projectId &&
+                !field.systemKey &&
+                field.name.toLowerCase() === "description"
+        );
+        if (namedDescription) {
+            namedDescription.systemKey = "description";
+            continue;
+        }
+
+        for (const field of sandbox.customFieldDefinitions) {
+            if (field.projectId === projectId && !field.systemKey) {
+                field.position += 1;
+            }
+        }
+
+        let name = "Description";
+        if (
+            sandbox.customFieldDefinitions.some(
+                (field) =>
+                    field.projectId === projectId &&
+                    field.name.toLowerCase() === name.toLowerCase()
+            )
+        ) {
+            name = "Task description";
+        }
+
+        sandbox.customFieldDefinitions.push({
+            appliesTo: ["task", "bug", "feature"],
+            id: crypto.randomUUID(),
+            name,
+            position: 0,
+            projectId,
+            systemKey: "description",
+        });
+    }
+}
+
 function isGuestSandbox(value: unknown): value is GuestSandbox {
     if (!value || typeof value !== "object") {
         return false;
@@ -132,9 +188,17 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
         record.comments === undefined || Array.isArray(record.comments);
     const taskLinksOk =
         record.taskLinks === undefined || Array.isArray(record.taskLinks);
+    const customFieldsOk =
+        record.customFieldDefinitions === undefined ||
+        Array.isArray(record.customFieldDefinitions);
+    const customFieldValuesOk =
+        record.customFieldValues === undefined ||
+        Array.isArray(record.customFieldValues);
     return (
         commentsOk &&
         taskLinksOk &&
+        customFieldsOk &&
+        customFieldValuesOk &&
         Array.isArray(record.teams) &&
         Array.isArray(record.projects) &&
         Array.isArray(record.boards) &&

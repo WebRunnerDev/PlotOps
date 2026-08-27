@@ -31,6 +31,21 @@ export async function createTeam(name: string) {
     };
 }
 
+export async function updateTeam(teamId: string, name: string) {
+    const trimmed = name.trim();
+    const result = await supabase
+        .from("teams")
+        .update({ name: trimmed })
+        .eq("id", teamId)
+        .select(TEAM_SELECT)
+        .single();
+
+    return {
+        ...result,
+        data: result.data as null | TeamRow,
+    };
+}
+
 export async function deleteTeam(teamId: string) {
     const { data, error } = await supabase
         .from("teams")

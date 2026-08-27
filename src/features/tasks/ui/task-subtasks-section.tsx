@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { BoardColumn } from "@/features/boards";
 import type { Task } from "@/features/tasks/model/types";
 
 import { useBoardColumns } from "@/features/boards";
@@ -18,20 +19,27 @@ import { Input } from "@/shared/shadcn/ui/input";
 type TaskSubtasksSectionProperties = {
     boardId: string;
     canAdd: boolean;
-    parent: Task;
+    canRemoveParent: boolean;
     projectId: string;
+    task: Task;
 };
 
 export function TaskSubtasksSection({
     boardId,
     canAdd,
-    parent,
+    canRemoveParent,
     projectId,
+    task,
 }: TaskSubtasksSectionProperties) {
     const { t } = useTranslation("board");
-    const { createSubtask } = useBoardTasks(projectId, boardId);
+    const { clearTaskParent, createSubtask } = useBoardTasks(
+        projectId,
+        boardId
+    );
     const { columns } = useBoardColumns(projectId, boardId);
-    const { data: projectTasks = [] } = useProjectTasks(projectId);
+    const { data: projectTasks = [] } = useProjectTasks(projectId, true, {
+        includeArchived: true,
+    });
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
     const [title, setTitle] = useState("");
@@ -39,9 +47,15 @@ export function TaskSubtasksSection({
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurClose = useRef(false);
 
-    const children = projectTasks.filter(
-        (task) => task.parentId === parent.id && !task.archivedAt
-    );
+    const isSubtask = task.parentId != undefined;
+    const parentTask = isSubtask
+        ? projectTasks.find((item) => item.id === task.parentId)
+        : undefined;
+    const children = isSubtask
+        ? []
+        : projectTasks.filter(
+              (item) => item.parentId === task.id && !item.archivedAt
+          );
 
     const submit = async () => {
         const trimmed = title.trim();
@@ -54,7 +68,7 @@ export function TaskSubtasksSection({
 
         setIsSubmitting(true);
         try {
-            const created = await createSubtask(parent.id, trimmed);
+            const created = await createSubtask(task.id, trimmed);
             toast.success(t("subtasks.created", { key: created.key }));
             setOpen(false);
             setTitle("");
@@ -68,7 +82,37 @@ export function TaskSubtasksSection({
     return (
         <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
-                <h3 className="text-ui font-medium">{t("subtasks.title")}</h3>
+                <h3 className="text-ui font-medium">
+                    {isSubtask
+                        ? t("subtasks.parentTitle")
+                        : t("subtasks.title")}
+                </h3>
+                {canRemoveParent ? (
+                    <Button
+                        className="h-8 px-2 text-muted-foreground"
+                        onClick={() => {
+                            void (async () => {
+                                try {
+                                    await clearTaskParent(task.id);
+                                    toast.success(
+                                        t("subtasks.removedParent", {
+                                            key: task.key,
+                                        })
+                                    );
+                                } catch {
+                                    toast.error(
+                                        t("subtasks.removeParentFailed")
+                                    );
+                                }
+                            })();
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                    >
+                        {t("subtasks.removeParent")}
+                    </Button>
+                ) : undefined}
                 {canAdd && !open ? (
                     <Button
                         className="h-8 gap-1.5 text-muted-foreground"
@@ -125,72 +169,55 @@ export function TaskSubtasksSection({
                 />
             ) : undefined}
 
-            {children.length === 0 ? (
+            {isSubtask ? (
+                task.parentId ? (
+                    <ul className="flex flex-col gap-1">
+                        <li>
+                            <SubtaskRow
+                                columns={columns}
+                                label={t("subtasks.openParent", {
+                                    key:
+                                        parentTask?.key ?? task.parentKey ?? "",
+                                })}
+                                onSelect={() => {
+                                    selectTask(task.parentId!);
+                                }}
+                                t={t}
+                                task={
+                                    parentTask ?? {
+                                        assignee: undefined,
+                                        boardId: task.boardId,
+                                        createdAt: task.createdAt,
+                                        id: task.parentId,
+                                        key: task.parentKey ?? task.parentId,
+                                        status: task.status,
+                                        title: t("subtasks.parentMissing"),
+                                        type: task.type,
+                                    }
+                                }
+                            />
+                        </li>
+                    </ul>
+                ) : undefined
+            ) : children.length === 0 ? (
                 <p className="text-ui text-muted-foreground">
                     {t("subtasks.empty")}
                 </p>
             ) : (
                 <ul className="flex flex-col gap-1">
-                    {children.map((child) => {
-                        const statusName =
-                            columns.find((column) => column.id === child.status)
-                                ?.name ?? child.status;
-                        const assigneeName = child.assignee?.name;
-
-                        return (
-                            <li key={child.id}>
-                                <button
-                                    className="flex min-w-0 w-full items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring active:bg-muted"
-                                    onClick={() => {
-                                        selectTask(child.id);
-                                    }}
-                                    type="button"
-                                >
-                                    <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                        {child.key}
-                                    </span>
-                                    <span className="min-w-0 flex-1 truncate text-ui">
-                                        {child.title}
-                                    </span>
-                                    <span
-                                        className="max-w-28 shrink-0 truncate text-meta text-muted-foreground"
-                                        title={t("fields.status")}
-                                    >
-                                        {statusName}
-                                    </span>
-                                    <span
-                                        className="flex min-w-0 max-w-32 shrink-0 items-center gap-1.5"
-                                        title={
-                                            assigneeName ??
-                                            t("fields.memberNone")
-                                        }
-                                    >
-                                        <Avatar size="sm">
-                                            {child.assignee?.avatarUrl ? (
-                                                <AvatarImage
-                                                    alt={assigneeName ?? ""}
-                                                    src={
-                                                        child.assignee.avatarUrl
-                                                    }
-                                                />
-                                            ) : undefined}
-                                            <AvatarFallback className="text-meta">
-                                                {assigneeName ? (
-                                                    initials(assigneeName)
-                                                ) : (
-                                                    <User className="size-3" />
-                                                )}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <span className="hidden min-w-0 truncate text-meta text-muted-foreground sm:inline">
-                                            {assigneeName ??
-                                                t("fields.memberNone")}
-                                        </span>
-                                    </span>
-                                </button>
-                            </li>
-                        );
-                    })}
+                    {children.map((child) => (
+                        <li key={child.id}>
+                            <SubtaskRow
+                                columns={columns}
+                                label={child.key}
+                                onSelect={() => {
+                                    selectTask(child.id);
+                                }}
+                                t={t}
+                                task={child}
+                            />
+                        </li>
+                    ))}
                 </ul>
             )}
         </section>
@@ -225,4 +252,68 @@ function subtaskCreateErrorMessage(
         return t("subtasks.differentProject");
     }
     return t("subtasks.createFailed");
+}
+
+function SubtaskRow({
+    columns,
+    label,
+    onSelect,
+    t,
+    task,
+}: {
+    columns: BoardColumn[];
+    label: string;
+    onSelect: () => void;
+    t: (key: string, options?: Record<string, string>) => string;
+    task: Task;
+}) {
+    const statusName =
+        columns.find((column) => column.id === task.status)?.name ??
+        task.status;
+    const assigneeName = task.assignee?.name;
+
+    return (
+        <button
+            aria-label={label}
+            className="flex min-w-0 w-full items-center gap-2 rounded-none border border-border px-2 py-1.5 text-left outline-none transition-colors duration-150 hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring active:bg-muted"
+            onClick={onSelect}
+            type="button"
+        >
+            <span className="shrink-0 font-mono text-meta text-muted-foreground">
+                {task.key}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-ui">
+                {task.title}
+            </span>
+            <span
+                className="max-w-28 shrink-0 truncate text-meta text-muted-foreground"
+                title={t("fields.status")}
+            >
+                {statusName}
+            </span>
+            <span
+                className="flex min-w-0 max-w-32 shrink-0 items-center gap-1.5"
+                title={assigneeName ?? t("fields.memberNone")}
+            >
+                <Avatar size="sm">
+                    {task.assignee?.avatarUrl ? (
+                        <AvatarImage
+                            alt={assigneeName ?? ""}
+                            src={task.assignee.avatarUrl}
+                        />
+                    ) : undefined}
+                    <AvatarFallback className="text-meta">
+                        {assigneeName ? (
+                            initials(assigneeName)
+                        ) : (
+                            <User className="size-3" />
+                        )}
+                    </AvatarFallback>
+                </Avatar>
+                <span className="hidden min-w-0 truncate text-meta text-muted-foreground sm:inline">
+                    {assigneeName ?? t("fields.memberNone")}
+                </span>
+            </span>
+        </button>
+    );
 }

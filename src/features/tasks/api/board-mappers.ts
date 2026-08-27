@@ -33,6 +33,7 @@ export type DatabaseTask = {
     estimate: null | number;
     id: string;
     incoming_links?: DatabaseTaskLinkEmbed[] | null;
+    linked_commit_sha: null | string;
     outgoing_links?: DatabaseTaskLinkEmbed[] | null;
     parent?: Array<{ task_key: string }> | null | { task_key: string };
     parent_id?: null | string;
@@ -102,6 +103,7 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         id: row.id,
         key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
+        linkedCommitSha: row.linked_commit_sha ?? undefined,
         parentId: row.parent_id ?? undefined,
         parentKey: toParentKey(row),
         pr: toPullRequest(row),
@@ -126,6 +128,16 @@ export function parentIdsMissingFromRows(rows: DatabaseTask[]): string[] {
     return [...missing];
 }
 
+export function sortTasksByPosition(
+    tasks: Task[],
+    positions: Map<string, number>
+) {
+    return [...tasks].toSorted(
+        (left, right) =>
+            (positions.get(left.id) ?? 0) - (positions.get(right.id) ?? 0)
+    );
+}
+
 export function withResolvedParentKeys(
     rows: DatabaseTask[],
     extraParents: Array<{ id: string; task_key: string }> = []
@@ -141,16 +153,6 @@ export function withResolvedParentKeys(
             parent: taskKey ? { task_key: taskKey } : null,
         };
     });
-}
-
-export function sortTasksByPosition(
-    tasks: Task[],
-    positions: Map<string, number>
-) {
-    return [...tasks].toSorted(
-        (left, right) =>
-            (positions.get(left.id) ?? 0) - (positions.get(right.id) ?? 0)
-    );
 }
 
 function firstPeer(

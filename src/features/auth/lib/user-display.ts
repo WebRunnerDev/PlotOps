@@ -63,7 +63,10 @@ export function getUserInitials(name: string): string {
 }
 
 /** Username/handle for `profiles.username` — never First/Last name. */
-export function getUserUsername(user: User): string {
+export function getUserUsername(user: {
+    email?: null | string;
+    user_metadata: User["user_metadata"];
+}): string {
     const metadata = user.user_metadata;
 
     if (typeof metadata.user_name === "string" && metadata.user_name) {
@@ -75,10 +78,6 @@ export function getUserUsername(user: User): string {
         metadata.preferred_username
     ) {
         return metadata.preferred_username;
-    }
-
-    if (typeof metadata.name === "string" && metadata.name) {
-        return metadata.name;
     }
 
     if (user.email) {
@@ -95,7 +94,32 @@ export function isProfileNamesComplete(
     return Boolean(profile.first_name?.trim() && profile.last_name?.trim());
 }
 
-/** Split GitHub `user_metadata.name` ("First Last …") for complete-profile prefill. */
+/**
+ * First/Last name from Auth user_metadata (email signup, GitHub, or Google).
+ * Prefers explicit given/family fields, then splits `name` / `full_name`.
+ */
+export function profileNamesFromUserMetadata(
+    metadata: undefined | User["user_metadata"]
+): { firstName: string; lastName: string } {
+    const firstName = firstNonEmptyString(
+        metadata?.first_name,
+        metadata?.given_name
+    );
+    const lastName = firstNonEmptyString(
+        metadata?.last_name,
+        metadata?.family_name
+    );
+    if (firstName || lastName) {
+        return { firstName, lastName };
+    }
+
+    const fullName = firstNonEmptyString(metadata?.name, metadata?.full_name);
+    if (fullName) return splitFullName(fullName);
+
+    return { firstName: "", lastName: "" };
+}
+
+/** Split OAuth `user_metadata.name` ("First Last …") for complete-profile prefill. */
 export function splitFullName(fullName: string): {
     firstName: string;
     lastName: string;
@@ -107,4 +131,13 @@ export function splitFullName(fullName: string): {
         firstName: parts[0] ?? "",
         lastName: parts.slice(1).join(" "),
     };
+}
+
+function firstNonEmptyString(...values: unknown[]): string {
+    for (const value of values) {
+        if (typeof value !== "string") continue;
+        const trimmed = value.trim();
+        if (trimmed) return trimmed;
+    }
+    return "";
 }

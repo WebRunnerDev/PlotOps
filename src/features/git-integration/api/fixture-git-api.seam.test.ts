@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     fetchFixtureBranchCommits,
     fetchFixtureBranchPullRequests,
+    fetchFixtureCommitFiles,
+    fetchFixturePullRequestCommits,
     fetchFixturePullRequestFiles,
 } from "@/features/git-integration/api/fixture-git-api";
 
@@ -68,5 +70,23 @@ describe("fixture git API (guest seam)", () => {
                 status: "modified",
             })
         );
+    });
+
+    it("returns canned PR commits and per-commit files without calling GitHub", async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+
+        const commitsResult = await fetchFixturePullRequestCommits(
+            "demo/plotops",
+            42
+        );
+        const filesResult = await fetchFixtureCommitFiles(
+            "demo/plotops",
+            commitsResult.commits[0]!.sha
+        );
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(commitsResult.commits.length).toBeGreaterThanOrEqual(2);
+        expect(filesResult.files.length).toBeGreaterThanOrEqual(1);
     });
 });

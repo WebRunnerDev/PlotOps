@@ -35,8 +35,10 @@ import {
     BoardTaskFiltersBar,
     BoardTaskSelectionBar,
     DEFAULT_BOARD_SORT,
+    doneColumnIdSet,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    hideCompletedBoardTasks,
     isWithinColumnDragEnabled,
     parentSubtaskProgress,
     sortTasksByBoardSort,
@@ -44,6 +46,7 @@ import {
     type Task,
     TaskCard,
     TaskDrawer,
+    useBoardCompletedVisibilityStore,
     useBoardSortStore,
     useBoardSubtaskVisibilityStore,
     useBoardTasks,
@@ -115,6 +118,12 @@ export function KanbanBoard({
     );
     const setHideSubtasks = useBoardSubtaskVisibilityStore(
         (state) => state.setHideSubtasks
+    );
+    const hideCompleted = useBoardCompletedVisibilityStore(
+        (state) => state.hideCompletedByBoardId[boardId] === true
+    );
+    const setHideCompleted = useBoardCompletedVisibilityStore(
+        (state) => state.setHideCompleted
     );
     const withinColumnDragEnabled = isWithinColumnDragEnabled(boardSort);
     const syncBoardSelection = useBoardTaskSelectionStore(
@@ -210,6 +219,8 @@ export function KanbanBoard({
         return map;
     }, [projectLabels]);
 
+    const doneColumnIds = useMemo(() => doneColumnIdSet(columns), [columns]);
+
     const filteredTasks = useMemo(() => {
         const scoped = filterLiveBoardTasks({
             activeSprintId: activeSprint?.id,
@@ -217,11 +228,15 @@ export function KanbanBoard({
             sprints,
             tasks,
         });
-        return visibleBoardTasks(filterTasks(scoped, filters), hideSubtasks);
+        const filtered = filterTasks(scoped, filters);
+        const visible = visibleBoardTasks(filtered, hideSubtasks);
+        return hideCompletedBoardTasks(visible, doneColumnIds, hideCompleted);
     }, [
         activeSprint?.id,
+        doneColumnIds,
         effectiveBoardSprintScope,
         filters,
+        hideCompleted,
         hideSubtasks,
         sprints,
         tasks,
@@ -233,9 +248,6 @@ export function KanbanBoard({
     );
 
     const subtaskProgressByTaskId = useMemo(() => {
-        const doneColumnIds = new Set(
-            columns.filter((column) => column.isDone).map((column) => column.id)
-        );
         const nodes = tasks.map((task) => ({
             id: task.id,
             isDone: doneColumnIds.has(task.status),
@@ -250,7 +262,7 @@ export function KanbanBoard({
             }
         }
         return map;
-    }, [columns, tasks]);
+    }, [doneColumnIds, tasks]);
 
     const boardTaskViewRestricted = isBoardTaskViewRestricted(
         tasks,
@@ -491,8 +503,12 @@ export function KanbanBoard({
             <div className="sticky left-0 z-5 flex w-[calc(100cqw-1.5rem)] shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:w-[calc(100cqw-6rem)]">
                 <BoardTaskFiltersBar
                     filters={filters}
+                    hideCompleted={hideCompleted}
                     labels={projectLabels}
                     onChange={setFilters}
+                    onHideCompletedChange={(next) => {
+                        setHideCompleted(boardId, next);
+                    }}
                     people={people}
                 />
                 <BoardSortControl
@@ -521,7 +537,7 @@ export function KanbanBoard({
                     items={columnIds}
                     strategy={horizontalListSortingStrategy}
                 >
-                    <div className="flex min-h-0 min-w-full w-max flex-1 gap-0">
+                    <div className="flex min-h-0 min-w-full w-max flex-1 items-stretch gap-0">
                         {columns.map((column) => (
                             <KanbanColumn
                                 boardId={boardId}

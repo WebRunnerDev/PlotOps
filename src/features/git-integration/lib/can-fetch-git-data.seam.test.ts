@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     canFetchGitData,
+    canFetchPullRequestChecks,
     canFetchPullRequestFiles,
 } from "@/features/git-integration/lib/can-fetch-git-data";
 
@@ -75,6 +76,28 @@ describe("canFetchPullRequestFiles", () => {
             canFetchPullRequestFiles({
                 isGuest: false,
                 prNumber: 42,
+                repoFullName: "demo/plotops",
+                token: null,
+            })
+        ).toBe(false);
+    });
+});
+
+describe("canFetchPullRequestChecks", () => {
+    it("mirrors the PR files gate", () => {
+        expect(
+            canFetchPullRequestChecks({
+                isGuest: true,
+                prNumber: 7,
+                repoFullName: "demo/plotops",
+                token: null,
+            })
+        ).toBe(true);
+
+        expect(
+            canFetchPullRequestChecks({
+                isGuest: false,
+                prNumber: 7,
                 repoFullName: "demo/plotops",
                 token: null,
             })

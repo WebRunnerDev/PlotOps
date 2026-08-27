@@ -3,6 +3,8 @@ import {
     AlignCenter,
     AlignLeft,
     AlignRight,
+    Copy,
+    Maximize2,
     Square,
     SquareDashed,
 } from "lucide-react";
@@ -15,9 +17,18 @@ import {
     useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import { cn } from "@/shared/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogTitle,
+} from "@/shared/shadcn/ui/dialog";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
+import { copyImageSourceToClipboard } from "@/shared/ui/rich-text-editor/copy-image";
+import { shouldShowImageChrome } from "@/shared/ui/rich-text-editor/image-chrome";
 
 const MIN_WIDTH = 48;
 const TOOLBAR_EDGE_PAD = 8;
@@ -75,6 +86,9 @@ export function ImageNodeView({
     const bottomSentinelReference = useRef<HTMLSpanElement | null>(null);
     const aspectReference = useRef<null | number>(null);
     const [isResizing, setIsResizing] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [editorFocused, setEditorFocused] = useState(() => editor.isFocused);
+    const [toolbarInteracting, setToolbarInteracting] = useState(false);
     const [toolbarPlacement, setToolbarPlacement] = useState<
         "bottom" | "hidden" | "top"
     >("top");
@@ -89,7 +103,33 @@ export function ImageNodeView({
     const align = (node.attrs.align as Alignment | null) ?? "left";
     const uploading = Boolean(node.attrs.uploading);
     const isEditable = editor.isEditable;
-    const showControls = isEditable && selected && !uploading;
+    // Boot/`setContent` can leave a NodeSelection on a leading image without the
+    // editor being focused (task drawer open). Width/height inputs also blur the
+    // editor — keep chrome while those fields hold focus.
+    const isActivelySelected = shouldShowImageChrome({
+        editorFocused,
+        selected,
+        toolbarInteracting,
+        uploading: false,
+    });
+    const showControls = isEditable && isActivelySelected && !uploading;
+    const showCopyControl = isActivelySelected && !uploading && Boolean(source);
+
+    useEffect(() => {
+        const handleFocus = () => setEditorFocused(true);
+        const handleBlur = () => setEditorFocused(false);
+        editor.on("focus", handleFocus);
+        editor.on("blur", handleBlur);
+        setEditorFocused(editor.isFocused);
+        return () => {
+            editor.off("focus", handleFocus);
+            editor.off("blur", handleBlur);
+        };
+    }, [editor]);
+
+    useEffect(() => {
+        if (!selected) setToolbarInteracting(false);
+    }, [selected]);
 
     const getAspectRatio = useCallback(() => {
         if (aspectReference.current) return aspectReference.current;
@@ -211,6 +251,22 @@ export function ImageNodeView({
         [updateAttributes]
     );
 
+    const handleCopyImage = useCallback(() => {
+        if (!source) return;
+        void copyImageSourceToClipboard(source).then((result) => {
+            if (result === "failed") {
+                toast.error(t("copyFailed"));
+                return;
+            }
+            toast.success(t("richText.media.copied"));
+        });
+    }, [source, t]);
+
+    const openPreview = useCallback(() => {
+        if (!source || uploading) return;
+        setPreviewOpen(true);
+    }, [source, uploading]);
+
     // The image node is `user-select: none` (so a text selection dragged across
     // it isn't painted over it). A side effect is that clicking the image no
     // longer clears an active text selection, so ProseMirror's default
@@ -222,7 +278,7 @@ export function ImageNodeView({
     // stopPropagation selects the node before PM sees the event.
     useEffect(() => {
         const frame = frameReference.current;
-        if (!frame || !isEditable) return;
+        if (!frame) return;
 
         const handleMouseDown = (event: MouseEvent) => {
             if (event.button !== 0) return;
@@ -246,7 +302,7 @@ export function ImageNodeView({
         frame.addEventListener("mousedown", handleMouseDown, true);
         return () =>
             frame.removeEventListener("mousedown", handleMouseDown, true);
-    }, [editor, getPos, isEditable]);
+    }, [editor, getPos]);
 
     useEffect(() => {
         if (width && height) {
@@ -262,7 +318,7 @@ export function ImageNodeView({
     // at the top and bottom of the image. Prefer the top; if it is clipped by
     // the scroll container, drop to the bottom; if neither fits, hide.
     useEffect(() => {
-        if (!showControls) return;
+        if (!showCopyControl) return;
         const image = imageReference.current;
         const topProbe = topSentinelReference.current;
         const bottomProbe = bottomSentinelReference.current;
@@ -296,14 +352,14 @@ export function ImageNodeView({
         observer.observe(bottomProbe);
 
         return () => observer.disconnect();
-    }, [showControls]);
+    }, [showCopyControl]);
 
     // Keep the floating image toolbar inside the editor's overflow box. The
     // shell uses overflow-x-hidden, so a left:8px toolbar on a right-aligned
     // (or narrow) image otherwise clips off the far edge — and the reverse when
     // left-aligned if we naively mirror with right:8px.
     useLayoutEffect(() => {
-        if (!showControls) return;
+        if (!showCopyControl) return;
         const toolbar = toolbarReference.current;
         const frame = frameReference.current;
         const surface = wrapperReference.current?.closest(".ProseMirror");
@@ -352,7 +408,7 @@ export function ImageNodeView({
         observer.observe(frame);
         observer.observe(toolbar);
         return () => observer.disconnect();
-    }, [align, showControls, toolbarPlacement, width, widthField]);
+    }, [align, showCopyControl, toolbarPlacement, width, widthField]);
 
     return (
         <NodeViewWrapper
@@ -360,16 +416,31 @@ export function ImageNodeView({
             className="rich-text-image-view"
             contentEditable={false}
             data-align={align}
-            data-selected={selected ? "true" : undefined}
+            data-selected={isActivelySelected ? "true" : undefined}
             ref={wrapperReference}
             style={{ textAlign: align }}
         >
             <span
                 className={cn(
                     "rich-text-image-frame",
-                    selected && "is-selected",
+                    isActivelySelected && "is-selected",
                     isResizing && "is-resizing"
                 )}
+                onDoubleClick={(event) => {
+                    // Resize handles / toolbar own their clicks; the bitmap
+                    // (and empty frame chrome) open a full-size preview.
+                    const target = event.target;
+                    if (!(target instanceof Element)) return;
+                    if (
+                        target.closest(
+                            ".rich-text-image-handle, .rich-text-image-toolbar"
+                        )
+                    ) {
+                        return;
+                    }
+                    event.preventDefault();
+                    openPreview();
+                }}
                 ref={frameReference}
                 style={width ? { width: `${width}px` } : undefined}
             >
@@ -382,6 +453,11 @@ export function ImageNodeView({
                     onLoad={handleImageLoad}
                     ref={imageReference}
                     src={source}
+                    title={
+                        source && !uploading
+                            ? t("richText.media.openHint")
+                            : undefined
+                    }
                     width={width ?? undefined}
                 />
 
@@ -391,7 +467,7 @@ export function ImageNodeView({
                     </span>
                 ) : null}
 
-                {showControls ? (
+                {showCopyControl ? (
                     <>
                         <span
                             aria-hidden
@@ -403,18 +479,20 @@ export function ImageNodeView({
                             className="rich-text-image-sentinel is-bottom"
                             ref={bottomSentinelReference}
                         />
-                        {CORNERS.map(({ className, corner, signX }) => (
-                            <span
-                                className={cn(
-                                    "rich-text-image-handle",
-                                    className
-                                )}
-                                key={corner}
-                                onPointerDown={(event) =>
-                                    startResize(event, signX)
-                                }
-                            />
-                        ))}
+                        {showControls
+                            ? CORNERS.map(({ className, corner, signX }) => (
+                                  <span
+                                      className={cn(
+                                          "rich-text-image-handle",
+                                          className
+                                      )}
+                                      key={corner}
+                                      onPointerDown={(event) =>
+                                          startResize(event, signX)
+                                      }
+                                  />
+                              ))
+                            : null}
 
                         <span
                             className={cn(
@@ -423,113 +501,209 @@ export function ImageNodeView({
                                 toolbarPlacement === "hidden" && "is-hidden"
                             )}
                             contentEditable={false}
+                            onBlur={(event) => {
+                                const next = event.relatedTarget;
+                                if (
+                                    next instanceof Node &&
+                                    event.currentTarget.contains(next)
+                                ) {
+                                    return;
+                                }
+                                setToolbarInteracting(false);
+                            }}
+                            onDoubleClick={(event) => {
+                                // Don't let field text-select double-clicks
+                                // bubble to the frame's openPreview handler.
+                                event.stopPropagation();
+                            }}
+                            onFocus={() => setToolbarInteracting(true)}
+                            onMouseDown={() => setToolbarInteracting(true)}
                             ref={toolbarReference}
                         >
-                            <label className="rich-text-image-field">
-                                <span>{t("richText.media.width")}</span>
-                                <input
-                                    className="rich-text-image-input"
-                                    min={MIN_WIDTH}
-                                    onBlur={(event) =>
-                                        applyWidth(
-                                            Number.parseInt(
-                                                event.target.value,
-                                                10
-                                            )
-                                        )
-                                    }
-                                    onChange={(event) =>
-                                        setWidthField(event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            event.preventDefault();
-                                            applyWidth(
-                                                Number.parseInt(widthField, 10)
-                                            );
-                                        }
-                                    }}
-                                    type="number"
-                                    value={widthField}
-                                />
-                            </label>
-                            <span className="rich-text-image-times">×</span>
-                            <label className="rich-text-image-field">
-                                <span>{t("richText.media.height")}</span>
-                                <input
-                                    className="rich-text-image-input"
-                                    min={1}
-                                    onBlur={(event) =>
-                                        applyHeight(
-                                            Number.parseInt(
-                                                event.target.value,
-                                                10
-                                            )
-                                        )
-                                    }
-                                    onChange={(event) =>
-                                        setHeightField(event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            event.preventDefault();
-                                            applyHeight(
-                                                Number.parseInt(heightField, 10)
-                                            );
-                                        }
-                                    }}
-                                    type="number"
-                                    value={heightField}
-                                />
-                            </label>
+                            {showControls ? (
+                                <>
+                                    <label className="rich-text-image-field">
+                                        <span>{t("richText.media.width")}</span>
+                                        <input
+                                            className="rich-text-image-input"
+                                            min={MIN_WIDTH}
+                                            onBlur={(event) =>
+                                                applyWidth(
+                                                    Number.parseInt(
+                                                        event.target.value,
+                                                        10
+                                                    )
+                                                )
+                                            }
+                                            onChange={(event) =>
+                                                setWidthField(
+                                                    event.target.value
+                                                )
+                                            }
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter") {
+                                                    event.preventDefault();
+                                                    applyWidth(
+                                                        Number.parseInt(
+                                                            widthField,
+                                                            10
+                                                        )
+                                                    );
+                                                }
+                                            }}
+                                            type="number"
+                                            value={widthField}
+                                        />
+                                    </label>
+                                    <span className="rich-text-image-times">
+                                        ×
+                                    </span>
+                                    <label className="rich-text-image-field">
+                                        <span>
+                                            {t("richText.media.height")}
+                                        </span>
+                                        <input
+                                            className="rich-text-image-input"
+                                            min={1}
+                                            onBlur={(event) =>
+                                                applyHeight(
+                                                    Number.parseInt(
+                                                        event.target.value,
+                                                        10
+                                                    )
+                                                )
+                                            }
+                                            onChange={(event) =>
+                                                setHeightField(
+                                                    event.target.value
+                                                )
+                                            }
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter") {
+                                                    event.preventDefault();
+                                                    applyHeight(
+                                                        Number.parseInt(
+                                                            heightField,
+                                                            10
+                                                        )
+                                                    );
+                                                }
+                                            }}
+                                            type="number"
+                                            value={heightField}
+                                        />
+                                    </label>
+                                </>
+                            ) : null}
                             <button
-                                aria-label={t("richText.media.toggleBorder")}
-                                aria-pressed={bordered}
-                                className={cn(
-                                    "rich-text-image-border-toggle",
-                                    bordered && "is-active"
-                                )}
-                                onClick={toggleBorder}
+                                aria-label={t("richText.media.open")}
+                                className="rich-text-image-border-toggle"
+                                onClick={openPreview}
                                 onMouseDown={(event) => event.preventDefault()}
-                                title={t("richText.media.toggleBorder")}
+                                title={t("richText.media.open")}
                                 type="button"
                             >
-                                {bordered ? (
-                                    <Square className="size-4" />
-                                ) : (
-                                    <SquareDashed className="size-4" />
-                                )}
+                                <Maximize2 className="size-4" />
                             </button>
-                            <span className="rich-text-image-divider" />
-                            <span className="rich-text-image-align">
-                                {ALIGNMENTS.map(({ icon: Icon, value }) => (
+                            <button
+                                aria-label={t("richText.media.copy")}
+                                className="rich-text-image-border-toggle"
+                                onClick={handleCopyImage}
+                                onMouseDown={(event) => event.preventDefault()}
+                                title={t("richText.media.copy")}
+                                type="button"
+                            >
+                                <Copy className="size-4" />
+                            </button>
+                            {showControls ? (
+                                <>
                                     <button
                                         aria-label={t(
-                                            `richText.media.align.${value}`
+                                            "richText.media.toggleBorder"
                                         )}
-                                        aria-pressed={align === value}
+                                        aria-pressed={bordered}
                                         className={cn(
-                                            "rich-text-image-align-button",
-                                            align === value && "is-active"
+                                            "rich-text-image-border-toggle",
+                                            bordered && "is-active"
                                         )}
-                                        key={value}
-                                        onClick={() => setAlignment(value)}
+                                        onClick={toggleBorder}
                                         onMouseDown={(event) =>
                                             event.preventDefault()
                                         }
-                                        title={t(
-                                            `richText.media.align.${value}`
-                                        )}
+                                        title={t("richText.media.toggleBorder")}
                                         type="button"
                                     >
-                                        <Icon className="size-4" />
+                                        {bordered ? (
+                                            <Square className="size-4" />
+                                        ) : (
+                                            <SquareDashed className="size-4" />
+                                        )}
                                     </button>
-                                ))}
-                            </span>
+                                    <span className="rich-text-image-divider" />
+                                    <span className="rich-text-image-align">
+                                        {ALIGNMENTS.map(
+                                            ({ icon: Icon, value }) => (
+                                                <button
+                                                    aria-label={t(
+                                                        `richText.media.align.${value}`
+                                                    )}
+                                                    aria-pressed={
+                                                        align === value
+                                                    }
+                                                    className={cn(
+                                                        "rich-text-image-align-button",
+                                                        align === value &&
+                                                            "is-active"
+                                                    )}
+                                                    key={value}
+                                                    onClick={() =>
+                                                        setAlignment(value)
+                                                    }
+                                                    onMouseDown={(event) =>
+                                                        event.preventDefault()
+                                                    }
+                                                    title={t(
+                                                        `richText.media.align.${value}`
+                                                    )}
+                                                    type="button"
+                                                >
+                                                    <Icon className="size-4" />
+                                                </button>
+                                            )
+                                        )}
+                                    </span>
+                                </>
+                            ) : null}
                         </span>
                     </>
                 ) : null}
             </span>
+
+            <Dialog onOpenChange={setPreviewOpen} open={previewOpen}>
+                <DialogContent
+                    className={cn(
+                        "flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0",
+                        "top-0 left-0 items-center justify-center gap-0 rounded-none border-0",
+                        "bg-black/90 p-3 shadow-none ring-0 sm:max-w-none",
+                        "data-open:zoom-in-100 data-closed:zoom-out-100"
+                    )}
+                    showCloseButton
+                >
+                    <DialogTitle className="sr-only">
+                        {t("richText.media.open")}
+                    </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        {alt || t("richText.media.open")}
+                    </DialogDescription>
+                    {source ? (
+                        <img
+                            alt={alt}
+                            className="max-h-[min(92dvh,100%)] max-w-full object-contain"
+                            src={source}
+                        />
+                    ) : null}
+                </DialogContent>
+            </Dialog>
         </NodeViewWrapper>
     );
 }

@@ -10,7 +10,11 @@ import type {
 } from "@/features/tasks/model/types";
 import type { Database } from "@/shared/api/database.types";
 
-import { fetchBoardColumnIds } from "@/features/boards";
+import {
+    countTeamPeople,
+    fetchBoardColumnIds,
+    shouldAutoAssignToCreator,
+} from "@/features/boards";
 import { parseTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     DEFAULT_TASK_PRIORITY,
@@ -40,17 +44,37 @@ export type ProjectBoard = {
     tasks: Task[];
 };
 
-function normalizeTaskTitle(title: string): string {
-    const trimmed = title.trim();
-    if (!trimmed) {
-        throw new Error("Task title is required");
-    }
-    if (trimmed.length > TASK_TITLE_MAX_LENGTH) {
-        throw new Error(
-            `Task title must be at most ${TASK_TITLE_MAX_LENGTH} characters`
-        );
-    }
-    return trimmed;
+async function fetchProjectTeamPeopleCount(projectId: string): Promise<number> {
+    const { data: project, error: projectError } = await supabase
+        .from("projects")
+        .select("team_id")
+        .eq("id", projectId)
+        .single();
+    if (projectError) throw projectError;
+    if (!project?.team_id) return 0;
+
+    const { data: team, error: teamError } = await supabase
+        .from("teams")
+        .select("owner_id")
+        .eq("id", project.team_id)
+        .single();
+    if (teamError) throw teamError;
+
+    const { count, error: membersError } = await supabase
+        .from("team_members")
+        .select("*", { count: "exact", head: true })
+        .eq("team_id", project.team_id);
+    if (membersError) throw membersError;
+
+    return countTeamPeople({
+        hasOwner: Boolean(team?.owner_id),
+        memberCount: count ?? 0,
+    });
+}
+
+async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
+    const [task] = await mapSelectedTaskRows([row]);
+    return task;
 }
 
 async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
@@ -69,9 +93,17 @@ async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
     );
 }
 
-async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
-    const [task] = await mapSelectedTaskRows([row]);
-    return task;
+function normalizeTaskTitle(title: string): string {
+    const trimmed = title.trim();
+    if (!trimmed) {
+        throw new Error("Task title is required");
+    }
+    if (trimmed.length > TASK_TITLE_MAX_LENGTH) {
+        throw new Error(
+            `Task title must be at most ${TASK_TITLE_MAX_LENGTH} characters`
+        );
+    }
+    return trimmed;
 }
 
 const TASK_SELECT = `
@@ -95,6 +127,7 @@ const TASK_SELECT = `
   pr_number,
   pr_state,
   pr_url,
+  linked_commit_sha,
   task_key,
   task_type,
   created_at,
@@ -147,6 +180,14 @@ const TASK_SELECT = `
   )
 `;
 
+/** Optional create overrides for column / backlog quick-add. */
+export type CreateTaskRecordExtras = {
+    /** Pass `null` to force Unassigned (skips board auto-assign). */
+    assigneeId?: null | string;
+    /** Pass `null` for priority None. */
+    priority?: null | TaskPriority;
+};
+
 export type TaskRecordPatch = {
     assignee_id?: null | string;
     author_id?: null | string;
@@ -156,6 +197,7 @@ export type TaskRecordPatch = {
     description?: null | string;
     /** Pass `null` to clear estimate (unestimated). Manager+ only. */
     estimate?: null | TaskEstimate;
+    linked_commit_sha?: null | string;
     position?: number;
     pr_number?: null | number;
     pr_state?: null | string;
@@ -258,22 +300,49 @@ export async function createTaskRecord(
     status: TaskStatus,
     title: string,
     taskType?: TaskType,
-    sprintId?: string
+    sprintId?: string,
+    extras?: CreateTaskRecordExtras
 ) {
+    const { data: boardRow, error: boardError } = await supabase
+        .from("boards")
+        .select("default_task_type, auto_assign_to_creator")
+        .eq("id", boardId)
+        .single();
+
+    if (boardError) throw boardError;
+
     let resolvedType: TaskType = taskType ?? "task";
     if (taskType === undefined) {
-        const { data: boardRow, error: boardError } = await supabase
-            .from("boards")
-            .select("default_task_type")
-            .eq("id", boardId)
-            .single();
-
-        if (boardError) throw boardError;
         const raw = boardRow?.default_task_type;
         if (raw === "bug" || raw === "feature" || raw === "task") {
             resolvedType = raw;
         }
     }
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    let teamPeopleCount = 0;
+    if (
+        extras?.assigneeId === undefined &&
+        boardRow?.auto_assign_to_creator === true
+    ) {
+        teamPeopleCount = await fetchProjectTeamPeopleCount(projectId);
+    }
+    const autoAssigneeId = shouldAutoAssignToCreator({
+        autoAssignToCreator: boardRow?.auto_assign_to_creator === true,
+        teamPeopleCount,
+    })
+        ? (user?.id ?? null)
+        : null;
+
+    const resolvedAssigneeId =
+        extras?.assigneeId === undefined ? autoAssigneeId : extras.assigneeId;
+    const resolvedPriority =
+        extras?.priority === undefined
+            ? DEFAULT_TASK_PRIORITY
+            : extras.priority;
 
     const { data: existing, error: existingError } = await supabase
         .from("tasks")
@@ -302,18 +371,15 @@ export async function createTaskRecord(
         sprintPosition = (sprintExisting?.[0]?.sprint_position ?? -1) + 1;
     }
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
     const { data, error } = await supabase
         .from("tasks")
         // task_key is NOT NULL but filled by trg_set_task_key before insert.
         .insert({
+            assignee_id: resolvedAssigneeId,
             author_id: user?.id ?? null,
             board_id: boardId,
             position,
-            priority: DEFAULT_TASK_PRIORITY,
+            priority: resolvedPriority,
             project_id: projectId,
             ...(sprintId
                 ? { sprint_id: sprintId, sprint_position: sprintPosition }

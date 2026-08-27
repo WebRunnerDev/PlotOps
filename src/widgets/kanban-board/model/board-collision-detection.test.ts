@@ -158,4 +158,26 @@ describe("boardCollisionDetection", () => {
 
         expect(collisions[0]?.id).toBe("task-1");
     });
+
+    it("maps a column body hit to that column task-list zone", () => {
+        const emptyColumnZone = container("column-tasks:col-b", "column-tasks");
+        const containers = [...columns, emptyColumnZone];
+        const rects = new Map<string, ClientRect>([
+            ["col-a", rect(0, 0, 200, 400)],
+            ["col-b", rect(220, 0, 200, 400)],
+            ["col-c", rect(440, 0, 200, 400)],
+            ["column-tasks:col-b", rect(220, 320, 200, 48)],
+            // Pointer sits in the upper empty column body, above the short zone.
+        ]);
+
+        const collisions = runCollision(boardCollisionDetection, {
+            activeId: "task-2",
+            activeType: "task",
+            containers,
+            pointer: { x: 300, y: 200 },
+            rects,
+        });
+
+        expect(collisions[0]?.id).toBe("column-tasks:col-b");
+    });
 });

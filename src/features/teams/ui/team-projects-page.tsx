@@ -67,6 +67,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
         canView,
         isError: accessError,
         isLoading: accessLoading,
+        isSettled,
     } = useTeamAccess(teamId);
     const {
         data: projects = [],
@@ -79,7 +80,11 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
         null
     );
 
-    const isLoading = teamLoading || accessLoading || projectsLoading;
+    const isLoading =
+        teamLoading ||
+        accessLoading ||
+        projectsLoading ||
+        (!isSettled && !accessError && !teamError);
     const canAddProject = Boolean(!guest && canCreateProject && user);
     const showGitHubReconnect = Boolean(canAddProject && !githubAccessToken);
 
@@ -127,7 +132,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
         );
     }
 
-    if (accessError || teamError || !team || !canView) {
+    if (accessError || teamError || !team || (isSettled && !canView)) {
         return (
             <Alert variant="destructive">
                 <AlertDescription>{t("teamLoadFailed")}</AlertDescription>

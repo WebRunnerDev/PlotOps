@@ -11,6 +11,7 @@ import { getGuestSandbox, updateGuestSandbox } from "@/features/guest-mode";
 function mapBoard(board: GuestBoard): ProjectBoardRecord {
     return {
         allowedHeadPatterns: [...board.allowedHeadPatterns],
+        autoAssignToCreator: board.autoAssignToCreator ?? false,
         baseBranch: board.baseBranch,
         defaultTaskType: board.defaultTaskType ?? "task",
         id: board.id,
@@ -62,6 +63,7 @@ export const guestBoardsProvider: BoardsProvider = {
 
             created = {
                 allowedHeadPatterns: [],
+                autoAssignToCreator: false,
                 baseBranch: baseBranch.trim() || "main",
                 columns: DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
                     id: column.id,
@@ -268,6 +270,9 @@ export const guestBoardsProvider: BoardsProvider = {
             }
             if (patch.default_task_type !== undefined) {
                 board.defaultTaskType = patch.default_task_type;
+            }
+            if (patch.auto_assign_to_creator !== undefined) {
+                board.autoAssignToCreator = patch.auto_assign_to_creator;
             }
             if (patch.position !== undefined) {
                 board.position = patch.position;

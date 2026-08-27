@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
+import { useQueries } from "@tanstack/react-query";
 import { ArrowRight, Ban, Link2, Plus, XIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,24 +12,24 @@ import type {
     TaskLinkPeer,
 } from "@/features/tasks/model/types";
 
+import { useProjectBoards } from "@/features/boards";
+import { isGuest } from "@/features/guest-mode";
+import { useProjectLabels } from "@/features/labels";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
+import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import {
-    TASK_LINK_ERROR,
-    taskLinkRefusal,
-} from "@/features/tasks/lib/task-structure";
+    collectTaskLinkCandidates,
+    mergeTaskCatalogs,
+} from "@/features/tasks/lib/collect-task-link-candidates";
+import { TASK_LINK_ERROR } from "@/features/tasks/lib/task-structure";
+import { taskKeys } from "@/features/tasks/model/query-keys";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { TaskSearchPicker } from "@/features/tasks/ui/task-search-picker";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
-import {
-    Combobox,
-    ComboboxContent,
-    ComboboxEmpty,
-    ComboboxInput,
-    ComboboxItem,
-    ComboboxList,
-} from "@/shared/shadcn/ui/combobox";
 import {
     Select,
     SelectContent,
@@ -59,6 +60,17 @@ export function TaskLinksSection({
         boardId
     );
     const { data: projectTasks = [] } = useProjectTasks(projectId);
+    const { data: boards = [] } = useProjectBoards(projectId);
+    const { labels } = useProjectLabels(projectId);
+    const people = useProjectPeople(projectId);
+    const tasksProvider = resolveTasksProvider(isGuest());
+    const boardTaskQueries = useQueries({
+        queries: boards.map((board) => ({
+            enabled: Boolean(projectId && board.id),
+            queryFn: () => tasksProvider.fetchBoardTasks(board.id),
+            queryKey: taskKeys.board(projectId, board.id),
+        })),
+    });
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
     const [addKind, setAddKind] = useState<AddKind>("relates_to");
@@ -73,40 +85,26 @@ export function TaskLinksSection({
     );
     const related = peers.filter((peer) => peer.kind === "relates_to");
 
-    const candidates = useMemo(() => {
-        const linkedIds = new Set(
-            peers
-                .filter((peer) =>
-                    addKind === "relates_to"
-                        ? peer.kind === "relates_to"
-                        : peer.kind === "blocks" &&
-                          (addKind === "blocks"
-                              ? peer.direction === "outgoing"
-                              : peer.direction === "incoming")
-                )
-                .map((peer) => peer.otherId)
-        );
-        const nodes = projectTasks.map((item) => ({
-            id: item.id,
-            parentId: item.parentId,
-            projectId,
-        }));
-        const edges = peers.map((peer) => ({
-            kind: peer.kind,
-            sourceId: peer.direction === "incoming" ? peer.otherId : task.id,
-            targetId: peer.direction === "incoming" ? task.id : peer.otherId,
-        }));
-        return projectTasks.filter((item) => {
-            if (item.archivedAt || linkedIds.has(item.id)) return false;
-            const sourceId = addKind === "blocked_by" ? item.id : task.id;
-            const targetId = addKind === "blocked_by" ? task.id : item.id;
-            const kind: TaskLinkKind =
-                addKind === "relates_to" ? "relates_to" : "blocks";
-            return (
-                taskLinkRefusal(sourceId, targetId, kind, nodes, edges) === null
-            );
-        });
-    }, [addKind, peers, projectId, projectTasks, task.id]);
+    const catalog = useMemo(
+        () =>
+            mergeTaskCatalogs([
+                projectTasks,
+                ...boardTaskQueries.map((query) => query.data?.tasks ?? []),
+            ]),
+        [boardTaskQueries, projectTasks]
+    );
+
+    const candidates = useMemo(
+        () =>
+            collectTaskLinkCandidates({
+                addKind,
+                peers,
+                projectId,
+                taskId: task.id,
+                tasks: catalog,
+            }),
+        [addKind, catalog, peers, projectId, task.id]
+    );
 
     const addLink = async (target: null | Task) => {
         if (!target || isSubmitting) return;
@@ -134,8 +132,6 @@ export function TaskLinksSection({
             toast.error(t("taskLinks.removeFailed"));
         }
     };
-
-    const emptySelection: null | Task = null;
 
     return (
         <section className="flex flex-col gap-3">
@@ -195,44 +191,19 @@ export function TaskLinksSection({
                             </SelectItem>
                         </SelectContent>
                     </Select>
-                    <Combobox
+                    <TaskSearchPicker
+                        boards={boards}
+                        currentBoardId={boardId}
                         disabled={isSubmitting}
-                        isItemEqualToValue={(
-                            left: null | Task,
-                            right: null | Task
-                        ) => left?.id === right?.id}
+                        emptyText={t("taskLinks.noResults")}
                         items={candidates}
-                        itemToStringLabel={(item: null | Task) =>
-                            item ? `${item.key} ${item.title}` : ""
-                        }
-                        onValueChange={(value: null | Task) => {
-                            void addLink(value);
+                        labels={labels}
+                        onSelect={(target) => {
+                            void addLink(target);
                         }}
-                        value={emptySelection}
-                    >
-                        <ComboboxInput
-                            aria-label={t("taskLinks.addPlaceholder")}
-                            className="h-8 w-full font-mono text-code"
-                            placeholder={t("taskLinks.addPlaceholder")}
-                        />
-                        <ComboboxContent>
-                            <ComboboxEmpty>
-                                {t("taskLinks.noResults")}
-                            </ComboboxEmpty>
-                            <ComboboxList>
-                                {(item: Task) => (
-                                    <ComboboxItem key={item.id} value={item}>
-                                        <span className="shrink-0 font-mono text-meta text-muted-foreground">
-                                            {item.key}
-                                        </span>
-                                        <span className="min-w-0 truncate">
-                                            {item.title}
-                                        </span>
-                                    </ComboboxItem>
-                                )}
-                            </ComboboxList>
-                        </ComboboxContent>
-                    </Combobox>
+                        people={people}
+                        placeholder={t("taskLinks.addPlaceholder")}
+                    />
                 </div>
             ) : undefined}
 

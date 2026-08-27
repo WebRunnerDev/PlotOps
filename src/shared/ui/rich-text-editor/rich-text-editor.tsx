@@ -13,6 +13,7 @@ import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
@@ -37,10 +38,12 @@ import {
 } from "lucide-react";
 import {
     type DragEvent,
+    forwardRef,
     type MouseEvent as ReactMouseEvent,
     type ReactNode,
     useCallback,
     useEffect,
+    useImperativeHandle,
     useLayoutEffect,
     useMemo,
     useRef,
@@ -49,8 +52,6 @@ import {
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-
-import type { MentionCandidate } from "@/shared/ui/rich-text-editor/mention-candidate";
 
 import { cn } from "@/shared/lib/utils";
 import { Button, buttonVariants } from "@/shared/shadcn/ui/button";
@@ -71,24 +72,37 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
+import { clearBootNodeSelection } from "@/shared/ui/rich-text-editor/boot-selection";
+import { shouldPreferClipboardHtml } from "@/shared/ui/rich-text-editor/clipboard-html";
 import {
     normalizeEditorContent,
     richTextLength,
     toEditorContent,
 } from "@/shared/ui/rich-text-editor/content";
+import { copyImageSourceToClipboard } from "@/shared/ui/rich-text-editor/copy-image";
 import { createMentionSuggestion } from "@/shared/ui/rich-text-editor/create-mention-suggestion";
+import { shouldApplyExternalContent } from "@/shared/ui/rich-text-editor/external-content-sync";
 import {
     filterImageFiles,
     ImageUpload,
     type ImageUploadFn,
     insertImageFiles,
 } from "@/shared/ui/rich-text-editor/image-upload";
+import {
+    MENTION_DISPLAY_CHAR,
+    type MentionCandidate,
+} from "@/shared/ui/rich-text-editor/mention-candidate";
+import {
+    insertMentionTrigger,
+    isMentionHotkey,
+} from "@/shared/ui/rich-text-editor/mention-hotkey";
 import { ResizableImage } from "@/shared/ui/rich-text-editor/resizable-image";
 import {
     deleteSlashQuery,
     filterSlashCommands,
     type SlashCommand,
 } from "@/shared/ui/rich-text-editor/slash-commands";
+import { TableToolbar } from "@/shared/ui/rich-text-editor/table-toolbar";
 import "@/shared/ui/rich-text-editor/rich-text-editor.css";
 
 const lowlight = createLowlight(common);
@@ -117,6 +131,11 @@ const SLASH_SHORTCUTS: Record<string, string> = {
     "task-list": shortcut(MOD_KEY, SHIFT_KEY, "9"),
 };
 
+/** Imperative API for callers that must commit only after uploads settle. */
+export type RichTextEditorHandle = {
+    waitForIdle: () => Promise<string>;
+};
+
 type FloatingMenuState = {
     activeIds: string[];
     activeIndex: number;
@@ -142,6 +161,8 @@ type RichTextEditorProperties = {
     mentionCandidates?: readonly MentionCandidate[];
     onBlur?: () => void;
     onChange?: (value: string) => void;
+    /** Ctrl/⌘+Enter — submit from a compact composer (comments, etc.). */
+    onModEnter?: () => void;
     onUploadImage?: ImageUploadFn;
     placeholder?: string;
     readOnly?: boolean;
@@ -157,19 +178,26 @@ const EMPTY_MENU: FloatingMenuState = {
     source: null,
 };
 
-export function RichTextEditor({
-    className,
-    compact = false,
-    id,
-    maxLength,
-    mentionCandidates,
-    onBlur,
-    onChange,
-    onUploadImage,
-    placeholder,
-    readOnly = false,
-    value,
-}: RichTextEditorProperties) {
+export const RichTextEditor = forwardRef<
+    RichTextEditorHandle,
+    RichTextEditorProperties
+>(function RichTextEditor(
+    {
+        className,
+        compact = false,
+        id,
+        maxLength,
+        mentionCandidates,
+        onBlur,
+        onChange,
+        onModEnter,
+        onUploadImage,
+        placeholder,
+        readOnly = false,
+        value,
+    },
+    reference
+) {
     const { t } = useTranslation("board");
     const [menu, setMenu] = useState<FloatingMenuState>(EMPTY_MENU);
     const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -180,6 +208,13 @@ export function RichTextEditor({
     const menuReference = useRef<HTMLDivElement | null>(null);
     const editorReference = useRef<Editor | null>(null);
     const dragDepthReference = useRef(0);
+    const blurWhilePendingReference = useRef(false);
+    const onBlurReference = useRef(onBlur);
+    onBlurReference.current = onBlur;
+    const onChangeReference = useRef(onChange);
+    onChangeReference.current = onChange;
+    const onModuleEnterReference = useRef(onModEnter);
+    onModuleEnterReference.current = onModEnter;
     const menuStateReference = useRef(menu);
     menuStateReference.current = menu;
     const mentionCandidatesReference = useRef(mentionCandidates ?? []);
@@ -222,10 +257,17 @@ export function RichTextEditor({
     const editorAttributes = useMemo(() => {
         const attributes: Record<string, string> = {
             class: cn(
-                compact ? "min-h-24" : "min-h-40",
-                "w-full max-w-full overflow-x-hidden break-words px-6 py-6 text-sm leading-7 border border-input rounded-lg [overflow-wrap:anywhere]",
-                "focus:outline-none focus:border-input focus:ring-0",
-                readOnly && "cursor-default bg-muted/20"
+                compact ? "min-h-24 px-3 py-2.5" : "min-h-40 px-6 py-6",
+                "w-full max-w-full overflow-x-hidden break-words text-sm leading-7 [overflow-wrap:anywhere]",
+                "focus:outline-none focus:ring-0",
+                // Compact read-only (comment body): keep chrome + p-6 so text
+                // isn't flush to the box edge.
+                compact && readOnly
+                    ? "min-h-0 cursor-default border border-input rounded-lg bg-muted/20 p-6 focus:border-input"
+                    : cn(
+                          "border border-input rounded-lg focus:border-input",
+                          readOnly && "cursor-default bg-muted/20"
+                      )
             ),
         };
 
@@ -256,6 +298,23 @@ export function RichTextEditor({
                         return false;
                     }
 
+                    // Images need the browser menu ("Copy image"). Our format
+                    // menu is text-oriented; NodeSelection has no text marks.
+                    const target = event.target;
+                    if (
+                        target instanceof Element &&
+                        target.closest(
+                            ".rich-text-image-view, img.rich-text-image"
+                        )
+                    ) {
+                        return false;
+                    }
+                    if (
+                        currentEditor.state.selection instanceof NodeSelection
+                    ) {
+                        return false;
+                    }
+
                     event.preventDefault();
 
                     const selectionRect = getSelectionRect(currentEditor);
@@ -271,6 +330,27 @@ export function RichTextEditor({
                     setMenu(
                         buildMenuState(currentEditor, "context", reference)
                     );
+                    return true;
+                },
+                copy: (_view, event) => {
+                    const currentEditor = editorReference.current;
+                    if (!currentEditor) return false;
+
+                    const { selection } = currentEditor.state;
+                    if (!(selection instanceof NodeSelection)) return false;
+                    if (selection.node.type.name !== "image") return false;
+
+                    const source = selection.node.attrs.src;
+                    if (typeof source !== "string" || source.length === 0) {
+                        return false;
+                    }
+
+                    event.preventDefault();
+                    void copyImageSourceToClipboard(source).then((result) => {
+                        if (result === "failed") {
+                            toast.error(t("copyFailed"));
+                        }
+                    });
                     return true;
                 },
                 mousedown: (_view, event) => {
@@ -292,6 +372,32 @@ export function RichTextEditor({
             },
             handleKeyDown: (_view, event) => {
                 const current = menuStateReference.current;
+                const currentEditor = editorReference.current;
+
+                if (
+                    event.key === "Enter" &&
+                    (event.ctrlKey || event.metaKey) &&
+                    !event.altKey &&
+                    !event.shiftKey &&
+                    !readOnlyReference.current &&
+                    onModuleEnterReference.current
+                ) {
+                    event.preventDefault();
+                    closeMenu();
+                    onModuleEnterReference.current();
+                    return true;
+                }
+
+                if (
+                    isMentionHotkey(event) &&
+                    currentEditor &&
+                    !readOnlyReference.current &&
+                    mentionCandidatesReference.current.length > 0
+                ) {
+                    event.preventDefault();
+                    insertMentionTrigger(currentEditor);
+                    return true;
+                }
 
                 // The selection bubble has no command rows to navigate, but Esc
                 // should still dismiss it.
@@ -349,10 +455,35 @@ export function RichTextEditor({
 
                 return false;
             },
+            handlePaste: (_view, event) => {
+                const currentEditor = editorReference.current;
+                if (!currentEditor || readOnlyReference.current) {
+                    return false;
+                }
+
+                const html = event.clipboardData?.getData("text/html") ?? "";
+                // Notion/Jira/Word put a PNG screenshot on the clipboard
+                // alongside the table HTML. Prefer the table, not the image.
+                if (shouldPreferClipboardHtml(html)) {
+                    return false;
+                }
+
+                const files = event.clipboardData?.files;
+                if (!files?.length) return false;
+
+                const images = filterImageFiles(files);
+                if (images.length === 0) return false;
+
+                insertImageFiles(currentEditor, images);
+                return true;
+            },
         },
         extensions: [
+            // TipTap 3 StarterKit already registers link + underline.
             StarterKit.configure({
                 codeBlock: false,
+                link: false,
+                underline: false,
             }),
             CodeBlockLowlight.configure({
                 lowlight,
@@ -381,14 +512,29 @@ export function RichTextEditor({
                 HTMLAttributes: {
                     class: "mention",
                 },
+                renderHTML: ({ node, options }) => [
+                    "span",
+                    options.HTMLAttributes,
+                    `${MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
+                ],
+                renderText: ({ node }) =>
+                    `${MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
                 suggestion: mentionSuggestion,
             }),
             ResizableImage,
             ImageUpload,
+            TableKit.configure({
+                table: {
+                    allowTableNodeSelection: true,
+                    renderWrapper: true,
+                    resizable: true,
+                },
+            }),
             FileHandler.configure({
                 // Don't filter by MIME here — Windows drag often has an empty type.
                 // Filtering happens in insertImageFiles / isImageFile.
-                consumePasteEvent: true,
+                // Paste is handled in editorProps so table HTML wins over a
+                // clipboard screenshot of the same table.
                 onDrop: (currentEditor, files, position) => {
                     // FileHandler stops propagation on editor-surface drops, so
                     // the container onDrop never runs — reset the overlay here.
@@ -396,14 +542,24 @@ export function RichTextEditor({
                     setIsDraggingFile(false);
                     insertImageFiles(currentEditor, files, position);
                 },
-                onPaste: (currentEditor, files) => {
-                    insertImageFiles(currentEditor, files);
-                },
             }),
         ],
         immediatelyRender: false,
         onBlur: () => {
-            onBlur?.();
+            const currentEditor = editorReference.current;
+            if (
+                currentEditor &&
+                currentEditor.storage.imageUpload.pending > 0
+            ) {
+                // File picker / drop steals focus mid-upload. Commit after the
+                // permanent URL is flushed so blur does not persist pre-image HTML.
+                blurWhilePendingReference.current = true;
+                return;
+            }
+            onBlurReference.current?.();
+        },
+        onCreate: ({ editor: currentEditor }) => {
+            clearBootNodeSelection(currentEditor);
         },
         onSelectionUpdate: ({ editor: currentEditor }) => {
             const current = menuStateReference.current;
@@ -440,7 +596,13 @@ export function RichTextEditor({
             // temporary blob URL of the loading placeholder is never persisted.
             if (currentEditor.storage.imageUpload.pending === 0) {
                 const next = normalizeEditorContent(currentEditor.getHTML());
-                onChange?.(next);
+                onChangeReference.current?.(next);
+                if (blurWhilePendingReference.current) {
+                    blurWhilePendingReference.current = false;
+                    // Parent onChange updates its draft ref synchronously; commit
+                    // in the same turn so blur does not read a stale React state.
+                    onBlurReference.current?.();
+                }
             }
 
             const slashMenu = resolveSlashMenu(currentEditor);
@@ -461,6 +623,30 @@ export function RichTextEditor({
             }
         },
     });
+
+    useImperativeHandle(
+        reference,
+        () => ({
+            waitForIdle: async () => {
+                const currentEditor = editorReference.current;
+                if (!currentEditor || currentEditor.isDestroyed) {
+                    return normalizeEditorContent(value);
+                }
+
+                while (currentEditor.storage.imageUpload.pending > 0) {
+                    if (currentEditor.isDestroyed) {
+                        return normalizeEditorContent(value);
+                    }
+                    await new Promise<void>((resolve) => {
+                        globalThis.setTimeout(resolve, 32);
+                    });
+                }
+
+                return normalizeEditorContent(currentEditor.getHTML());
+            },
+        }),
+        [value]
+    );
 
     useEffect(() => {
         if (!editor) return;
@@ -512,6 +698,8 @@ export function RichTextEditor({
         selector: ({ editor: currentEditor }) => {
             if (!currentEditor) {
                 return {
+                    canMergeCells: false,
+                    canSplitCell: false,
                     isAlignCenter: false,
                     isAlignJustify: false,
                     isAlignLeft: false,
@@ -522,11 +710,14 @@ export function RichTextEditor({
                     isItalic: false,
                     isLink: false,
                     isStrike: false,
+                    isTable: false,
                     isUnderline: false,
                 };
             }
 
             return {
+                canMergeCells: currentEditor.can().mergeCells(),
+                canSplitCell: currentEditor.can().splitCell(),
                 isAlignCenter: currentEditor.isActive({ textAlign: "center" }),
                 isAlignJustify: currentEditor.isActive({
                     textAlign: "justify",
@@ -539,6 +730,7 @@ export function RichTextEditor({
                 isItalic: currentEditor.isActive("italic"),
                 isLink: currentEditor.isActive("link"),
                 isStrike: currentEditor.isActive("strike"),
+                isTable: currentEditor.isActive("table"),
                 isUnderline: currentEditor.isActive("underline"),
             };
         },
@@ -550,9 +742,20 @@ export function RichTextEditor({
         if (!editor) return;
 
         const current = normalizeEditorContent(editor.getHTML());
-        if (current === editorContent) return;
+        if (
+            !shouldApplyExternalContent({
+                currentHtml: current,
+                nextHtml: editorContent,
+                pendingUploads: editor.storage.imageUpload.pending,
+            })
+        ) {
+            return;
+        }
 
         editor.commands.setContent(editorContent, { emitUpdate: false });
+        // `setContent` resets selection to doc start — clear atom NodeSelection
+        // the same way `onCreate` does so image chrome does not flash on sync.
+        clearBootNodeSelection(editor);
     }, [editor, editorContent]);
 
     const runSlashCommand = (command: SlashCommand) => {
@@ -872,7 +1075,7 @@ export function RichTextEditor({
             className={cn(
                 "group/rich-text relative min-w-0 max-w-full overflow-hidden rounded-lg border border-transparent bg-transparent transition-colors",
                 "focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
-                "dark:bg-input/20",
+                "dark:bg-background",
                 isDraggingFile &&
                     "border-dashed border-primary bg-primary/5 ring-3 ring-primary/30",
                 className
@@ -951,15 +1154,17 @@ export function RichTextEditor({
             <EditorContent
                 className={cn(
                     "rich-text-editor block min-w-0 max-w-full overflow-hidden",
-                    compact
+                    compact && !readOnly
                         ? "[&_.ProseMirror]:min-h-24"
-                        : "[&_.ProseMirror]:min-h-40",
+                        : compact
+                          ? "[&_.ProseMirror]:min-h-0"
+                          : "[&_.ProseMirror]:min-h-40",
                     "[&_.ProseMirror]:w-full [&_.ProseMirror]:max-w-full [&_.ProseMirror]:overflow-x-hidden [&_.ProseMirror]:outline-none [&_.ProseMirror]:wrap-anywhere",
                     "[&_.ProseMirror>*]:max-w-full",
                     "[&_.ProseMirror_p]:max-w-full [&_.ProseMirror_h1]:max-w-full [&_.ProseMirror_h2]:max-w-full [&_.ProseMirror_h3]:max-w-full",
                     "[&_.ProseMirror_ul]:max-w-full [&_.ProseMirror_ol]:max-w-full [&_.ProseMirror_blockquote]:max-w-full",
                     "[&_.ProseMirror_pre]:max-w-full [&_.ProseMirror_hr]:max-w-full",
-                    "[&_.ProseMirror_img]:max-w-full [&_.ProseMirror_table]:max-w-full",
+                    "[&_.ProseMirror_img]:max-w-full [&_.ProseMirror_.tableWrapper]:max-w-full",
                     // Image toolbar is wider than a narrow bitmap — do not inherit max-w-full.
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
                     "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
@@ -977,10 +1182,18 @@ export function RichTextEditor({
                     "[&_.ProseMirror_a]:break-all [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:cursor-pointer [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-4",
                     "[&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-border",
                     "[&_.ProseMirror_mark]:rounded-sm [&_.ProseMirror_mark]:bg-amber-200/70 [&_.ProseMirror_mark]:px-0.5 [&_.ProseMirror_mark]:text-foreground",
-                    "dark:[&_.ProseMirror_mark]:bg-amber-400/25"
+                    "dark:[&_.ProseMirror_mark]:bg-card"
                 )}
                 editor={editor}
             />
+
+            {readOnly || !toolbarState?.isTable ? null : (
+                <TableToolbar
+                    canMerge={Boolean(toolbarState.canMergeCells)}
+                    canSplit={Boolean(toolbarState.canSplitCell)}
+                    editor={editor}
+                />
+            )}
 
             {readOnly ? null : (
                 <div className="mt-1 flex items-start justify-between gap-3 px-1 text-[0.6875rem] leading-tight">
@@ -1009,7 +1222,7 @@ export function RichTextEditor({
             )}
         </div>
     );
-}
+});
 
 function buildMenuState(
     editor: Editor,
@@ -1017,7 +1230,9 @@ function buildMenuState(
     reference: ReferenceRect,
     query = ""
 ): FloatingMenuState {
-    const commands = filterSlashCommands(query);
+    const commands = filterSlashCommands(query, {
+        inTable: editor.isActive("table"),
+    });
     const activeIds = commands
         .filter((command) => isCommandActive(editor, command.id))
         .map((command) => command.id);
@@ -1146,6 +1361,9 @@ function isCommandActive(editor: Editor, commandId: SlashCommand["id"]) {
             return editor.isActive("taskList");
         }
         default: {
+            if (commandId === "table" || commandId.startsWith("table-")) {
+                return editor.isActive("table");
+            }
             return false;
         }
     }

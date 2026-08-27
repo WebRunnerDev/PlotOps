@@ -30,6 +30,11 @@ export {
 } from "./lib/allowed-head-patterns";
 export { readLastBoardId, writeLastBoardId } from "./lib/last-board-storage";
 export {
+    countTeamPeople,
+    isSoloTeam,
+    shouldAutoAssignToCreator,
+} from "./lib/should-auto-assign-to-creator";
+export {
     BOARD_DEFAULT_TASK_TYPES,
     DEFAULT_KANBAN_COLUMNS,
     KANBAN_COLUMNS,

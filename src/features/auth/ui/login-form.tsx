@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
     getAuthErrorKey,
     signInWithGitHub,
+    signInWithGoogle,
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -28,6 +29,10 @@ import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
 
+import {
+    type OAuthProviderLoading,
+    OAuthSignInButtons,
+} from "./oauth-sign-in-buttons";
 import { PasswordInput } from "./password-input";
 
 const REDIRECT_TIMEOUT_MS = 8000;
@@ -39,14 +44,15 @@ export function LoginForm() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<null | string>(null);
-    const [isGitHubLoading, setIsGitHubLoading] = useState(false);
+    const [oauthLoading, setOauthLoading] =
+        useState<OAuthProviderLoading>(null);
     const [isEmailLoading, setIsEmailLoading] = useState(false);
     const [isGuestLoading, setIsGuestLoading] = useState(false);
     // Wait for AuthProvider + router context before navigating — otherwise
     // /home beforeLoad still sees user=null and bounces back to /sign-in.
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
 
-    const isBusy = isGitHubLoading || isEmailLoading || isGuestLoading;
+    const isBusy = Boolean(oauthLoading) || isEmailLoading || isGuestLoading;
 
     const clearAuthLoading = () => {
         setIsEmailLoading(false);
@@ -94,16 +100,19 @@ export function LoginForm() {
         };
     }, [awaitingRedirect, t, user]);
 
-    const handleGitHubLogin = async () => {
+    const handleOAuthLogin = async (provider: "github" | "google") => {
         setError(null);
         leaveGuestSession();
-        setIsGitHubLoading(true);
+        setOauthLoading(provider);
 
         try {
-            const { error: authError } = await signInWithGitHub();
+            const { error: authError } =
+                provider === "github"
+                    ? await signInWithGitHub()
+                    : await signInWithGoogle();
             if (authError) setError(t(getAuthErrorKey(authError)));
         } finally {
-            setIsGitHubLoading(false);
+            setOauthLoading(null);
         }
     };
 
@@ -181,18 +190,12 @@ export function LoginForm() {
                 ) : undefined}
 
                 <div className="flex flex-col gap-3">
-                    <Button
-                        className="w-full"
+                    <OAuthSignInButtons
                         disabled={isBusy}
-                        onClick={handleGitHubLogin}
-                        size="lg"
-                        type="button"
-                        variant="outline"
-                    >
-                        {isGitHubLoading
-                            ? t("githubRedirecting")
-                            : t("githubSignIn")}
-                    </Button>
+                        loading={oauthLoading}
+                        onGitHub={() => void handleOAuthLogin("github")}
+                        onGoogle={() => void handleOAuthLogin("google")}
+                    />
 
                     <Button
                         className="w-full"

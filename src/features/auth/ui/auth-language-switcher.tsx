@@ -27,9 +27,7 @@ export function AuthLanguageSwitcher() {
                     onClick={() => void i18n.changeLanguage(locale)}
                     size="xs"
                     type="button"
-                    variant={
-                        currentLocale === locale ? "secondary" : "ghost"
-                    }
+                    variant={currentLocale === locale ? "secondary" : "ghost"}
                 >
                     {locale}
                 </Button>

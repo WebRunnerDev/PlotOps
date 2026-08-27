@@ -31,10 +31,10 @@ describe("useBoardTasks Parent Task Done/archive/delete gates", () => {
         const source = read("src/features/tasks/model/use-board-tasks.ts");
 
         expect(source).toMatch(
-            /const archiveTasks = async[\s\S]*assertParentArchiveLegal[\s\S]*archiveTaskMutation\.mutateAsync/
+            /const archiveTasks = async[\s\S]*concurrentIds[\s\S]*assertParentArchiveLegal[\s\S]*archiveTaskMutation\.mutateAsync/
         );
         expect(source).toMatch(
-            /deleteTask: async[\s\S]*assertParentDeleteLegal[\s\S]*deleteTaskMutation\.mutateAsync/
+            /const deleteTasks = async[\s\S]*concurrentIds[\s\S]*orderTaskIdsChildrenFirst[\s\S]*deleteTaskMutation\.mutateAsync/
         );
     });
 

@@ -21,6 +21,15 @@ describe("Task Link Role gating seam", () => {
         expect(section).toMatch(/taskLinks\.relatesTo/);
         expect(section).toMatch(/taskLinks\.blocks/);
         expect(section).toMatch(/taskLinks\.blockedBy/);
+        expect(section).toMatch(/collectTaskLinkCandidates/);
+        expect(section).toMatch(/useProjectTasks/);
+        expect(section).toMatch(/TaskSearchPicker/);
+        const picker = readUi("task-search-picker.tsx");
+        expect(picker).toMatch(/<BoardTaskFiltersBar/);
+        expect(picker).toMatch(/taskLinks\.otherBoard/);
+        expect(picker.indexOf("<BoardTaskFiltersBar")).toBeGreaterThan(
+            picker.indexOf("<ComboboxContent")
+        );
         expect(section).toMatch(/createTaskLink/);
         expect(section).toMatch(/deleteTaskLink/);
         expect(section).not.toMatch(/canCreateTasks/);
