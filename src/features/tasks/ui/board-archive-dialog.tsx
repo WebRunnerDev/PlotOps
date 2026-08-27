@@ -43,6 +43,9 @@ type DeleteTarget =
     | { count: number; ids: string[]; mode: "bulk" }
     | { id: string; key: string; mode: "single"; title: string };
 
+const EMPTY_ARCHIVED: never[] = [];
+const EMPTY_ARCHIVED_IDS: string[] = [];
+
 export function BoardArchiveDialog({
     boardId,
     projectId,
@@ -67,13 +70,17 @@ export function BoardArchiveDialog({
         () => new Set()
     );
     const {
-        data: archived = [],
+        data: archivedData,
         isError,
         isLoading,
     } = useArchivedTasks(projectId, boardId, open);
+    const archived = archivedData ?? EMPTY_ARCHIVED;
 
     const archivedIds = useMemo(
-        () => archived.map((task) => task.id),
+        () =>
+            archived.length === 0
+                ? EMPTY_ARCHIVED_IDS
+                : archived.map((task) => task.id),
         [archived]
     );
 
@@ -90,7 +97,9 @@ export function BoardArchiveDialog({
 
     useEffect(() => {
         if (!open) {
-            setSelectedIds(new Set());
+            setSelectedIds((current) =>
+                current.size === 0 ? current : new Set()
+            );
             return;
         }
         setSelectedIds((current) => {
