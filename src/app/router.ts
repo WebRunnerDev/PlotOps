@@ -9,7 +9,14 @@ export const queryClient = new QueryClient();
 
 export const router = createRouter({
     context: {
-        auth: undefined!,
+        // Safe placeholder until RouterProvider merges the real Auth slice.
+        // A missing auth object makes beforeLoad throw on `.user` if load runs
+        // before mount (e.g. invalidate during auth boot).
+        auth: {
+            isLoading: true,
+            profileNamesComplete: false,
+            user: null,
+        },
         queryClient,
     },
     defaultViewTransition: {
