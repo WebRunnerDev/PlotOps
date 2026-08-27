@@ -1,15 +1,26 @@
-import { Pencil, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { enUS, ru } from "date-fns/locale";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { TaskComment } from "@/features/tasks/model/types";
 
 import { useAuth } from "@/features/auth";
+import {
+    formatProfileDisplayName,
+    getUserAvatarUrl,
+    getUserDisplayName,
+    getUserInitials,
+} from "@/features/auth/lib/user-display";
 import { GUEST_SEED_ACTOR_ID, isGuest } from "@/features/guest-mode";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
+import {
+    buildCommentThreads,
+    resolveReplyParentId,
+} from "@/features/tasks/lib/build-comment-threads";
 import { TASK_COMMENT_MAX_LENGTH } from "@/features/tasks/model/constants";
 import {
     useCreateTaskComment,
@@ -34,14 +45,21 @@ import {
 const COMMENT_HIGHLIGHT_MS = 2400;
 
 type TaskCommentItemProperties = {
+    canComment: boolean;
     canDelete: boolean;
     canEdit: boolean;
     comment: TaskComment;
     highlighted: boolean;
+    /** Reply rows use a smaller avatar; indent lives on CommentReplies only. */
+    isReply?: boolean;
     locale: string;
     mentionCandidates: readonly MentionCandidate[];
     onDelete: () => void;
+    onReply?: () => void;
     onSave: (body: string) => Promise<void>;
+    /** Nested reply thread — keep width via CommentReplies, never extra pl-* per depth. */
+    replies?: ReactNode;
+    replyComposer?: ReactNode;
     t: (key: string, options?: Record<string, unknown>) => string;
     taskId: string;
 };
@@ -52,13 +70,31 @@ type TaskCommentsSectionProperties = {
     taskId: string;
 };
 
+type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+/**
+ * Reply thread rail (YouTube / Jira).
+ * Indent once on this wrapper — do not nest extra horizontal padding per depth,
+ * or each reply level shrinks the comment body.
+ */
+export function CommentReplies({ children }: { children: ReactNode }) {
+    return (
+        <ul
+            className="mt-3 flex w-full min-w-0 flex-col gap-3 border-l border-border pl-3 sm:pl-4"
+            data-comment-replies=""
+        >
+            {children}
+        </ul>
+    );
+}
+
 export function TaskCommentsSection({
     projectId,
     readOnly = false,
     taskId,
 }: TaskCommentsSectionProperties) {
     const { i18n, t } = useTranslation("board");
-    const { user } = useAuth();
+    const { profile, user } = useAuth();
     const guest = isGuest();
     const currentUserId = guest ? GUEST_SEED_ACTOR_ID : user?.id;
     const access = useProjectAccess(projectId);
@@ -82,6 +118,8 @@ export function TaskCommentsSection({
     );
 
     const [draft, setDraft] = useState("");
+    const [replyDraft, setReplyDraft] = useState("");
+    const [replyingToId, setReplyingToId] = useState<string | undefined>();
     const [highlightedCommentId, setHighlightedCommentId] = useState<
         string | undefined
     >();
@@ -89,6 +127,25 @@ export function TaskCommentsSection({
     const canComment = access.isSettled && access.canEditTasks && !readOnly;
     const canModerateDelete =
         access.isSettled && access.canDeleteTasks && !readOnly;
+
+    const threads = useMemo(() => buildCommentThreads(comments), [comments]);
+
+    const composerAuthor = useMemo(() => {
+        if (guest) {
+            return {
+                avatarUrl: undefined as string | undefined,
+                name: "Demo Guest",
+            };
+        }
+        const name =
+            (profile ? formatProfileDisplayName(profile) : "") ||
+            (user ? getUserDisplayName(user) : "") ||
+            t("members.unknownUser");
+        return {
+            avatarUrl: user ? (getUserAvatarUrl(user) ?? undefined) : undefined,
+            name,
+        };
+    }, [guest, profile, t, user]);
 
     useEffect(() => {
         if (!focusCommentId || isLoading) {
@@ -136,7 +193,7 @@ export function TaskCommentsSection({
         }
 
         try {
-            await createComment.mutateAsync(next);
+            await createComment.mutateAsync({ body: next });
             setDraft("");
             toast.success(t("comments.added"));
         } catch {
@@ -144,22 +201,95 @@ export function TaskCommentsSection({
         }
     };
 
+    const handleReply = async (replyToId: string) => {
+        const next = normalizeEditorContent(replyDraft);
+        if (!next) {
+            toast.error(t("comments.empty"));
+            return;
+        }
+        if (!isRichTextWithinLimit(next, TASK_COMMENT_MAX_LENGTH)) {
+            toast.error(t("comments.tooLong"));
+            return;
+        }
+
+        const parentId = resolveReplyParentId(comments, replyToId);
+
+        try {
+            await createComment.mutateAsync({ body: next, parentId });
+            setReplyDraft("");
+            setReplyingToId(undefined);
+            toast.success(t("comments.replyAdded"));
+        } catch {
+            toast.error(t("comments.replyFailed"));
+        }
+    };
+
     const handleDelete = async (commentId: string) => {
         try {
             await deleteComment.mutateAsync(commentId);
+            if (replyingToId === commentId) {
+                setReplyingToId(undefined);
+                setReplyDraft("");
+            }
             toast.success(t("comments.deleted"));
         } catch {
             toast.error(t("comments.deleteFailed"));
         }
     };
 
-    return (
-        <section className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-                <h3 className="text-ui font-medium">
-                    {t("comments.title", { count: comments.length })}
-                </h3>
+    const commentPermissions = (comment: TaskComment) => {
+        const isAuthor = comment.author?.id === currentUserId;
+        const canEdit =
+            access.isSettled && isAuthor && access.canEditTasks && !readOnly;
+        const canDelete =
+            access.isSettled &&
+            ((isAuthor && access.canEditTasks) || canModerateDelete) &&
+            !readOnly;
+        return { canDelete, canEdit };
+    };
+
+    const renderReplyComposer = (replyToId: string) => {
+        if (replyingToId !== replyToId) {
+            return;
+        }
+        return (
+            <div className="mt-2" data-comment-reply-composer="">
+                <CommentComposer
+                    authorAvatarUrl={composerAuthor.avatarUrl}
+                    authorName={composerAuthor.name}
+                    disabled={
+                        createComment.isPending ||
+                        !normalizeEditorContent(replyDraft) ||
+                        !isRichTextWithinLimit(
+                            replyDraft,
+                            TASK_COMMENT_MAX_LENGTH
+                        )
+                    }
+                    draft={replyDraft}
+                    mentionCandidates={mentionCandidates}
+                    onCancel={() => {
+                        setReplyingToId(undefined);
+                        setReplyDraft("");
+                    }}
+                    onChange={setReplyDraft}
+                    onSubmit={() => {
+                        void handleReply(replyToId);
+                    }}
+                    pending={createComment.isPending}
+                    placeholder={t("comments.replyPlaceholder")}
+                    submitLabel={t("comments.replyAdd")}
+                    t={t}
+                    taskId={taskId}
+                />
             </div>
+        );
+    };
+
+    return (
+        <section className="flex flex-col gap-4" data-task-comments="">
+            <h3 className="text-ui font-medium">
+                {t("comments.title", { count: comments.length })}
+            </h3>
 
             {isLoading ? (
                 <Spinner className="size-5 text-primary" />
@@ -184,41 +314,127 @@ export function TaskCommentsSection({
                     {t("comments.emptyList")}
                 </p>
             ) : (
-                <ul className="flex flex-col gap-3">
-                    {comments.map((comment) => {
-                        const isAuthor = comment.author?.id === currentUserId;
-                        const canEdit =
-                            access.isSettled &&
-                            isAuthor &&
-                            access.canEditTasks &&
-                            !readOnly;
-                        const canDelete =
-                            access.isSettled &&
-                            ((isAuthor && access.canEditTasks) ||
-                                canModerateDelete) &&
-                            !readOnly;
+                <ul className="flex flex-col">
+                    {threads.map((thread, index) => {
+                        const { canDelete, canEdit } = commentPermissions(
+                            thread.root
+                        );
+                        const openReply = canComment
+                            ? (commentId: string) => {
+                                  setReplyingToId(commentId);
+                                  setReplyDraft("");
+                              }
+                            : undefined;
 
                         return (
-                            <li key={comment.id}>
+                            <li
+                                className={cn(
+                                    index > 0 && "border-t border-border pt-4",
+                                    "pb-4 last:pb-0"
+                                )}
+                                key={thread.root.id}
+                            >
                                 <TaskCommentItem
+                                    canComment={canComment}
                                     canDelete={canDelete}
                                     canEdit={canEdit}
-                                    comment={comment}
+                                    comment={thread.root}
                                     highlighted={
-                                        highlightedCommentId === comment.id
+                                        highlightedCommentId === thread.root.id
                                     }
                                     locale={i18n.language}
                                     mentionCandidates={mentionCandidates}
                                     onDelete={() => {
-                                        void handleDelete(comment.id);
+                                        void handleDelete(thread.root.id);
                                     }}
+                                    onReply={
+                                        openReply
+                                            ? () => {
+                                                  openReply(thread.root.id);
+                                              }
+                                            : undefined
+                                    }
                                     onSave={async (body) => {
                                         await updateComment.mutateAsync({
                                             body,
-                                            commentId: comment.id,
-                                            previousBody: comment.body,
+                                            commentId: thread.root.id,
+                                            previousBody: thread.root.body,
                                         });
                                     }}
+                                    replies={
+                                        thread.replies.length > 0 ? (
+                                            <CommentReplies>
+                                                {thread.replies.map((reply) => {
+                                                    const perms =
+                                                        commentPermissions(
+                                                            reply
+                                                        );
+                                                    return (
+                                                        <li key={reply.id}>
+                                                            <TaskCommentItem
+                                                                canComment={
+                                                                    canComment
+                                                                }
+                                                                canDelete={
+                                                                    perms.canDelete
+                                                                }
+                                                                canEdit={
+                                                                    perms.canEdit
+                                                                }
+                                                                comment={reply}
+                                                                highlighted={
+                                                                    highlightedCommentId ===
+                                                                    reply.id
+                                                                }
+                                                                isReply
+                                                                locale={
+                                                                    i18n.language
+                                                                }
+                                                                mentionCandidates={
+                                                                    mentionCandidates
+                                                                }
+                                                                onDelete={() => {
+                                                                    void handleDelete(
+                                                                        reply.id
+                                                                    );
+                                                                }}
+                                                                onReply={
+                                                                    openReply
+                                                                        ? () => {
+                                                                              openReply(
+                                                                                  reply.id
+                                                                              );
+                                                                          }
+                                                                        : undefined
+                                                                }
+                                                                onSave={async (
+                                                                    body
+                                                                ) => {
+                                                                    await updateComment.mutateAsync(
+                                                                        {
+                                                                            body,
+                                                                            commentId:
+                                                                                reply.id,
+                                                                            previousBody:
+                                                                                reply.body,
+                                                                        }
+                                                                    );
+                                                                }}
+                                                                replyComposer={renderReplyComposer(
+                                                                    reply.id
+                                                                )}
+                                                                t={t}
+                                                                taskId={taskId}
+                                                            />
+                                                        </li>
+                                                    );
+                                                })}
+                                            </CommentReplies>
+                                        ) : undefined
+                                    }
+                                    replyComposer={renderReplyComposer(
+                                        thread.root.id
+                                    )}
                                     t={t}
                                     taskId={taskId}
                                 />
@@ -229,68 +445,160 @@ export function TaskCommentsSection({
             )}
 
             {canComment ? (
-                <div className="flex flex-col gap-2 border border-dashed border-border p-3">
-                    <RichTextEditor
-                        compact
-                        id={`comment-compose-${taskId}`}
-                        maxLength={TASK_COMMENT_MAX_LENGTH}
-                        mentionCandidates={mentionCandidates}
-                        onChange={setDraft}
-                        onUploadImage={(file) => uploadTaskMedia(file, taskId)}
-                        placeholder={t("comments.placeholder")}
-                        value={draft}
-                    />
-                    <div className="flex justify-end">
-                        <Button
-                            disabled={
-                                createComment.isPending ||
-                                !normalizeEditorContent(draft) ||
-                                !isRichTextWithinLimit(
-                                    draft,
-                                    TASK_COMMENT_MAX_LENGTH
-                                )
-                            }
-                            onClick={() => {
-                                void handleCreate();
-                            }}
-                            type="button"
-                        >
-                            {t("comments.add")}
-                        </Button>
-                    </div>
-                </div>
+                <CommentComposer
+                    authorAvatarUrl={composerAuthor.avatarUrl}
+                    authorName={composerAuthor.name}
+                    disabled={
+                        createComment.isPending ||
+                        !normalizeEditorContent(draft) ||
+                        !isRichTextWithinLimit(draft, TASK_COMMENT_MAX_LENGTH)
+                    }
+                    draft={draft}
+                    mentionCandidates={mentionCandidates}
+                    onChange={setDraft}
+                    onSubmit={() => {
+                        void handleCreate();
+                    }}
+                    pending={createComment.isPending}
+                    t={t}
+                    taskId={taskId}
+                />
             ) : undefined}
         </section>
     );
 }
 
-function formatTimestamp(value: string, locale: string) {
+function CommentAvatar({
+    avatarUrl,
+    name,
+    size = "md",
+}: {
+    avatarUrl?: string;
+    name: string;
+    size?: "md" | "sm";
+}) {
+    return (
+        <Avatar
+            className={cn(
+                "shrink-0 rounded-none",
+                size === "sm" ? "size-7" : "size-8"
+            )}
+        >
+            {avatarUrl ? <AvatarImage alt="" src={avatarUrl} /> : undefined}
+            <AvatarFallback className="rounded-none text-meta">
+                {getUserInitials(name)}
+            </AvatarFallback>
+        </Avatar>
+    );
+}
+
+function CommentComposer({
+    authorAvatarUrl,
+    authorName,
+    disabled,
+    draft,
+    mentionCandidates,
+    onCancel,
+    onChange,
+    onSubmit,
+    pending,
+    placeholder,
+    submitLabel,
+    t,
+    taskId,
+}: {
+    authorAvatarUrl?: string;
+    authorName: string;
+    disabled: boolean;
+    draft: string;
+    mentionCandidates: readonly MentionCandidate[];
+    onCancel?: () => void;
+    onChange: (value: string) => void;
+    onSubmit: () => void;
+    pending: boolean;
+    placeholder?: string;
+    submitLabel?: string;
+    t: Translate;
+    taskId: string;
+}) {
+    return (
+        <div className="flex items-start gap-3" data-comment-composer="">
+            <CommentAvatar
+                avatarUrl={authorAvatarUrl}
+                name={authorName}
+                size="md"
+            />
+            <div className="flex min-w-0 flex-1 flex-col gap-2 border border-border bg-muted/20 p-2.5">
+                <RichTextEditor
+                    compact
+                    id={`comment-compose-${taskId}${onCancel ? `-reply` : ""}`}
+                    maxLength={TASK_COMMENT_MAX_LENGTH}
+                    mentionCandidates={mentionCandidates}
+                    onChange={onChange}
+                    onModEnter={() => {
+                        if (!disabled && !pending) {
+                            onSubmit();
+                        }
+                    }}
+                    onUploadImage={(file) => uploadTaskMedia(file, taskId)}
+                    placeholder={placeholder ?? t("comments.placeholder")}
+                    value={draft}
+                />
+                <div className="flex justify-end gap-2">
+                    {onCancel ? (
+                        <Button
+                            disabled={pending}
+                            onClick={onCancel}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                        >
+                            {t("comments.cancel")}
+                        </Button>
+                    ) : undefined}
+                    <Button
+                        disabled={disabled || pending}
+                        onClick={onSubmit}
+                        size="sm"
+                        type="button"
+                    >
+                        {submitLabel ?? t("comments.add")}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function formatAbsoluteTimestamp(value: string, locale: string) {
     return new Intl.DateTimeFormat(locale, {
         dateStyle: "medium",
         timeStyle: "short",
     }).format(new Date(value));
 }
 
-function initials(name: string) {
-    const parts = name
-        .trim()
-        .split(/[\s_-]+/)
-        .filter(Boolean);
-    if (parts.length >= 2) {
-        return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
+function formatRelativeTimestamp(value: string, locale: string) {
+    const dateFnsLocale = locale.toLowerCase().startsWith("ru") ? ru : enUS;
+    return formatDistanceToNow(new Date(value), {
+        addSuffix: true,
+        locale: dateFnsLocale,
+    });
 }
 
 function TaskCommentItem({
+    canComment,
     canDelete,
     canEdit,
     comment,
     highlighted,
+    isReply = false,
     locale,
     mentionCandidates,
     onDelete,
+    onReply,
     onSave,
+    replies,
+    replyComposer,
     t,
     taskId,
 }: TaskCommentItemProperties) {
@@ -303,6 +611,7 @@ function TaskCommentItem({
         comment.updatedAt === comment.createdAt
             ? undefined
             : t("comments.edited");
+    const absoluteTime = formatAbsoluteTimestamp(comment.createdAt, locale);
 
     const handleSave = async () => {
         const next = normalizeEditorContent(draft);
@@ -331,125 +640,153 @@ function TaskCommentItem({
         }
     };
 
+    const showActions =
+        !isEditing && (canEdit || canDelete || (canComment && onReply));
+
     return (
         <article
             className={cn(
-                "flex flex-col gap-3 border border-border p-3 transition-colors",
-                highlighted &&
-                    "border-primary bg-primary/5 ring-2 ring-primary/40"
+                "flex w-full min-w-0 gap-3 transition-colors",
+                highlighted && "bg-primary/5 ring-2 ring-primary/40"
             )}
             data-comment-id={comment.id}
             data-highlighted={highlighted ? "true" : undefined}
         >
-            <div className="flex items-start gap-3">
-                <Avatar className="size-8 shrink-0 rounded-none">
-                    {comment.author?.avatarUrl ? (
-                        <AvatarImage alt="" src={comment.author.avatarUrl} />
-                    ) : undefined}
-                    <AvatarFallback className="rounded-none text-meta">
-                        {initials(authorName)}
-                    </AvatarFallback>
-                </Avatar>
+            <CommentAvatar
+                avatarUrl={comment.author?.avatarUrl}
+                name={authorName}
+                size={isReply ? "sm" : "md"}
+            />
 
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className="truncate text-ui font-medium">
-                            {authorName}
-                        </p>
-                        <time
-                            className="text-meta text-muted-foreground"
-                            dateTime={comment.createdAt}
-                        >
-                            {formatTimestamp(comment.createdAt, locale)}
-                        </time>
-                        {edited ? (
-                            <span className="text-meta text-muted-foreground">
-                                {edited}
-                            </span>
-                        ) : undefined}
-                    </div>
+            {/* Content column stays full remaining width; replies nest inside, not beside. */}
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <p className="truncate text-ui font-medium">{authorName}</p>
+                    <time
+                        className="text-meta text-muted-foreground"
+                        dateTime={comment.createdAt}
+                        title={absoluteTime}
+                    >
+                        {formatRelativeTimestamp(comment.createdAt, locale)}
+                    </time>
+                    {edited ? (
+                        <span className="text-meta text-muted-foreground">
+                            ({edited})
+                        </span>
+                    ) : undefined}
                 </div>
 
-                {canEdit || canDelete ? (
-                    <div className="flex shrink-0 items-center gap-1">
-                        {canEdit && !isEditing ? (
+                {isEditing ? (
+                    <div className="flex min-w-0 flex-col gap-2 border border-border bg-muted/20 p-2.5">
+                        <RichTextEditor
+                            compact
+                            id={`comment-edit-${comment.id}`}
+                            maxLength={TASK_COMMENT_MAX_LENGTH}
+                            mentionCandidates={mentionCandidates}
+                            onChange={setDraft}
+                            onModEnter={() => {
+                                if (
+                                    !isSaving &&
+                                    isRichTextWithinLimit(
+                                        draft,
+                                        TASK_COMMENT_MAX_LENGTH
+                                    )
+                                ) {
+                                    void handleSave();
+                                }
+                            }}
+                            onUploadImage={(file) =>
+                                uploadTaskMedia(file, taskId)
+                            }
+                            placeholder={t("comments.placeholder")}
+                            value={draft}
+                        />
+                        <div className="flex justify-end gap-2">
                             <Button
-                                aria-label={t("comments.edit")}
+                                disabled={isSaving}
+                                onClick={() => {
+                                    setDraft(comment.body);
+                                    setIsEditing(false);
+                                }}
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                            >
+                                {t("comments.cancel")}
+                            </Button>
+                            <Button
+                                disabled={
+                                    isSaving ||
+                                    !isRichTextWithinLimit(
+                                        draft,
+                                        TASK_COMMENT_MAX_LENGTH
+                                    )
+                                }
+                                onClick={() => {
+                                    void handleSave();
+                                }}
+                                size="sm"
+                                type="button"
+                            >
+                                {t("comments.save")}
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="min-w-0">
+                        <RichTextEditor
+                            compact
+                            id={`comment-view-${comment.id}`}
+                            readOnly
+                            value={comment.body}
+                        />
+                    </div>
+                )}
+
+                {showActions ? (
+                    <div className="flex flex-wrap items-center gap-1">
+                        {canComment && onReply ? (
+                            <Button
+                                className="h-7 px-2 text-meta text-muted-foreground hover:text-foreground"
+                                onClick={onReply}
+                                size="sm"
+                                type="button"
+                                variant="ghost"
+                            >
+                                {t("comments.reply")}
+                            </Button>
+                        ) : undefined}
+                        {canEdit ? (
+                            <Button
+                                className="h-7 px-2 text-meta text-muted-foreground hover:text-foreground"
                                 onClick={() => {
                                     setDraft(comment.body);
                                     setIsEditing(true);
                                 }}
-                                size="icon-xs"
+                                size="sm"
                                 type="button"
                                 variant="ghost"
                             >
-                                <Pencil />
+                                {t("comments.edit")}
                             </Button>
                         ) : undefined}
                         {canDelete ? (
                             <Button
-                                aria-label={t("comments.delete")}
+                                className="h-7 px-2 text-meta text-muted-foreground hover:text-destructive"
                                 onClick={onDelete}
-                                size="icon-xs"
+                                size="sm"
                                 type="button"
                                 variant="ghost"
                             >
-                                <Trash2 />
+                                {t("comments.delete")}
                             </Button>
                         ) : undefined}
                     </div>
                 ) : undefined}
-            </div>
 
-            {isEditing ? (
-                <div className="flex flex-col gap-2">
-                    <RichTextEditor
-                        compact
-                        id={`comment-edit-${comment.id}`}
-                        maxLength={TASK_COMMENT_MAX_LENGTH}
-                        mentionCandidates={mentionCandidates}
-                        onChange={setDraft}
-                        onUploadImage={(file) => uploadTaskMedia(file, taskId)}
-                        placeholder={t("comments.placeholder")}
-                        value={draft}
-                    />
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            disabled={isSaving}
-                            onClick={() => {
-                                setDraft(comment.body);
-                                setIsEditing(false);
-                            }}
-                            type="button"
-                            variant="outline"
-                        >
-                            {t("comments.cancel")}
-                        </Button>
-                        <Button
-                            disabled={
-                                isSaving ||
-                                !isRichTextWithinLimit(
-                                    draft,
-                                    TASK_COMMENT_MAX_LENGTH
-                                )
-                            }
-                            onClick={() => {
-                                void handleSave();
-                            }}
-                            type="button"
-                        >
-                            {t("comments.save")}
-                        </Button>
-                    </div>
-                </div>
-            ) : (
-                <RichTextEditor
-                    compact
-                    id={`comment-view-${comment.id}`}
-                    readOnly
-                    value={comment.body}
-                />
-            )}
+                {replyComposer}
+                {replies}
+            </div>
         </article>
     );
 }

@@ -153,7 +153,12 @@
         "delete": "Delete",
         "deleted": "Comment deleted",
         "deleteFailed": "Could not delete comment",
-        "edited": "edited"
+        "edited": "edited",
+        "reply": "Reply",
+        "replyPlaceholder": "Write a reply…",
+        "replyAdd": "Post reply",
+        "replyAdded": "Reply posted",
+        "replyFailed": "Could not post reply"
     },
     "subtasks": {
         "title": "Subtasks",
