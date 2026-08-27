@@ -3,7 +3,7 @@ import type { KeyboardEvent } from "react";
 import { useDndContext } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEffect, useRef } from "react";
+import { startTransition, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
@@ -95,7 +95,9 @@ export function DraggableTaskCard({
         ) {
             return;
         }
-        selectTask(task.id);
+        startTransition(() => {
+            selectTask(task.id);
+        });
     };
 
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -103,7 +105,9 @@ export function DraggableTaskCard({
             return;
         }
         event.preventDefault();
-        selectTask(task.id);
+        startTransition(() => {
+            selectTask(task.id);
+        });
     };
 
     const dragListeners = canDrag ? gateDragListeners(listeners) : undefined;
