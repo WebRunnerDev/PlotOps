@@ -161,6 +161,8 @@ type RichTextEditorProperties = {
     mentionCandidates?: readonly MentionCandidate[];
     onBlur?: () => void;
     onChange?: (value: string) => void;
+    /** Ctrl/⌘+Enter — submit from a compact composer (comments, etc.). */
+    onModEnter?: () => void;
     onUploadImage?: ImageUploadFn;
     placeholder?: string;
     readOnly?: boolean;
@@ -188,6 +190,7 @@ export const RichTextEditor = forwardRef<
         mentionCandidates,
         onBlur,
         onChange,
+        onModEnter,
         onUploadImage,
         placeholder,
         readOnly = false,
@@ -210,6 +213,8 @@ export const RichTextEditor = forwardRef<
     onBlurReference.current = onBlur;
     const onChangeReference = useRef(onChange);
     onChangeReference.current = onChange;
+    const onModuleEnterReference = useRef(onModEnter);
+    onModuleEnterReference.current = onModEnter;
     const menuStateReference = useRef(menu);
     menuStateReference.current = menu;
     const mentionCandidatesReference = useRef(mentionCandidates ?? []);
@@ -252,10 +257,17 @@ export const RichTextEditor = forwardRef<
     const editorAttributes = useMemo(() => {
         const attributes: Record<string, string> = {
             class: cn(
-                compact ? "min-h-24" : "min-h-40",
-                "w-full max-w-full overflow-x-hidden break-words px-6 py-6 text-sm leading-7 border border-input rounded-lg [overflow-wrap:anywhere]",
-                "focus:outline-none focus:border-input focus:ring-0",
-                readOnly && "cursor-default bg-muted/20"
+                compact ? "min-h-24 px-3 py-2.5" : "min-h-40 px-6 py-6",
+                "w-full max-w-full overflow-x-hidden break-words text-sm leading-7 [overflow-wrap:anywhere]",
+                "focus:outline-none focus:ring-0",
+                // Compact read-only (comment body): keep chrome + p-6 so text
+                // isn't flush to the box edge.
+                compact && readOnly
+                    ? "min-h-0 cursor-default border border-input rounded-lg bg-muted/20 p-6 focus:border-input"
+                    : cn(
+                          "border border-input rounded-lg focus:border-input",
+                          readOnly && "cursor-default bg-muted/20"
+                      )
             ),
         };
 
@@ -363,6 +375,20 @@ export const RichTextEditor = forwardRef<
                 const currentEditor = editorReference.current;
 
                 if (
+                    event.key === "Enter" &&
+                    (event.ctrlKey || event.metaKey) &&
+                    !event.altKey &&
+                    !event.shiftKey &&
+                    !readOnlyReference.current &&
+                    onModuleEnterReference.current
+                ) {
+                    event.preventDefault();
+                    closeMenu();
+                    onModuleEnterReference.current();
+                    return true;
+                }
+
+                if (
                     isMentionHotkey(event) &&
                     currentEditor &&
                     !readOnlyReference.current &&
@@ -453,8 +479,11 @@ export const RichTextEditor = forwardRef<
             },
         },
         extensions: [
+            // TipTap 3 StarterKit already registers link + underline.
             StarterKit.configure({
                 codeBlock: false,
+                link: false,
+                underline: false,
             }),
             CodeBlockLowlight.configure({
                 lowlight,
@@ -1125,9 +1154,11 @@ export const RichTextEditor = forwardRef<
             <EditorContent
                 className={cn(
                     "rich-text-editor block min-w-0 max-w-full overflow-hidden",
-                    compact
+                    compact && !readOnly
                         ? "[&_.ProseMirror]:min-h-24"
-                        : "[&_.ProseMirror]:min-h-40",
+                        : compact
+                          ? "[&_.ProseMirror]:min-h-0"
+                          : "[&_.ProseMirror]:min-h-40",
                     "[&_.ProseMirror]:w-full [&_.ProseMirror]:max-w-full [&_.ProseMirror]:overflow-x-hidden [&_.ProseMirror]:outline-none [&_.ProseMirror]:wrap-anywhere",
                     "[&_.ProseMirror>*]:max-w-full",
                     "[&_.ProseMirror_p]:max-w-full [&_.ProseMirror_h1]:max-w-full [&_.ProseMirror_h2]:max-w-full [&_.ProseMirror_h3]:max-w-full",
