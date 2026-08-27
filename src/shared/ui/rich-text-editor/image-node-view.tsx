@@ -4,6 +4,7 @@ import {
     AlignLeft,
     AlignRight,
     Copy,
+    Maximize2,
     Square,
     SquareDashed,
 } from "lucide-react";
@@ -19,8 +20,15 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { cn } from "@/shared/lib/utils";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogTitle,
+} from "@/shared/shadcn/ui/dialog";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 import { copyImageSourceToClipboard } from "@/shared/ui/rich-text-editor/copy-image";
+import { shouldShowImageChrome } from "@/shared/ui/rich-text-editor/image-chrome";
 
 const MIN_WIDTH = 48;
 const TOOLBAR_EDGE_PAD = 8;
@@ -78,7 +86,9 @@ export function ImageNodeView({
     const bottomSentinelReference = useRef<HTMLSpanElement | null>(null);
     const aspectReference = useRef<null | number>(null);
     const [isResizing, setIsResizing] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
     const [editorFocused, setEditorFocused] = useState(() => editor.isFocused);
+    const [toolbarInteracting, setToolbarInteracting] = useState(false);
     const [toolbarPlacement, setToolbarPlacement] = useState<
         "bottom" | "hidden" | "top"
     >("top");
@@ -94,8 +104,14 @@ export function ImageNodeView({
     const uploading = Boolean(node.attrs.uploading);
     const isEditable = editor.isEditable;
     // Boot/`setContent` can leave a NodeSelection on a leading image without the
-    // editor being focused (task drawer open). Only show chrome while focused.
-    const isActivelySelected = selected && editorFocused;
+    // editor being focused (task drawer open). Width/height inputs also blur the
+    // editor — keep chrome while those fields hold focus.
+    const isActivelySelected = shouldShowImageChrome({
+        editorFocused,
+        selected,
+        toolbarInteracting,
+        uploading: false,
+    });
     const showControls = isEditable && isActivelySelected && !uploading;
     const showCopyControl = isActivelySelected && !uploading && Boolean(source);
 
@@ -110,6 +126,10 @@ export function ImageNodeView({
             editor.off("blur", handleBlur);
         };
     }, [editor]);
+
+    useEffect(() => {
+        if (!selected) setToolbarInteracting(false);
+    }, [selected]);
 
     const getAspectRatio = useCallback(() => {
         if (aspectReference.current) return aspectReference.current;
@@ -241,6 +261,11 @@ export function ImageNodeView({
             toast.success(t("richText.media.copied"));
         });
     }, [source, t]);
+
+    const openPreview = useCallback(() => {
+        if (!source || uploading) return;
+        setPreviewOpen(true);
+    }, [source, uploading]);
 
     // The image node is `user-select: none` (so a text selection dragged across
     // it isn't painted over it). A side effect is that clicking the image no
@@ -401,6 +426,21 @@ export function ImageNodeView({
                     isActivelySelected && "is-selected",
                     isResizing && "is-resizing"
                 )}
+                onDoubleClick={(event) => {
+                    // Resize handles / toolbar own their clicks; the bitmap
+                    // (and empty frame chrome) open a full-size preview.
+                    const target = event.target;
+                    if (!(target instanceof Element)) return;
+                    if (
+                        target.closest(
+                            ".rich-text-image-handle, .rich-text-image-toolbar"
+                        )
+                    ) {
+                        return;
+                    }
+                    event.preventDefault();
+                    openPreview();
+                }}
                 ref={frameReference}
                 style={width ? { width: `${width}px` } : undefined}
             >
@@ -413,6 +453,11 @@ export function ImageNodeView({
                     onLoad={handleImageLoad}
                     ref={imageReference}
                     src={source}
+                    title={
+                        source && !uploading
+                            ? t("richText.media.openHint")
+                            : undefined
+                    }
                     width={width ?? undefined}
                 />
 
@@ -456,6 +501,23 @@ export function ImageNodeView({
                                 toolbarPlacement === "hidden" && "is-hidden"
                             )}
                             contentEditable={false}
+                            onBlur={(event) => {
+                                const next = event.relatedTarget;
+                                if (
+                                    next instanceof Node &&
+                                    event.currentTarget.contains(next)
+                                ) {
+                                    return;
+                                }
+                                setToolbarInteracting(false);
+                            }}
+                            onDoubleClick={(event) => {
+                                // Don't let field text-select double-clicks
+                                // bubble to the frame's openPreview handler.
+                                event.stopPropagation();
+                            }}
+                            onFocus={() => setToolbarInteracting(true)}
+                            onMouseDown={() => setToolbarInteracting(true)}
                             ref={toolbarReference}
                         >
                             {showControls ? (
@@ -534,6 +596,16 @@ export function ImageNodeView({
                                 </>
                             ) : null}
                             <button
+                                aria-label={t("richText.media.open")}
+                                className="rich-text-image-border-toggle"
+                                onClick={openPreview}
+                                onMouseDown={(event) => event.preventDefault()}
+                                title={t("richText.media.open")}
+                                type="button"
+                            >
+                                <Maximize2 className="size-4" />
+                            </button>
+                            <button
                                 aria-label={t("richText.media.copy")}
                                 className="rich-text-image-border-toggle"
                                 onClick={handleCopyImage}
@@ -606,6 +678,32 @@ export function ImageNodeView({
                     </>
                 ) : null}
             </span>
+
+            <Dialog onOpenChange={setPreviewOpen} open={previewOpen}>
+                <DialogContent
+                    className={cn(
+                        "flex h-dvh max-h-dvh w-full max-w-none translate-x-0 translate-y-0",
+                        "top-0 left-0 items-center justify-center gap-0 rounded-none border-0",
+                        "bg-black/90 p-3 shadow-none ring-0 sm:max-w-none",
+                        "data-open:zoom-in-100 data-closed:zoom-out-100"
+                    )}
+                    showCloseButton
+                >
+                    <DialogTitle className="sr-only">
+                        {t("richText.media.open")}
+                    </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        {alt || t("richText.media.open")}
+                    </DialogDescription>
+                    {source ? (
+                        <img
+                            alt={alt}
+                            className="max-h-[min(92dvh,100%)] max-w-full object-contain"
+                            src={source}
+                        />
+                    ) : null}
+                </DialogContent>
+            </Dialog>
         </NodeViewWrapper>
     );
 }

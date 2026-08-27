@@ -833,6 +833,8 @@
             "height": "Height",
             "copy": "Copy image",
             "copied": "Image copied",
+            "open": "Open image",
+            "openHint": "Double-click to open",
             "toggleBorder": "Toggle border",
             "align": {
                 "left": "Align left",
