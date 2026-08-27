@@ -997,6 +997,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          parent_id?: null | string
           project_id: string
           task_id: string
           updated_at?: string
@@ -1008,6 +1009,13 @@ export type Database = {
             isOneToOne: false
             referencedColumns: ["id"]
             referencedRelation: "profiles"
+          },
+          {
+            columns: ["parent_id"]
+            foreignKeyName: "task_comments_parent_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "task_comments"
           },
           {
             columns: ["project_id"]
@@ -1029,6 +1037,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          parent_id: null | string
           project_id: string
           task_id: string
           updated_at: string
@@ -1038,6 +1047,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          parent_id?: null | string
           project_id?: string
           task_id?: string
           updated_at?: string
