@@ -270,8 +270,8 @@ export type Database = {
       create_subtask: {
         Args: {
           p_parent_id: string
-          p_sprint_id?: string
-          p_task_type?: Database["public"]["Enums"]["task_type"]
+          p_sprint_id?: null | string
+          p_task_type?: Database["public"]["Enums"]["task_type"] | null
           p_title: string
         }
         Returns: string
@@ -416,7 +416,7 @@ export type Database = {
         Returns: undefined
       }
       set_board_done_column: {
-        Args: { p_board_id: string; p_column_id: string }
+        Args: { p_board_id: string; p_column_id: null | string }
         Returns: undefined
       }
       start_sprint: {
