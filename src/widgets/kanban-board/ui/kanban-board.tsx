@@ -426,19 +426,26 @@ export function KanbanBoard({
             return;
         }
 
+        const dragIds = resolveCrossColumnDragTaskIds({
+            activeId: String(active.id),
+            selectedIds: selectionIdsForBoard,
+        });
+        const clearMultiSelectionAfterDrop = () => {
+            if (dragIds.length > 1) {
+                clearBoardSelection();
+            }
+        };
+
         if (!over || active.id === over.id) {
             // Cross-column preview may still need committing, or cancel.
             // If over is missing/same id after a cross-column preview, keep the
             // previewed placement and persist; pure cancel goes through onDragCancel.
             commitTaskDragGesture();
+            clearMultiSelectionAfterDrop();
             return;
         }
 
         const overType = over.data.current?.type as DragType | undefined;
-        const dragIds = resolveCrossColumnDragTaskIds({
-            activeId: String(active.id),
-            selectedIds: selectionIdsForBoard,
-        });
 
         // Multi-select: cross-column only — skip within-column reorder for a set.
         if (
@@ -463,6 +470,7 @@ export function KanbanBoard({
         }
 
         commitTaskDragGesture();
+        clearMultiSelectionAfterDrop();
     };
 
     const handleAddColumn = () => {

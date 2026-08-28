@@ -12,7 +12,8 @@ describe("DraggableTaskCard open INP seams", () => {
             "utf8"
         );
 
-        expect(card).toMatch(/startTransition/);
+        expect(card).toMatch(/onDoubleClick=\{handleCardDoubleClick\}/);
+        expect(card).toMatch(/openTaskDrawer/);
         expect(card).toMatch(
             /startTransition\(\(\)\s*=>\s*\{[\s\S]*selectTask\(task\.id\)/
         );
