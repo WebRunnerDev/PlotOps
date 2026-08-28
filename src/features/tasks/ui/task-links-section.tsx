@@ -137,19 +137,34 @@ export function TaskLinksSection({
         <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
                 <h3 className="text-ui font-medium">{t("taskLinks.title")}</h3>
-                {canEdit && !open ? (
-                    <Button
-                        className="h-8 gap-1.5 text-muted-foreground"
-                        onClick={() => {
-                            setOpen(true);
-                        }}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <Plus className="size-4 shrink-0" />
-                        {t("taskLinks.add")}
-                    </Button>
+                {canEdit ? (
+                    open ? (
+                        <Button
+                            className="h-8 px-2 text-muted-foreground"
+                            disabled={isSubmitting}
+                            onClick={() => {
+                                setOpen(false);
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            {t("taskLinks.cancel")}
+                        </Button>
+                    ) : (
+                        <Button
+                            className="h-8 gap-1.5 text-muted-foreground"
+                            onClick={() => {
+                                setOpen(true);
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            <Plus className="size-4 shrink-0" />
+                            {t("taskLinks.add")}
+                        </Button>
+                    )
                 ) : undefined}
             </div>
 

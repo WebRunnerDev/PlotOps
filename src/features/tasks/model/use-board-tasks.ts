@@ -658,6 +658,33 @@ export function useBoardTasks(projectId: string, boardId: string) {
         },
     });
 
+    const setTaskParentMutation = useMutation({
+        mutationFn: ({
+            childId,
+            parentId,
+        }: {
+            childId: string;
+            parentId: string;
+        }) => tasksProvider.setTaskParent(childId, parentId),
+        onSuccess: (task, variables) => {
+            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(task.id),
+            });
+            void queryClient.invalidateQueries({
+                queryKey: activityKey(variables.parentId),
+            });
+            if (!guest) {
+                void notifySubtaskChangeBestEffort({
+                    action: "created",
+                    parentId: variables.parentId,
+                    projectId,
+                    subtaskKey: task.key,
+                });
+            }
+        },
+    });
+
     const createTaskLinkMutation = useMutation({
         mutationFn: ({
             kind,
@@ -1285,6 +1312,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 previousCache
             );
         },
+        setTaskParent: (childId: string, parentId: string) =>
+            setTaskParentMutation.mutateAsync({ childId, parentId }),
         tasks,
         /** True once board tasks have been fetched (including an empty list). */
         tasksReady: tasksQuery.data !== undefined,

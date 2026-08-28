@@ -56,6 +56,7 @@ export type TasksProvider = {
         updates: Array<{ id: string; position: number; status: TaskStatus }>
     ): Promise<void>;
     restoreTaskRecord(taskId: string, boardId: string): Promise<void>;
+    setTaskParent(childId: string, parentId: string): Promise<Task>;
     updateTaskDetails(
         taskId: string,
         patch: TaskRecordPatch,

@@ -895,6 +895,113 @@ export const guestTasksProvider: TasksProvider = {
         });
     },
 
+    async setTaskParent(childId, parentId) {
+        let updated: GuestTask | undefined;
+
+        updateGuestSandbox((sandbox) => {
+            const child = findTaskOrThrow(sandbox.tasks, childId);
+            if (child.archivedAt) {
+                throw new Error("Task not found");
+            }
+            if (child.parentId != undefined) {
+                throw new Error("Task already has a Parent Task");
+            }
+
+            const parent = findTaskOrThrow(sandbox.tasks, parentId);
+            if (parent.archivedAt) {
+                throw new Error(PARENT_LINK_ERROR.parent_missing);
+            }
+
+            assertParentLinkLegal(
+                {
+                    id: child.id,
+                    parentId: child.parentId,
+                    projectId: child.projectId,
+                },
+                {
+                    id: parent.id,
+                    parentId: parent.parentId,
+                    projectId: parent.projectId,
+                },
+                sandbox.tasks.map((task) => ({
+                    id: task.id,
+                    parentId: task.parentId,
+                    projectId: task.projectId,
+                }))
+            );
+
+            const board = sandbox.boards.find(
+                (item) => item.id === parent.boardId
+            );
+            if (!board) {
+                throw new Error("Board not found");
+            }
+
+            const status = firstColumnId(board);
+            const columnTasks = sandbox.tasks.filter(
+                (task) =>
+                    task.boardId === parent.boardId &&
+                    task.status === status &&
+                    isActiveTask(task)
+            );
+            const maxPosition = maxPositionAmong(columnTasks);
+
+            const parentSprint = parent.sprintId
+                ? sandbox.sprints.find(
+                      (sprint) => sprint.id === parent.sprintId
+                  )
+                : undefined;
+            const resolvedSprintId =
+                parentSprint?.state === "draft" ||
+                parentSprint?.state === "active"
+                    ? parent.sprintId
+                    : undefined;
+
+            let sprintPosition: number | undefined;
+            if (resolvedSprintId) {
+                const sprintTasks = sandbox.tasks.filter(
+                    (task) =>
+                        task.sprintId === resolvedSprintId && isActiveTask(task)
+                );
+                sprintPosition = maxSprintPositionAmong(sprintTasks) + 1;
+            }
+
+            child.boardId = parent.boardId;
+            child.parentId = parent.id;
+            child.position = maxPosition + 1;
+            child.status = status;
+            if (resolvedSprintId) {
+                child.sprintId = resolvedSprintId;
+                child.sprintPosition = sprintPosition;
+            } else {
+                delete child.sprintId;
+                delete child.sprintPosition;
+            }
+
+            appendParentActivity(sandbox, {
+                field: "subtask",
+                from: null,
+                projectId: parent.projectId,
+                taskId: parent.id,
+                to: { key: child.key },
+            });
+            appendParentActivity(sandbox, {
+                field: "parent",
+                from: null,
+                projectId: child.projectId,
+                taskId: child.id,
+                to: { key: parent.key },
+            });
+
+            updated = child;
+        });
+
+        if (!updated) {
+            throw new Error("Task not found");
+        }
+        return mapGuestTask(updated, getGuestSandbox()!);
+    },
+
     async updateTaskDetails(taskId, patch, labelIds) {
         updateGuestSandbox((sandbox) => {
             const task = findTaskOrThrow(sandbox.tasks, taskId);

@@ -15,8 +15,14 @@ describe("Subtask Role gating seam", () => {
         const section = readUi("task-subtasks-section.tsx");
 
         expect(drawer).toMatch(/canAddSubtask/);
+        expect(drawer).toMatch(/canSetParent/);
         expect(drawer).toMatch(/canEditTasks/);
         expect(section).toMatch(/canAdd/);
+        expect(section).toMatch(/canSetParent/);
+        expect(section).toMatch(/setTaskParent/);
+        expect(section).toMatch(/TaskSearchPicker/);
+        expect(section).toMatch(/collectSubtaskLinkCandidates/);
+        expect(section).toMatch(/collectParentTaskCandidates/);
         expect(section).not.toMatch(/canCreateTasks/);
     });
 
@@ -47,7 +53,7 @@ describe("Subtask drawer list seam", () => {
         const section = readUi("task-subtasks-section.tsx");
 
         expect(drawer).not.toMatch(/subtasks\.parentBadge/);
-        expect(drawer).toMatch(/canRemoveParent={canRemoveParent}/);
+        expect(drawer).toMatch(/canRemoveParent/);
         expect(section).toMatch(/subtasks\.parentTitle/);
         expect(section).toMatch(/task\.parentId/);
     });

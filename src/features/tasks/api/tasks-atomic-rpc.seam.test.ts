@@ -48,6 +48,7 @@ describe("tasks API Subtask hierarchy RPC seam", () => {
 
         expect(source).toMatch(/rpc\(\s*["']create_subtask["']/);
         expect(source).toMatch(/rpc\(\s*["']clear_task_parent["']/);
+        expect(source).toMatch(/rpc\(\s*["']set_task_parent["']/);
         expect(source).not.toMatch(/\.insert\([\s\S]{0,200}parent_id:/);
     });
 

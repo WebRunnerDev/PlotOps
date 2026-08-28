@@ -227,6 +227,8 @@ export function TaskDrawer({
                   (child) => child.archivedAt == undefined
               ).length
             : 0;
+    const canSetParent =
+        canEdit && task?.parentId == undefined && movingSubtaskCount === 0;
     const canRemoveParent =
         isSettled &&
         canCreateTasks &&
@@ -710,6 +712,7 @@ export function TaskDrawer({
                                                 canRemoveParent={
                                                     canRemoveParent
                                                 }
+                                                canSetParent={canSetParent}
                                                 projectId={projectId}
                                                 task={task}
                                             />

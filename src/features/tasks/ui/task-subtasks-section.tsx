@@ -1,25 +1,46 @@
+import { useQueries } from "@tanstack/react-query";
 import { Plus, User } from "lucide-react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { BoardColumn } from "@/features/boards";
 import type { Task } from "@/features/tasks/model/types";
 
-import { useBoardColumns } from "@/features/boards";
+import { useBoardColumns, useProjectBoards } from "@/features/boards";
+import { isGuest } from "@/features/guest-mode";
+import { useProjectLabels } from "@/features/labels";
+import { useProjectPeople } from "@/features/projects/model/use-project-people";
+import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
+import {
+    collectParentTaskCandidates,
+    collectSubtaskLinkCandidates,
+} from "@/features/tasks/lib/collect-parent-task-candidates";
+import { mergeTaskCatalogs } from "@/features/tasks/lib/collect-task-link-candidates";
 import { PARENT_LINK_ERROR } from "@/features/tasks/lib/task-structure";
 import { TASK_TITLE_MAX_LENGTH } from "@/features/tasks/model/constants";
+import { taskKeys } from "@/features/tasks/model/query-keys";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
+import { TaskSearchPicker } from "@/features/tasks/ui/task-search-picker";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from "@/shared/shadcn/ui/select";
+
+type AddMode = "create" | "link";
 
 type TaskSubtasksSectionProperties = {
     boardId: string;
     canAdd: boolean;
     canRemoveParent: boolean;
+    canSetParent: boolean;
     projectId: string;
     task: Task;
 };
@@ -28,11 +49,12 @@ export function TaskSubtasksSection({
     boardId,
     canAdd,
     canRemoveParent,
+    canSetParent,
     projectId,
     task,
 }: TaskSubtasksSectionProperties) {
     const { t } = useTranslation("board");
-    const { clearTaskParent, createSubtask } = useBoardTasks(
+    const { clearTaskParent, createSubtask, setTaskParent } = useBoardTasks(
         projectId,
         boardId
     );
@@ -40,8 +62,21 @@ export function TaskSubtasksSection({
     const { data: projectTasks = [] } = useProjectTasks(projectId, true, {
         includeArchived: true,
     });
+    const { data: boards = [] } = useProjectBoards(projectId);
+    const { labels } = useProjectLabels(projectId);
+    const people = useProjectPeople(projectId);
+    const tasksProvider = resolveTasksProvider(isGuest());
+    const boardTaskQueries = useQueries({
+        queries: boards.map((board) => ({
+            enabled: Boolean(projectId && board.id),
+            queryFn: () => tasksProvider.fetchBoardTasks(board.id),
+            queryKey: taskKeys.board(projectId, board.id),
+        })),
+    });
     const selectTask = useTasksUiStore((state) => state.selectTask);
-    const [open, setOpen] = useState(false);
+    const [addOpen, setAddOpen] = useState(false);
+    const [addMode, setAddMode] = useState<AddMode>("create");
+    const [setParentOpen, setSetParentOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const inputReference = useRef<HTMLInputElement>(null);
@@ -57,11 +92,50 @@ export function TaskSubtasksSection({
               (item) => item.parentId === task.id && !item.archivedAt
           );
 
+    const catalog = useMemo(
+        () =>
+            mergeTaskCatalogs([
+                projectTasks,
+                ...boardTaskQueries.map((query) => query.data?.tasks ?? []),
+            ]),
+        [boardTaskQueries, projectTasks]
+    );
+
+    const subtaskCandidates = useMemo(
+        () =>
+            collectSubtaskLinkCandidates({
+                parentId: task.id,
+                projectId,
+                tasks: catalog,
+            }),
+        [catalog, projectId, task.id]
+    );
+
+    const parentCandidates = useMemo(
+        () =>
+            collectParentTaskCandidates({
+                childId: task.id,
+                projectId,
+                tasks: catalog,
+            }),
+        [catalog, projectId, task.id]
+    );
+
+    const formOpen = addOpen || setParentOpen;
+
+    const cancelAdd = () => {
+        setAddOpen(false);
+        setTitle("");
+    };
+
+    const cancelSetParent = () => {
+        setSetParentOpen(false);
+    };
+
     const submit = async () => {
         const trimmed = title.trim();
         if (!trimmed) {
-            setOpen(false);
-            setTitle("");
+            cancelAdd();
             return;
         }
         if (isSubmitting) return;
@@ -70,10 +144,37 @@ export function TaskSubtasksSection({
         try {
             const created = await createSubtask(task.id, trimmed);
             toast.success(t("subtasks.created", { key: created.key }));
-            setOpen(false);
-            setTitle("");
+            cancelAdd();
         } catch (error) {
             toast.error(subtaskCreateErrorMessage(error, t));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const linkSubtask = async (child: null | Task) => {
+        if (!child || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await setTaskParent(child.id, task.id);
+            toast.success(t("subtasks.linked", { key: child.key }));
+            cancelAdd();
+        } catch (error) {
+            toast.error(subtaskLinkErrorMessage(error, t));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const assignParent = async (parent: null | Task) => {
+        if (!parent || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await setTaskParent(task.id, parent.id);
+            toast.success(t("subtasks.parentSet", { key: parent.key }));
+            cancelSetParent();
+        } catch (error) {
+            toast.error(setParentErrorMessage(error, t));
         } finally {
             setIsSubmitting(false);
         }
@@ -83,90 +184,192 @@ export function TaskSubtasksSection({
         <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
                 <h3 className="text-ui font-medium">
-                    {isSubtask
-                        ? t("subtasks.parentTitle")
-                        : t("subtasks.title")}
+                    {setParentOpen
+                        ? t("subtasks.setParentTitle")
+                        : isSubtask
+                          ? t("subtasks.parentTitle")
+                          : addOpen && addMode === "link"
+                            ? t("subtasks.linkTitle")
+                            : t("subtasks.title")}
                 </h3>
-                {canRemoveParent ? (
-                    <Button
-                        className="h-8 px-2 text-muted-foreground"
-                        onClick={() => {
-                            void (async () => {
-                                try {
-                                    await clearTaskParent(task.id);
-                                    toast.success(
-                                        t("subtasks.removedParent", {
-                                            key: task.key,
-                                        })
-                                    );
-                                } catch {
-                                    toast.error(
-                                        t("subtasks.removeParentFailed")
-                                    );
-                                }
-                            })();
-                        }}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        {t("subtasks.removeParent")}
-                    </Button>
-                ) : undefined}
-                {canAdd && !open ? (
-                    <Button
-                        className="h-8 gap-1.5 text-muted-foreground"
-                        onClick={() => {
-                            setOpen(true);
-                            queueMicrotask(() => {
-                                inputReference.current?.focus();
-                            });
-                        }}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <Plus className="size-4 shrink-0" />
-                        {t("subtasks.add")}
-                    </Button>
-                ) : undefined}
+                <div className="flex shrink-0 items-center gap-1">
+                    {canRemoveParent ? (
+                        <Button
+                            className="h-8 px-2 text-muted-foreground"
+                            onClick={() => {
+                                void (async () => {
+                                    try {
+                                        await clearTaskParent(task.id);
+                                        toast.success(
+                                            t("subtasks.removedParent", {
+                                                key: task.key,
+                                            })
+                                        );
+                                    } catch {
+                                        toast.error(
+                                            t("subtasks.removeParentFailed")
+                                        );
+                                    }
+                                })();
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            {t("subtasks.removeParent")}
+                        </Button>
+                    ) : undefined}
+                    {formOpen ? (
+                        <Button
+                            className="h-8 px-2 text-muted-foreground"
+                            disabled={isSubmitting}
+                            onClick={() => {
+                                if (addOpen) cancelAdd();
+                                if (setParentOpen) cancelSetParent();
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            {t("subtasks.cancel")}
+                        </Button>
+                    ) : (
+                        <>
+                            {canSetParent ? (
+                                <Button
+                                    className="h-8 px-2 text-muted-foreground"
+                                    onClick={() => {
+                                        setSetParentOpen(true);
+                                    }}
+                                    size="sm"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    {t("subtasks.setParent")}
+                                </Button>
+                            ) : undefined}
+                            {canAdd ? (
+                                <Button
+                                    className="h-8 gap-1.5 text-muted-foreground"
+                                    onClick={() => {
+                                        setAddOpen(true);
+                                        queueMicrotask(() => {
+                                            inputReference.current?.focus();
+                                        });
+                                    }}
+                                    size="sm"
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <Plus className="size-4 shrink-0" />
+                                    {t("subtasks.add")}
+                                </Button>
+                            ) : undefined}
+                        </>
+                    )}
+                </div>
             </div>
 
-            {canAdd && open ? (
-                <Input
-                    aria-label={t("subtasks.addPlaceholder")}
-                    className="h-8 bg-background font-mono text-code"
-                    disabled={isSubmitting}
-                    maxLength={TASK_TITLE_MAX_LENGTH}
-                    onBlur={() => {
-                        if (skipBlurClose.current) {
-                            skipBlurClose.current = false;
-                            return;
-                        }
-                        if (!title.trim()) {
-                            setOpen(false);
-                        }
-                    }}
-                    onChange={(event) => {
-                        setTitle(event.target.value);
-                    }}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            event.preventDefault();
-                            skipBlurClose.current = true;
-                            void submit();
-                        }
-                        if (event.key === "Escape") {
-                            event.preventDefault();
-                            skipBlurClose.current = true;
-                            setOpen(false);
-                            setTitle("");
-                        }
-                    }}
-                    placeholder={t("subtasks.addPlaceholder")}
-                    ref={inputReference}
-                    value={title}
-                />
+            {canAdd && addOpen ? (
+                <div className="flex flex-col gap-2">
+                    <Select
+                        onValueChange={(value) => {
+                            if (value === "create" || value === "link") {
+                                setAddMode(value);
+                            }
+                        }}
+                        value={addMode}
+                    >
+                        <SelectTrigger
+                            aria-label={t("subtasks.addModeLabel")}
+                            className="h-8 w-full font-mono text-code"
+                        >
+                            <span>
+                                {addMode === "create"
+                                    ? t("subtasks.addMode.create")
+                                    : t("subtasks.addMode.link")}
+                            </span>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                            <SelectItem value="create">
+                                {t("subtasks.addMode.create")}
+                            </SelectItem>
+                            <SelectItem value="link">
+                                {t("subtasks.addMode.link")}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {addMode === "create" ? (
+                        <Input
+                            aria-label={t("subtasks.addPlaceholder")}
+                            className="h-8 bg-background font-mono text-code"
+                            disabled={isSubmitting}
+                            maxLength={TASK_TITLE_MAX_LENGTH}
+                            onBlur={() => {
+                                if (skipBlurClose.current) {
+                                    skipBlurClose.current = false;
+                                    return;
+                                }
+                                if (!title.trim()) {
+                                    cancelAdd();
+                                }
+                            }}
+                            onChange={(event) => {
+                                setTitle(event.target.value);
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    skipBlurClose.current = true;
+                                    void submit();
+                                }
+                                if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    skipBlurClose.current = true;
+                                    cancelAdd();
+                                }
+                            }}
+                            placeholder={t("subtasks.addPlaceholder")}
+                            ref={inputReference}
+                            value={title}
+                        />
+                    ) : (
+                        <TaskSearchPicker
+                            boards={boards}
+                            currentBoardId={boardId}
+                            disabled={isSubmitting}
+                            emptyText={t("subtasks.linkNoResults")}
+                            items={subtaskCandidates}
+                            labels={labels}
+                            onSelect={(target) => {
+                                void linkSubtask(target);
+                            }}
+                            people={people}
+                            placeholder={t("subtasks.linkPlaceholder")}
+                        />
+                    )}
+                </div>
+            ) : undefined}
+
+            {canSetParent && setParentOpen ? (
+                <div className="flex flex-col gap-2">
+                    <p className="text-ui text-muted-foreground">
+                        {t("subtasks.setParentHint")}
+                    </p>
+                    <TaskSearchPicker
+                        boards={boards}
+                        currentBoardId={boardId}
+                        disabled={isSubmitting}
+                        emptyText={t("subtasks.setParentNoResults")}
+                        items={parentCandidates}
+                        labels={labels}
+                        onSelect={(target) => {
+                            void assignParent(target);
+                        }}
+                        people={people}
+                        placeholder={t("subtasks.setParentPlaceholder")}
+                    />
+                </div>
             ) : undefined}
 
             {isSubtask ? (
@@ -199,7 +402,7 @@ export function TaskSubtasksSection({
                         </li>
                     </ul>
                 ) : undefined
-            ) : children.length === 0 ? (
+            ) : children.length === 0 && !formOpen ? (
                 <p className="text-ui text-muted-foreground">
                     {t("subtasks.empty")}
                 </p>
@@ -237,6 +440,26 @@ function initials(name: string): string {
     return name.slice(0, 2).toUpperCase();
 }
 
+function setParentErrorMessage(
+    error: unknown,
+    t: (key: string) => string
+): string {
+    const message = error instanceof Error ? error.message : "";
+    if (message === PARENT_LINK_ERROR.parent_is_subtask) {
+        return t("subtasks.nestedRefused");
+    }
+    if (message === PARENT_LINK_ERROR.child_is_parent) {
+        return t("subtasks.parentAsChildRefused");
+    }
+    if (message === PARENT_LINK_ERROR.different_project) {
+        return t("subtasks.differentProject");
+    }
+    if (message === "Task already has a Parent Task") {
+        return t("subtasks.alreadyHasParent");
+    }
+    return t("subtasks.setParentFailed");
+}
+
 function subtaskCreateErrorMessage(
     error: unknown,
     t: (key: string) => string
@@ -252,6 +475,26 @@ function subtaskCreateErrorMessage(
         return t("subtasks.differentProject");
     }
     return t("subtasks.createFailed");
+}
+
+function subtaskLinkErrorMessage(
+    error: unknown,
+    t: (key: string) => string
+): string {
+    const message = error instanceof Error ? error.message : "";
+    if (message === PARENT_LINK_ERROR.parent_is_subtask) {
+        return t("subtasks.nestedRefused");
+    }
+    if (message === PARENT_LINK_ERROR.child_is_parent) {
+        return t("subtasks.parentAsChildRefused");
+    }
+    if (message === PARENT_LINK_ERROR.different_project) {
+        return t("subtasks.differentProject");
+    }
+    if (message === "Task already has a Parent Task") {
+        return t("subtasks.alreadyHasParent");
+    }
+    return t("subtasks.linkFailed");
 }
 
 function SubtaskRow({
