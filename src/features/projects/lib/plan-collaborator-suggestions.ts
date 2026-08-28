@@ -10,6 +10,12 @@ export type CollaboratorSuggestion = {
 
 export type PlanCollaboratorSuggestionsInput = {
     collaborators: RepoCollaborator[];
+    /** Emails for the current user — exclude matching collaborators. */
+    excludeEmails?: string[];
+    /** GitHub user ids for the current user — exclude matching collaborators. */
+    excludeGitHubIds?: number[];
+    /** GitHub logins for the current user — exclude matching collaborators. */
+    excludeGitHubLogins?: string[];
     memberUsernames: string[];
     pendingInviteEmails: string[];
 };
@@ -24,25 +30,25 @@ export type PlanCollaboratorSuggestionsResult = {
 export function planCollaboratorSuggestions(
     input: PlanCollaboratorSuggestionsInput
 ): PlanCollaboratorSuggestionsResult {
-    const memberSet = new Set(
-        input.memberUsernames
-            .map((name) => name.trim().toLowerCase())
-            .filter(Boolean)
+    const excludedLoginSet = buildExcludedLoginSet(
+        input.memberUsernames,
+        input.excludeGitHubLogins
     );
-    const pendingEmailSet = new Set(
+    const excludedIdSet = buildExcludedIdSet(input.excludeGitHubIds);
+    const excludedEmailSet = buildExcludedEmailSet(
+        input.excludeEmails,
         input.pendingInviteEmails
-            .map((email) => normalizeEmail(email))
-            .filter((email): email is string => email != undefined)
     );
 
     const suggestions: CollaboratorSuggestion[] = [];
 
     for (const collaborator of input.collaborators) {
         const loginKey = collaborator.login.trim().toLowerCase();
-        if (!loginKey || memberSet.has(loginKey)) continue;
+        if (!loginKey || excludedLoginSet.has(loginKey)) continue;
+        if (excludedIdSet.has(collaborator.id)) continue;
 
         const email = normalizeEmail(collaborator.email);
-        if (email && pendingEmailSet.has(email)) continue;
+        if (email && excludedEmailSet.has(email)) continue;
 
         suggestions.push({
             avatarUrl: collaborator.avatarUrl,
@@ -66,6 +72,34 @@ export function planCollaboratorSuggestions(
         noEmailLogins,
         suggestions,
     };
+}
+
+function buildExcludedEmailSet(
+    excludeEmails: string[] | undefined,
+    pendingInviteEmails: string[]
+): Set<string> {
+    const emails = [...(excludeEmails ?? []), ...pendingInviteEmails];
+    return new Set(
+        emails
+            .map((value) => normalizeEmail(value))
+            .filter((email): email is string => email != undefined)
+    );
+}
+
+function buildExcludedIdSet(
+    excludeGitHubIds: number[] | undefined
+): Set<number> {
+    return new Set(excludeGitHubIds);
+}
+
+function buildExcludedLoginSet(
+    memberUsernames: string[],
+    excludeGitHubLogins: string[] | undefined
+): Set<string> {
+    const logins = [...memberUsernames, ...(excludeGitHubLogins ?? [])];
+    return new Set(
+        logins.map((name) => name.trim().toLowerCase()).filter(Boolean)
+    );
 }
 
 function normalizeEmail(email: null | string): null | string {

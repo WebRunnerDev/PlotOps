@@ -66,6 +66,60 @@ describe("planCollaboratorSuggestions", () => {
         expect(result.needsOpenLinkAffordance).toBe(false);
     });
 
+    it("drops collaborators matching the current user GitHub user id", () => {
+        const result = planCollaboratorSuggestions({
+            collaborators: [
+                collab({
+                    email: "self@users.noreply.github.com",
+                    id: 42,
+                    login: "renamed-login",
+                }),
+                collab({ email: "peer@example.com", id: 2, login: "peer" }),
+            ],
+            excludeGitHubIds: [42],
+            memberUsernames: [],
+            pendingInviteEmails: [],
+        });
+
+        expect(result.suggestions.map((s) => s.login)).toEqual(["peer"]);
+    });
+
+    it("drops collaborators matching the current user GitHub login", () => {
+        const result = planCollaboratorSuggestions({
+            collaborators: [
+                collab({
+                    email: null,
+                    id: 1,
+                    login: "WebRunnerDev",
+                }),
+                collab({ email: "peer@example.com", id: 2, login: "peer" }),
+            ],
+            excludeGitHubLogins: ["WebRunnerDev"],
+            memberUsernames: ["aibyn"],
+            pendingInviteEmails: [],
+        });
+
+        expect(result.suggestions.map((s) => s.login)).toEqual(["peer"]);
+    });
+
+    it("drops collaborators matching the current user email", () => {
+        const result = planCollaboratorSuggestions({
+            collaborators: [
+                collab({
+                    email: "user@gmail.com",
+                    id: 1,
+                    login: "some-login",
+                }),
+                collab({ email: "peer@example.com", id: 2, login: "peer" }),
+            ],
+            excludeEmails: ["user@gmail.com"],
+            memberUsernames: [],
+            pendingInviteEmails: [],
+        });
+
+        expect(result.suggestions.map((s) => s.login)).toEqual(["peer"]);
+    });
+
     it("does not invent email invites for collaborators without email", () => {
         const result = planCollaboratorSuggestions({
             collaborators: [collab({ email: "   ", id: 1, login: "ghost" })],

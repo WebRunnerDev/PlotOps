@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { fetchGitHubAuthenticatedUser } from "@/features/auth/lib/fetch-github-authenticated-user";
+import { githubLoginFromUser } from "@/features/auth/lib/user-display";
+import { useAuth } from "@/features/auth/model/use-auth";
 import { fetchRepoCollaborators } from "@/features/projects/api/github-api";
 import { planCollaboratorSuggestions } from "@/features/projects/lib/plan-collaborator-suggestions";
 import { inviteUrl } from "@/features/teams/api/team-members-api";
@@ -37,6 +40,7 @@ export function SuggestCollaboratorsStep({
     teamId,
 }: SuggestCollaboratorsStepProperties) {
     const { t } = useTranslation("home");
+    const { profile, user } = useAuth();
     const mountedReference = useRef(true);
     const createInvite = useCreateTeamInvite(teamId);
     const { data: team, isLoading: teamLoading } = useTeam(teamId);
@@ -59,12 +63,23 @@ export function SuggestCollaboratorsStep({
         staleTime: 60_000,
     });
 
+    const {
+        data: authenticatedGitHubUser,
+        isLoading: authenticatedGitHubUserLoading,
+    } = useQuery({
+        enabled: Boolean(accessToken),
+        queryFn: () => fetchGitHubAuthenticatedUser(accessToken),
+        queryKey: ["github", "authenticated-user"],
+        staleTime: 60_000,
+    });
+
     const contextLoading =
         teamLoading ||
         ownerLoading ||
         membersLoading ||
         invitesLoading ||
-        collaboratorsLoading;
+        collaboratorsLoading ||
+        authenticatedGitHubUserLoading;
 
     const memberUsernames = useMemo(() => {
         const names = members
@@ -88,14 +103,53 @@ export function SuggestCollaboratorsStep({
         [invites]
     );
 
+    const excludeGitHubLogins = useMemo(() => {
+        const logins: string[] = [];
+        if (profile?.github_login) {
+            logins.push(profile.github_login);
+        }
+        const fromMetadata = user ? githubLoginFromUser(user) : null;
+        if (fromMetadata) logins.push(fromMetadata);
+        if (authenticatedGitHubUser?.login) {
+            logins.push(authenticatedGitHubUser.login);
+        }
+        return logins;
+    }, [authenticatedGitHubUser?.login, profile?.github_login, user]);
+
+    const excludeGitHubIds = useMemo(() => {
+        const ids: number[] = [];
+        if (profile?.github_id != undefined) {
+            ids.push(profile.github_id);
+        }
+        if (authenticatedGitHubUser?.id != undefined) {
+            ids.push(authenticatedGitHubUser.id);
+        }
+        return ids;
+    }, [authenticatedGitHubUser?.id, profile?.github_id]);
+
+    const excludeEmails = useMemo(
+        () => (user?.email ? [user.email] : []),
+        [user?.email]
+    );
+
     const plan = useMemo(
         () =>
             planCollaboratorSuggestions({
                 collaborators,
+                excludeEmails,
+                excludeGitHubIds,
+                excludeGitHubLogins,
                 memberUsernames,
                 pendingInviteEmails,
             }),
-        [collaborators, memberUsernames, pendingInviteEmails]
+        [
+            collaborators,
+            excludeEmails,
+            excludeGitHubIds,
+            excludeGitHubLogins,
+            memberUsernames,
+            pendingInviteEmails,
+        ]
     );
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
