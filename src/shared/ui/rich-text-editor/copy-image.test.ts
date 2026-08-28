@@ -41,7 +41,7 @@ describe("copyImageSourceToClipboard", () => {
         expect(writeText).not.toHaveBeenCalled();
     });
 
-    it("falls back to the URL when bitmap copy is unavailable", async () => {
+    it("returns failed when bitmap copy is unavailable", async () => {
         const write = vi.fn(async () => {
             throw new Error("ClipboardItem rejected");
         });
@@ -59,8 +59,8 @@ describe("copyImageSourceToClipboard", () => {
             }
         );
 
-        expect(result).toBe("url");
-        expect(writeText).toHaveBeenCalledWith("https://cdn.example/a.png");
+        expect(result).toBe("failed");
+        expect(writeText).not.toHaveBeenCalled();
     });
 
     it("returns failed for an empty src", async () => {

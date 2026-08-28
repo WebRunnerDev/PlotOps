@@ -16,6 +16,15 @@ export function escapeHtml(value: string): string {
         .replaceAll("'", "&#39;");
 }
 
+/**
+ * Plain-text placeholder for an image in clipboard payloads.
+ * Rich editors get `<img>` via HTML; messengers and notepad get a label, not a storage URL.
+ */
+export function formatImagePlainTextReference(alt?: null | string): string {
+    const label = alt?.trim();
+    return label ? ` [${label}] ` : " [Image] ";
+}
+
 export function isHtmlContent(value: string): boolean {
     return HTML_CONTENT_PATTERN.test(value);
 }
@@ -48,12 +57,8 @@ export function richTextToPlainText(value: string): string {
         .replaceAll(/<\/(td|th)>/gi, "\t")
         .replaceAll(/<\/(p|h[1-6]|blockquote|pre|li|div|tr)>/gi, "\n")
         .replaceAll(/<img\b[^>]*>/gi, (tag) => {
-            const source = readHtmlAttribute(tag, "src");
-            if (!source) return "";
             const alt = readHtmlAttribute(tag, "alt");
-            // Keep a recoverable reference in plain-text clipboard payloads
-            // (task copy button, messengers). Prefer markdown so alt survives.
-            return alt ? ` ![${alt}](${source}) ` : ` ${source} `;
+            return formatImagePlainTextReference(alt);
         })
         .replaceAll(/<[^>]+>/g, "");
 

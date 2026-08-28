@@ -47,7 +47,10 @@ import {
     parseIsoDate,
     toIsoDate,
 } from "@/features/tasks/lib/format-deadline";
-import { formatTaskCopyText } from "@/features/tasks/lib/format-task-copy-text";
+import {
+    formatTaskCopyHtml,
+    formatTaskCopyText,
+} from "@/features/tasks/lib/format-task-copy-text";
 import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-for-board";
 import { resolveCachedTaskBoardId } from "@/features/tasks/lib/resolve-cached-task-board-id";
 import { TASK_ESTIMATE_VALUES } from "@/features/tasks/lib/task-estimate";
@@ -118,7 +121,9 @@ import {
     SelectItem,
     SelectTrigger,
 } from "@/shared/shadcn/ui/select";
+import { Textarea } from "@/shared/shadcn/ui/textarea";
 import { isRichTextWithinLimit } from "@/shared/ui/rich-text-editor/content";
+import { copyRichTextToClipboard } from "@/shared/ui/rich-text-editor/copy-rich-text";
 
 /** Mobile: bottom sheet (swipe down + snap). Desktop: same shell, two-column body at md+. */
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
@@ -334,17 +339,19 @@ export function TaskDrawer({
     ]);
 
     const handleCopyTaskText = async () => {
-        const payload = formatTaskCopyText(title, description);
-        if (!payload) return;
+        const plain = formatTaskCopyText(title, description);
+        const html = formatTaskCopyHtml(title, description);
+        if (!plain && !html) return;
 
-        try {
-            await navigator.clipboard.writeText(payload);
-            setCopiedTaskText(true);
-            toast.success(t("fields.copiedTitleAndDescription"));
-            globalThis.setTimeout(() => setCopiedTaskText(false), 1500);
-        } catch {
+        const copied = await copyRichTextToClipboard(html, plain);
+        if (!copied) {
             toast.error(t("copyFailed"));
+            return;
         }
+
+        setCopiedTaskText(true);
+        toast.success(t("fields.copiedTitleAndDescription"));
+        globalThis.setTimeout(() => setCopiedTaskText(false), 1500);
     };
 
     const commitTitle = () => {
@@ -628,8 +635,8 @@ export function TaskDrawer({
                                                         </span>
                                                     </Button>
                                                 </div>
-                                                <Input
-                                                    className="h-auto min-w-0 text-h3 font-semibold"
+                                                <Textarea
+                                                    className="min-h-8 resize-none py-1 text-h3 font-semibold wrap-anywhere"
                                                     disabled={!canEdit}
                                                     id="task-title"
                                                     maxLength={
@@ -639,17 +646,23 @@ export function TaskDrawer({
                                                     onChange={(event) => {
                                                         setTitleDirty(true);
                                                         setTitle(
-                                                            event.target.value
+                                                            event.target.value.replaceAll(
+                                                                "\n",
+                                                                " "
+                                                            )
                                                         );
                                                     }}
                                                     onKeyDown={(event) => {
                                                         if (
                                                             event.key ===
-                                                            "Enter"
+                                                                "Enter" &&
+                                                            !event.shiftKey
                                                         ) {
+                                                            event.preventDefault();
                                                             event.currentTarget.blur();
                                                         }
                                                     }}
+                                                    rows={1}
                                                     value={title}
                                                 />
                                             </div>

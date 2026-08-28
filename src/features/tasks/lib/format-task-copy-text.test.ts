@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { formatTaskCopyText } from "@/features/tasks/lib/format-task-copy-text";
+import {
+    formatTaskCopyHtml,
+    formatTaskCopyText,
+} from "@/features/tasks/lib/format-task-copy-text";
 
 describe("formatTaskCopyText", () => {
     it("joins title and plain description with a blank line", () => {
@@ -13,15 +16,26 @@ describe("formatTaskCopyText", () => {
         expect(formatTaskCopyText("Fix login", "<p></p>")).toBe("Fix login");
     });
 
-    it("keeps image references from the description so they survive copy", () => {
+    it("uses image placeholders instead of storage urls in plain text", () => {
         const payload = formatTaskCopyText(
             "Bug",
             '<p>See shot</p><img src="https://cdn.example/a.png" alt="shot">'
         );
 
-        expect(payload).toContain("https://cdn.example/a.png");
-        expect(payload).toBe(
-            "Bug\n\nSee shot\n![shot](https://cdn.example/a.png)"
+        expect(payload).not.toContain("https://cdn.example/a.png");
+        expect(payload).toBe("Bug\n\nSee shot\n[shot]");
+    });
+});
+
+describe("formatTaskCopyHtml", () => {
+    it("wraps the title and keeps description html with images", () => {
+        expect(
+            formatTaskCopyHtml(
+                "Bug",
+                '<p>See shot</p><img src="https://cdn.example/a.png" alt="shot">'
+            )
+        ).toBe(
+            '<p><strong>Bug</strong></p><p>See shot</p><img src="https://cdn.example/a.png" alt="shot">'
         );
     });
 });
