@@ -270,8 +270,8 @@ export type Database = {
       create_subtask: {
         Args: {
           p_parent_id: string
-          p_sprint_id?: null | string
-          p_task_type?: Database["public"]["Enums"]["task_type"] | null
+          p_sprint_id?: string
+          p_task_type?: Database["public"]["Enums"]["task_type"]
           p_title: string
         }
         Returns: string
@@ -416,7 +416,11 @@ export type Database = {
         Returns: undefined
       }
       set_board_done_column: {
-        Args: { p_board_id: string; p_column_id: null | string }
+        Args: { p_board_id: string; p_column_id: string }
+        Returns: undefined
+      }
+      set_task_parent: {
+        Args: { p_child_id: string; p_parent_id: string }
         Returns: undefined
       }
       start_sprint: {
@@ -752,6 +756,8 @@ export type Database = {
           avatar_url?: null | string
           created_at?: string
           first_name?: null | string
+          github_id?: null | number
+          github_login?: null | string
           id: string
           last_name?: null | string
           updated_at?: string
@@ -762,6 +768,8 @@ export type Database = {
           avatar_url: null | string
           created_at: string
           first_name: null | string
+          github_id: null | number
+          github_login: null | string
           id: string
           last_name: null | string
           updated_at: string
@@ -771,6 +779,8 @@ export type Database = {
           avatar_url?: null | string
           created_at?: string
           first_name?: null | string
+          github_id?: null | number
+          github_login?: null | string
           id?: string
           last_name?: null | string
           updated_at?: string
