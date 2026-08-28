@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     getUserUsername,
+    githubLoginFromUser,
     profileNamesFromUserMetadata,
 } from "@/features/auth/lib/user-display";
 
@@ -64,5 +65,37 @@ describe("getUserUsername", () => {
                 },
             })
         ).toBe("ada");
+    });
+});
+
+describe("githubLoginFromUser", () => {
+    it("returns GitHub login when GitHub is the primary provider", () => {
+        expect(
+            githubLoginFromUser({
+                app_metadata: { provider: "github" },
+                user_metadata: { user_name: "WebRunnerDev" },
+            })
+        ).toBe("WebRunnerDev");
+    });
+
+    it("returns GitHub login when GitHub is linked after Google signup", () => {
+        expect(
+            githubLoginFromUser({
+                app_metadata: {
+                    provider: "google",
+                    providers: ["google", "github"],
+                },
+                user_metadata: { user_name: "WebRunnerDev" },
+            })
+        ).toBe("WebRunnerDev");
+    });
+
+    it("returns null for Google-only accounts without linked GitHub", () => {
+        expect(
+            githubLoginFromUser({
+                app_metadata: { provider: "google", providers: ["google"] },
+                user_metadata: { name: "Ada Lovelace" },
+            })
+        ).toBeNull();
     });
 });

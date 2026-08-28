@@ -1,7 +1,10 @@
-import type { AuthError } from "@supabase/supabase-js";
+import type { AuthError, UserIdentity } from "@supabase/supabase-js";
 
 import { supabase } from "@/shared/api/supabase";
 import { safeGetItem } from "@/shared/lib/safe-storage";
+
+/** Shared with sign-in and Settings link — PlotOps needs repo + read:user for in-app Git. */
+export const GITHUB_OAUTH_SCOPES = "repo read:user";
 
 export type SignInCredentials = {
     email: string;
@@ -60,6 +63,64 @@ export function getAuthErrorKey(error: AuthError): string {
     return "errors.generic";
 }
 
+const IDENTITY_ACTION_ERROR_CODE_KEYS: Record<string, string> = {
+    identity_already_exists: "errors.identityAlreadyLinked",
+    identity_not_found: "errors.identityAlreadyLinked",
+    manual_linking_disabled: "errors.identityAlreadyLinked",
+};
+
+export function getIdentityActionErrorKey(error: AuthError): string {
+    const code = error.code?.toLowerCase();
+    if (code && IDENTITY_ACTION_ERROR_CODE_KEYS[code]) {
+        return IDENTITY_ACTION_ERROR_CODE_KEYS[code];
+    }
+
+    const message = error.message.toLowerCase();
+
+    if (
+        message.includes("already linked") ||
+        message.includes("identity is already linked") ||
+        message.includes("identity already exists")
+    ) {
+        return "errors.identityAlreadyLinked";
+    }
+    if (
+        message.includes("access_denied") ||
+        message.includes("oauth flow was cancelled") ||
+        (message.includes("oauth") && message.includes("cancel"))
+    ) {
+        return "errors.oauthCancelled";
+    }
+    if (
+        message.includes("failed to fetch") ||
+        message.includes("network error") ||
+        message.includes("network request failed")
+    ) {
+        return "errors.networkFailure";
+    }
+
+    return getAuthErrorKey(error);
+}
+
+export async function linkIdentityWithGitHub() {
+    return supabase.auth.linkIdentity({
+        options: {
+            redirectTo: settingsLinkRedirectTo(),
+            scopes: GITHUB_OAUTH_SCOPES,
+        },
+        provider: "github",
+    });
+}
+
+export async function linkIdentityWithGoogle() {
+    return supabase.auth.linkIdentity({
+        options: {
+            redirectTo: settingsLinkRedirectTo(),
+        },
+        provider: "google",
+    });
+}
+
 export async function resendSignupConfirmation(email: string) {
     return supabase.auth.resend({
         email,
@@ -80,7 +141,7 @@ export async function signInWithGitHub() {
     return supabase.auth.signInWithOAuth({
         options: {
             redirectTo: postAuthRedirectTo(),
-            scopes: "repo read:user",
+            scopes: GITHUB_OAUTH_SCOPES,
         },
         provider: "github",
     });
@@ -117,11 +178,21 @@ export async function signUpWithPassword(credentials: SignUpCredentials) {
     });
 }
 
+export async function unlinkAuthIdentity(identity: UserIdentity) {
+    return supabase.auth.unlinkIdentity(identity);
+}
+
 function postAuthRedirectTo(): string {
     const origin = globalThis.location.origin;
     const pendingInvite = safeGetItem("sessionStorage", PENDING_INVITE_KEY);
     if (pendingInvite) {
         return `${origin}/invite/${pendingInvite}`;
     }
-    return `${origin}/home`;
+    // Root URL matches Supabase `site_url` / redirect allow-list; `/` route
+    // sends authenticated users to `/home` once Auth boot finishes.
+    return `${origin}/`;
+}
+
+function settingsLinkRedirectTo(): string {
+    return `${globalThis.location.origin}/settings`;
 }

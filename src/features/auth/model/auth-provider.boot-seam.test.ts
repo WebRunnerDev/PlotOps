@@ -14,8 +14,9 @@ describe("AuthProvider boot validate seam", () => {
 
         expect(source).toMatch(/validatePersistedSession/);
         expect(source).toMatch(/event === "INITIAL_SESSION"/);
+        expect(source).toMatch(/applyValidatedBootSession/);
         expect(source).toMatch(
-            /validatePersistedSession\(\s*nextSession,\s*\{\s*signal:\s*abortController\.signal\s*\}\s*\)/
+            /validatePersistedSession\([\s\S]*?signal:\s*abortController\.signal/
         );
         expect(source).toMatch(
             /if\s*\(\s*!mounted\s*\|\|\s*abortController\.signal\.aborted\s*\)\s*return/

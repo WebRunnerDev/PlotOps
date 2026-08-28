@@ -52,10 +52,14 @@ export function AppRouter() {
     }
 
     if (auth.bootError) {
+        const bootMessage =
+            auth.bootErrorReason === "oauth"
+                ? t("boot.oauthFailed")
+                : t("boot.title");
         return (
             <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4">
                 <p className="max-w-sm text-center text-ui text-muted-foreground">
-                    {t("boot.title")}
+                    {bootMessage}
                 </p>
                 <Button onClick={auth.retryBoot} type="button">
                     {t("boot.retry")}

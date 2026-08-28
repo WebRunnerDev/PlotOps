@@ -13,7 +13,7 @@ describe("AuthProvider OAuth boot wait seam", () => {
         );
 
         expect(source).toMatch(/shouldFinishAuthBoot/);
-        expect(source).toMatch(/isOAuthCallbackLocation/);
+        expect(source).toMatch(/oauthBootSnapshot/);
         // Must not mark boot done on a null session during ?code= exchange.
         expect(source).toMatch(
             /shouldFinishAuthBoot\(\{[\s\S]*?isOAuthCallback[\s\S]*?session:/

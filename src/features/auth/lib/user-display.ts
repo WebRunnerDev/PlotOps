@@ -87,6 +87,26 @@ export function getUserUsername(user: {
     return "user";
 }
 
+/** GitHub login from linked OAuth identity, when present. */
+export function githubLoginFromUser(user: {
+    app_metadata?: { provider?: string; providers?: string[] };
+    user_metadata: User["user_metadata"];
+}): null | string {
+    const login =
+        typeof user.user_metadata.user_name === "string"
+            ? user.user_metadata.user_name.trim()
+            : "";
+    if (!login) return null;
+
+    const provider = user.app_metadata?.provider;
+    const providers = user.app_metadata?.providers ?? [];
+    if (provider === "github" || providers.includes("github")) {
+        return login;
+    }
+
+    return null;
+}
+
 export function isProfileNamesComplete(
     profile: null | ProfileNameFields | undefined
 ): boolean {

@@ -17,6 +17,7 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "boot": {
+        "oauthFailed": "Не удалось войти через Google или GitHub. Попробуйте снова или используйте email.",
         "retry": "Повторить",
         "title": "Не удалось восстановить сессию. Проверьте соединение и попробуйте снова."
     },
@@ -24,9 +25,12 @@
         "emailNotConfirmed": "Подтвердите email перед входом. Проверьте почту — там ссылка.",
         "firstNameRequired": "Укажите имя.",
         "generic": "Что-то пошло не так. Попробуйте ещё раз.",
+        "identityAlreadyLinked": "Этот способ входа уже связан с другим аккаунтом PlotOps.",
         "invalidCredentials": "Неверный email или пароль.",
         "lastNameRequired": "Укажите фамилию.",
         "namesRequired": "Укажите имя и фамилию.",
+        "networkFailure": "Сетевая ошибка. Проверьте соединение и попробуйте снова.",
+        "oauthCancelled": "Вход отменён. Попробуйте снова, когда будете готовы.",
         "passwordMismatch": "Пароли не совпадают.",
         "sessionTimeout": "Вход прошёл, но сессия не появилась. Попробуйте ещё раз.",
         "userAlreadyRegistered": "Аккаунт с этим email уже есть. Войдите.",
@@ -58,8 +62,40 @@
     "hidePassword": "Скрыть пароль",
     "showPassword": "Показать пароль",
     "settings": {
+        "connectedAccountsDescription": "Способы входа, привязанные к вашему аккаунту PlotOps.",
+        "connectedAccountsTitle": "Подключённые аккаунты",
+        "connectedStatus": "Подключено",
+        "connect": "Подключить",
+        "connecting": "Подключение...",
+        "cannotUnlinkLastMethod": "Оставьте хотя бы один способ входа.",
+        "disconnect": "Отключить",
+        "disconnecting": "Отключение...",
+        "disconnected": "Способ входа отключён",
         "profileDescription": "Как вас видят участники проектов. Username (handle) остаётся отдельно.",
         "profileTitle": "Профиль",
+        "githubIntegration": {
+            "connectedAccountsHint": "Способы входа настраиваются в блоке «Подключённые аккаунты» ниже.",
+            "description": "Доступ к GitHub API для репозиториев, pull request и CI в PlotOps.",
+            "githubLoginLabel": "Привязанный аккаунт GitHub",
+            "githubLoginMissing": "Не привязан",
+            "googleOnlyExplanation": "Вы вошли через Google. Подключите GitHub, чтобы PlotOps мог показывать репозитории, pull request и статус CI.",
+            "reconnectGitHub": "Переподключить GitHub",
+            "reconnecting": "Перенаправление...",
+            "title": "Интеграция GitHub",
+            "tokenStatus": {
+                "checking": "Проверка…",
+                "expired": "Истёк",
+                "missing": "Отсутствует",
+                "valid": "Действителен"
+            },
+            "tokenStatusHint": "Нужен для списка репозиториев, PR и CI — отдельно от входа.",
+            "tokenStatusLabel": "API-токен"
+        },
+        "providers": {
+            "email": "Email",
+            "github": "GitHub",
+            "google": "Google"
+        },
         "save": "Сохранить",
         "saved": "Профиль обновлён",
         "saving": "Сохранение...",

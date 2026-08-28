@@ -17,6 +17,7 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "boot": {
+        "oauthFailed": "Google or GitHub sign-in failed. Try again or use email.",
         "retry": "Retry",
         "title": "Could not restore your session. Check your connection and try again."
     },
@@ -24,9 +25,12 @@
         "emailNotConfirmed": "Confirm your email before signing in. Check your inbox for the link.",
         "firstNameRequired": "Enter your first name.",
         "generic": "Something went wrong. Please try again.",
+        "identityAlreadyLinked": "This sign-in method is already linked to another PlotOps account.",
         "invalidCredentials": "Invalid email or password.",
         "lastNameRequired": "Enter your last name.",
         "namesRequired": "First name and last name are required.",
+        "networkFailure": "Network error. Check your connection and try again.",
+        "oauthCancelled": "Sign-in was cancelled. Try again when you're ready.",
         "passwordMismatch": "Passwords do not match.",
         "sessionTimeout": "Sign-in succeeded but the session did not appear. Please try again.",
         "userAlreadyRegistered": "An account with this email already exists. Sign in instead.",
@@ -58,8 +62,40 @@
     "hidePassword": "Hide password",
     "showPassword": "Show password",
     "settings": {
+        "connectedAccountsDescription": "Sign-in methods linked to your PlotOps account.",
+        "connectedAccountsTitle": "Connected accounts",
+        "connectedStatus": "Connected",
+        "connect": "Connect",
+        "connecting": "Connecting...",
+        "cannotUnlinkLastMethod": "Keep at least one sign-in method connected.",
+        "disconnect": "Disconnect",
+        "disconnecting": "Disconnecting...",
+        "disconnected": "Sign-in method disconnected",
         "profileDescription": "How you appear to project members. Your username (handle) stays separate.",
         "profileTitle": "Profile",
+        "githubIntegration": {
+            "connectedAccountsHint": "Sign-in methods are managed in Connected accounts below.",
+            "description": "GitHub API access for repos, pull requests, and CI in PlotOps.",
+            "githubLoginLabel": "Linked GitHub account",
+            "githubLoginMissing": "Not linked",
+            "googleOnlyExplanation": "You signed in with Google. Connect GitHub here so PlotOps can list repositories, show pull requests, and load CI status.",
+            "reconnectGitHub": "Reconnect GitHub",
+            "reconnecting": "Redirecting...",
+            "title": "GitHub integration",
+            "tokenStatus": {
+                "checking": "Checking…",
+                "expired": "Expired",
+                "missing": "Missing",
+                "valid": "Valid"
+            },
+            "tokenStatusHint": "Used for repo list, PRs, and CI — separate from sign-in.",
+            "tokenStatusLabel": "API token"
+        },
+        "providers": {
+            "email": "Email",
+            "github": "GitHub",
+            "google": "Google"
+        },
         "save": "Save changes",
         "saved": "Profile updated",
         "saving": "Saving...",

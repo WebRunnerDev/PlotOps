@@ -3,8 +3,10 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import {
+    ConnectedAccountsSettings,
     DEMO_ACCOUNT_BADGE_I18N_KEY,
     demoAccountBadgeVisible,
+    GitHubIntegrationSettings,
     ProfileSettingsForm,
 } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
@@ -52,7 +54,13 @@ function SettingsPage() {
                         : t("settingsDescription")}
                 </p>
             </div>
-            {guest ? null : <ProfileSettingsForm />}
+            {guest ? null : (
+                <>
+                    <ProfileSettingsForm />
+                    <GitHubIntegrationSettings />
+                    <ConnectedAccountsSettings />
+                </>
+            )}
         </div>
     );
 }
