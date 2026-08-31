@@ -49,13 +49,26 @@ describe("deriveConnectedProviders", () => {
                     providers: ["google", "email"],
                 },
                 email: "ada@example.com",
-                identities: [],
                 user_metadata: {},
             } as never)
         ).toEqual([
             { identifier: "ada@example.com", provider: "google" },
             { identifier: "ada@example.com", provider: "email" },
         ]);
+    });
+
+    it("does not fall back to app_metadata when identities is empty after unlink", () => {
+        expect(
+            deriveConnectedProviders({
+                app_metadata: {
+                    provider: "google",
+                    providers: ["google", "github"],
+                },
+                email: "ada@gmail.com",
+                identities: [],
+                user_metadata: {},
+            } as never)
+        ).toEqual([]);
     });
 
     it("uses GitHub login from identity metadata when GitHub is linked after Google", () => {

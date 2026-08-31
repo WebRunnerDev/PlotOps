@@ -30,7 +30,7 @@ import {
 
 export function ConnectedAccountsSettings() {
     const { t } = useTranslation("auth");
-    const { user } = useAuth();
+    const { refreshAuthUser, user } = useAuth();
     const [actionLoading, setActionLoading] =
         useState<AuthSignInProvider | null>(null);
     const [error, setError] = useState<null | string>(null);
@@ -90,6 +90,7 @@ export function ConnectedAccountsSettings() {
             return;
         }
 
+        await refreshAuthUser();
         toast.success(t("settings.disconnected"));
     };
 

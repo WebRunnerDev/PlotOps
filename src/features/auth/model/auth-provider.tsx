@@ -111,6 +111,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     }, [user]);
 
+    const refreshAuthUser = useCallback(async () => {
+        const {
+            data: { session: currentSession },
+        } = await supabase.auth.getSession();
+        if (!currentSession) return;
+
+        const validated = await validatePersistedSession(currentSession);
+        if (!validated?.user) return;
+
+        flushSync(() => {
+            setSession(validated);
+            applySessionUser(validated.user);
+        });
+        await loadProfile(validated.user);
+    }, [applySessionUser, loadProfile]);
+
     const retryBoot = useCallback(() => {
         setBootError(false);
         setBootErrorReason(null);
@@ -255,8 +271,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
-                const nextUser = nextSession?.user ?? null;
-                setSession(nextSession);
+                let sessionToApply = nextSession;
+                if (nextSession && event !== "TOKEN_REFRESHED") {
+                    sessionToApply = await validatePersistedSession(
+                        nextSession,
+                        { signal: abortController.signal }
+                    );
+                    if (!mounted || abortController.signal.aborted) return;
+                    if (!authEventGate.isCurrent(eventGeneration)) return;
+
+                    if (!sessionToApply) {
+                        setSession(null);
+                        applySessionUser(null);
+                        setProfile(null);
+                        finishBoot();
+                        return;
+                    }
+                }
+
+                const nextUser = sessionToApply?.user ?? null;
+                setSession(sessionToApply);
                 applySessionUser(nextUser);
                 await loadProfile(nextUser);
                 if (mounted && authEventGate.isCurrent(eventGeneration)) {
@@ -321,6 +355,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isLoading,
             profile,
             profileNamesComplete,
+            refreshAuthUser,
             refreshProfile,
             retryBoot,
             session,
@@ -336,6 +371,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profile,
             profileNamesComplete,
             isLoading,
+            refreshAuthUser,
             refreshProfile,
             retryBoot,
             signOut,

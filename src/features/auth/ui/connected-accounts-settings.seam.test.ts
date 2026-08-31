@@ -28,6 +28,7 @@ describe("connected accounts settings seam", () => {
         expect(component).toMatch(/linkIdentityWithGitHub/);
         expect(component).toMatch(/linkIdentityWithGoogle/);
         expect(component).toMatch(/unlinkAuthIdentity/);
+        expect(component).toMatch(/refreshAuthUser/);
         expect(component).toMatch(/canUnlinkIdentity/);
         expect(component).toMatch(/settings\.connect/);
         expect(component).toMatch(/settings\.disconnect/);

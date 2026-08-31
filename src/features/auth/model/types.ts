@@ -11,6 +11,7 @@ export type AuthContextValue = {
     isLoading: boolean;
     profile: null | UserProfile;
     profileNamesComplete: boolean;
+    refreshAuthUser: () => Promise<void>;
     refreshProfile: () => Promise<void>;
     retryBoot: () => void;
     session: null | Session;

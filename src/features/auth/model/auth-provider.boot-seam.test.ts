@@ -14,6 +14,7 @@ describe("AuthProvider boot validate seam", () => {
 
         expect(source).toMatch(/validatePersistedSession/);
         expect(source).toMatch(/event === "INITIAL_SESSION"/);
+        expect(source).toMatch(/event !== "TOKEN_REFRESHED"/);
         expect(source).toMatch(/applyValidatedBootSession/);
         expect(source).toMatch(
             /validatePersistedSession\([\s\S]*?signal:\s*abortController\.signal/

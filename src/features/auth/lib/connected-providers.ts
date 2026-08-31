@@ -58,12 +58,15 @@ export function deriveSignInProviderSlots(user: User): SignInProviderSlot[] {
 function collectLinkedProviders(user: User): Set<AuthSignInProvider> {
     const providers = new Set<AuthSignInProvider>();
 
-    for (const identity of user.identities ?? []) {
-        const normalized = normalizeProvider(identity.provider);
-        if (normalized) providers.add(normalized);
+    // Prefer identities whenever the array is present — even empty after unlink.
+    // app_metadata.providers can lag behind; do not treat it as source of truth.
+    if (user.identities != undefined) {
+        for (const identity of user.identities) {
+            const normalized = normalizeProvider(identity.provider);
+            if (normalized) providers.add(normalized);
+        }
+        return providers;
     }
-
-    if (providers.size > 0) return providers;
 
     for (const provider of user.app_metadata?.providers ?? []) {
         const normalized = normalizeProvider(provider);
