@@ -42,6 +42,11 @@ jobs:
                   supabase start
                   supabase db reset --yes
 
+            - name: Security Advisor (local, fail on error)
+              if: steps.filter.outputs.supabase == 'true'
+              run: |
+                  supabase db advisors --local --type security --level error --fail-on error
+
             - name: Skip (no supabase schema paths changed)
               if: steps.filter.outputs.supabase != 'true'
               run: echo "No supabase migration paths changed; check passes."
