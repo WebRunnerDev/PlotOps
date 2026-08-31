@@ -4,7 +4,7 @@
 --
 -- Credentials (local-only; safe to share in docs — never reuse for remote prod):
 --   email:    demo@plotops.app
---   password: plotops-demo-local
+--   password: PlotopsDemo1
 --
 -- Product "Try demo" does NOT use this account (ADR 0018 / features/guest-mode).
 -- Dataset: supabase/seed-guest-dataset.sql
@@ -35,7 +35,7 @@ values (
   'authenticated',
   'authenticated',
   'demo@plotops.app',
-  extensions.crypt('plotops-demo-local', extensions.gen_salt('bf')),
+  extensions.crypt('PlotopsDemo1', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
   jsonb_build_object(

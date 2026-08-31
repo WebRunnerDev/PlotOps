@@ -6,6 +6,10 @@ import { safeGetItem } from "@/shared/lib/safe-storage";
 /** Shared with sign-in and Settings link — PlotOps needs repo + read:user for in-app Git. */
 export const GITHUB_OAUTH_SCOPES = "repo read:user";
 
+export type AuthCaptchaOptions = {
+    captchaToken?: string;
+};
+
 export type SignInCredentials = {
     email: string;
     password: string;
@@ -22,13 +26,14 @@ const AUTH_ERROR_CODE_KEYS: Record<string, string> = {
     email_exists: "errors.userAlreadyRegistered",
     email_not_confirmed: "errors.emailNotConfirmed",
     invalid_credentials: "errors.invalidCredentials",
+    over_request_rate_limit: "errors.rateLimited",
     user_already_exists: "errors.userAlreadyRegistered",
     weak_password: "errors.weakPassword",
 };
 
 /** Statuses consulted when `code` is absent — before English message matching. */
 const AUTH_ERROR_STATUS_KEYS: Record<number, string> = {
-    429: "errors.generic",
+    429: "errors.rateLimited",
 };
 
 export function getAuthErrorKey(error: AuthError): string {
@@ -66,7 +71,7 @@ export function getAuthErrorKey(error: AuthError): string {
 const IDENTITY_ACTION_ERROR_CODE_KEYS: Record<string, string> = {
     identity_already_exists: "errors.identityAlreadyLinked",
     identity_not_found: "errors.identityAlreadyLinked",
-    manual_linking_disabled: "errors.identityAlreadyLinked",
+    manual_linking_disabled: "errors.manualLinkingDisabled",
 };
 
 export function getIdentityActionErrorKey(error: AuthError): string {
@@ -156,15 +161,27 @@ export async function signInWithGoogle() {
     });
 }
 
-export async function signInWithPassword(credentials: SignInCredentials) {
-    return supabase.auth.signInWithPassword(credentials);
+export async function signInWithPassword(
+    credentials: SignInCredentials,
+    captcha?: AuthCaptchaOptions
+) {
+    return supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+        ...(captcha?.captchaToken
+            ? { options: { captchaToken: captcha.captchaToken } }
+            : {}),
+    });
 }
 
 export async function signOut() {
     return supabase.auth.signOut();
 }
 
-export async function signUpWithPassword(credentials: SignUpCredentials) {
+export async function signUpWithPassword(
+    credentials: SignUpCredentials,
+    captcha?: AuthCaptchaOptions
+) {
     return supabase.auth.signUp({
         email: credentials.email,
         options: {
@@ -173,6 +190,9 @@ export async function signUpWithPassword(credentials: SignUpCredentials) {
                 last_name: credentials.lastName.trim(),
             },
             emailRedirectTo: postAuthRedirectTo(),
+            ...(captcha?.captchaToken
+                ? { captchaToken: captcha.captchaToken }
+                : {}),
         },
         password: credentials.password,
     });

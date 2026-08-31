@@ -26,15 +26,17 @@
         "firstNameRequired": "Укажите имя.",
         "generic": "Что-то пошло не так. Попробуйте ещё раз.",
         "identityAlreadyLinked": "Этот способ входа уже связан с другим аккаунтом PlotOps.",
+        "manualLinkingDisabled": "Связывание аккаунтов отключено на сервере. Для локальной разработки включите enable_manual_linking в supabase/config.toml и перезапустите стек.",
         "invalidCredentials": "Неверный email или пароль.",
         "lastNameRequired": "Укажите фамилию.",
         "namesRequired": "Укажите имя и фамилию.",
         "networkFailure": "Сетевая ошибка. Проверьте соединение и попробуйте снова.",
         "oauthCancelled": "Вход отменён. Попробуйте снова, когда будете готовы.",
         "passwordMismatch": "Пароли не совпадают.",
+        "rateLimited": "Слишком много попыток. Подождите минуту и попробуйте снова.",
         "sessionTimeout": "Вход прошёл, но сессия не появилась. Попробуйте ещё раз.",
         "userAlreadyRegistered": "Аккаунт с этим email уже есть. Войдите.",
-        "weakPassword": "Пароль должен быть не короче 6 символов."
+        "weakPassword": "Пароль: минимум 8 символов, заглавные и строчные буквы и цифра."
     },
     "firstName": "Имя",
     "firstNamePlaceholder": "Ада",

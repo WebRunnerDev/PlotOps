@@ -26,15 +26,17 @@
         "firstNameRequired": "Enter your first name.",
         "generic": "Something went wrong. Please try again.",
         "identityAlreadyLinked": "This sign-in method is already linked to another PlotOps account.",
+        "manualLinkingDisabled": "Account linking is disabled on the server. For local dev, set enable_manual_linking in supabase/config.toml and restart the stack.",
         "invalidCredentials": "Invalid email or password.",
         "lastNameRequired": "Enter your last name.",
         "namesRequired": "First name and last name are required.",
         "networkFailure": "Network error. Check your connection and try again.",
         "oauthCancelled": "Sign-in was cancelled. Try again when you're ready.",
         "passwordMismatch": "Passwords do not match.",
+        "rateLimited": "Too many attempts. Wait a minute and try again.",
         "sessionTimeout": "Sign-in succeeded but the session did not appear. Please try again.",
         "userAlreadyRegistered": "An account with this email already exists. Sign in instead.",
-        "weakPassword": "Password must be at least 6 characters."
+        "weakPassword": "Password must be at least 8 characters and include uppercase, lowercase, and a number."
     },
     "firstName": "First name",
     "firstNamePlaceholder": "Ada",
