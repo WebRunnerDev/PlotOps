@@ -65,6 +65,14 @@ describe("Subtask drawer list seam", () => {
         expect(section).toMatch(/task\.assignee/);
         expect(section).toMatch(/fields\.memberNone/);
     });
+
+    it("keeps add form open when switching create/link mode from an empty title input", () => {
+        const section = readUi("task-subtasks-section.tsx");
+
+        expect(section).toMatch(/isAddFormInteractionTarget/);
+        expect(section).toMatch(/skipBlurClose\.current = true/);
+        expect(section).toMatch(/data-slot=select-content/);
+    });
 });
 
 describe("Subtask card badge seam", () => {

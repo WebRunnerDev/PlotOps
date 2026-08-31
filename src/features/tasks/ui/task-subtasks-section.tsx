@@ -79,6 +79,7 @@ export function TaskSubtasksSection({
     const [setParentOpen, setSetParentOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const addFormReference = useRef<HTMLDivElement>(null);
     const inputReference = useRef<HTMLInputElement>(null);
     const skipBlurClose = useRef(false);
 
@@ -253,9 +254,6 @@ export function TaskSubtasksSection({
                                     className="h-8 gap-1.5 text-muted-foreground"
                                     onClick={() => {
                                         setAddOpen(true);
-                                        queueMicrotask(() => {
-                                            inputReference.current?.focus();
-                                        });
                                     }}
                                     size="sm"
                                     type="button"
@@ -271,11 +269,17 @@ export function TaskSubtasksSection({
             </div>
 
             {canAdd && addOpen ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2" ref={addFormReference}>
                     <Select
                         onValueChange={(value) => {
                             if (value === "create" || value === "link") {
+                                skipBlurClose.current = true;
                                 setAddMode(value);
+                                if (value === "create") {
+                                    queueMicrotask(() => {
+                                        inputReference.current?.focus();
+                                    });
+                                }
                             }
                         }}
                         value={addMode}
@@ -283,6 +287,9 @@ export function TaskSubtasksSection({
                         <SelectTrigger
                             aria-label={t("subtasks.addModeLabel")}
                             className="h-8 w-full font-mono text-code"
+                            onPointerDown={() => {
+                                skipBlurClose.current = true;
+                            }}
                         >
                             <span>
                                 {addMode === "create"
@@ -305,9 +312,17 @@ export function TaskSubtasksSection({
                             className="h-8 bg-background font-mono text-code"
                             disabled={isSubmitting}
                             maxLength={TASK_TITLE_MAX_LENGTH}
-                            onBlur={() => {
+                            onBlur={(event) => {
                                 if (skipBlurClose.current) {
                                     skipBlurClose.current = false;
+                                    return;
+                                }
+                                if (
+                                    isAddFormInteractionTarget(
+                                        event.relatedTarget,
+                                        addFormReference.current
+                                    )
+                                ) {
                                     return;
                                 }
                                 if (!title.trim()) {
@@ -346,6 +361,7 @@ export function TaskSubtasksSection({
                             }}
                             people={people}
                             placeholder={t("subtasks.linkPlaceholder")}
+                            projectId={projectId}
                         />
                     )}
                 </div>
@@ -368,6 +384,7 @@ export function TaskSubtasksSection({
                         }}
                         people={people}
                         placeholder={t("subtasks.setParentPlaceholder")}
+                        projectId={projectId}
                     />
                 </div>
             ) : undefined}
@@ -438,6 +455,26 @@ function initials(name: string): string {
     }
 
     return name.slice(0, 2).toUpperCase();
+}
+
+function isAddFormInteractionTarget(
+    relatedTarget: EventTarget | null,
+    formRoot: HTMLElement | null
+): boolean {
+    if (!(relatedTarget instanceof Element)) {
+        return false;
+    }
+
+    if (formRoot?.contains(relatedTarget)) {
+        return true;
+    }
+
+    return Boolean(
+        relatedTarget.closest("[data-slot=select-content]") ||
+        relatedTarget.closest("[data-slot=select-trigger]") ||
+        relatedTarget.closest("[data-slot=combobox-content]") ||
+        relatedTarget.closest("[data-slot=dropdown-menu-content]")
+    );
 }
 
 function setParentErrorMessage(

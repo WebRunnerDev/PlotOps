@@ -218,6 +218,7 @@ export function TaskLinksSection({
                         }}
                         people={people}
                         placeholder={t("taskLinks.addPlaceholder")}
+                        projectId={projectId}
                     />
                 </div>
             ) : undefined}
