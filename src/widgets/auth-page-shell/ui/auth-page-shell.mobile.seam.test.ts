@@ -23,7 +23,9 @@ describe("AuthPageShell mobile seam", () => {
     });
 
     it("shows the open-source footer on the auth shell", () => {
-        const shell = read("src/widgets/auth-page-shell/ui/auth-page-shell.tsx");
+        const shell = read(
+            "src/widgets/auth-page-shell/ui/auth-page-shell.tsx"
+        );
         const footer = read(
             "src/widgets/auth-page-shell/ui/auth-open-source-footer.tsx"
         );
@@ -31,6 +33,7 @@ describe("AuthPageShell mobile seam", () => {
         expect(shell).toMatch(/AuthOpenSourceFooter/);
         expect(footer).toMatch(/PLOTOPS_GITHUB_URL/);
         expect(footer).toMatch(/PLOTOPS_LICENSE/);
+        expect(footer).toMatch(/LegalFooterLinks compact/);
         expect(footer).toMatch(/target="_blank"/);
         expect(footer).toMatch(/variant="link"/);
         expect(footer).toMatch(/min-w-0/);

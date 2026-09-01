@@ -113,5 +113,16 @@
     "signUpLoading": "Creating account...",
     "signUpSubtitle": "Register with GitHub, Google, or email — email is required for project invites without GitHub",
     "signUpTitle": "Create your PlotOps account",
-    "username": "Username"
+    "username": "Username",
+    "marketing": {
+        "eyebrow": "Git-native project tracker",
+        "title": "Kanban, GitHub, and CI in one workspace",
+        "description": "Link tasks to branches, review pull requests without leaving the board, and watch GitHub Actions — open source portfolio project.",
+        "seoDescription": "PlotOps is a git-native project tracker with Kanban, in-app GitHub PR/diff viewer, and CI/CD dashboard. Sign in or try the demo without registration.",
+        "features": {
+            "kanban": "Git Kanban with branch-linked tasks",
+            "git": "In-app PRs and code diffs",
+            "ci": "CI/CD dashboard and build logs"
+        }
+    }
 }

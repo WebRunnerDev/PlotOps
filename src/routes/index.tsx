@@ -1,25 +1,21 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-import {
-    GUEST_DEMO_BOARD_ID,
-    GUEST_DEMO_PROJECT_ID,
-    isGuest,
-} from "@/features/guest-mode";
+import { LoginForm, signInRouteBeforeLoad } from "@/features/auth";
+import { AuthPageSeo } from "@/features/auth/ui/auth-page-seo";
+import { AuthPageShell } from "@/widgets/auth-page-shell";
 
 export const Route = createFileRoute("/")({
-    beforeLoad: ({ context }) => {
-        if (context.auth.user) {
-            throw redirect({ to: "/home" });
-        }
-        if (isGuest()) {
-            throw redirect({
-                params: {
-                    boardId: GUEST_DEMO_BOARD_ID,
-                    projectId: GUEST_DEMO_PROJECT_ID,
-                },
-                to: "/projects/$projectId/boards/$boardId",
-            });
-        }
-        throw redirect({ to: "/sign-in" });
-    },
+    beforeLoad: signInRouteBeforeLoad,
+    component: LandingPage,
 });
+
+function LandingPage() {
+    return (
+        <>
+            <AuthPageSeo path="/" titleKey="signInTitle" />
+            <AuthPageShell>
+                <LoginForm />
+            </AuthPageShell>
+        </>
+    );
+}

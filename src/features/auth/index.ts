@@ -8,6 +8,7 @@ export type { GuestActionPolicy } from "./lib/guest-action-policy";
 export { isProfileGateRequired } from "./lib/guest-profile-gate";
 export type { ProfileGateInput } from "./lib/guest-profile-gate";
 export { requireAuthSession } from "./lib/require-auth-session";
+export { signInRouteBeforeLoad } from "./lib/sign-in-route-gate";
 export { AuthProvider } from "./model/auth-provider";
 export type { AuthContextValue } from "./model/types";
 export { useAuth } from "./model/use-auth";

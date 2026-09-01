@@ -113,5 +113,16 @@
     "signUpLoading": "Создание аккаунта...",
     "signUpSubtitle": "Регистрация через GitHub, Google или email — email нужен для приглашений без GitHub",
     "signUpTitle": "Создать аккаунт PlotOps",
-    "username": "Username"
+    "username": "Username",
+    "marketing": {
+        "eyebrow": "Git-native трекер проектов",
+        "title": "Канбан, GitHub и CI в одном месте",
+        "description": "Привязывайте задачи к веткам, смотрите pull request и diff без переключения вкладок, следите за GitHub Actions — открытый портфолио-проект.",
+        "seoDescription": "PlotOps — git-native трекер проектов с канбан-доской, просмотром PR и diff в приложении и дашбордом CI/CD. Войдите или попробуйте демо без регистрации.",
+        "features": {
+            "kanban": "Git-канбан: задачи и ветки",
+            "git": "PR и diff внутри приложения",
+            "ci": "CI/CD и логи сборок"
+        }
+    }
 }
