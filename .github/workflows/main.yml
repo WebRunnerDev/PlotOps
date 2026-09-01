@@ -1,13 +1,42 @@
 # .github/workflows/ci.yml
 name: CI
 on:
-  push:
-  pull_request:
-  workflow_dispatch:
+    push:
+    pull_request:
+    workflow_dispatch:
+
+env:
+    # Placeholders satisfy Vite embed at build time; public/guest e2e does not call Supabase.
+    VITE_SUPABASE_URL: https://ci-build-placeholder.supabase.co
+    VITE_SUPABASE_PUBLISHABLE_KEY: ci_build_placeholder_publishable_key
 
 jobs:
-  hello:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "PlotOps CI smoke" && npm ci && npm test
+    unit:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+            - run: npm ci
+            - run: npm test
+
+    browser-compat:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+            - run: npm ci
+            - run: npx playwright install --with-deps chromium firefox webkit
+            - run: npm run build
+            - run: npm run test:e2e
+            - uses: actions/upload-artifact@v4
+              if: failure()
+              with:
+                  name: playwright-report
+                  path: playwright-report/
+                  retention-days: 7
