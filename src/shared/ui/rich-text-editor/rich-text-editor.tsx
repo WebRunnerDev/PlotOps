@@ -7,7 +7,6 @@ import {
     offset,
     shift,
 } from "@floating-ui/dom";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import FileHandler from "@tiptap/extension-file-handler";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
@@ -74,6 +73,7 @@ import {
 } from "@/shared/shadcn/ui/tooltip";
 import { clearBootNodeSelection } from "@/shared/ui/rich-text-editor/boot-selection";
 import { shouldPreferClipboardHtml } from "@/shared/ui/rich-text-editor/clipboard-html";
+import { CodeBlockWithCopy } from "@/shared/ui/rich-text-editor/code-block-with-copy";
 import {
     normalizeEditorContent,
     richTextLength,
@@ -485,7 +485,7 @@ export const RichTextEditor = forwardRef<
                 link: false,
                 underline: false,
             }),
-            CodeBlockLowlight.configure({
+            CodeBlockWithCopy.configure({
                 lowlight,
             }),
             Highlight,
