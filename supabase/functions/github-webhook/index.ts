@@ -2,8 +2,14 @@
 // eslint-disable-next-line import-x/no-unresolved -- esm.sh URL for Deno deploy
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+import { createSlidingWindowRateLimiter } from "../_shared/sliding-window-rate-limit.ts";
 import { syncMergedPullRequest } from "./sync.ts";
 import { verifyGitHubSignature } from "./verify-signature.ts";
+
+const webhookIpLimiter = createSlidingWindowRateLimiter({
+    limit: 120,
+    windowMs: 60 * 1000,
+});
 
 const corsHeaders = {
     "Access-Control-Allow-Headers":
@@ -18,6 +24,21 @@ Deno.serve(async (request) => {
 
     if (request.method !== "POST") {
         return json({ error: "method_not_allowed" }, 405);
+    }
+
+    const clientIp =
+        request.headers.get("cf-connecting-ip") ??
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        "unknown";
+    const ipLimit = webhookIpLimiter.check(`ip:${clientIp}`);
+    if (!ipLimit.allowed) {
+        return json(
+            {
+                error: "rate_limited",
+                retryAfterSec: ipLimit.retryAfterSec,
+            },
+            429
+        );
     }
 
     const secret = Deno.env.get("GITHUB_WEBHOOK_SECRET") ?? "";

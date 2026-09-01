@@ -1,5 +1,6 @@
 import { Turnstile } from "@marsidev/react-turnstile";
 
+import { useTheme } from "@/app/model/theme";
 import {
     isTurnstileConfigured,
     turnstileSiteKey,
@@ -17,19 +18,30 @@ export function AuthTurnstile({
     onTokenChange,
     resetKey = 0,
 }: AuthTurnstileProperties) {
+    const { theme } = useTheme();
+
     if (!isTurnstileConfigured()) {
         return null;
     }
 
     return (
-        <Turnstile
-            key={resetKey}
-            onError={() => onTokenChange(null)}
-            onExpire={() => onTokenChange(null)}
-            onSuccess={onTokenChange}
-            options={{ action }}
-            siteKey={turnstileSiteKey()}
-        />
+        <div className="flex w-full min-w-0 justify-center [&_.cf-turnstile]:w-full">
+            <Turnstile
+                key={resetKey}
+                className="w-full"
+                id={`turnstile-${action}`}
+                onError={() => onTokenChange(null)}
+                onExpire={() => onTokenChange(null)}
+                onSuccess={onTokenChange}
+                options={{
+                    action,
+                    appearance: "interaction-only",
+                    size: "flexible",
+                    theme: theme === "dark" ? "dark" : "light",
+                }}
+                siteKey={turnstileSiteKey()}
+            />
+        </div>
     );
 }
 
