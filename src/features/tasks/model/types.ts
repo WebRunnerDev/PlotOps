@@ -104,8 +104,10 @@ export type TaskLinkPeer = {
     direction: "incoming" | "outgoing";
     id: string;
     kind: TaskLinkKind;
+    otherBoardId: string;
     otherId: string;
     otherKey: string;
+    otherStatus: TaskStatus;
     otherTitle: string;
 };
 

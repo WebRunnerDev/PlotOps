@@ -161,6 +161,7 @@ const TASK_SELECT = `
     kind,
     target:tasks!task_links_target_task_id_fkey (
       id,
+      board_id,
       task_key,
       title,
       archived_at,
@@ -172,6 +173,7 @@ const TASK_SELECT = `
     kind,
     source:tasks!task_links_source_task_id_fkey (
       id,
+      board_id,
       task_key,
       title,
       archived_at,

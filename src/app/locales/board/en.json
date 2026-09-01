@@ -214,6 +214,14 @@
         "add": "Add",
         "cancel": "Cancel",
         "addKind": "Link kind",
+        "addModeLabel": "Link action",
+        "addMode": {
+            "create": "Create new",
+            "link": "Link existing"
+        },
+        "createPlaceholder": "Task title…",
+        "linkTitle": "Link existing task",
+        "createFailed": "Could not create Task",
         "addPlaceholder": "Search Tasks…",
         "noResults": "No matching Tasks.",
         "otherBoard": "Other board",
@@ -866,6 +874,10 @@
                 "center": "Align center",
                 "right": "Align right"
             }
+        },
+        "codeBlock": {
+            "copy": "Copy code",
+            "copied": "Code copied"
         },
         "table": {
             "addRowBefore": "Insert row above",

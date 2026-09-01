@@ -360,8 +360,10 @@ function relatedPeersOf(
             direction: link.sourceTaskId === taskId ? "outgoing" : "incoming",
             id: link.id,
             kind: link.kind,
+            otherBoardId: other.boardId,
             otherId: other.id,
             otherKey: other.key,
+            otherStatus: other.status,
             otherTitle: other.title,
         });
     }

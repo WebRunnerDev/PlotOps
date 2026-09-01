@@ -2,17 +2,23 @@ import type { LucideIcon } from "lucide-react";
 
 import { useQueries } from "@tanstack/react-query";
 import { ArrowRight, Ban, Link2, Plus, XIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { BoardColumn } from "@/features/boards";
 import type {
     Task,
     TaskLinkKind,
     TaskLinkPeer,
 } from "@/features/tasks/model/types";
 
-import { useProjectBoards } from "@/features/boards";
+import {
+    resolveBoardsProvider,
+    useBoardColumns,
+    useProjectBoards,
+} from "@/features/boards";
+import { boardKeys } from "@/features/boards/model/query-keys";
 import { isGuest } from "@/features/guest-mode";
 import { useProjectLabels } from "@/features/labels";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
@@ -22,6 +28,7 @@ import {
     mergeTaskCatalogs,
 } from "@/features/tasks/lib/collect-task-link-candidates";
 import { TASK_LINK_ERROR } from "@/features/tasks/lib/task-structure";
+import { TASK_TITLE_MAX_LENGTH } from "@/features/tasks/model/constants";
 import { taskKeys } from "@/features/tasks/model/query-keys";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
@@ -30,6 +37,7 @@ import { TaskSearchPicker } from "@/features/tasks/ui/task-search-picker";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Input } from "@/shared/shadcn/ui/input";
 import {
     Select,
     SelectContent,
@@ -38,6 +46,8 @@ import {
 } from "@/shared/shadcn/ui/select";
 
 type AddKind = "blocked_by" | "blocks" | "relates_to";
+
+type AddMode = "create" | "link";
 
 type LinkTone = "blockedBy" | "blocks" | "relates";
 
@@ -55,10 +65,11 @@ export function TaskLinksSection({
     task,
 }: TaskLinksSectionProperties) {
     const { t } = useTranslation("board");
-    const { createTaskLink, deleteTaskLink } = useBoardTasks(
+    const { createTask, createTaskLink, deleteTaskLink } = useBoardTasks(
         projectId,
         boardId
     );
+    const { columns } = useBoardColumns(projectId, boardId);
     const { data: projectTasks = [] } = useProjectTasks(projectId);
     const { data: boards = [] } = useProjectBoards(projectId);
     const { labels } = useProjectLabels(projectId);
@@ -71,10 +82,31 @@ export function TaskLinksSection({
             queryKey: taskKeys.board(projectId, board.id),
         })),
     });
+    const boardsProvider = resolveBoardsProvider(isGuest());
+    const columnQueries = useQueries({
+        queries: boards.map((board) => ({
+            enabled: Boolean(projectId && board.id),
+            queryFn: () =>
+                boardsProvider.fetchBoardColumns(projectId, board.id),
+            queryKey: boardKeys.columns(projectId, board.id),
+        })),
+    });
+    const columnsByBoardId = useMemo(() => {
+        const map = new Map<string, BoardColumn[]>();
+        for (const [index, board] of boards.entries()) {
+            map.set(board.id, columnQueries[index]?.data ?? []);
+        }
+        return map;
+    }, [boards, columnQueries]);
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const [open, setOpen] = useState(false);
     const [addKind, setAddKind] = useState<AddKind>("relates_to");
+    const [addMode, setAddMode] = useState<AddMode>("create");
+    const [title, setTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const addFormReference = useRef<HTMLDivElement>(null);
+    const inputReference = useRef<HTMLInputElement>(null);
+    const skipBlurClose = useRef(false);
 
     const peers = task.relatedTasks ?? [];
     const blockedBy = peers.filter(
@@ -106,19 +138,64 @@ export function TaskLinksSection({
         [addKind, catalog, peers, projectId, task.id]
     );
 
+    const cancelAdd = () => {
+        setOpen(false);
+        setTitle("");
+    };
+
+    const linkTaskIds = async (
+        sourceId: string,
+        targetId: string,
+        otherKey: string
+    ) => {
+        const kind: TaskLinkKind =
+            addKind === "relates_to" ? "relates_to" : "blocks";
+        const resolvedSourceId = addKind === "blocked_by" ? targetId : sourceId;
+        const resolvedTargetId = addKind === "blocked_by" ? sourceId : targetId;
+        await createTaskLink(resolvedSourceId, resolvedTargetId, kind);
+        toast.success(t("taskLinks.added", { key: otherKey }));
+        cancelAdd();
+    };
+
     const addLink = async (target: null | Task) => {
         if (!target || isSubmitting) return;
         setIsSubmitting(true);
-        const kind: TaskLinkKind =
-            addKind === "relates_to" ? "relates_to" : "blocks";
-        const sourceId = addKind === "blocked_by" ? target.id : task.id;
-        const targetId = addKind === "blocked_by" ? task.id : target.id;
         try {
-            await createTaskLink(sourceId, targetId, kind);
-            toast.success(t("taskLinks.added", { key: target.key }));
-            setOpen(false);
+            await linkTaskIds(task.id, target.id, target.key);
         } catch (error) {
             toast.error(taskLinkErrorMessage(error, t));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const submitCreate = async () => {
+        const trimmed = title.trim();
+        if (!trimmed) {
+            cancelAdd();
+            return;
+        }
+        if (isSubmitting) return;
+
+        const firstColumn = columns[0];
+        if (!firstColumn) {
+            toast.error(t("taskLinks.createFailed"));
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const created = await createTask(firstColumn.id, trimmed, {
+                sprintId: task.sprintId,
+                taskType: task.type,
+            });
+            try {
+                await linkTaskIds(task.id, created.id, created.key);
+            } catch (linkError) {
+                toast.error(taskLinkErrorMessage(linkError, t));
+            }
+        } catch {
+            toast.error(t("taskLinks.createFailed"));
         } finally {
             setIsSubmitting(false);
         }
@@ -136,14 +213,18 @@ export function TaskLinksSection({
     return (
         <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
-                <h3 className="text-ui font-medium">{t("taskLinks.title")}</h3>
+                <h3 className="text-ui font-medium">
+                    {open && addMode === "link"
+                        ? t("taskLinks.linkTitle")
+                        : t("taskLinks.title")}
+                </h3>
                 {canEdit ? (
                     open ? (
                         <Button
                             className="h-8 px-2 text-muted-foreground"
                             disabled={isSubmitting}
                             onClick={() => {
-                                setOpen(false);
+                                cancelAdd();
                             }}
                             size="sm"
                             type="button"
@@ -169,7 +250,7 @@ export function TaskLinksSection({
             </div>
 
             {canEdit && open ? (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2" ref={addFormReference}>
                     <Select
                         onValueChange={(value) => {
                             if (
@@ -177,6 +258,7 @@ export function TaskLinksSection({
                                 value === "blocks" ||
                                 value === "blocked_by"
                             ) {
+                                skipBlurClose.current = true;
                                 setAddKind(value);
                             }
                         }}
@@ -185,6 +267,9 @@ export function TaskLinksSection({
                         <SelectTrigger
                             aria-label={t("taskLinks.addKind")}
                             className="h-8 w-full font-mono text-code"
+                            onPointerDown={() => {
+                                skipBlurClose.current = true;
+                            }}
                         >
                             <span>
                                 {addKind === "blocked_by"
@@ -206,20 +291,100 @@ export function TaskLinksSection({
                             </SelectItem>
                         </SelectContent>
                     </Select>
-                    <TaskSearchPicker
-                        boards={boards}
-                        currentBoardId={boardId}
-                        disabled={isSubmitting}
-                        emptyText={t("taskLinks.noResults")}
-                        items={candidates}
-                        labels={labels}
-                        onSelect={(target) => {
-                            void addLink(target);
+                    <Select
+                        onValueChange={(value) => {
+                            if (value === "create" || value === "link") {
+                                skipBlurClose.current = true;
+                                setAddMode(value);
+                                if (value === "create") {
+                                    queueMicrotask(() => {
+                                        inputReference.current?.focus();
+                                    });
+                                }
+                            }
                         }}
-                        people={people}
-                        placeholder={t("taskLinks.addPlaceholder")}
-                        projectId={projectId}
-                    />
+                        value={addMode}
+                    >
+                        <SelectTrigger
+                            aria-label={t("taskLinks.addModeLabel")}
+                            className="h-8 w-full font-mono text-code"
+                            onPointerDown={() => {
+                                skipBlurClose.current = true;
+                            }}
+                        >
+                            <span>
+                                {addMode === "create"
+                                    ? t("taskLinks.addMode.create")
+                                    : t("taskLinks.addMode.link")}
+                            </span>
+                        </SelectTrigger>
+                        <SelectContent alignItemWithTrigger={false}>
+                            <SelectItem value="create">
+                                {t("taskLinks.addMode.create")}
+                            </SelectItem>
+                            <SelectItem value="link">
+                                {t("taskLinks.addMode.link")}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {addMode === "create" ? (
+                        <Input
+                            aria-label={t("taskLinks.createPlaceholder")}
+                            className="h-8 bg-background font-mono text-code"
+                            disabled={isSubmitting}
+                            maxLength={TASK_TITLE_MAX_LENGTH}
+                            onBlur={(event) => {
+                                if (skipBlurClose.current) {
+                                    skipBlurClose.current = false;
+                                    return;
+                                }
+                                if (
+                                    isAddFormInteractionTarget(
+                                        event.relatedTarget,
+                                        addFormReference.current
+                                    )
+                                ) {
+                                    return;
+                                }
+                                if (!title.trim()) {
+                                    cancelAdd();
+                                }
+                            }}
+                            onChange={(event) => {
+                                setTitle(event.target.value);
+                            }}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    skipBlurClose.current = true;
+                                    void submitCreate();
+                                }
+                                if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    skipBlurClose.current = true;
+                                    cancelAdd();
+                                }
+                            }}
+                            placeholder={t("taskLinks.createPlaceholder")}
+                            ref={inputReference}
+                            value={title}
+                        />
+                    ) : (
+                        <TaskSearchPicker
+                            boards={boards}
+                            currentBoardId={boardId}
+                            disabled={isSubmitting}
+                            emptyText={t("taskLinks.noResults")}
+                            items={candidates}
+                            labels={labels}
+                            onSelect={(target) => {
+                                void addLink(target);
+                            }}
+                            people={people}
+                            placeholder={t("taskLinks.addPlaceholder")}
+                            projectId={projectId}
+                        />
+                    )}
                 </div>
             ) : undefined}
 
@@ -231,6 +396,7 @@ export function TaskLinksSection({
 
             <LinkGroup
                 canEdit={canEdit}
+                columnsByBoardId={columnsByBoardId}
                 onOpen={selectTask}
                 onRemove={removeLink}
                 peers={blockedBy}
@@ -239,6 +405,7 @@ export function TaskLinksSection({
             />
             <LinkGroup
                 canEdit={canEdit}
+                columnsByBoardId={columnsByBoardId}
                 onOpen={selectTask}
                 onRemove={removeLink}
                 peers={blocks}
@@ -247,6 +414,7 @@ export function TaskLinksSection({
             />
             <LinkGroup
                 canEdit={canEdit}
+                columnsByBoardId={columnsByBoardId}
                 onOpen={selectTask}
                 onRemove={removeLink}
                 peers={related}
@@ -290,8 +458,29 @@ const LINK_TONE: Record<
     },
 };
 
+function isAddFormInteractionTarget(
+    relatedTarget: EventTarget | null,
+    formRoot: HTMLElement | null
+): boolean {
+    if (!(relatedTarget instanceof Element)) {
+        return false;
+    }
+
+    if (formRoot?.contains(relatedTarget)) {
+        return true;
+    }
+
+    return Boolean(
+        relatedTarget.closest("[data-slot=select-content]") ||
+        relatedTarget.closest("[data-slot=select-trigger]") ||
+        relatedTarget.closest("[data-slot=combobox-content]") ||
+        relatedTarget.closest("[data-slot=dropdown-menu-content]")
+    );
+}
+
 function LinkGroup({
     canEdit,
+    columnsByBoardId,
     onOpen,
     onRemove,
     peers,
@@ -299,6 +488,7 @@ function LinkGroup({
     tone,
 }: {
     canEdit: boolean;
+    columnsByBoardId: ReadonlyMap<string, BoardColumn[]>;
     onOpen: (taskId: string) => void;
     onRemove: (linkId: string, otherKey: string) => Promise<void>;
     peers: TaskLinkPeer[];
@@ -357,6 +547,15 @@ function LinkGroup({
                             <span className="min-w-0 truncate text-ui">
                                 {peer.otherTitle}
                             </span>
+                            <span
+                                className="max-w-28 shrink-0 truncate text-meta text-muted-foreground"
+                                title={t("fields.status")}
+                            >
+                                {resolveLinkPeerStatusName(
+                                    columnsByBoardId,
+                                    peer
+                                )}
+                            </span>
                         </button>
                         {canEdit ? (
                             <Button
@@ -378,6 +577,18 @@ function LinkGroup({
                 ))}
             </ul>
         </div>
+    );
+}
+
+function resolveLinkPeerStatusName(
+    columnsByBoardId: ReadonlyMap<string, BoardColumn[]>,
+    peer: Pick<TaskLinkPeer, "otherBoardId" | "otherStatus">
+): string {
+    if (!peer.otherStatus) return peer.otherStatus;
+    const columns = columnsByBoardId.get(peer.otherBoardId) ?? [];
+    return (
+        columns.find((column) => column.id === peer.otherStatus)?.name ??
+        peer.otherStatus
     );
 }
 
