@@ -120,7 +120,7 @@ SUPABASE_AUTH_CAPTCHA_SECRET=1x0000000000000000000000000000000AA
 
 To develop without CAPTCHA locally, set `[auth.captcha] enabled = false` in `config.toml` and omit `VITE_TURNSTILE_SITE_KEY`.
 
-See [`docs/security/hardening-plan.md`](security/hardening-plan.md) for the full auth hardening roadmap. **Wave 2 (infrastructure):** [`docs/security/wave-2-runbook.md`](security/wave-2-runbook.md) — network restrictions, SSL, org MFA, custom auth SMTP, app TOTP, CI Security Advisor.
+See [`docs/security/hardening-plan.md`](security/hardening-plan.md) for the full auth hardening roadmap. **Wave 2 (infrastructure):** [`docs/security/wave-2-runbook.md`](security/wave-2-runbook.md) — network restrictions, SSL, org MFA, custom auth SMTP, app TOTP, CI Security Advisor. **Wave 3 (edge / scale):** [`docs/security/wave-3-runbook.md`](security/wave-3-runbook.md) — Cloudflare WAF, Auth Postgres hooks, Edge Function rate limits.
 
 ## Remote (PlotOps cloud)
 
