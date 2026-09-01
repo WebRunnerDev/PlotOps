@@ -1,40 +1,128 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <script>
-      (function () {
-        var theme = localStorage.getItem("plotops-theme");
-        if (theme === "light") document.documentElement.classList.remove("dark");
-        else document.documentElement.classList.add("dark");
-      })();
-    </script>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PlotOps — Git-native project tracker</title>
-    <meta
-      name="description"
-      content="Git-native project tracker — live at plotops.webrunner.dev. Sign in for the real app, or Try demo without an account."
-    />
-    <link rel="canonical" href="https://plotops.webrunner.dev/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://plotops.webrunner.dev/" />
-    <meta property="og:title" content="PlotOps — Git-native project tracker" />
-    <meta
-      property="og:description"
-      content="Git-native project tracker — live at plotops.webrunner.dev. Sign in for the real app, or Try demo without an account."
-    />
-    <meta property="og:image" content="https://plotops.webrunner.dev/PlotOps.png" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="PlotOps — Git-native project tracker" />
-    <meta
-      name="twitter:description"
-      content="Git-native project tracker — live at plotops.webrunner.dev. Sign in for the real app, or Try demo without an account."
-    />
-    <meta name="twitter:image" content="https://plotops.webrunner.dev/PlotOps.png" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/app/main.tsx"></script>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <script>
+            (function () {
+                var theme = localStorage.getItem("plotops-theme");
+                if (theme === "light")
+                    document.documentElement.classList.remove("dark");
+                else document.documentElement.classList.add("dark");
+            })();
+        </script>
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#09090b" />
+        <title>PlotOps — Git-native project tracker</title>
+        <meta
+            name="description"
+            content="PlotOps — git-native трекер проектов с канбан-доской, интеграцией GitHub и CI/CD. Войдите или попробуйте демо без регистрации."
+        />
+        <meta
+            name="keywords"
+            content="project tracker, kanban, github, git, jira, linear, ci cd, task management, трекер задач, канбан"
+        />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="PlotOps" />
+        <link rel="canonical" href="https://plotops.webrunner.dev/" />
+        <link
+            rel="alternate"
+            hreflang="ru"
+            href="https://plotops.webrunner.dev/"
+        />
+        <link
+            rel="alternate"
+            hreflang="en"
+            href="https://plotops.webrunner.dev/"
+        />
+        <link
+            rel="alternate"
+            hreflang="x-default"
+            href="https://plotops.webrunner.dev/"
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://plotops.webrunner.dev/" />
+        <meta property="og:site_name" content="PlotOps" />
+        <meta property="og:locale" content="ru_RU" />
+        <meta property="og:locale:alternate" content="en_US" />
+        <meta
+            property="og:title"
+            content="PlotOps — Git-native project tracker"
+        />
+        <meta
+            property="og:description"
+            content="PlotOps — git-native трекер проектов с канбан-доской, интеграцией GitHub и CI/CD. Войдите или попробуйте демо без регистрации."
+        />
+        <meta
+            property="og:image"
+            content="https://plotops.webrunner.dev/PlotOps.png"
+        />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="PlotOps — Git-native project tracker"
+        />
+        <meta
+            name="twitter:description"
+            content="PlotOps — git-native трекер проектов с канбан-доской, интеграцией GitHub и CI/CD. Войдите или попробуйте демо без регистрации."
+        />
+        <meta
+            name="twitter:image"
+            content="https://plotops.webrunner.dev/PlotOps.png"
+        />
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "WebApplication",
+                "name": "PlotOps",
+                "url": "https://plotops.webrunner.dev/",
+                "description": "Git-native project tracker with Kanban boards, in-app GitHub PR/diff viewer, and CI/CD dashboard.",
+                "applicationCategory": "BusinessApplication",
+                "operatingSystem": "Web",
+                "browserRequirements": "Requires JavaScript",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "USD"
+                },
+                "featureList": [
+                    "Git Kanban with branch-linked tasks",
+                    "In-app pull requests and code diffs",
+                    "GitHub Actions CI/CD dashboard",
+                    "Guest demo without registration"
+                ]
+            }
+        </script>
+    </head>
+    <body>
+        <noscript>
+            <main
+                style="
+                    max-width: 42rem;
+                    margin: 2rem auto;
+                    padding: 0 1rem;
+                    font-family: system-ui, sans-serif;
+                "
+            >
+                <h1>PlotOps — Git-native project tracker</h1>
+                <p>
+                    Kanban board with GitHub integration: link tasks to
+                    branches, review pull requests and diffs in-app, and watch
+                    CI build status — without tab-hopping.
+                </p>
+                <p>
+                    <a href="/sign-in">Sign in</a>
+                    ·
+                    <a href="/sign-up">Create account</a>
+                    ·
+                    <a href="/privacy">Privacy policy</a>
+                    ·
+                    <a href="/terms">Terms of use</a>
+                </p>
+            </main>
+        </noscript>
+        <div id="root"></div>
+        <script type="module" src="/src/app/main.tsx"></script>
+    </body>
 </html>

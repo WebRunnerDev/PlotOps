@@ -1,0 +1,17 @@
+# PlotOps — public pages only. App routes require sign-in and are client-rendered.
+User-agent: *
+Allow: /
+Allow: /sign-in
+Allow: /sign-up
+Allow: /privacy
+Allow: /terms
+Disallow: /home
+Disallow: /dashboard
+Disallow: /projects/
+Disallow: /settings
+Disallow: /notifications
+Disallow: /teams/
+Disallow: /complete-profile
+Disallow: /invite/
+
+Sitemap: https://plotops.webrunner.dev/sitemap.xml
