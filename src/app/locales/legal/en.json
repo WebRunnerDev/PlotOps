@@ -1,0 +1,14 @@
+{
+    "backToSignIn": "Back to sign in",
+    "navLabel": "Legal documents",
+    "privacy": "Privacy policy",
+    "privacyCompact": "Privacy",
+    "terms": "Terms of use",
+    "termsCompact": "Terms",
+    "seo": {
+        "privacyDescription": "How PlotOps collects, uses, and protects personal data when you use the git-native project tracker.",
+        "privacyTitle": "Privacy policy",
+        "termsDescription": "Terms of use for PlotOps — the git-native project tracker with Kanban and GitHub integration.",
+        "termsTitle": "Terms of use"
+    }
+}

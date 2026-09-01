@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './../routes/__root'
+import { Route as TermsRouteImport } from './../routes/terms'
+import { Route as PrivacyRouteImport } from './../routes/privacy'
 import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
 import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
@@ -30,6 +32,16 @@ import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../rou
 import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
 import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompleteProfileRoute = CompleteProfileRouteImport.update({
   id: '/complete-profile',
   path: '/complete-profile',
@@ -140,6 +152,8 @@ const mainProjectsProjectIdBoardsBoardIdBacklogRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/complete-profile': typeof CompleteProfileRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -161,6 +175,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/complete-profile': typeof CompleteProfileRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -182,6 +198,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(main)': typeof mainRouteRouteWithChildren
   '/complete-profile': typeof CompleteProfileRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/(auth)/sign-in': typeof authSignInRoute
   '/(auth)/sign-up': typeof authSignUpRoute
   '/(main)/about': typeof mainAboutRoute
@@ -205,6 +223,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/complete-profile'
+    | '/privacy'
+    | '/terms'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -226,6 +246,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/complete-profile'
+    | '/privacy'
+    | '/terms'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -246,6 +268,8 @@ export interface FileRouteTypes {
     | '/'
     | '/(main)'
     | '/complete-profile'
+    | '/privacy'
+    | '/terms'
     | '/(auth)/sign-in'
     | '/(auth)/sign-up'
     | '/(main)/about'
@@ -269,6 +293,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   mainRouteRoute: typeof mainRouteRouteWithChildren
   CompleteProfileRoute: typeof CompleteProfileRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   authSignInRoute: typeof authSignInRoute
   authSignUpRoute: typeof authSignUpRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -276,6 +302,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/complete-profile': {
       id: '/complete-profile'
       path: '/complete-profile'
@@ -488,6 +528,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   mainRouteRoute: mainRouteRouteWithChildren,
   CompleteProfileRoute: CompleteProfileRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   authSignInRoute: authSignInRoute,
   authSignUpRoute: authSignUpRoute,
   InviteTokenRoute: InviteTokenRoute,
