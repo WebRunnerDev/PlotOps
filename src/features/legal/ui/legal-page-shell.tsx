@@ -4,7 +4,6 @@ import { useRouter } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { usePrerenderReady } from "@/shared/lib/use-prerender-ready";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
 
@@ -19,7 +18,6 @@ export function LegalPageShell({
     children,
     className,
 }: LegalPageShellProperties) {
-    usePrerenderReady();
     const router = useRouter();
     const { t } = useTranslation(["legal", "common"]);
 

@@ -16,9 +16,9 @@ test.describe("public routes", () => {
             const errors = collectPageErrors(page);
 
             await page.goto(route, { waitUntil: "domcontentloaded" });
-            await expect(
-                page.locator('html[data-prerender-ready="true"]')
-            ).toBeAttached({ timeout: 45_000 });
+            await expect(page.locator("main h1").first()).toBeVisible({
+                timeout: 45_000,
+            });
 
             expect(errors).toEqual([]);
         });

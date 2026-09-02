@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { AuthLanguageSwitcher } from "@/features/auth";
-import { usePrerenderReady } from "@/shared/lib/use-prerender-ready";
 import { cn } from "@/shared/lib/utils";
 
 import { AuthMarketingIntro } from "./auth-marketing-intro";
@@ -17,8 +16,6 @@ export function AuthPageShell({
     children,
     className,
 }: AuthPageShellProperties) {
-    usePrerenderReady();
-
     return (
         <div
             className={cn(

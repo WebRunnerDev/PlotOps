@@ -56,18 +56,17 @@ describe("seo seam", () => {
         expect(legalPage).toMatch(/LegalPageSeo/);
     });
 
-    it("prerenders public routes after build via Playwright", () => {
-        const script = read("scripts/prerender.mjs");
+    it("generates public routes at build time via react-dom/server SSG", () => {
+        const script = read("scripts/ssg.mjs");
+        const renderRoute = read("src/app/ssg/render-route.tsx");
         const site = read("src/shared/config/site.ts");
         const packageJson = read("package.json");
 
-        expect(script).toMatch(/playwright/);
-        expect(script).toMatch(/data-prerender-ready/);
-        expect(script).toContain('"/sign-in"');
-        expect(script).toContain('"/privacy"');
-        expect(script).toContain('"/terms"');
+        expect(script).toMatch(/renderPublicRoute/);
+        expect(renderRoute).toMatch(/renderRouterToString/);
         expect(site).toMatch(/PLOTOPS_PUBLIC_PATHS/);
-        expect(packageJson).toMatch(/scripts\/prerender\.mjs/);
+        expect(packageJson).toMatch(/scripts\/ssg\.mjs/);
+        expect(packageJson).toMatch(/vite\.config\.ssg\.ts/);
     });
 
     it("routes prerendered HTML through Cloudflare _redirects", () => {
