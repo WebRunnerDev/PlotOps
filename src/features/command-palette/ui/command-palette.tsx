@@ -309,6 +309,7 @@ export function CommandPalette() {
                 boardId: intent.boardId,
                 projectId,
             },
+            search: { task: intent.taskKey },
             to: "/projects/$projectId/boards/$boardId",
         });
         close();

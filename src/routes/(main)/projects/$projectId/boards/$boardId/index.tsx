@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { parseTaskBoardSearch } from "@/features/tasks/model/task-board-search";
 import { BoardPage } from "@/widgets/kanban-board";
 
 export const Route = createFileRoute(
     "/(main)/projects/$projectId/boards/$boardId/"
 )({
     component: ProjectBoardIndexRoute,
+    validateSearch: parseTaskBoardSearch,
 });
 
 function ProjectBoardIndexRoute() {

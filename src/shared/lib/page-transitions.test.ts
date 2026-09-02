@@ -1,6 +1,43 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { waitForActiveViewTransition } from "@/shared/lib/page-transitions";
+import {
+    getPageTransitionTypes,
+    waitForActiveViewTransition,
+} from "@/shared/lib/page-transitions";
+
+describe("getPageTransitionTypes", () => {
+    it("skips view transitions for search-only board URL updates", () => {
+        expect(
+            getPageTransitionTypes({
+                fromLocation: {
+                    pathname: "/projects/p1/boards/b1",
+                    state: {},
+                },
+                pathChanged: false,
+                toLocation: {
+                    pathname: "/projects/p1/boards/b1",
+                    state: {},
+                },
+            })
+        ).toBe(false);
+    });
+
+    it("still fades between routes at the same depth", () => {
+        expect(
+            getPageTransitionTypes({
+                fromLocation: {
+                    pathname: "/projects/p1/boards/b1",
+                    state: {},
+                },
+                pathChanged: true,
+                toLocation: {
+                    pathname: "/projects/p1/boards/b2",
+                    state: {},
+                },
+            })
+        ).toEqual(["fade"]);
+    });
+});
 
 describe("waitForActiveViewTransition", () => {
     afterEach(() => {

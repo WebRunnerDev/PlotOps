@@ -28,6 +28,7 @@ import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(mai
 import { Route as mainTeamsTeamIdSettingsRouteImport } from './../routes/(main)/teams/$teamId/settings'
 import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
 import { Route as mainProjectsProjectIdCiCdRouteImport } from './../routes/(main)/projects/$projectId/ci-cd'
+import { Route as mainProjectsProjectIdTasksTaskKeyRouteImport } from './../routes/(main)/projects/$projectId/tasks/$taskKey'
 import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
 import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
 import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
@@ -130,6 +131,12 @@ const mainProjectsProjectIdCiCdRoute =
     path: '/ci-cd',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainProjectsProjectIdTasksTaskKeyRoute =
+  mainProjectsProjectIdTasksTaskKeyRouteImport.update({
+    id: '/tasks/$taskKey',
+    path: '/tasks/$taskKey',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
 const mainProjectsProjectIdBoardsBoardIdRoute =
   mainProjectsProjectIdBoardsBoardIdRouteImport.update({
     id: '/boards/$boardId',
@@ -169,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/teams/$teamId/': typeof mainTeamsTeamIdIndexRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  '/projects/$projectId/tasks/$taskKey': typeof mainProjectsProjectIdTasksTaskKeyRoute
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/projects/$projectId/boards/$boardId/': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
@@ -190,6 +198,7 @@ export interface FileRoutesByTo {
   '/teams/$teamId/settings': typeof mainTeamsTeamIdSettingsRoute
   '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
   '/teams/$teamId': typeof mainTeamsTeamIdIndexRoute
+  '/projects/$projectId/tasks/$taskKey': typeof mainProjectsProjectIdTasksTaskKeyRoute
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
@@ -215,6 +224,7 @@ export interface FileRoutesById {
   '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/(main)/teams/$teamId/': typeof mainTeamsTeamIdIndexRoute
   '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  '/(main)/projects/$projectId/tasks/$taskKey': typeof mainProjectsProjectIdTasksTaskKeyRoute
   '/(main)/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/(main)/projects/$projectId/boards/$boardId/': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/'
     | '/teams/$teamId/'
     | '/projects/$projectId/boards/$boardId'
+    | '/projects/$projectId/tasks/$taskKey'
     | '/projects/$projectId/boards/$boardId/backlog'
     | '/projects/$projectId/boards/$boardId/'
   fileRoutesByTo: FileRoutesByTo
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/teams/$teamId/settings'
     | '/projects/$projectId'
     | '/teams/$teamId'
+    | '/projects/$projectId/tasks/$taskKey'
     | '/projects/$projectId/boards/$boardId/backlog'
     | '/projects/$projectId/boards/$boardId'
   id:
@@ -285,6 +297,7 @@ export interface FileRouteTypes {
     | '/(main)/projects/$projectId/'
     | '/(main)/teams/$teamId/'
     | '/(main)/projects/$projectId/boards/$boardId'
+    | '/(main)/projects/$projectId/tasks/$taskKey'
     | '/(main)/projects/$projectId/boards/$boardId/backlog'
     | '/(main)/projects/$projectId/boards/$boardId/'
   fileRoutesById: FileRoutesById
@@ -435,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdCiCdRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
+    '/(main)/projects/$projectId/tasks/$taskKey': {
+      id: '/(main)/projects/$projectId/tasks/$taskKey'
+      path: '/tasks/$taskKey'
+      fullPath: '/projects/$projectId/tasks/$taskKey'
+      preLoaderRoute: typeof mainProjectsProjectIdTasksTaskKeyRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
     '/(main)/projects/$projectId/boards/$boardId': {
       id: '/(main)/projects/$projectId/boards/$boardId'
       path: '/boards/$boardId'
@@ -482,6 +502,7 @@ interface mainProjectsProjectIdRouteRouteChildren {
   mainProjectsProjectIdSettingsRoute: typeof mainProjectsProjectIdSettingsRoute
   mainProjectsProjectIdIndexRoute: typeof mainProjectsProjectIdIndexRoute
   mainProjectsProjectIdBoardsBoardIdRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  mainProjectsProjectIdTasksTaskKeyRoute: typeof mainProjectsProjectIdTasksTaskKeyRoute
 }
 
 const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteChildren =
@@ -491,6 +512,8 @@ const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteCh
     mainProjectsProjectIdIndexRoute: mainProjectsProjectIdIndexRoute,
     mainProjectsProjectIdBoardsBoardIdRoute:
       mainProjectsProjectIdBoardsBoardIdRouteWithChildren,
+    mainProjectsProjectIdTasksTaskKeyRoute:
+      mainProjectsProjectIdTasksTaskKeyRoute,
   }
 
 const mainProjectsProjectIdRouteRouteWithChildren =

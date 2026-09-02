@@ -3,7 +3,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { useDndContext } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { startTransition, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
@@ -111,9 +111,7 @@ export function DraggableTaskCard({
     };
 
     const openTaskDrawer = () => {
-        startTransition(() => {
-            selectTask(task.id);
-        });
+        selectTask(task.id);
     };
 
     const handleCardDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
