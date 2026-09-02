@@ -116,6 +116,22 @@
     white-space: nowrap;
 }
 
+.rich-text-editor .ProseMirror .task-mention {
+    display: inline;
+    padding-inline: 0.2em;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: color-mix(in oklab, var(--chart-2) 18%, transparent);
+    color: var(--chart-2);
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.rich-text-editor .ProseMirror .task-mention:hover {
+    background-color: color-mix(in oklab, var(--chart-2) 28%, transparent);
+}
+
 /* Keep the browser's native text-selection highlight off the image node so
    dragging a selection across it (from text below to text above) doesn't paint
    a blue overlay on it. Node selection is still shown via the .is-selected

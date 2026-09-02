@@ -104,6 +104,14 @@ import {
 } from "@/shared/ui/rich-text-editor/slash-commands";
 import { TableToolbar } from "@/shared/ui/rich-text-editor/table-toolbar";
 import "@/shared/ui/rich-text-editor/rich-text-editor.css";
+import {
+    TASK_MENTION_DISPLAY_CHAR,
+    type TaskMentionCandidate,
+} from "@/shared/ui/rich-text-editor/task-mention-candidate";
+
+const TaskMention = Mention.extend({
+    name: "taskMention",
+});
 
 const lowlight = createLowlight(common);
 
@@ -163,9 +171,12 @@ type RichTextEditorProperties = {
     onChange?: (value: string) => void;
     /** Ctrl/⌘+Enter — submit from a compact composer (comments, etc.). */
     onModEnter?: () => void;
+    onTaskMentionClick?: (taskId: string) => void;
     onUploadImage?: ImageUploadFn;
     placeholder?: string;
     readOnly?: boolean;
+    /** Project Tasks for the `#` task reference picker. */
+    taskMentionCandidates?: readonly TaskMentionCandidate[];
     value: string;
 };
 
@@ -191,9 +202,11 @@ export const RichTextEditor = forwardRef<
         onBlur,
         onChange,
         onModEnter,
+        onTaskMentionClick,
         onUploadImage,
         placeholder,
         readOnly = false,
+        taskMentionCandidates,
         value,
     },
     reference
@@ -215,6 +228,8 @@ export const RichTextEditor = forwardRef<
     onChangeReference.current = onChange;
     const onModuleEnterReference = useRef(onModEnter);
     onModuleEnterReference.current = onModEnter;
+    const onTaskMentionClickReference = useRef(onTaskMentionClick);
+    onTaskMentionClickReference.current = onTaskMentionClick;
     const menuStateReference = useRef(menu);
     menuStateReference.current = menu;
     const mentionCandidatesReference = useRef(mentionCandidates ?? []);
@@ -223,6 +238,10 @@ export const RichTextEditor = forwardRef<
     readOnlyReference.current = readOnly;
     const emptyMentionLabelReference = useRef(t("richText.mention.empty"));
     emptyMentionLabelReference.current = t("richText.mention.empty");
+    const emptyTaskMentionLabelReference = useRef(
+        t("richText.taskMention.empty")
+    );
+    emptyTaskMentionLabelReference.current = t("richText.taskMention.empty");
 
     const mentionSuggestion = useMemo(
         () =>
@@ -232,6 +251,22 @@ export const RichTextEditor = forwardRef<
                 isEnabled: () =>
                     !readOnlyReference.current &&
                     mentionCandidatesReference.current.length > 0,
+            }),
+        []
+    );
+
+    const taskMentionCandidatesReference = useRef(taskMentionCandidates ?? []);
+    taskMentionCandidatesReference.current = taskMentionCandidates ?? [];
+
+    const taskMentionSuggestion = useMemo(
+        () =>
+            createMentionSuggestion({
+                char: TASK_MENTION_DISPLAY_CHAR,
+                emptyLabel: () => emptyTaskMentionLabelReference.current,
+                getCandidates: () => taskMentionCandidatesReference.current,
+                isEnabled: () =>
+                    !readOnlyReference.current &&
+                    taskMentionCandidatesReference.current.length > 0,
             }),
         []
     );
@@ -292,6 +327,27 @@ export const RichTextEditor = forwardRef<
         editorProps: {
             attributes: editorAttributes,
             handleDOMEvents: {
+                click: (_view, event) => {
+                    const target = event.target;
+                    if (!(target instanceof Element)) {
+                        return false;
+                    }
+
+                    const mention = target.closest('[data-type="taskMention"]');
+                    if (!mention) {
+                        return false;
+                    }
+
+                    const taskId = mention.dataset.id?.trim();
+                    const onClick = onTaskMentionClickReference.current;
+                    if (!taskId || !onClick) {
+                        return false;
+                    }
+
+                    event.preventDefault();
+                    onClick(taskId);
+                    return true;
+                },
                 contextmenu: (_view, event) => {
                     const currentEditor = editorReference.current;
                     if (!currentEditor || currentEditor.state.selection.empty) {
@@ -520,6 +576,19 @@ export const RichTextEditor = forwardRef<
                 renderText: ({ node }) =>
                     `${MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
                 suggestion: mentionSuggestion,
+            }),
+            TaskMention.configure({
+                HTMLAttributes: {
+                    class: "task-mention",
+                },
+                renderHTML: ({ node, options }) => [
+                    "span",
+                    options.HTMLAttributes,
+                    `${TASK_MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
+                ],
+                renderText: ({ node }) =>
+                    `${TASK_MENTION_DISPLAY_CHAR}${node.attrs.label ?? node.attrs.id ?? ""}`,
+                suggestion: taskMentionSuggestion,
             }),
             ResizableImage,
             ImageUpload,
@@ -1180,6 +1249,7 @@ export const RichTextEditor = forwardRef<
                     "[&_.ProseMirror_pre]:my-2 [&_.ProseMirror_pre]:max-w-full [&_.ProseMirror_pre]:overflow-x-auto [&_.ProseMirror_pre]:rounded-md [&_.ProseMirror_pre]:bg-muted [&_.ProseMirror_pre]:p-3 [&_.ProseMirror_pre]:font-mono [&_.ProseMirror_pre]:text-xs",
                     "[&_.ProseMirror_code]:break-all [&_.ProseMirror_code]:rounded [&_.ProseMirror_code]:bg-muted [&_.ProseMirror_code]:px-1 [&_.ProseMirror_code]:py-0.5 [&_.ProseMirror_code]:font-mono [&_.ProseMirror_code]:text-code",
                     "[&_.ProseMirror_a]:break-all [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:cursor-pointer [&_.ProseMirror_a]:underline [&_.ProseMirror_a]:underline-offset-4",
+                    "[&_.ProseMirror_.task-mention]:cursor-pointer",
                     "[&_.ProseMirror_hr]:my-4 [&_.ProseMirror_hr]:border-border",
                     "[&_.ProseMirror_mark]:rounded-sm [&_.ProseMirror_mark]:bg-amber-200/70 [&_.ProseMirror_mark]:px-0.5 [&_.ProseMirror_mark]:text-foreground",
                     "dark:[&_.ProseMirror_mark]:bg-card"

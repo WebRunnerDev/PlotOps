@@ -13,3 +13,5 @@ export {
 } from "./mention-hotkey";
 export type { RichTextEditorHandle } from "./rich-text-editor";
 export { RichTextEditor } from "./rich-text-editor";
+export type { TaskMentionCandidate } from "./task-mention-candidate";
+export { TASK_MENTION_DISPLAY_CHAR } from "./task-mention-candidate";
