@@ -145,6 +145,8 @@ export function KanbanColumn({
         setMoveTo(columns.find((column) => column.id !== status)?.id);
     }, [columns, deleteOpen, status]);
 
+    const columnTaskIds = tasks.map((columnTask) => columnTask.id);
+
     const commitRename = async () => {
         const trimmed = draft.trim();
         if (!trimmed || trimmed === name) {
@@ -362,6 +364,7 @@ export function KanbanColumn({
                                 <DraggableTaskCard
                                     boardId={boardId}
                                     canDrag={canEdit}
+                                    columnTaskIds={columnTaskIds}
                                     key={task.id}
                                     labels={labelsByTaskId.get(task.id) ?? []}
                                     selectionEnabled={canSelectForArchive}
@@ -372,18 +375,18 @@ export function KanbanColumn({
                                 />
                             ))}
                         </SortableContext>
-                        <KanbanAddTask
-                            boardId={boardId}
-                            createSprintId={createSprintId}
-                            projectId={projectId}
-                            startOpen={startAddingTask}
-                            status={status}
-                        />
                     </div>
                     {tasks.length === 0 ? (
                         <div aria-hidden className="min-h-0 flex-1 shrink-0" />
                     ) : undefined}
                 </div>
+                <KanbanAddTask
+                    boardId={boardId}
+                    createSprintId={createSprintId}
+                    projectId={projectId}
+                    startOpen={startAddingTask}
+                    status={status}
+                />
             </section>
 
             <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>

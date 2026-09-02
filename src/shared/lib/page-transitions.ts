@@ -4,20 +4,31 @@ type DocumentWithViewTransition = Document & {
     activeViewTransition?: null | { finished: Promise<unknown> };
 };
 
+type PageTransitionChangeInfo = {
+    fromLocation?: TransitionLocation;
+    hashChanged?: boolean;
+    hrefChanged?: boolean;
+    pathChanged?: boolean;
+    toLocation: TransitionLocation;
+};
+
 type TransitionLocation = Pick<ParsedLocation, "pathname" | "state">;
 
 /**
  * Directional full-page view-transition types for TanStack Router.
  * Cross board/non-board layout → fade only (shell width differs).
  * Deeper routes → slide-left; shallower → slide-right; same depth → fade.
+ * Search/hash-only updates (e.g. `?task=` while the task drawer opens) → none.
  */
 export function getPageTransitionTypes({
     fromLocation,
+    pathChanged,
     toLocation,
-}: {
-    fromLocation?: TransitionLocation;
-    toLocation: TransitionLocation;
-}): string[] {
+}: PageTransitionChangeInfo): false | string[] {
+    if (fromLocation && pathChanged === false) {
+        return false;
+    }
+
     if (!fromLocation) {
         return ["fade"];
     }

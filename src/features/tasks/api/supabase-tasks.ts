@@ -15,6 +15,7 @@ import {
     moveTaskToBoard,
     persistTaskMoves,
     restoreTaskRecord,
+    setTaskParent,
     updateTaskDetails,
     updateTaskRecord,
 } from "@/features/tasks/api/tasks-api";
@@ -35,6 +36,7 @@ export const supabaseTasksProvider: TasksProvider = {
     moveTaskToBoard,
     persistTaskMoves,
     restoreTaskRecord,
+    setTaskParent,
     updateTaskDetails,
     updateTaskRecord,
 };

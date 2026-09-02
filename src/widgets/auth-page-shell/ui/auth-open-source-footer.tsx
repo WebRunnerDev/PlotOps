@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { LegalFooterLinks } from "@/features/legal";
 import {
     PLOTOPS_GITHUB_URL,
     PLOTOPS_LICENSE,
@@ -18,7 +19,7 @@ export function AuthOpenSourceFooter() {
             </span>
             <Button
                 aria-label={t("openSource.githubAria")}
-                className="h-auto min-w-0 px-0 text-meta"
+                className="h-auto min-w-0 px-0 text-meta text-muted-foreground hover:text-foreground"
                 nativeButton={false}
                 render={
                     <a
@@ -33,6 +34,8 @@ export function AuthOpenSourceFooter() {
                 {t("openSource.github")}
                 <ExternalLink data-icon="inline-end" />
             </Button>
+            <span aria-hidden="true">·</span>
+            <LegalFooterLinks compact />
         </footer>
     );
 }

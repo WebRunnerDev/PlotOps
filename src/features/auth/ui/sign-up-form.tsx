@@ -9,6 +9,11 @@ import {
     signInWithGoogle,
     signUpWithPassword,
 } from "@/features/auth/api/auth-api";
+import {
+    AUTH_RATE_LIMIT_COOLDOWN_MS,
+    isAuthRateLimited,
+} from "@/features/auth/lib/auth-rate-limit";
+import { meetsPasswordPolicy } from "@/features/auth/lib/password-policy";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { leaveGuestSession } from "@/features/guest-mode";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
@@ -25,6 +30,7 @@ import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
 
+import { AuthTurnstile, requiresTurnstileToken } from "./auth-turnstile";
 import {
     type OAuthProviderLoading,
     OAuthSignInButtons,
@@ -54,6 +60,47 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
     const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
     const [resendMessage, setResendMessage] = useState<null | string>(null);
+    const [captchaToken, setCaptchaToken] = useState<null | string>(null);
+    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+    const [rateLimitedUntil, setRateLimitedUntil] = useState<null | number>(
+        null
+    );
+
+    const isBusy = isLoading || Boolean(oauthLoading);
+    const isRateLimited =
+        rateLimitedUntil != undefined && Date.now() < rateLimitedUntil;
+    const turnstileRequired = requiresTurnstileToken();
+    const captchaReady = !turnstileRequired || Boolean(captchaToken);
+
+    const resetTurnstile = () => {
+        setCaptchaToken(null);
+        setTurnstileResetKey((key) => key + 1);
+    };
+
+    const handleAuthFailure = (
+        authError: Parameters<typeof getAuthErrorKey>[0]
+    ) => {
+        if (isAuthRateLimited(authError)) {
+            setRateLimitedUntil(Date.now() + AUTH_RATE_LIMIT_COOLDOWN_MS);
+        }
+        resetTurnstile();
+        setError(t(getAuthErrorKey(authError)));
+    };
+
+    useEffect(() => {
+        if (rateLimitedUntil == undefined || Date.now() >= rateLimitedUntil) {
+            return;
+        }
+
+        const remainingMs = rateLimitedUntil - Date.now();
+        const timer = globalThis.setTimeout(() => {
+            setRateLimitedUntil(null);
+        }, remainingMs);
+
+        return () => {
+            globalThis.clearTimeout(timer);
+        };
+    }, [rateLimitedUntil]);
 
     useEffect(() => {
         if (!awaitingRedirect || !user) return;
@@ -96,8 +143,6 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
         };
     }, [awaitingRedirect, t, user]);
 
-    const isBusy = isLoading || Boolean(oauthLoading);
-
     const handleOAuthSignUp = async (provider: "github" | "google") => {
         setError(null);
         setResendMessage(null);
@@ -130,7 +175,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
             return;
         }
 
-        if (password.length < 6) {
+        if (!meetsPasswordPolicy(password)) {
             setError(t("errors.weakPassword"));
             return;
         }
@@ -141,15 +186,18 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
         let keepLoadingForRedirect = false;
         try {
-            const { data, error: authError } = await signUpWithPassword({
-                email,
-                firstName,
-                lastName,
-                password,
-            });
+            const { data, error: authError } = await signUpWithPassword(
+                {
+                    email,
+                    firstName,
+                    lastName,
+                    password,
+                },
+                captchaToken ? { captchaToken } : undefined
+            );
 
             if (authError) {
-                setError(t(getAuthErrorKey(authError)));
+                handleAuthFailure(authError);
                 return;
             }
 
@@ -168,6 +216,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
             keepLoadingForRedirect = true;
             setAwaitingRedirect(true);
         } catch {
+            resetTurnstile();
             setError(t("errors.generic"));
         } finally {
             if (!keepLoadingForRedirect) {
@@ -186,7 +235,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
         setIsResending(false);
 
         if (resendError) {
-            setError(t(getAuthErrorKey(resendError)));
+            handleAuthFailure(resendError);
             return;
         }
 
@@ -352,9 +401,15 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                         />
                     </div>
 
+                    <AuthTurnstile
+                        action="signup"
+                        onTokenChange={setCaptchaToken}
+                        resetKey={turnstileResetKey}
+                    />
+
                     <Button
                         className="w-full"
-                        disabled={isBusy}
+                        disabled={isBusy || isRateLimited || !captchaReady}
                         size="lg"
                         type="submit"
                     >

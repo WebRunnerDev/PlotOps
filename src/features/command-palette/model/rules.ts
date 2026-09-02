@@ -10,7 +10,7 @@ export type CommandPaletteFocusedTask = {
 };
 
 export type CommandPaletteIntent =
-    | { boardId: string; taskId: string; type: "select-task" }
+    | { boardId: string; taskId: string; taskKey: string; type: "select-task" }
     | {
           boardId: string;
           taskType: CommandPaletteTaskType;
@@ -337,11 +337,12 @@ export function resolveNavigateIntent(
 }
 
 export function selectTaskIntent(
-    task: Pick<CommandPaletteTask, "boardId" | "id">
+    task: Pick<CommandPaletteTask, "boardId" | "id" | "key">
 ): Extract<CommandPaletteIntent, { type: "select-task" }> {
     return {
         boardId: task.boardId,
         taskId: task.id,
+        taskKey: task.key,
         type: "select-task",
     };
 }

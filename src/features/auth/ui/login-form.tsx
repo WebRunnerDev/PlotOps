@@ -8,6 +8,10 @@ import {
     signInWithGoogle,
     signInWithPassword,
 } from "@/features/auth/api/auth-api";
+import {
+    AUTH_RATE_LIMIT_COOLDOWN_MS,
+    isAuthRateLimited,
+} from "@/features/auth/lib/auth-rate-limit";
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
     GUEST_DEMO_BOARD_ID,
@@ -29,6 +33,7 @@ import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
 
+import { AuthTurnstile, requiresTurnstileToken } from "./auth-turnstile";
 import {
     type OAuthProviderLoading,
     OAuthSignInButtons,
@@ -48,16 +53,55 @@ export function LoginForm() {
         useState<OAuthProviderLoading>(null);
     const [isEmailLoading, setIsEmailLoading] = useState(false);
     const [isGuestLoading, setIsGuestLoading] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState<null | string>(null);
+    const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+    const [rateLimitedUntil, setRateLimitedUntil] = useState<null | number>(
+        null
+    );
     // Wait for AuthProvider + router context before navigating — otherwise
     // /home beforeLoad still sees user=null and bounces back to /sign-in.
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
 
     const isBusy = Boolean(oauthLoading) || isEmailLoading || isGuestLoading;
+    const isRateLimited =
+        rateLimitedUntil != undefined && Date.now() < rateLimitedUntil;
+    const turnstileRequired = requiresTurnstileToken();
+    const captchaReady = !turnstileRequired || Boolean(captchaToken);
 
     const clearAuthLoading = () => {
         setIsEmailLoading(false);
         setIsGuestLoading(false);
     };
+
+    const resetTurnstile = () => {
+        setCaptchaToken(null);
+        setTurnstileResetKey((key) => key + 1);
+    };
+
+    const handleAuthFailure = (
+        authError: Parameters<typeof getAuthErrorKey>[0]
+    ) => {
+        if (isAuthRateLimited(authError)) {
+            setRateLimitedUntil(Date.now() + AUTH_RATE_LIMIT_COOLDOWN_MS);
+        }
+        resetTurnstile();
+        setError(t(getAuthErrorKey(authError)));
+    };
+
+    useEffect(() => {
+        if (rateLimitedUntil == undefined || Date.now() >= rateLimitedUntil) {
+            return;
+        }
+
+        const remainingMs = rateLimitedUntil - Date.now();
+        const timer = globalThis.setTimeout(() => {
+            setRateLimitedUntil(null);
+        }, remainingMs);
+
+        return () => {
+            globalThis.clearTimeout(timer);
+        };
+    }, [rateLimitedUntil]);
 
     useEffect(() => {
         if (!awaitingRedirect || !user) return;
@@ -121,10 +165,13 @@ export function LoginForm() {
         password: string;
     }) => {
         leaveGuestSession();
-        const { error: authError } = await signInWithPassword(credentials);
+        const { error: authError } = await signInWithPassword(
+            credentials,
+            captchaToken ? { captchaToken } : undefined
+        );
 
         if (authError) {
-            setError(t(getAuthErrorKey(authError)));
+            handleAuthFailure(authError);
             return false;
         }
 
@@ -144,6 +191,7 @@ export function LoginForm() {
                 password,
             });
         } catch {
+            resetTurnstile();
             setError(t("errors.generic"));
         } finally {
             if (!keepLoadingForRedirect) {
@@ -248,9 +296,15 @@ export function LoginForm() {
                         />
                     </div>
 
+                    <AuthTurnstile
+                        action="login"
+                        onTokenChange={setCaptchaToken}
+                        resetKey={turnstileResetKey}
+                    />
+
                     <Button
                         className="w-full"
-                        disabled={isBusy}
+                        disabled={isBusy || isRateLimited || !captchaReady}
                         size="lg"
                         type="submit"
                     >

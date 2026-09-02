@@ -11,7 +11,10 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
-import type { AuthContextValue } from "@/features/auth/model/types";
+import type {
+    AuthBootErrorReason,
+    AuthContextValue,
+} from "@/features/auth/model/types";
 
 import { signOut as signOutApi } from "@/features/auth/api/auth-api";
 import {
@@ -20,10 +23,8 @@ import {
     type UserProfile,
 } from "@/features/auth/api/profile-api";
 import { githubProviderTokenFromSession } from "@/features/auth/lib/github-provider-token";
-import {
-    isOAuthCallbackLocation,
-    shouldFinishAuthBoot,
-} from "@/features/auth/lib/oauth-callback-url";
+import { oauthBootSnapshot } from "@/features/auth/lib/oauth-boot-snapshot";
+import { shouldFinishAuthBoot } from "@/features/auth/lib/oauth-callback-url";
 import { isProfileNamesComplete } from "@/features/auth/lib/user-display";
 import { createAsyncGenerationGate } from "@/features/auth/model/async-generation-gate";
 import { AuthContext } from "@/features/auth/model/auth-context";
@@ -40,6 +41,7 @@ import { leaveGuestSession } from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
 
 const OAUTH_CALLBACK_BOOT_TIMEOUT_MS = 15_000;
+const AUTH_BOOT_TIMEOUT_MS = 20_000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<null | Session>(null);
@@ -47,6 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [profile, setProfile] = useState<null | UserProfile>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [bootError, setBootError] = useState(false);
+    const [bootErrorReason, setBootErrorReason] =
+        useState<AuthBootErrorReason>(null);
     const [bootAttempt, setBootAttempt] = useState(0);
     const sessionUserIdReference = useRef<null | string>(null);
     const githubAccessToken = useSyncExternalStore(
@@ -107,8 +111,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
     }, [user]);
 
+    const refreshAuthUser = useCallback(async () => {
+        const {
+            data: { session: currentSession },
+        } = await supabase.auth.getSession();
+        if (!currentSession) return;
+
+        const validated = await validatePersistedSession(currentSession);
+        if (!validated?.user) return;
+
+        flushSync(() => {
+            setSession(validated);
+            applySessionUser(validated.user);
+        });
+        await loadProfile(validated.user);
+    }, [applySessionUser, loadProfile]);
+
     const retryBoot = useCallback(() => {
         setBootError(false);
+        setBootErrorReason(null);
         setIsLoading(true);
         setBootAttempt((n) => n + 1);
     }, []);
@@ -116,14 +137,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         let mounted = true;
         const abortController = new AbortController();
-        const isOAuthCallback = isOAuthCallbackLocation(globalThis.location);
+        const isOAuthCallback = oauthBootSnapshot.isCallback;
         let bootFinished = false;
 
-        function finishBoot(options?: { error?: boolean }) {
+        function finishBoot(options?: {
+            error?: boolean;
+            reason?: AuthBootErrorReason;
+        }) {
             if (!mounted || bootFinished) return;
             bootFinished = true;
             setBootError(Boolean(options?.error));
+            setBootErrorReason(
+                options?.error ? (options.reason ?? "session") : null
+            );
             setIsLoading(false);
+        }
+
+        async function applyValidatedBootSession(
+            nextSession: null | Session,
+            eventGeneration: number
+        ) {
+            const validated = await validatePersistedSession(nextSession, {
+                signal: abortController.signal,
+            });
+            if (!mounted || abortController.signal.aborted) return;
+            if (!authEventGate.isCurrent(eventGeneration)) return;
+
+            await syncGitHubToken(validated);
+
+            const nextUser = validated?.user ?? null;
+            setSession(validated);
+            applySessionUser(nextUser);
+            await loadProfile(nextUser);
+            if (mounted && authEventGate.isCurrent(eventGeneration)) {
+                finishBoot();
+            }
         }
 
         async function syncGitHubToken(
@@ -160,13 +208,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // while isLoading stays false — AppRouter would flash error → shell
         // and run route queries before the new boot finishes.
         setBootError(false);
+        setBootErrorReason(null);
         setIsLoading(true);
 
-        const oauthWaitTimeout = isOAuthCallback
-            ? globalThis.setTimeout(() => {
-                  finishBoot({ error: true });
-              }, OAUTH_CALLBACK_BOOT_TIMEOUT_MS)
-            : undefined;
+        if (oauthBootSnapshot.error) {
+            finishBoot({ error: true, reason: "oauth" });
+            return () => {
+                mounted = false;
+                abortController.abort();
+            };
+        }
+
+        const bootTimeout = globalThis.setTimeout(
+            () => {
+                finishBoot({
+                    error: true,
+                    reason: isOAuthCallback ? "oauth" : "session",
+                });
+            },
+            isOAuthCallback
+                ? OAUTH_CALLBACK_BOOT_TIMEOUT_MS
+                : AUTH_BOOT_TIMEOUT_MS
+        );
 
         // Subscribe before any await so PKCE SIGNED_IN is not missed while
         // getSession() still returns null during the code exchange.
@@ -187,25 +250,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }
 
                     try {
-                        const validated = await validatePersistedSession(
+                        await applyValidatedBootSession(
                             nextSession,
-                            { signal: abortController.signal }
+                            eventGeneration
                         );
-                        if (!mounted || abortController.signal.aborted) return;
-                        if (!authEventGate.isCurrent(eventGeneration)) return;
-
-                        await syncGitHubToken(validated);
-
-                        const nextUser = validated?.user ?? null;
-                        setSession(validated);
-                        applySessionUser(nextUser);
-                        await loadProfile(nextUser);
-                        if (
-                            mounted &&
-                            authEventGate.isCurrent(eventGeneration)
-                        ) {
-                            finishBoot();
-                        }
                     } catch {
                         if (!mounted) return;
                         if (!authEventGate.isCurrent(eventGeneration)) return;
@@ -213,7 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         setSession(null);
                         applySessionUser(null);
                         setProfile(null);
-                        finishBoot({ error: true });
+                        finishBoot({ error: true, reason: "session" });
                     }
                     return;
                 }
@@ -223,8 +271,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
-                const nextUser = nextSession?.user ?? null;
-                setSession(nextSession);
+                let sessionToApply = nextSession;
+                if (nextSession && event !== "TOKEN_REFRESHED") {
+                    sessionToApply = await validatePersistedSession(
+                        nextSession,
+                        { signal: abortController.signal }
+                    );
+                    if (!mounted || abortController.signal.aborted) return;
+                    if (!authEventGate.isCurrent(eventGeneration)) return;
+
+                    if (!sessionToApply) {
+                        setSession(null);
+                        applySessionUser(null);
+                        setProfile(null);
+                        finishBoot();
+                        return;
+                    }
+                }
+
+                const nextUser = sessionToApply?.user ?? null;
+                setSession(sessionToApply);
                 applySessionUser(nextUser);
                 await loadProfile(nextUser);
                 if (mounted && authEventGate.isCurrent(eventGeneration)) {
@@ -233,12 +299,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             })();
         });
 
+        void (async () => {
+            const initResult = await supabase.auth.initialize();
+            if (!mounted || bootFinished) return;
+
+            if (initResult.error && isOAuthCallback) {
+                finishBoot({ error: true, reason: "oauth" });
+                return;
+            }
+
+            if (!isOAuthCallback) return;
+
+            const {
+                data: { session: recoveredSession },
+            } = await supabase.auth.getSession();
+            if (!mounted || bootFinished || !recoveredSession?.user) return;
+
+            const eventGeneration = authEventGate.begin();
+            try {
+                await applyValidatedBootSession(
+                    recoveredSession,
+                    eventGeneration
+                );
+            } catch {
+                if (!mounted) return;
+                if (!authEventGate.isCurrent(eventGeneration)) return;
+                clearGitHubAccessToken();
+                setSession(null);
+                applySessionUser(null);
+                setProfile(null);
+                finishBoot({ error: true, reason: "oauth" });
+            }
+        })();
+
         return () => {
             mounted = false;
             abortController.abort();
-            if (oauthWaitTimeout !== undefined) {
-                globalThis.clearTimeout(oauthWaitTimeout);
-            }
+            globalThis.clearTimeout(bootTimeout);
             subscription.unsubscribe();
         };
     }, [applySessionUser, authEventGate, bootAttempt, loadProfile]);
@@ -253,10 +350,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const value = useMemo<AuthContextValue>(
         () => ({
             bootError,
+            bootErrorReason,
             githubAccessToken,
             isLoading,
             profile,
             profileNamesComplete,
+            refreshAuthUser,
             refreshProfile,
             retryBoot,
             session,
@@ -265,12 +364,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }),
         [
             bootError,
+            bootErrorReason,
             githubAccessToken,
             session,
             user,
             profile,
             profileNamesComplete,
             isLoading,
+            refreshAuthUser,
             refreshProfile,
             retryBoot,
             signOut,
@@ -286,7 +387,9 @@ async function syncUserProfile(user: null | User) {
     if (!user) return;
 
     try {
-        await ensureUserProfile(user);
+        await ensureUserProfile(user, {
+            githubAccessToken: getGitHubAccessToken(),
+        });
     } catch {
         // Profile sync is best-effort on session load; createProject retries upsert.
     }

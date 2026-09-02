@@ -15,8 +15,14 @@ describe("Subtask Role gating seam", () => {
         const section = readUi("task-subtasks-section.tsx");
 
         expect(drawer).toMatch(/canAddSubtask/);
+        expect(drawer).toMatch(/canSetParent/);
         expect(drawer).toMatch(/canEditTasks/);
         expect(section).toMatch(/canAdd/);
+        expect(section).toMatch(/canSetParent/);
+        expect(section).toMatch(/setTaskParent/);
+        expect(section).toMatch(/TaskSearchPicker/);
+        expect(section).toMatch(/collectSubtaskLinkCandidates/);
+        expect(section).toMatch(/collectParentTaskCandidates/);
         expect(section).not.toMatch(/canCreateTasks/);
     });
 
@@ -47,7 +53,7 @@ describe("Subtask drawer list seam", () => {
         const section = readUi("task-subtasks-section.tsx");
 
         expect(drawer).not.toMatch(/subtasks\.parentBadge/);
-        expect(drawer).toMatch(/canRemoveParent={canRemoveParent}/);
+        expect(drawer).toMatch(/canRemoveParent/);
         expect(section).toMatch(/subtasks\.parentTitle/);
         expect(section).toMatch(/task\.parentId/);
     });
@@ -58,6 +64,14 @@ describe("Subtask drawer list seam", () => {
         expect(section).toMatch(/task\.status/);
         expect(section).toMatch(/task\.assignee/);
         expect(section).toMatch(/fields\.memberNone/);
+    });
+
+    it("keeps add form open when switching create/link mode from an empty title input", () => {
+        const section = readUi("task-subtasks-section.tsx");
+
+        expect(section).toMatch(/isAddFormInteractionTarget/);
+        expect(section).toMatch(/skipBlurClose\.current = true/);
+        expect(section).toMatch(/data-slot=select-content/);
     });
 });
 

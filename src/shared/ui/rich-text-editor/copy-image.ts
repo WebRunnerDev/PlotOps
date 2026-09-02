@@ -1,11 +1,10 @@
 /** Clipboard helpers for copying a rich-text image as a real bitmap. */
 
-export type CopyImageResult = "bitmap" | "failed" | "url";
+export type CopyImageResult = "bitmap" | "failed";
 
 /**
- * Puts an image on the system clipboard. Prefers a real `image/*` blob so paste
- * works in messengers and image editors; falls back to the URL as plain text
- * when fetch/CORS/clipboard permissions block the bitmap path.
+ * Puts an image on the system clipboard as a real `image/*` blob so paste works
+ * in messengers and image editors. Does not fall back to a storage URL.
  */
 export async function copyImageSourceToClipboard(
     source: string,
@@ -41,16 +40,9 @@ export async function copyImageSourceToClipboard(
                 }
             }
         } catch {
-            // Fall through to URL-only copy.
+            // Bitmap copy blocked (CORS, permissions, unsupported type).
         }
     }
 
-    if (typeof clipboard.writeText !== "function") return "failed";
-
-    try {
-        await clipboard.writeText(trimmed);
-        return "url";
-    } catch {
-        return "failed";
-    }
+    return "failed";
 }

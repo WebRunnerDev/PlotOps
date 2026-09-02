@@ -12,7 +12,7 @@ import {
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
-import { ChevronDown, MoreHorizontal, Play, Plus, Search } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Play, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -63,12 +63,12 @@ import {
 } from "@/features/sprints/ui/sprint-task-table";
 import { WindowedSprintTaskTable } from "@/features/sprints/ui/windowed-sprint-task-table";
 import {
-    BoardSortControl,
-    BoardTaskFiltersBar,
+    BoardTaskToolbar,
     DEFAULT_BOARD_SORT,
     doneColumnIdSet,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    filterTasksBySearchQuery,
     hideCompletedBoardTasks,
     isBoardFiltersActive,
     sortTasksByBoardSort,
@@ -230,15 +230,10 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             doneColumnIds,
             hideCompleted
         );
-        const query = searchQuery.trim().toLowerCase();
-        const searched = query
-            ? withoutCompleted.filter(
-                  (task) =>
-                      task.key.toLowerCase().includes(query) ||
-                      task.title.toLowerCase().includes(query)
-              )
-            : withoutCompleted;
-        return sortTasksByBoardSort(searched, boardSort);
+        return sortTasksByBoardSort(
+            filterTasksBySearchQuery(withoutCompleted, searchQuery),
+            boardSort
+        );
     }, [boardSort, doneColumnIds, filters, hideCompleted, searchQuery, tasks]);
 
     const backlogTasks = useMemo(() => {
@@ -480,40 +475,22 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     </div>
                 ) : null}
 
-                <div className="flex min-w-0 flex-col gap-2">
-                    <div className="relative w-full min-w-0 sm:max-w-sm">
-                        <Search
-                            aria-hidden
-                            className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-                        />
-                        <Input
-                            className="pl-8"
-                            onChange={(event) =>
-                                setSearchQuery(event.target.value)
-                            }
-                            placeholder={t("sprints.searchPlaceholder")}
-                            value={searchQuery}
-                        />
-                    </div>
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-                        <BoardTaskFiltersBar
-                            filters={filters}
-                            hideCompleted={hideCompleted}
-                            labels={projectLabels}
-                            onChange={setFilters}
-                            onHideCompletedChange={(next) => {
-                                setHideCompleted(boardId, next);
-                            }}
-                            people={people}
-                        />
-                        <BoardSortControl
-                            onChange={(sort) => {
-                                setBoardSort(boardId, sort);
-                            }}
-                            value={boardSort}
-                        />
-                    </div>
-                </div>
+                <BoardTaskToolbar
+                    filters={filters}
+                    hideCompleted={hideCompleted}
+                    labels={projectLabels}
+                    onChange={setFilters}
+                    onHideCompletedChange={(next) => {
+                        setHideCompleted(boardId, next);
+                    }}
+                    onSearchQueryChange={setSearchQuery}
+                    onSortChange={(sort) => {
+                        setBoardSort(boardId, sort);
+                    }}
+                    people={people}
+                    searchQuery={searchQuery}
+                    sort={boardSort}
+                />
             </header>
 
             {showBodySpinner ? (

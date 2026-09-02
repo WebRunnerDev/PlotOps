@@ -2,10 +2,20 @@ import { describe, expect, it } from "vitest";
 
 import {
     isOAuthCallbackLocation,
+    parseOAuthCallbackError,
     shouldFinishAuthBoot,
 } from "@/features/auth/lib/oauth-callback-url";
 
 describe("isOAuthCallbackLocation", () => {
+    it("detects OAuth error in search", () => {
+        expect(
+            isOAuthCallbackLocation({
+                hash: "",
+                search: "?error=access_denied&error_description=User+denied",
+            })
+        ).toBe(true);
+    });
+
     it("detects PKCE code in search", () => {
         expect(
             isOAuthCallbackLocation({
@@ -31,6 +41,20 @@ describe("isOAuthCallbackLocation", () => {
                 search: "?redirect=%2Fhome",
             })
         ).toBe(false);
+    });
+});
+
+describe("parseOAuthCallbackError", () => {
+    it("reads error_description from search params", () => {
+        expect(
+            parseOAuthCallbackError({
+                hash: "",
+                search: "?error=server_error&error_description=Nonce%20mismatch",
+            })
+        ).toEqual({
+            code: "server_error",
+            description: "Nonce mismatch",
+        });
     });
 });
 

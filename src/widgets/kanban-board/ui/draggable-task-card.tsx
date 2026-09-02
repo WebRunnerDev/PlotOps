@@ -1,9 +1,9 @@
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 import { useDndContext } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { startTransition, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
@@ -15,6 +15,10 @@ import {
     useBoardTaskSelectionStore,
     useTasksUiStore,
 } from "@/features/tasks";
+import {
+    isBoardMultiSelectModifier,
+    shouldPreventBoardTaskTextSelection,
+} from "@/features/tasks/lib/board-task-selection";
 import { cn } from "@/shared/lib/utils";
 import { gateDragListeners } from "@/widgets/kanban-board/model/gate-drag-pointer-down";
 import { shouldOpenTaskFromKeyboard } from "@/widgets/kanban-board/model/should-open-task-from-keyboard";
@@ -23,6 +27,7 @@ import { shouldOpenTaskFromPointer } from "@/widgets/kanban-board/model/should-o
 type DraggableTaskCardProperties = {
     boardId: string;
     canDrag: boolean;
+    columnTaskIds: readonly string[];
     labels: ProjectLabel[];
     selectionEnabled: boolean;
     subtaskProgress?: SubtaskProgress;
@@ -32,6 +37,7 @@ type DraggableTaskCardProperties = {
 export function DraggableTaskCard({
     boardId,
     canDrag,
+    columnTaskIds,
     labels,
     selectionEnabled,
     subtaskProgress,
@@ -44,8 +50,12 @@ export function DraggableTaskCard({
     );
     const storeBoardId = useBoardTaskSelectionStore((state) => state.boardId);
     const toggleTask = useBoardTaskSelectionStore((state) => state.toggleTask);
+    const selectRangeInColumn = useBoardTaskSelectionStore(
+        (state) => state.selectRangeInColumn
+    );
     const { active } = useDndContext();
     const suppressOpenAfterDrag = useRef(false);
+    const singleClickTimer = useRef<null | ReturnType<typeof setTimeout>>(null);
     const {
         attributes,
         isDragging,
@@ -86,7 +96,27 @@ export function DraggableTaskCard({
         return () => globalThis.clearTimeout(clear);
     }, [isDragging]);
 
-    const openTask = () => {
+    useEffect(() => {
+        return () => {
+            if (singleClickTimer.current !== null) {
+                globalThis.clearTimeout(singleClickTimer.current);
+            }
+        };
+    }, []);
+
+    const cancelPendingSingleClick = () => {
+        if (singleClickTimer.current === null) return;
+        globalThis.clearTimeout(singleClickTimer.current);
+        singleClickTimer.current = null;
+    };
+
+    const openTaskDrawer = () => {
+        selectTask(task.id);
+    };
+
+    const handleCardDoubleClick = (event: MouseEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        cancelPendingSingleClick();
         if (
             !shouldOpenTaskFromPointer(
                 isDragging,
@@ -95,9 +125,41 @@ export function DraggableTaskCard({
         ) {
             return;
         }
-        startTransition(() => {
-            selectTask(task.id);
-        });
+        openTaskDrawer();
+    };
+
+    const handleCardClick = (event: MouseEvent<HTMLDivElement>) => {
+        if (
+            !shouldOpenTaskFromPointer(
+                isDragging,
+                suppressOpenAfterDrag.current
+            )
+        ) {
+            return;
+        }
+
+        if (selectionEnabled) {
+            if (event.shiftKey) {
+                cancelPendingSingleClick();
+                selectRangeInColumn(boardId, columnTaskIds, task.id);
+                return;
+            }
+            if (isBoardMultiSelectModifier(event)) {
+                cancelPendingSingleClick();
+                toggleTask(boardId, task.id);
+                return;
+            }
+            if (selectionActive) {
+                cancelPendingSingleClick();
+                singleClickTimer.current = globalThis.setTimeout(() => {
+                    singleClickTimer.current = null;
+                    toggleTask(boardId, task.id);
+                }, 250);
+                return;
+            }
+        }
+
+        openTaskDrawer();
     };
 
     const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -105,18 +167,30 @@ export function DraggableTaskCard({
             return;
         }
         event.preventDefault();
-        startTransition(() => {
-            selectTask(task.id);
-        });
+        openTaskDrawer();
     };
 
     const dragListeners = canDrag ? gateDragListeners(listeners) : undefined;
+
+    const handleCardMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+        if (
+            shouldPreventBoardTaskTextSelection({
+                ctrlKey: event.ctrlKey,
+                metaKey: event.metaKey,
+                selectionActive,
+                selectionEnabled,
+                shiftKey: event.shiftKey,
+            })
+        ) {
+            event.preventDefault();
+        }
+    };
 
     return (
         <div
             aria-label={task.key}
             className={cn(
-                "group/task relative min-w-0 cursor-pointer rounded-lg outline-none transition-opacity duration-150",
+                "group/task relative min-w-0 cursor-pointer select-none rounded-lg outline-none transition-opacity duration-150",
                 "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                 (isDragging || multiDragGhost) &&
                     "opacity-40 ring-2 ring-inset ring-primary/50",
@@ -126,7 +200,9 @@ export function DraggableTaskCard({
                     !multiDragGhost &&
                     "ring-2 ring-inset ring-primary/60"
             )}
-            onClick={openTask}
+            onClick={handleCardClick}
+            onDoubleClick={handleCardDoubleClick}
+            onMouseDown={handleCardMouseDown}
             ref={setNodeRef}
             style={{
                 transform: CSS.Translate.toString(transform),

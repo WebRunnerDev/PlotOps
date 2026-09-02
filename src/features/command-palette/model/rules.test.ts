@@ -478,9 +478,16 @@ describe("Command Palette rules seam — Member search", () => {
 
 describe("Command Palette rules seam — intents", () => {
     it("select Task declares navigate intent with boardId and taskId", () => {
-        expect(selectTaskIntent({ boardId: "board-9", id: "task-9" })).toEqual({
+        expect(
+            selectTaskIntent({
+                boardId: "board-9",
+                id: "task-9",
+                key: "TASK-9",
+            })
+        ).toEqual({
             boardId: "board-9",
             taskId: "task-9",
+            taskKey: "TASK-9",
             type: "select-task",
         });
     });
@@ -846,6 +853,7 @@ describe("Command Palette rules seam — jump to Parent and blockers", () => {
             intent: {
                 boardId: "board-parent",
                 taskId: "parent-1",
+                taskKey: "TASK-1",
                 type: "select-task",
             },
             kind: "parent",
@@ -879,6 +887,7 @@ describe("Command Palette rules seam — jump to Parent and blockers", () => {
                 intent: {
                     boardId: "board-b",
                     taskId: "blocker-1",
+                    taskKey: "TASK-9",
                     type: "select-task",
                 },
                 kind: "blocker",

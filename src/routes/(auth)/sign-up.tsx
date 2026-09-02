@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { SignUpForm } from "@/features/auth";
+import { AuthPageSeo } from "@/features/auth/ui/auth-page-seo";
 import { AuthPageShell } from "@/widgets/auth-page-shell";
 
 type SignUpSearch = {
@@ -18,8 +19,11 @@ function SignUpPage() {
     const { email } = Route.useSearch();
 
     return (
-        <AuthPageShell>
-            <SignUpForm initialEmail={email ?? ""} />
-        </AuthPageShell>
+        <>
+            <AuthPageSeo path="/sign-up" titleKey="signUpTitle" />
+            <AuthPageShell>
+                <SignUpForm initialEmail={email ?? ""} />
+            </AuthPageShell>
+        </>
     );
 }

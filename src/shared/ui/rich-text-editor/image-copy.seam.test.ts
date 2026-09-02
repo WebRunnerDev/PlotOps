@@ -24,4 +24,14 @@ describe("rich-text image copy seams", () => {
             /selection\s+instanceof\s+NodeSelection[\s\S]*return false/
         );
     });
+
+    it("serializes image placeholders in manual text selection copy", () => {
+        const source = readFileSync(
+            path.join(root, "resizable-image.tsx"),
+            "utf8"
+        );
+
+        expect(source).toMatch(/renderText:/);
+        expect(source).toMatch(/formatImagePlainTextReference/);
+    });
 });

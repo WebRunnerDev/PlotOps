@@ -116,6 +116,22 @@
     white-space: nowrap;
 }
 
+.rich-text-editor .ProseMirror .task-mention {
+    display: inline;
+    padding-inline: 0.2em;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: color-mix(in oklab, var(--chart-2) 18%, transparent);
+    color: var(--chart-2);
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.rich-text-editor .ProseMirror .task-mention:hover {
+    background-color: color-mix(in oklab, var(--chart-2) 28%, transparent);
+}
+
 /* Keep the browser's native text-selection highlight off the image node so
    dragging a selection across it (from text below to text above) doesn't paint
    a blue overlay on it. Node selection is still shown via the .is-selected
@@ -360,4 +376,47 @@
     border-color: var(--primary);
     background-color: var(--primary);
     color: var(--primary-foreground);
+}
+
+/* Code block copy control */
+.rich-text-editor .ProseMirror .rich-text-code-block-view {
+    position: relative;
+}
+
+.rich-text-editor .ProseMirror .rich-text-code-block-view pre {
+    position: relative;
+    padding: 0.375rem 1.625rem 0.375rem 0.5rem;
+}
+
+.rich-text-code-copy-button {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 2;
+    border: 1px solid var(--border);
+    background-color: color-mix(in oklab, var(--popover) 92%, transparent);
+    color: var(--muted-foreground);
+    opacity: 0;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+    backdrop-filter: blur(6px);
+    transition:
+        opacity 0.15s,
+        color 0.15s,
+        background-color 0.15s;
+}
+
+.rich-text-code-block-view:hover .rich-text-code-copy-button,
+.rich-text-code-block-view:focus-within .rich-text-code-copy-button {
+    opacity: 1;
+}
+
+.rich-text-code-copy-button:hover {
+    color: var(--foreground);
+    background-color: var(--muted);
+}
+
+@media (hover: none) {
+    .rich-text-code-copy-button {
+        opacity: 0.75;
+    }
 }

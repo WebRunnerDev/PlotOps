@@ -21,6 +21,34 @@ describe("githubProviderTokenFromSession", () => {
         ).toBeNull();
     });
 
+    it("accepts GitHub token when Google is primary but GitHub identity is linked", () => {
+        expect(
+            githubProviderTokenFromSession({
+                provider_token: "gho_linked-account",
+                user: {
+                    app_metadata: {
+                        provider: "google",
+                        providers: ["google", "github"],
+                    },
+                },
+            })
+        ).toBe("gho_linked-account");
+    });
+
+    it("rejects Google token even when GitHub identity is linked", () => {
+        expect(
+            githubProviderTokenFromSession({
+                provider_token: "ya29.google-token",
+                user: {
+                    app_metadata: {
+                        provider: "google",
+                        providers: ["google", "github"],
+                    },
+                },
+            })
+        ).toBeNull();
+    });
+
     it("returns null when the session has no provider token", () => {
         expect(
             githubProviderTokenFromSession({

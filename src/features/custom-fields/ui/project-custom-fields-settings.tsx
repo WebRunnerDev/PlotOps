@@ -214,7 +214,7 @@ export function ProjectCustomFieldsSettings({
                 </p>
             </div>
 
-            <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+            <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
                 <p className="text-ui font-medium">
                     {t("customFieldSettings.addSection")}
                 </p>
@@ -324,7 +324,7 @@ export function ProjectCustomFieldsSettings({
                             {t("customFieldSettings.noSearchMatches")}
                         </p>
                     ) : (
-                        <ul className="divide-y divide-border rounded-lg border border-border">
+                        <ul className="divide-y divide-border border border-border bg-card">
                             {filteredFields.map((field, index) => (
                                 <FieldRow
                                     canMoveDown={

@@ -20,7 +20,7 @@ export function BoardSubtaskVisibilityControl({
             aria-label={t("subtasks.hideToggle")}
             aria-pressed={hideSubtasks}
             className={cn(
-                "max-w-full gap-1.5",
+                "h-7 max-w-full gap-1.5 px-2.5 text-[0.8rem]",
                 hideSubtasks && "border-primary/40 bg-primary/5"
             )}
             onClick={() => {

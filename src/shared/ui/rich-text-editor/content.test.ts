@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { richTextToPlainText } from "@/shared/ui/rich-text-editor/content";
+import {
+    formatImagePlainTextReference,
+    richTextToPlainText,
+} from "@/shared/ui/rich-text-editor/content";
+
+describe("formatImagePlainTextReference", () => {
+    it("uses alt text when present", () => {
+        expect(formatImagePlainTextReference("shot")).toBe(" [shot] ");
+    });
+
+    it("falls back to a generic label when alt is missing", () => {
+        expect(formatImagePlainTextReference()).toBe(" [Image] ");
+    });
+});
 
 describe("richTextToPlainText", () => {
     it("returns empty string for blank editor HTML", () => {
@@ -20,20 +33,20 @@ describe("richTextToPlainText", () => {
         ).toBe("Hello world\nNext");
     });
 
-    it("decodes entities and keeps image urls", () => {
+    it("decodes entities and keeps image placeholders", () => {
         expect(
             richTextToPlainText(
                 '<p>A &amp; B &lt;C&gt;</p><p><img src="/x.png" alt="shot"></p>'
             )
-        ).toBe("A & B <C>\n![shot](/x.png)");
+        ).toBe("A & B <C>\n[shot]");
     });
 
-    it("keeps bare image src when alt is missing", () => {
+    it("uses a generic image label when alt is missing", () => {
         expect(
             richTextToPlainText(
                 '<p>See</p><img src="https://cdn.example/a.png">'
             )
-        ).toBe("See\nhttps://cdn.example/a.png");
+        ).toBe("See\n[Image]");
     });
 
     it("keeps table rows and separates cells", () => {

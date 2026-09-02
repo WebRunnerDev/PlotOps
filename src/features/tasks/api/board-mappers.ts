@@ -61,6 +61,7 @@ export type DatabaseTaskLinkEmbed = {
 
 export type DatabaseTaskLinkPeer = {
     archived_at?: null | string;
+    board_id?: string;
     id: string;
     status?: string;
     task_key: string;
@@ -198,8 +199,10 @@ function toRelatedPeer(
         direction,
         id: link.id,
         kind: link.kind,
+        otherBoardId: other.board_id ?? "",
         otherId: other.id,
         otherKey: other.task_key,
+        otherStatus: other.status ?? "",
         otherTitle: other.title,
     };
 }

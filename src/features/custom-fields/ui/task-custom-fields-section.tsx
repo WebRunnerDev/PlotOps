@@ -1,11 +1,13 @@
 import { type RefObject, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Skeleton from "react-loading-skeleton";
 import { toast } from "sonner";
 
 import type { CustomFieldTaskType } from "@/features/custom-fields/model/types";
 import type {
     MentionCandidate,
     RichTextEditorHandle,
+    TaskMentionCandidate,
 } from "@/shared/ui/rich-text-editor";
 
 import {
@@ -16,6 +18,7 @@ import {
 } from "@/features/custom-fields/model/constants";
 import { useProjectCustomFields } from "@/features/custom-fields/model/use-project-custom-fields";
 import { useTaskCustomFieldValues } from "@/features/custom-fields/model/use-task-custom-field-values";
+import { useDeferredMount } from "@/shared/lib/use-deferred-mount";
 import { cn } from "@/shared/lib/utils";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Textarea } from "@/shared/shadcn/ui/textarea";
@@ -30,9 +33,11 @@ type DescriptionFieldProperties = {
     mentionCandidates?: MentionCandidate[];
     onBlur: () => void;
     onChange: (value: string) => void;
+    onTaskMentionClick?: (taskId: string) => void;
     onUploadImage?: (file: File) => Promise<string>;
     placeholder: string;
     readOnly: boolean;
+    taskMentionCandidates?: TaskMentionCandidate[];
     value: string;
 };
 
@@ -79,6 +84,7 @@ export function TaskCustomFieldsSection({
             <DescriptionEditor
                 description={description}
                 label={descriptionField?.name ?? t("fields.description")}
+                taskId={taskId}
             />
         );
     }
@@ -90,6 +96,7 @@ export function TaskCustomFieldsSection({
             <DescriptionEditor
                 description={description}
                 label={t("fields.description")}
+                taskId={taskId}
             />
         );
     }
@@ -106,6 +113,7 @@ export function TaskCustomFieldsSection({
                         description={description}
                         key={field.id}
                         label={field.name}
+                        taskId={taskId}
                     />
                 ) : (
                     <CustomFieldValueInput
@@ -219,10 +227,14 @@ function CustomFieldValueInput({
 function DescriptionEditor({
     description,
     label,
+    taskId,
 }: {
     description: DescriptionFieldProperties;
     label: string;
+    taskId: string;
 }) {
+    const editorReady = useDeferredMount(true, taskId);
+
     return (
         <div className="flex min-w-0 flex-col gap-2">
             <Label
@@ -232,18 +244,29 @@ function DescriptionEditor({
             >
                 {label}
             </Label>
-            <RichTextEditor
-                id="task-description"
-                maxLength={description.maxLength}
-                mentionCandidates={description.mentionCandidates}
-                onBlur={description.onBlur}
-                onChange={description.onChange}
-                onUploadImage={description.onUploadImage}
-                placeholder={description.placeholder}
-                readOnly={description.readOnly}
-                ref={description.editorReference}
-                value={description.value}
-            />
+            {editorReady ? (
+                <RichTextEditor
+                    id="task-description"
+                    maxLength={description.maxLength}
+                    mentionCandidates={description.mentionCandidates}
+                    onBlur={description.onBlur}
+                    onChange={description.onChange}
+                    onTaskMentionClick={description.onTaskMentionClick}
+                    onUploadImage={description.onUploadImage}
+                    placeholder={description.placeholder}
+                    readOnly={description.readOnly}
+                    ref={description.editorReference}
+                    taskMentionCandidates={description.taskMentionCandidates}
+                    value={description.value}
+                />
+            ) : (
+                <Skeleton
+                    aria-busy="true"
+                    aria-hidden="true"
+                    className="min-h-32"
+                    count={4}
+                />
+            )}
         </div>
     );
 }

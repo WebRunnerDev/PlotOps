@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import {
     Calendar,
-    CircleCheck,
     Flag,
     LayoutGrid,
     ListFilter,
@@ -23,6 +22,7 @@ import {
     UNASSIGNED_ASSIGNEE_FILTER,
 } from "@/features/tasks/lib/filter-tasks";
 import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
+import { BoardHideCompletedControl } from "@/features/tasks/ui/board-hide-completed-control";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -64,6 +64,8 @@ type BoardTaskFiltersBarProperties = {
     onChange: (filters: BoardTaskFilters) => void;
     onHideCompletedChange?: (hideCompleted: boolean) => void;
     people: BoardFilterPerson[];
+    /** When false, hide-completed lives in the board toolbar view group instead. */
+    showHideCompletedToggle?: boolean;
 };
 
 const PRIORITY_FILTER_VALUES: PriorityFilterValue[] = [
@@ -81,6 +83,7 @@ export function BoardTaskFiltersBar({
     onChange,
     onHideCompletedChange,
     people,
+    showHideCompletedToggle = true,
 }: BoardTaskFiltersBarProperties) {
     const { t } = useTranslation("board");
     const active = isBoardFiltersActive(filters);
@@ -345,28 +348,11 @@ export function BoardTaskFiltersBar({
                 </DropdownMenuGroup>
             </FilterMenu>
 
-            {onHideCompletedChange ? (
-                <Button
-                    aria-label={t("filters.hideCompleted")}
-                    aria-pressed={hideCompleted}
-                    className={cn(
-                        "h-7 max-w-full gap-1.5 px-2.5 text-[0.8rem]",
-                        hideCompleted && "border-primary/40 bg-primary/5"
-                    )}
-                    onClick={() => {
-                        onHideCompletedChange(!hideCompleted);
-                    }}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                >
-                    <CircleCheck aria-hidden className="size-3.5" />
-                    <span className="min-w-0 truncate">
-                        {hideCompleted
-                            ? t("filters.showCompleted")
-                            : t("filters.hideCompleted")}
-                    </span>
-                </Button>
+            {onHideCompletedChange && showHideCompletedToggle ? (
+                <BoardHideCompletedControl
+                    hideCompleted={hideCompleted}
+                    onChange={onHideCompletedChange}
+                />
             ) : undefined}
 
             {active ? (

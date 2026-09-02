@@ -1,6 +1,7 @@
 import Image from "@tiptap/extension-image";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
+import { formatImagePlainTextReference } from "@/shared/ui/rich-text-editor/content";
 import { ImageNodeView } from "@/shared/ui/rich-text-editor/image-node-view";
 
 const IMAGE_ALIGNMENTS = ["left", "center", "right"] as const;
@@ -82,6 +83,13 @@ export const ResizableImage = Image.extend({
     // Native PM drag on mousedown races click-to-select for React node views.
     // Resize handles cover the intentional resize UX; keep the node non-draggable.
     draggable: false,
+
+    // TipTap plain-text clipboard omits nodes without renderText. HTML copy still
+    // carries `<img>`; plain text gets a short label instead of a storage URL.
+    renderText: ({ node }) =>
+        formatImagePlainTextReference(
+            typeof node.attrs.alt === "string" ? node.attrs.alt : null
+        ),
 }).configure({
     allowBase64: false,
     HTMLAttributes: {

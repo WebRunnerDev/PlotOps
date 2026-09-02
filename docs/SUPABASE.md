@@ -2,6 +2,8 @@
 
 Remote project ref: **ijcelrdcygzyzhcijkhe**.
 
+**Security hardening (auth CAPTCHA, rate limits, RLS audit):** [`docs/security/hardening-plan.md`](security/hardening-plan.md). **Wave 2 infrastructure runbook:** [`docs/security/wave-2-runbook.md`](security/wave-2-runbook.md).
+
 Migrations live in `supabase/migrations/`. They are **not** applied by `npm run dev`.
 
 | Target             | How                                                                                                |
@@ -35,13 +37,15 @@ npm run db:reset          # wipe local DB, re-run all migrations + [db.seed] sql
 
 Keep remote credentials in `.env`. Use `.env.local` only while developing against Docker (both are gitignored). Delete or rename `.env.local` to point the app back at remote.
 
-| Command                    | Purpose                        |
-| -------------------------- | ------------------------------ |
-| `npm run db:start`         | Start local Supabase (Docker)  |
-| `npm run db:stop`          | Stop local stack               |
-| `npm run db:reset`         | Reset local DB from migrations |
-| `npm run db:local-status`  | Print local URL/keys           |
-| `npm run db:new -- <name>` | Create a new migration file    |
+| Command                      | Purpose                          |
+| ---------------------------- | -------------------------------- |
+| `npm run db:start`           | Start local Supabase (Docker)    |
+| `npm run db:stop`            | Stop local stack                 |
+| `npm run db:reset`           | Reset local DB from migrations   |
+| `npm run db:local-status`    | Print local URL/keys             |
+| `npm run db:advisors`        | Security Advisor (local Docker)  |
+| `npm run db:advisors:remote` | Security Advisor (linked remote) |
+| `npm run db:new -- <name>`   | Create a new migration file      |
 
 ### Local GitHub OAuth
 
@@ -97,16 +101,37 @@ npm run db:start
 
 If local Google fails nonce validation, set `skip_nonce_check = true` under `[auth.external.google]` in `supabase/config.toml`. Without this setup, use GitHub/email on local or remove `.env.local` to hit remote.
 
+### Turnstile CAPTCHA (auth hardening)
+
+Email/password sign-in and sign-up pass a Turnstile token to GoTrue when configured. OAuth and Guest demo are unchanged.
+
+| Layer              | Config                                                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Remote PlotOps** | Dashboard → **Authentication → Bot and Abuse Protection** → Turnstile secret. Match rate limits / password policy in Dashboard → **Authentication → Rate Limits** and password settings (mirror `supabase/config.toml`). |
+| **SPA**            | `VITE_TURNSTILE_SITE_KEY` in `.env` / production env (publishable site key). Widget is omitted when unset.                                                                                                               |
+| **Local GoTrue**   | `[auth.captcha]` in `supabase/config.toml` + `SUPABASE_AUTH_CAPTCHA_SECRET` in root `.env`. Restart stack after changes.                                                                                                 |
+
+**Local testing without a Cloudflare account:** Cloudflare [dummy keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) always pass verification:
+
+```env
+VITE_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+SUPABASE_AUTH_CAPTCHA_SECRET=1x0000000000000000000000000000000AA
+```
+
+To develop without CAPTCHA locally, set `[auth.captcha] enabled = false` in `config.toml` and omit `VITE_TURNSTILE_SITE_KEY`.
+
+See [`docs/security/hardening-plan.md`](security/hardening-plan.md) for the full auth hardening roadmap. **Wave 2 (infrastructure):** [`docs/security/wave-2-runbook.md`](security/wave-2-runbook.md) — network restrictions, SSL, org MFA, custom auth SMTP, app TOTP, CI Security Advisor. **Wave 3 (edge / scale):** [`docs/security/wave-3-runbook.md`](security/wave-3-runbook.md) — Cloudflare WAF, Auth Postgres hooks, Edge Function rate limits.
+
 ## Remote (PlotOps cloud)
 
 Schema changes reach remote via **GitHub Actions** after the migration file is merged to `main`. Day-to-day development should not push schema from a workstation. Edge Functions are **not** deployed by this pipeline (manual / later).
 
 ### CI/CD workflows
 
-| Workflow                                                                                          | Trigger                       | What it does                                                                                                                       |
-| ------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [`.github/workflows/supabase-migrate-check.yml`](../.github/workflows/supabase-migrate-check.yml) | `pull_request`                | Local Docker: `supabase start` + `db reset` when `supabase/migrations/**` (etc.) change. Check name: **`supabase-migrate-check`**. |
-| [`.github/workflows/supabase-migrate.yml`](../.github/workflows/supabase-migrate.yml)             | `push` to `main` (every push) | `supabase link` + `db push` to PlotOps, then POST Cloudflare Deploy Hook. Job/check name: **`migrate`**.                           |
+| Workflow                                                                                          | Trigger                       | What it does                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`.github/workflows/supabase-migrate-check.yml`](../.github/workflows/supabase-migrate-check.yml) | `pull_request`                | Local Docker: `supabase start` + `db reset` when `supabase/migrations/**` (etc.) change; **Security Advisor** (`db advisors --local --fail-on error`). Check name: **`supabase-migrate-check`**. |
+| [`.github/workflows/supabase-migrate.yml`](../.github/workflows/supabase-migrate.yml)             | `push` to `main` (every push) | `supabase link` + `db push` to PlotOps, **Security Advisor** on linked remote (`--fail-on error`), then POST Cloudflare Deploy Hook. Job/check name: **`migrate`**.                              |
 
 ### One-time GitHub setup
 
@@ -176,12 +201,12 @@ On every `npm run db:reset`, `[db.seed]` runs:
 1. `supabase/seed.sql` — local-only demo auth user + `profiles` row
 2. `supabase/seed-guest-dataset.sql` — Team, Projects, boards/columns, ~15 tasks, sprints, activity, comments, watchers, notifications
 
-| Field    | Value                                                            |
-| -------- | ---------------------------------------------------------------- |
-| User id  | `a0000000-0000-4000-8000-000000000001` (local seed only)         |
-| Email    | `demo@plotops.app`                                               |
-| Password | `plotops-demo-local` (**local-only** — documented, not a secret) |
-| Team id  | `b0000000-0000-4000-8000-000000000001` (PlotOps Demo Team)       |
+| Field    | Value                                                      |
+| -------- | ---------------------------------------------------------- |
+| User id  | `a0000000-0000-4000-8000-000000000001` (local seed only)   |
+| Email    | `demo@plotops.app`                                         |
+| Password | `PlotopsDemo1` (**local-only** — documented, not a secret) |
+| Team id  | `b0000000-0000-4000-8000-000000000001` (PlotOps Demo Team) |
 
 **Dataset shape (fixed UUIDs in `seed-guest-dataset.sql`):**
 

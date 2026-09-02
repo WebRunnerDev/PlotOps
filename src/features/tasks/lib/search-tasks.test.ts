@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { matchesTaskSearchQuery } from "./search-tasks";
+import {
+    filterTasksBySearchQuery,
+    matchesTaskSearchQuery,
+} from "./search-tasks";
 
 describe("matchesTaskSearchQuery", () => {
     const task = { key: "TASK-12", title: "Login page" };
@@ -21,5 +24,22 @@ describe("matchesTaskSearchQuery", () => {
             false
         );
         expect(matchesTaskSearchQuery(task, "main", ["Main board"])).toBe(true);
+    });
+});
+
+describe("filterTasksBySearchQuery", () => {
+    const tasks = [
+        { key: "TASK-1", title: "Alpha" },
+        { key: "TASK-2", title: "Beta" },
+    ];
+
+    it("returns all tasks for empty query", () => {
+        expect(filterTasksBySearchQuery(tasks, "")).toEqual(tasks);
+        expect(filterTasksBySearchQuery(tasks, "   ")).toEqual(tasks);
+    });
+
+    it("filters by key or title", () => {
+        expect(filterTasksBySearchQuery(tasks, "task-2")).toEqual([tasks[1]]);
+        expect(filterTasksBySearchQuery(tasks, "alpha")).toEqual([tasks[0]]);
     });
 });

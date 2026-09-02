@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AuthLanguageSwitcher } from "@/features/auth";
 import { cn } from "@/shared/lib/utils";
 
+import { AuthMarketingIntro } from "./auth-marketing-intro";
 import { AuthOpenSourceFooter } from "./auth-open-source-footer";
 
 type AuthPageShellProperties = {
@@ -25,6 +26,7 @@ export function AuthPageShell({
             <div className="absolute top-4 right-4">
                 <AuthLanguageSwitcher />
             </div>
+            <AuthMarketingIntro />
             {children}
             <AuthOpenSourceFooter />
         </div>

@@ -63,10 +63,10 @@ describe("getAuthErrorKey", () => {
                     status: 429,
                 })
             )
-        ).toBe("errors.generic");
+        ).toBe("errors.rateLimited");
     });
 
-    it("does not treat unrelated password mentions as weakPassword when code is unknown", () => {
+    it("maps over_request_rate_limit before unrelated message text", () => {
         expect(
             getAuthErrorKey(
                 authError({
@@ -74,7 +74,7 @@ describe("getAuthErrorKey", () => {
                     message: "Password reset rate limit exceeded",
                 })
             )
-        ).toBe("errors.generic");
+        ).toBe("errors.rateLimited");
     });
 
     it("returns generic for unknown codes", () => {

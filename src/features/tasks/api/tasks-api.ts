@@ -161,6 +161,7 @@ const TASK_SELECT = `
     kind,
     target:tasks!task_links_target_task_id_fkey (
       id,
+      board_id,
       task_key,
       title,
       archived_at,
@@ -172,6 +173,7 @@ const TASK_SELECT = `
     kind,
     source:tasks!task_links_source_task_id_fkey (
       id,
+      board_id,
       task_key,
       title,
       archived_at,
@@ -256,8 +258,8 @@ export async function createSubtaskRecord(
 ) {
     const { data, error } = await supabase.rpc("create_subtask", {
         p_parent_id: parentId,
-        p_sprint_id: sprintId ?? null,
-        p_task_type: taskType ?? null,
+        p_sprint_id: sprintId,
+        p_task_type: taskType,
         p_title: normalizeTaskTitle(title),
     });
     if (error) throw error;
@@ -581,6 +583,23 @@ export async function restoreTaskRecord(taskId: string, boardId: string) {
         .not("archived_at", "is", null);
 
     if (error) throw error;
+}
+
+export async function setTaskParent(childId: string, parentId: string) {
+    const { error } = await supabase.rpc("set_task_parent", {
+        p_child_id: childId,
+        p_parent_id: parentId,
+    });
+    if (error) throw error;
+
+    const { data, error: fetchError } = await supabase
+        .from("tasks")
+        .select(TASK_SELECT)
+        .eq("id", childId)
+        .single();
+
+    if (fetchError) throw fetchError;
+    return mapSelectedTaskRow(data as DatabaseTask);
 }
 
 /**

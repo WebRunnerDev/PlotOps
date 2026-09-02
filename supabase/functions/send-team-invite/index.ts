@@ -2,6 +2,7 @@
 // eslint-disable-next-line import-x/no-unresolved -- esm.sh URL for Deno deploy
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+import { createSlidingWindowRateLimiter } from "../_shared/sliding-window-rate-limit.ts";
 import {
     buildInviteEmailHtml,
     buildInviteEmailText,
@@ -10,6 +11,11 @@ import {
     resolveMailDelivery,
 } from "./invite-email.ts";
 import { sendResendEmail } from "./resend.ts";
+
+const inviteSendLimiter = createSlidingWindowRateLimiter({
+    limit: 30,
+    windowMs: 60 * 60 * 1000,
+});
 
 const corsHeaders = {
     "Access-Control-Allow-Headers":
@@ -72,6 +78,17 @@ Deno.serve(async (request) => {
     } = await supabase.auth.getUser();
     if (userError || !user) {
         return json({ error: "unauthorized" }, 401);
+    }
+
+    const rateLimit = inviteSendLimiter.check(`user:${user.id}`);
+    if (!rateLimit.allowed) {
+        return json(
+            {
+                error: "rate_limited",
+                retryAfterSec: rateLimit.retryAfterSec,
+            },
+            429
+        );
     }
 
     const { data: invite, error: inviteError } = await supabase

@@ -11,6 +11,8 @@ describe("profile schema boundary", () => {
         const profile = parseUserProfile({
             avatar_url: null,
             first_name: "Ada",
+            github_id: null,
+            github_login: null,
             id: "11111111-1111-4111-8111-111111111111",
             last_name: "Lovelace",
             username: null,
@@ -19,6 +21,8 @@ describe("profile schema boundary", () => {
         expect(profile).toEqual({
             avatar_url: null,
             first_name: "Ada",
+            github_id: null,
+            github_login: null,
             id: "11111111-1111-4111-8111-111111111111",
             last_name: "Lovelace",
             username: null,
@@ -43,13 +47,19 @@ describe("profile schema boundary", () => {
         expect(
             parseProfileNameRow({
                 first_name: null,
+                github_id: null,
+                github_login: null,
                 id: "11111111-1111-4111-8111-111111111111",
                 last_name: "Lovelace",
+                username: null,
             })
         ).toEqual({
             first_name: null,
+            github_id: null,
+            github_login: null,
             id: "11111111-1111-4111-8111-111111111111",
             last_name: "Lovelace",
+            username: null,
         });
     });
 });

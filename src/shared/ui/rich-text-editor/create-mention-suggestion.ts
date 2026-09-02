@@ -21,21 +21,26 @@ const ROW_ACTIVE_CLASS = "bg-muted text-foreground ring-1 ring-ring/40";
  * TipTap Suggestion config for `@` Mentionee picker (Owner + Members).
  * Uses Suggestion `mount` for Floating UI positioning.
  */
-export function createMentionSuggestion(options: {
+export function createMentionSuggestion<
+    Candidate extends MentionCandidate,
+>(options: {
+    char?: string;
     emptyLabel: () => string;
-    getCandidates: () => readonly MentionCandidate[];
+    getCandidates: () => readonly Candidate[];
     isEnabled: () => boolean;
-}): MentionOptions<MentionCandidate>["suggestion"] {
+}): MentionOptions<Candidate>["suggestion"] {
+    const triggerChar = options.char ?? MENTION_DISPLAY_CHAR;
+
     return {
         allow: ({ editor }) => options.isEnabled() && editor.isEditable,
-        char: MENTION_DISPLAY_CHAR,
+        char: triggerChar,
         items: ({ query }) => filterCandidates(options.getCandidates(), query),
         render: () => {
             let element: HTMLDivElement | null = null;
             let selectedIndex = 0;
             let currentProperties: null | SuggestionProps<
-                MentionCandidate,
-                MentionCandidate
+                Candidate,
+                Candidate
             > = null;
             let unmount: (() => void) | undefined;
 
@@ -115,10 +120,10 @@ export function createMentionSuggestion(options: {
     };
 }
 
-function filterCandidates(
-    candidates: readonly MentionCandidate[],
+function filterCandidates<Candidate extends MentionCandidate>(
+    candidates: readonly Candidate[],
     query: string
-): MentionCandidate[] {
+): Candidate[] {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [...candidates].slice(0, 10);
 
@@ -127,9 +132,9 @@ function filterCandidates(
         .slice(0, 10);
 }
 
-function renderRows(
+function renderRows<Candidate extends MentionCandidate>(
     element: HTMLElement,
-    properties: SuggestionProps<MentionCandidate, MentionCandidate>,
+    properties: SuggestionProps<Candidate, Candidate>,
     selectedIndex: number,
     emptyLabel: string
 ) {

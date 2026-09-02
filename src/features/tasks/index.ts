@@ -31,7 +31,10 @@ export {
 export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export { isWithinColumnDragEnabled } from "./lib/is-within-column-drag-enabled";
 export { resolveCachedTaskBoardId } from "./lib/resolve-cached-task-board-id";
-export { matchesTaskSearchQuery } from "./lib/search-tasks";
+export {
+    filterTasksBySearchQuery,
+    matchesTaskSearchQuery,
+} from "./lib/search-tasks";
 export {
     DEFAULT_BOARD_SORT,
     sortTasksByBoardSort,
@@ -115,6 +118,7 @@ export type {
     BoardFilterPerson,
 } from "./ui/board-task-filters";
 export { BoardTaskSelectionBar } from "./ui/board-task-selection-bar";
+export { BoardTaskToolbar } from "./ui/board-task-toolbar";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";

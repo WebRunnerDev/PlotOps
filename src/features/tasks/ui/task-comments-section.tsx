@@ -22,6 +22,7 @@ import {
     resolveReplyParentId,
 } from "@/features/tasks/lib/build-comment-threads";
 import { TASK_COMMENT_MAX_LENGTH } from "@/features/tasks/model/constants";
+import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import {
     useCreateTaskComment,
     useDeleteTaskComment,
@@ -36,6 +37,7 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 import {
     type MentionCandidate,
     RichTextEditor,
+    type TaskMentionCandidate,
 } from "@/shared/ui/rich-text-editor";
 import {
     isRichTextWithinLimit,
@@ -57,11 +59,13 @@ type TaskCommentItemProperties = {
     onDelete: () => void;
     onReply?: () => void;
     onSave: (body: string) => Promise<void>;
+    onTaskMentionClick?: (taskId: string) => void;
     /** Nested reply thread — keep width via CommentReplies, never extra pl-* per depth. */
     replies?: ReactNode;
     replyComposer?: ReactNode;
     t: (key: string, options?: Record<string, unknown>) => string;
     taskId: string;
+    taskMentionCandidates?: readonly TaskMentionCandidate[];
 };
 
 type TaskCommentsSectionProperties = {
@@ -103,6 +107,18 @@ export function TaskCommentsSection({
         () => people.map((person) => ({ id: person.id, label: person.name })),
         [people]
     );
+    const { data: projectTasks = [] } = useProjectTasks(projectId);
+    const selectTask = useTasksUiStore((state) => state.selectTask);
+    const taskMentionCandidates = useMemo<TaskMentionCandidate[]>(
+        () =>
+            projectTasks
+                .filter((item) => item.id !== taskId)
+                .map((item) => ({ id: item.id, label: item.key })),
+        [projectTasks, taskId]
+    );
+    const handleTaskMentionClick = (mentionedTaskId: string) => {
+        selectTask(mentionedTaskId);
+    };
     const {
         data: comments = [],
         isError,
@@ -275,11 +291,15 @@ export function TaskCommentsSection({
                     onSubmit={() => {
                         void handleReply(replyToId);
                     }}
+                    onTaskMentionClick={handleTaskMentionClick}
                     pending={createComment.isPending}
                     placeholder={t("comments.replyPlaceholder")}
                     submitLabel={t("comments.replyAdd")}
                     t={t}
                     taskId={taskId}
+                    taskMentionCandidates={
+                        canComment ? taskMentionCandidates : undefined
+                    }
                 />
             </div>
         );
@@ -361,6 +381,7 @@ export function TaskCommentsSection({
                                             previousBody: thread.root.body,
                                         });
                                     }}
+                                    onTaskMentionClick={handleTaskMentionClick}
                                     replies={
                                         thread.replies.length > 0 ? (
                                             <CommentReplies>
@@ -420,11 +441,17 @@ export function TaskCommentsSection({
                                                                         }
                                                                     );
                                                                 }}
+                                                                onTaskMentionClick={
+                                                                    handleTaskMentionClick
+                                                                }
                                                                 replyComposer={renderReplyComposer(
                                                                     reply.id
                                                                 )}
                                                                 t={t}
                                                                 taskId={taskId}
+                                                                taskMentionCandidates={
+                                                                    taskMentionCandidates
+                                                                }
                                                             />
                                                         </li>
                                                     );
@@ -437,6 +464,9 @@ export function TaskCommentsSection({
                                     )}
                                     t={t}
                                     taskId={taskId}
+                                    taskMentionCandidates={
+                                        taskMentionCandidates
+                                    }
                                 />
                             </li>
                         );
@@ -459,9 +489,11 @@ export function TaskCommentsSection({
                     onSubmit={() => {
                         void handleCreate();
                     }}
+                    onTaskMentionClick={handleTaskMentionClick}
                     pending={createComment.isPending}
                     t={t}
                     taskId={taskId}
+                    taskMentionCandidates={taskMentionCandidates}
                 />
             ) : undefined}
         </section>
@@ -501,11 +533,13 @@ function CommentComposer({
     onCancel,
     onChange,
     onSubmit,
+    onTaskMentionClick,
     pending,
     placeholder,
     submitLabel,
     t,
     taskId,
+    taskMentionCandidates,
 }: {
     authorAvatarUrl?: string;
     authorName: string;
@@ -515,11 +549,13 @@ function CommentComposer({
     onCancel?: () => void;
     onChange: (value: string) => void;
     onSubmit: () => void;
+    onTaskMentionClick?: (taskId: string) => void;
     pending: boolean;
     placeholder?: string;
     submitLabel?: string;
     t: Translate;
     taskId: string;
+    taskMentionCandidates?: readonly TaskMentionCandidate[];
 }) {
     return (
         <div className="flex items-start gap-3" data-comment-composer="">
@@ -540,8 +576,10 @@ function CommentComposer({
                             onSubmit();
                         }
                     }}
+                    onTaskMentionClick={onTaskMentionClick}
                     onUploadImage={(file) => uploadTaskMedia(file, taskId)}
                     placeholder={placeholder ?? t("comments.placeholder")}
+                    taskMentionCandidates={taskMentionCandidates}
                     value={draft}
                 />
                 <div className="flex justify-end gap-2">
@@ -597,10 +635,12 @@ function TaskCommentItem({
     onDelete,
     onReply,
     onSave,
+    onTaskMentionClick,
     replies,
     replyComposer,
     t,
     taskId,
+    taskMentionCandidates,
 }: TaskCommentItemProperties) {
     const [isEditing, setIsEditing] = useState(false);
     const [draft, setDraft] = useState(comment.body);
@@ -695,10 +735,12 @@ function TaskCommentItem({
                                     void handleSave();
                                 }
                             }}
+                            onTaskMentionClick={onTaskMentionClick}
                             onUploadImage={(file) =>
                                 uploadTaskMedia(file, taskId)
                             }
                             placeholder={t("comments.placeholder")}
+                            taskMentionCandidates={taskMentionCandidates}
                             value={draft}
                         />
                         <div className="flex justify-end gap-2">
@@ -737,6 +779,7 @@ function TaskCommentItem({
                         <RichTextEditor
                             compact
                             id={`comment-view-${comment.id}`}
+                            onTaskMentionClick={onTaskMentionClick}
                             readOnly
                             value={comment.body}
                         />

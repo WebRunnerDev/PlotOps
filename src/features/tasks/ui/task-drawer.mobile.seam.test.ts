@@ -16,10 +16,11 @@ describe("TaskDrawer mobile seam", () => {
         expect(source).toMatch(/swipeDirection="down"/);
         expect(source).toMatch(/showSwipeHandle/);
         expect(source).toMatch(/TASK_DRAWER_SNAP_POINTS/);
+        expect(source).not.toMatch(/defaultSnapPoint/);
         expect(source).toMatch(/min-h-0[\s\S]*flex-1[\s\S]*overflow-y-auto/);
-        expect(source).toMatch(/min-w-0 flex-\[2_1_0%\]/);
-        expect(source).toMatch(/min-w-0 flex-\[1_1_0%\]/);
-        expect(source).toMatch(/md:flex-row/);
+        expect(source).toMatch(
+            /grid-cols-1[\s\S]*md:grid-cols-\[minmax\(0,2fr\)_auto_minmax\(0,1fr\)\]/
+        );
     });
 });
 

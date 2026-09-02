@@ -31,7 +31,10 @@ describe("Task Link Role gating seam", () => {
             picker.indexOf("<ComboboxContent")
         );
         expect(section).toMatch(/createTaskLink/);
+        expect(section).toMatch(/createTask/);
         expect(section).toMatch(/deleteTaskLink/);
+        expect(section).toMatch(/addMode\.create/);
+        expect(section).toMatch(/isAddFormInteractionTarget/);
         expect(section).not.toMatch(/canCreateTasks/);
     });
 });

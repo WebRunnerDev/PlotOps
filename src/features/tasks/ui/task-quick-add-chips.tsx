@@ -13,7 +13,6 @@ import {
     TASK_TYPES,
 } from "@/features/tasks/model/constants";
 import { cn } from "@/shared/lib/utils";
-import { Button } from "@/shared/shadcn/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -199,18 +198,8 @@ export function TaskQuickAddChips({
 
             <Popover onOpenChange={notifyMenu}>
                 <PopoverTrigger
+                    className={chipTriggerClass}
                     disabled={disabled}
-                    render={
-                        <Button
-                            className={cn(
-                                chipTriggerClass,
-                                "hover:bg-muted dark:hover:bg-muted"
-                            )}
-                            disabled={disabled}
-                            type="button"
-                            variant="outline"
-                        />
-                    }
                 >
                     <Tag className="size-3.5 text-muted-foreground" />
                     <span className="truncate">

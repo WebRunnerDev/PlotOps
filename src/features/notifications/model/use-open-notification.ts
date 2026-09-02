@@ -50,6 +50,7 @@ export function useOpenNotification() {
                         boardId: nav.boardId,
                         projectId: nav.projectId,
                     },
+                    search: { task: notification.taskKey },
                     to: "/projects/$projectId/boards/$boardId",
                 });
                 // Router resolves navigate when the VT DOM update runs, not when

@@ -42,6 +42,10 @@ jobs:
             - name: Push pending migrations
               run: supabase db push
 
+            - name: Security Advisor (remote, fail on error)
+              run: |
+                  supabase db advisors --linked --type security --level error --fail-on error
+
     trigger-cloudflare:
         name: trigger-cloudflare
         needs: migrate

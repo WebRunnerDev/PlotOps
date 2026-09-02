@@ -21,7 +21,7 @@ describe("AuthProvider boot remount seam", () => {
         // AppRouter then flashed the boot-error screen into the app shell
         // (or ran queries before the new boot finished).
         expect(effectBody).toMatch(
-            /setBootError\(false\);\s*setIsLoading\(true\)/
+            /setBootError\(false\);\s*setBootErrorReason\(null\);\s*setIsLoading\(true\)/
         );
     });
 });

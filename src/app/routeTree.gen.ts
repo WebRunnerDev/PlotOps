@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './../routes/__root'
+import { Route as TermsRouteImport } from './../routes/terms'
+import { Route as PrivacyRouteImport } from './../routes/privacy'
 import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
 import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
@@ -26,10 +28,21 @@ import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(mai
 import { Route as mainTeamsTeamIdSettingsRouteImport } from './../routes/(main)/teams/$teamId/settings'
 import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
 import { Route as mainProjectsProjectIdCiCdRouteImport } from './../routes/(main)/projects/$projectId/ci-cd'
+import { Route as mainProjectsProjectIdTasksTaskKeyRouteImport } from './../routes/(main)/projects/$projectId/tasks/$taskKey'
 import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
 import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
 import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompleteProfileRoute = CompleteProfileRouteImport.update({
   id: '/complete-profile',
   path: '/complete-profile',
@@ -118,6 +131,12 @@ const mainProjectsProjectIdCiCdRoute =
     path: '/ci-cd',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainProjectsProjectIdTasksTaskKeyRoute =
+  mainProjectsProjectIdTasksTaskKeyRouteImport.update({
+    id: '/tasks/$taskKey',
+    path: '/tasks/$taskKey',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
 const mainProjectsProjectIdBoardsBoardIdRoute =
   mainProjectsProjectIdBoardsBoardIdRouteImport.update({
     id: '/boards/$boardId',
@@ -140,6 +159,8 @@ const mainProjectsProjectIdBoardsBoardIdBacklogRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/complete-profile': typeof CompleteProfileRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -155,12 +176,15 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/teams/$teamId/': typeof mainTeamsTeamIdIndexRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  '/projects/$projectId/tasks/$taskKey': typeof mainProjectsProjectIdTasksTaskKeyRoute
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/projects/$projectId/boards/$boardId/': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/complete-profile': typeof CompleteProfileRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -174,6 +198,7 @@ export interface FileRoutesByTo {
   '/teams/$teamId/settings': typeof mainTeamsTeamIdSettingsRoute
   '/projects/$projectId': typeof mainProjectsProjectIdIndexRoute
   '/teams/$teamId': typeof mainTeamsTeamIdIndexRoute
+  '/projects/$projectId/tasks/$taskKey': typeof mainProjectsProjectIdTasksTaskKeyRoute
   '/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
@@ -182,6 +207,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(main)': typeof mainRouteRouteWithChildren
   '/complete-profile': typeof CompleteProfileRoute
+  '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/(auth)/sign-in': typeof authSignInRoute
   '/(auth)/sign-up': typeof authSignUpRoute
   '/(main)/about': typeof mainAboutRoute
@@ -197,6 +224,7 @@ export interface FileRoutesById {
   '/(main)/projects/$projectId/': typeof mainProjectsProjectIdIndexRoute
   '/(main)/teams/$teamId/': typeof mainTeamsTeamIdIndexRoute
   '/(main)/projects/$projectId/boards/$boardId': typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  '/(main)/projects/$projectId/tasks/$taskKey': typeof mainProjectsProjectIdTasksTaskKeyRoute
   '/(main)/projects/$projectId/boards/$boardId/backlog': typeof mainProjectsProjectIdBoardsBoardIdBacklogRoute
   '/(main)/projects/$projectId/boards/$boardId/': typeof mainProjectsProjectIdBoardsBoardIdIndexRoute
 }
@@ -205,6 +233,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/complete-profile'
+    | '/privacy'
+    | '/terms'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -220,12 +250,15 @@ export interface FileRouteTypes {
     | '/projects/$projectId/'
     | '/teams/$teamId/'
     | '/projects/$projectId/boards/$boardId'
+    | '/projects/$projectId/tasks/$taskKey'
     | '/projects/$projectId/boards/$boardId/backlog'
     | '/projects/$projectId/boards/$boardId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/complete-profile'
+    | '/privacy'
+    | '/terms'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -239,6 +272,7 @@ export interface FileRouteTypes {
     | '/teams/$teamId/settings'
     | '/projects/$projectId'
     | '/teams/$teamId'
+    | '/projects/$projectId/tasks/$taskKey'
     | '/projects/$projectId/boards/$boardId/backlog'
     | '/projects/$projectId/boards/$boardId'
   id:
@@ -246,6 +280,8 @@ export interface FileRouteTypes {
     | '/'
     | '/(main)'
     | '/complete-profile'
+    | '/privacy'
+    | '/terms'
     | '/(auth)/sign-in'
     | '/(auth)/sign-up'
     | '/(main)/about'
@@ -261,6 +297,7 @@ export interface FileRouteTypes {
     | '/(main)/projects/$projectId/'
     | '/(main)/teams/$teamId/'
     | '/(main)/projects/$projectId/boards/$boardId'
+    | '/(main)/projects/$projectId/tasks/$taskKey'
     | '/(main)/projects/$projectId/boards/$boardId/backlog'
     | '/(main)/projects/$projectId/boards/$boardId/'
   fileRoutesById: FileRoutesById
@@ -269,6 +306,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   mainRouteRoute: typeof mainRouteRouteWithChildren
   CompleteProfileRoute: typeof CompleteProfileRoute
+  PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   authSignInRoute: typeof authSignInRoute
   authSignUpRoute: typeof authSignUpRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -276,6 +315,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/complete-profile': {
       id: '/complete-profile'
       path: '/complete-profile'
@@ -395,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdCiCdRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
+    '/(main)/projects/$projectId/tasks/$taskKey': {
+      id: '/(main)/projects/$projectId/tasks/$taskKey'
+      path: '/tasks/$taskKey'
+      fullPath: '/projects/$projectId/tasks/$taskKey'
+      preLoaderRoute: typeof mainProjectsProjectIdTasksTaskKeyRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
     '/(main)/projects/$projectId/boards/$boardId': {
       id: '/(main)/projects/$projectId/boards/$boardId'
       path: '/boards/$boardId'
@@ -442,6 +502,7 @@ interface mainProjectsProjectIdRouteRouteChildren {
   mainProjectsProjectIdSettingsRoute: typeof mainProjectsProjectIdSettingsRoute
   mainProjectsProjectIdIndexRoute: typeof mainProjectsProjectIdIndexRoute
   mainProjectsProjectIdBoardsBoardIdRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteWithChildren
+  mainProjectsProjectIdTasksTaskKeyRoute: typeof mainProjectsProjectIdTasksTaskKeyRoute
 }
 
 const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteChildren =
@@ -451,6 +512,8 @@ const mainProjectsProjectIdRouteRouteChildren: mainProjectsProjectIdRouteRouteCh
     mainProjectsProjectIdIndexRoute: mainProjectsProjectIdIndexRoute,
     mainProjectsProjectIdBoardsBoardIdRoute:
       mainProjectsProjectIdBoardsBoardIdRouteWithChildren,
+    mainProjectsProjectIdTasksTaskKeyRoute:
+      mainProjectsProjectIdTasksTaskKeyRoute,
   }
 
 const mainProjectsProjectIdRouteRouteWithChildren =
@@ -488,6 +551,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   mainRouteRoute: mainRouteRouteWithChildren,
   CompleteProfileRoute: CompleteProfileRoute,
+  PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   authSignInRoute: authSignInRoute,
   authSignUpRoute: authSignUpRoute,
   InviteTokenRoute: InviteTokenRoute,
