@@ -29,15 +29,14 @@ import {
     useSprintsUiStore,
 } from "@/features/sprints";
 import {
-    BoardSortControl,
-    BoardSubtaskVisibilityControl,
     type BoardTaskFilters,
-    BoardTaskFiltersBar,
     BoardTaskSelectionBar,
+    BoardTaskToolbar,
     DEFAULT_BOARD_SORT,
     doneColumnIdSet,
     EMPTY_BOARD_FILTERS,
     filterTasks,
+    filterTasksBySearchQuery,
     hideCompletedBoardTasks,
     isWithinColumnDragEnabled,
     parentSubtaskProgress,
@@ -157,6 +156,7 @@ export function KanbanBoard({
     const lastCreateTaskRequestKey = useRef(0);
     const [filters, setFilters] =
         useState<BoardTaskFilters>(EMPTY_BOARD_FILTERS);
+    const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
         syncBoardSelection(boardId);
@@ -230,7 +230,12 @@ export function KanbanBoard({
         });
         const filtered = filterTasks(scoped, filters);
         const visible = visibleBoardTasks(filtered, hideSubtasks);
-        return hideCompletedBoardTasks(visible, doneColumnIds, hideCompleted);
+        const withoutCompleted = hideCompletedBoardTasks(
+            visible,
+            doneColumnIds,
+            hideCompleted
+        );
+        return filterTasksBySearchQuery(withoutCompleted, searchQuery);
     }, [
         activeSprint?.id,
         doneColumnIds,
@@ -238,6 +243,7 @@ export function KanbanBoard({
         filters,
         hideCompleted,
         hideSubtasks,
+        searchQuery,
         sprints,
         tasks,
     ]);
@@ -289,8 +295,9 @@ export function KanbanBoard({
     }, [displayedTasks, labelsById]);
 
     useEffect(() => {
+        setSearchQuery("");
         setFilters(EMPTY_BOARD_FILTERS);
-    }, [projectId]);
+    }, [boardId]);
 
     useEffect(() => {
         if (!focusColumnId) return;
@@ -508,28 +515,27 @@ export function KanbanBoard({
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="sticky left-0 z-5 flex w-[calc(100cqw-1.5rem)] shrink-0 flex-wrap items-center gap-x-4 gap-y-2 sm:w-[calc(100cqw-6rem)]">
-                <BoardTaskFiltersBar
+            <div className="sticky left-0 z-5 w-[calc(100cqw-1.5rem)] shrink-0 sm:w-[calc(100cqw-6rem)]">
+                <BoardTaskToolbar
                     filters={filters}
                     hideCompleted={hideCompleted}
+                    hideSubtasks={hideSubtasks}
                     labels={projectLabels}
                     onChange={setFilters}
                     onHideCompletedChange={(next) => {
                         setHideCompleted(boardId, next);
                     }}
-                    people={people}
-                />
-                <BoardSortControl
-                    onChange={(sort) => {
-                        setBoardSort(boardId, sort);
-                    }}
-                    value={boardSort}
-                />
-                <BoardSubtaskVisibilityControl
-                    hideSubtasks={hideSubtasks}
-                    onChange={(next) => {
+                    onHideSubtasksChange={(next) => {
                         setHideSubtasks(boardId, next);
                     }}
+                    onSearchQueryChange={setSearchQuery}
+                    onSortChange={(sort) => {
+                        setBoardSort(boardId, sort);
+                    }}
+                    people={people}
+                    searchQuery={searchQuery}
+                    showSubtaskVisibility
+                    sort={boardSort}
                 />
             </div>
 

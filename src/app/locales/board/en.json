@@ -7,6 +7,7 @@
     "boardLoadFailed": "Could not load this board.",
     "projectError": "Project not found or you don't have access.",
     "accessLoadFailed": "Could not load your project permissions. Editing may be limited until this recovers.",
+    "taskSearchPlaceholder": "Search by key or title…",
     "columns": {
         "todo": "To Do",
         "inProgress": "In Progress",
@@ -101,8 +102,12 @@
     "fields": {
         "title": "Title",
         "copy": "Copy",
-        "copyTitleAndDescription": "Copy title and description",
-        "copiedTitleAndDescription": "Title and description copied",
+        "copyTaskContent": "Copy all",
+        "copiedTaskContent": "Copied to clipboard",
+        "copyTaskLink": "Copy link",
+        "copiedTaskLink": "Task link copied",
+        "taskLinkNotFound": "Task not found or you don't have access",
+        "share": "Share",
         "description": "Description",
         "descriptionPlaceholder": "Add a description…",
         "descriptionTooLong": "Description is too long. Shorten the text or remove extra images.",
@@ -303,6 +308,9 @@
             "later": "Later",
             "none": "No deadline"
         }
+    },
+    "view": {
+        "label": "View"
     },
     "sort": {
         "label": "Sort",
@@ -812,10 +820,13 @@
     "copiedCheckout": "Checkout command copied",
     "copyFailed": "Could not copy to clipboard",
     "richText": {
-        "hint": "Select text to format, right-click for context menu, type “/” for blocks, “@” to mention, or Ctrl+M (Ctrl+Ь on a Russian layout)",
+        "hint": "Select text to format, right-click for context menu, type “/” for blocks, “@” to mention people, “#” to link tasks, or Ctrl+M (Ctrl+Ь on a Russian layout)",
         "length": "{{current}} / {{max}}",
         "mention": {
             "empty": "No matching people"
+        },
+        "taskMention": {
+            "empty": "No matching tasks"
         },
         "linkPrompt": "Enter URL",
         "link": {
