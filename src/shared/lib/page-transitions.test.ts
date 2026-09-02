@@ -11,12 +11,12 @@ describe("getPageTransitionTypes", () => {
             getPageTransitionTypes({
                 fromLocation: {
                     pathname: "/projects/p1/boards/b1",
-                    state: {},
+                    state: { __TSR_index: 0 },
                 },
                 pathChanged: false,
                 toLocation: {
                     pathname: "/projects/p1/boards/b1",
-                    state: {},
+                    state: { __TSR_index: 0 },
                 },
             })
         ).toBe(false);
@@ -27,12 +27,12 @@ describe("getPageTransitionTypes", () => {
             getPageTransitionTypes({
                 fromLocation: {
                     pathname: "/projects/p1/boards/b1",
-                    state: {},
+                    state: { __TSR_index: 0 },
                 },
                 pathChanged: true,
                 toLocation: {
                     pathname: "/projects/p1/boards/b2",
-                    state: {},
+                    state: { __TSR_index: 1 },
                 },
             })
         ).toEqual(["fade"]);

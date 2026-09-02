@@ -334,7 +334,7 @@ export const RichTextEditor = forwardRef<
                     }
 
                     const mention = target.closest('[data-type="taskMention"]');
-                    if (!mention) {
+                    if (!(mention instanceof HTMLElement)) {
                         return false;
                     }
 

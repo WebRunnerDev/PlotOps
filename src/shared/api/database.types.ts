@@ -416,7 +416,7 @@ export type Database = {
         Returns: undefined
       }
       set_board_done_column: {
-        Args: { p_board_id: string; p_column_id: string }
+        Args: { p_board_id: string; p_column_id: null | string }
         Returns: undefined
       }
       set_task_parent: {

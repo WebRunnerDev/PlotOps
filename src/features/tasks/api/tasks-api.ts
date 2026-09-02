@@ -258,8 +258,8 @@ export async function createSubtaskRecord(
 ) {
     const { data, error } = await supabase.rpc("create_subtask", {
         p_parent_id: parentId,
-        p_sprint_id: sprintId ?? null,
-        p_task_type: taskType ?? null,
+        p_sprint_id: sprintId,
+        p_task_type: taskType,
         p_title: normalizeTaskTitle(title),
     });
     if (error) throw error;
