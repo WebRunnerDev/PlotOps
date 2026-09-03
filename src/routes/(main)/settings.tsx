@@ -10,6 +10,7 @@ import {
     ProfileSettingsForm,
 } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
+import { TaskDrawerSettings } from "@/features/tasks";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 
@@ -24,43 +25,46 @@ function SettingsPage() {
     const showDemoBadge = demoAccountBadgeVisible(guest);
 
     return (
-        <div className="flex flex-col gap-6 py-8">
-            <div className="flex flex-col gap-1">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Button
-                        className="shrink-0 text-muted-foreground"
-                        onClick={() => router.history.back()}
-                        size="sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <ArrowLeft data-icon="inline-start" />
-                        {t("back")}
-                    </Button>
-                    <h1>{t("platformSettings")}</h1>
-                    {showDemoBadge ? (
-                        <Badge
-                            className="font-mono tracking-wide uppercase"
-                            title={t("guest.demoAccountHint")}
-                            variant="outline"
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 overflow-y-auto px-4 py-8">
+            <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
+                <div className="flex flex-col gap-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <Button
+                            className="shrink-0 text-muted-foreground"
+                            onClick={() => router.history.back()}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
                         >
-                            {t(DEMO_ACCOUNT_BADGE_I18N_KEY)}
-                        </Badge>
-                    ) : null}
+                            <ArrowLeft data-icon="inline-start" />
+                            {t("back")}
+                        </Button>
+                        <h1>{t("platformSettings")}</h1>
+                        {showDemoBadge ? (
+                            <Badge
+                                className="font-mono tracking-wide uppercase"
+                                title={t("guest.demoAccountHint")}
+                                variant="outline"
+                            >
+                                {t(DEMO_ACCOUNT_BADGE_I18N_KEY)}
+                            </Badge>
+                        ) : null}
+                    </div>
+                    <p className="text-body text-muted-foreground">
+                        {guest
+                            ? t("guest.demoAccountHint")
+                            : t("settingsDescription")}
+                    </p>
                 </div>
-                <p className="text-body text-muted-foreground">
-                    {guest
-                        ? t("guest.demoAccountHint")
-                        : t("settingsDescription")}
-                </p>
+                <TaskDrawerSettings />
+                {guest ? null : (
+                    <>
+                        <ProfileSettingsForm />
+                        <GitHubIntegrationSettings />
+                        <ConnectedAccountsSettings />
+                    </>
+                )}
             </div>
-            {guest ? null : (
-                <>
-                    <ProfileSettingsForm />
-                    <GitHubIntegrationSettings />
-                    <ConnectedAccountsSettings />
-                </>
-            )}
         </div>
     );
 }

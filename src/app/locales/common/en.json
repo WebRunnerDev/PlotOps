@@ -104,5 +104,17 @@
     "settingsPlaceholder": "Theme, language, and other preferences will live here.",
     "switcher": "Language",
     "themeDark": "Switch to dark theme",
-    "themeLight": "Switch to light theme"
+    "themeLight": "Switch to light theme",
+    "uiSettings": {
+        "description": "How the task drawer behaves on boards and backlog.",
+        "drawerSide": "Drawer position",
+        "drawerSideBottom": "Bottom",
+        "drawerSideHint": "Bottom uses a sheet with snap points. Left or right opens a side panel.",
+        "drawerSideLeft": "Left",
+        "drawerSideRight": "Right",
+        "openAfterCreate": "Open drawer after creating a task",
+        "openAfterCreateHint": "When off, new tasks stay on the board until you open them.",
+        "dragDrawer": "Drag to resize or dismiss task drawer",
+        "title": "Task drawer"
+    }
 }

@@ -104,5 +104,17 @@
     "settingsPlaceholder": "Здесь появятся тема, язык и другие параметры.",
     "switcher": "Язык",
     "themeDark": "Переключить на тёмную тему",
-    "themeLight": "Переключить на светлую тему"
+    "themeLight": "Переключить на светлую тему",
+    "uiSettings": {
+        "description": "Как ведёт себя drawer задачи на доске и в бэклоге.",
+        "drawerSide": "Положение drawer",
+        "drawerSideBottom": "Снизу",
+        "drawerSideHint": "Снизу — лист со snap points. Слева или справа — боковая панель.",
+        "drawerSideLeft": "Слева",
+        "drawerSideRight": "Справа",
+        "openAfterCreate": "Открывать drawer после создания задачи",
+        "openAfterCreateHint": "Если выключено, новая задача остаётся на доске, пока вы её не откроете.",
+        "dragDrawer": "Потяните, чтобы изменить ширину или закрыть drawer задачи",
+        "title": "Drawer задачи"
+    }
 }
