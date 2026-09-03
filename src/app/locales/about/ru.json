@@ -1,5 +1,42 @@
 {
-    "description": "PlotOps — git-native трекер задач с канбаном, GitHub и CI: портфолио-пет-проект с открытым исходным кодом.",
+    "description": "PlotOps — git-native трекер задач в духе Linear и Jira: задачи рядом с ветками, pull request и сборками. Открытый портфолио-пет-проект.",
+    "featuresTitle": "Что умеет",
+    "features": {
+        "kanban": {
+            "title": "Git-канбан",
+            "body": "Свои колонки, метки, приоритет и дедлайны. Фильтры доски, подзадачи, мягкий архив и генерация имён веток вроде feature/TASK-123-login."
+        },
+        "git": {
+            "title": "Git в приложении",
+            "body": "Привязка ветки или PR из карточки задачи, просмотр diff без ухода на GitHub, открытие PR, merge и сводка check runs."
+        },
+        "cicd": {
+            "title": "Дашборд CI/CD",
+            "body": "GitHub Actions по веткам: статусы прогонов, джобы и стриминг логов с опросом, пока сборка идёт."
+        },
+        "sprints": {
+            "title": "Спринты и бэклог",
+            "body": "Спринты на уровне доски: бэклог, оценки, старт/закрытие/отмена и insights (velocity, burndown) для планирования."
+        },
+        "teams": {
+            "title": "Команды и права",
+            "body": "Иерархия Team → Project с ролями, инвайтами и подключением репозитория GitHub. Несколько досок с base branch и паттернами веток."
+        },
+        "collaboration": {
+            "title": "Совместная работа",
+            "body": "Rich-text описания с картинками и таблицами, комментарии с ответами, @упоминания, Watch-уведомления и лента активности."
+        },
+        "palette": {
+            "title": "Command palette",
+            "body": "Ctrl/Cmd+K: поиск задач, создание работы, переход на доски/CI/настройки, смена проекта и темы с клавиатуры."
+        },
+        "guest": {
+            "title": "Гостевой режим",
+            "body": "Демо без GitHub OAuth — локальная песочница с командами, задачами, фейковыми diff и логами CI."
+        }
+    },
+    "stackTitle": "Стек",
+    "stack": "Vite, React 19, TanStack Router & Query, Tailwind CSS 4, shadcn/ui, Supabase (Auth, Postgres, Realtime, Edge Functions) и GitHub API.",
     "openSource": "Открытый исходный код ({{license}})",
     "title": "О проекте",
     "viewOnGitHub": "Смотреть на GitHub"
