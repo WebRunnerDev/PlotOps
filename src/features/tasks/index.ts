@@ -98,6 +98,7 @@ export {
     TASK_TYPE_ICON_CLASS,
 } from "./model/constants";
 export { taskKeys } from "./model/query-keys";
+export { useTaskDrawerPreferencesStore } from "./model/task-drawer-preferences-store";
 export type {
     Task,
     TaskLinkPeer,
@@ -122,5 +123,6 @@ export { BoardTaskToolbar } from "./ui/board-task-toolbar";
 export { GithubTaskMeta } from "./ui/github-task-meta";
 export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
+export { TaskDrawerSettings } from "./ui/task-drawer-settings";
 export { TaskGithubPanel } from "./ui/task-github-panel";
 export { TaskSearchPicker } from "./ui/task-search-picker";

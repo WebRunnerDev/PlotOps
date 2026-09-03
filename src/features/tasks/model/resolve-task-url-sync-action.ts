@@ -38,8 +38,16 @@ export function resolveTaskUrlSyncAction(
         return { taskId: urlTaskId, type: "select-from-url" };
     }
 
-    if (urlTaskId && urlTaskId !== selectedTaskId) {
-        return { taskId: urlTaskId, type: "select-from-url" };
+    if (urlTaskId && selectedTaskId && urlTaskId !== selectedTaskId) {
+        // URL changed (back/forward, shared link) → follow the query.
+        // Selection changed while ?task= is stale (Subtask/link click) → push.
+        if (urlTaskRef !== hadUrlTask) {
+            return { taskId: urlTaskId, type: "select-from-url" };
+        }
+        return {
+            taskRef: selectedTaskKey ?? selectedTaskId,
+            type: "push-url",
+        };
     }
 
     if (hadUrlTask && !urlTaskRef && selectedTaskId) {

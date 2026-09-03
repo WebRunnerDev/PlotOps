@@ -77,4 +77,32 @@ describe("resolveTaskUrlSyncAction", () => {
             })
         ).toEqual({ type: "clear-selection" });
     });
+
+    it("pushes URL when selection switches to another task while query stays on the previous one", () => {
+        expect(
+            resolveTaskUrlSyncAction({
+                ...base,
+                hadUrlTask: "TASK-1",
+                selectedTaskId: "task-b",
+                selectedTaskKey: "TASK-2",
+                urlTaskId: "task-a",
+                urlTaskRef: "TASK-1",
+                wasSelected: true,
+            })
+        ).toEqual({ taskRef: "TASK-2", type: "push-url" });
+    });
+
+    it("follows URL when browser navigates to a different task param", () => {
+        expect(
+            resolveTaskUrlSyncAction({
+                ...base,
+                hadUrlTask: "TASK-1",
+                selectedTaskId: "task-a",
+                selectedTaskKey: "TASK-1",
+                urlTaskId: "task-b",
+                urlTaskRef: "TASK-2",
+                wasSelected: true,
+            })
+        ).toEqual({ taskId: "task-b", type: "select-from-url" });
+    });
 });
