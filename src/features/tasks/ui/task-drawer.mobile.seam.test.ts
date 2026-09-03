@@ -7,20 +7,36 @@ const tasksUiDirectory = path.dirname(fileURLToPath(import.meta.url));
 const gitUiDirectory = path.join(tasksUiDirectory, "../../git-integration/ui");
 
 describe("TaskDrawer mobile seam", () => {
-    it("uses a bottom sheet with snap points and a scrollport for drawer body", () => {
+    it("uses preferred placement with bottom-sheet snap points when side is bottom", () => {
         const source = readFileSync(
             path.join(tasksUiDirectory, "task-drawer.tsx"),
             "utf8"
         );
 
-        expect(source).toMatch(/swipeDirection="down"/);
+        expect(source).toMatch(/resolveTaskDrawerPlacement/);
+        expect(source).toMatch(/useTaskDrawerPreferencesStore/);
+        expect(source).toMatch(
+            /swipeDirection=\{drawerPlacement\.swipeDirection\}/
+        );
         expect(source).toMatch(/showSwipeHandle/);
         expect(source).toMatch(/TASK_DRAWER_SNAP_POINTS/);
+        expect(source).toMatch(/drawerPlacement\.useSnapPoints/);
         expect(source).not.toMatch(/defaultSnapPoint/);
+        expect(source).toMatch(/@container\/task-drawer/);
         expect(source).toMatch(/min-h-0[\s\S]*flex-1[\s\S]*overflow-y-auto/);
         expect(source).toMatch(
-            /grid-cols-1[\s\S]*md:grid-cols-\[minmax\(0,2fr\)_auto_minmax\(0,1fr\)\]/
+            /grid-cols-1[\s\S]*@3xl\/task-drawer:grid-cols-\[minmax\(0,2fr\)_auto_minmax\(0,1fr\)\]/
         );
+        expect(source).toMatch(/hidden @3xl\/task-drawer:block/);
+        expect(source).not.toMatch(
+            /md:grid-cols-\[minmax\(0,2fr\)_auto_minmax\(0,1fr\)\]/
+        );
+        expect(source).toMatch(/TaskDrawerSideEdgeHandle/);
+        expect(source).toMatch(/showSwipeHandle=\{!drawerPlacement\.isSide\}/);
+        expect(source).toMatch(/setSideDrawerWidthPx/);
+        expect(source).toMatch(/flex-row gap-3/);
+        expect(source).toMatch(/drawerSide === "left"/);
+        expect(source).toMatch(/drawerSide === "right"/);
     });
 });
 

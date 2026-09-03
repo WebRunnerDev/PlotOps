@@ -42,6 +42,8 @@ describe("Subtask drawer list seam", () => {
         const section = readUi("task-subtasks-section.tsx");
 
         expect(drawer).toMatch(/shouldAnimateTaskSwap/);
+        expect(drawer).toMatch(/resolveTaskSwapAnimation/);
+        expect(drawer).toMatch(/taskSwapEpoch/);
         expect(drawer).toMatch(/slide-in-from-right-4/);
         expect(drawer).toMatch(/slide-in-from-left-4/);
         expect(section).toMatch(/selectTask\(child\.id\)/);
