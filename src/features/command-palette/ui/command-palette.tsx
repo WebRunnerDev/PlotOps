@@ -53,8 +53,10 @@ import {
 import {
     useBoardTasks,
     useProjectTasks,
+    useTaskDrawerPreferencesStore,
     useTasksUiStore,
 } from "@/features/tasks";
+import { maybeSelectCreatedTask } from "@/features/tasks/lib/resolve-task-drawer-placement";
 import { useTeamAccess } from "@/features/teams";
 import {
     useTeam,
@@ -128,6 +130,9 @@ export function CommandPalette() {
         { includeArchived: true }
     );
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const openAfterCreate = useTaskDrawerPreferencesStore(
+        (state) => state.openAfterCreate
+    );
     const requestOpenArchiveDialog = useTasksUiStore(
         (state) => state.requestOpenArchiveDialog
     );
@@ -288,7 +293,10 @@ export function CommandPalette() {
                 if (shouldRemindGuestCreateTask(guest)) {
                     toast.message(t("command:guestCreateReminder"));
                 }
-                selectTask(task.id);
+                maybeSelectCreatedTask(task.id, {
+                    openAfterCreate,
+                    selectTask,
+                });
                 close();
             })
             .catch(() => {

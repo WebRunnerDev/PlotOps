@@ -18,6 +18,7 @@ import {
     TASK_TITLE_MAX_LENGTH,
     type TaskStatus,
     useBoardTasks,
+    useTaskDrawerPreferencesStore,
     useTasksUiStore,
 } from "@/features/tasks";
 import {
@@ -25,6 +26,7 @@ import {
     resolveQuickAddDefaults,
     toQuickAddDraftMeta,
 } from "@/features/tasks/lib/resolve-quick-add-defaults";
+import { maybeSelectCreatedTask } from "@/features/tasks/lib/resolve-task-drawer-placement";
 import {
     clearCreateTaskDraft,
     getCreateTaskDraft,
@@ -63,6 +65,9 @@ export function KanbanAddTask({
         isSettled,
     });
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const openAfterCreate = useTaskDrawerPreferencesStore(
+        (state) => state.openAfterCreate
+    );
     const { data: boards = [] } = useProjectBoards(projectId);
     const board = boards.find((item) => item.id === boardId);
     const { data: project } = useProject(projectId);
@@ -182,7 +187,10 @@ export function KanbanAddTask({
             });
             clearCreateTaskDraft(boardId, status);
             setDraftTitle(null);
-            selectTask(task.id);
+            maybeSelectCreatedTask(task.id, {
+                openAfterCreate,
+                selectTask,
+            });
             setOpen(false);
             setTitle("");
             setFields(defaults);
