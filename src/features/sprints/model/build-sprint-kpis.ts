@@ -7,11 +7,16 @@ export type SprintKpiMetric = "count" | "points";
 export type SprintKpis = {
     /** Completed / committed over the window; null when committed total is 0. */
     commitmentAccuracy: null | number;
+    /** Window completed measure (for accuracy ring). */
+    committedSum: number;
+    completedSum: number;
     emptyReason?: SprintKpiEmptyReason;
     metric: SprintKpiMetric;
     sampleSize: number;
     /** Average completed work across sampled Closed sprints. */
     velocity: null | number;
+    /** Per-sprint committed vs completed, oldest → newest. */
+    velocitySeries: SprintVelocityPoint[];
     windowSize: number;
 };
 
@@ -20,11 +25,19 @@ export type SprintKpiSprint = {
     committedTaskIds: readonly string[];
     completedTaskIds: readonly string[];
     id: string;
+    name?: string;
 };
 
 export type SprintKpiTask = {
     estimate?: null | number;
     id: string;
+};
+
+export type SprintVelocityPoint = {
+    committed: number;
+    completed: number;
+    label: string;
+    sprintId: string;
 };
 
 const DEFAULT_LAST_N = 5;
@@ -40,7 +53,7 @@ export function buildSprintKpis(input: {
     tasks: readonly SprintKpiTask[];
 }): SprintKpis {
     const windowSize = Math.max(1, input.lastN ?? DEFAULT_LAST_N);
-    const sampled = [...input.closedSprints]
+    const sampledNewestFirst = [...input.closedSprints]
         .toSorted((left, right) => {
             const leftAt = left.closedAt ?? "";
             const rightAt = right.closedAt ?? "";
@@ -48,20 +61,23 @@ export function buildSprintKpis(input: {
         })
         .slice(0, windowSize);
 
-    if (sampled.length === 0) {
+    if (sampledNewestFirst.length === 0) {
         return {
             commitmentAccuracy: null,
+            committedSum: 0,
+            completedSum: 0,
             emptyReason: "no_closed_sprints",
             metric: "count",
             sampleSize: 0,
             velocity: null,
+            velocitySeries: [],
             windowSize,
         };
     }
 
     const tasksById = new Map(input.tasks.map((task) => [task.id, task]));
     const knownIds = new Set<string>();
-    for (const sprint of sampled) {
+    for (const sprint of sampledNewestFirst) {
         for (const id of sprint.committedTaskIds) knownIds.add(id);
         for (const id of sprint.completedTaskIds) knownIds.add(id);
     }
@@ -69,20 +85,40 @@ export function buildSprintKpis(input: {
 
     let completedSum = 0;
     let committedSum = 0;
-    for (const sprint of sampled) {
-        completedSum += measureIds(sprint.completedTaskIds, metric, tasksById);
-        committedSum += measureIds(sprint.committedTaskIds, metric, tasksById);
+    const velocitySeriesNewestFirst: SprintVelocityPoint[] = [];
+    for (const sprint of sampledNewestFirst) {
+        const completed = measureIds(
+            sprint.completedTaskIds,
+            metric,
+            tasksById
+        );
+        const committed = measureIds(
+            sprint.committedTaskIds,
+            metric,
+            tasksById
+        );
+        completedSum += completed;
+        committedSum += committed;
+        velocitySeriesNewestFirst.push({
+            committed: roundMetric(committed),
+            completed: roundMetric(completed),
+            label: sprintLabel(sprint),
+            sprintId: sprint.id,
+        });
     }
 
-    const velocity = roundMetric(completedSum / sampled.length);
+    const velocity = roundMetric(completedSum / sampledNewestFirst.length);
     const commitmentAccuracy =
         committedSum > 0 ? roundMetric(completedSum / committedSum) : null;
 
     return {
         commitmentAccuracy,
+        committedSum: roundMetric(committedSum),
+        completedSum: roundMetric(completedSum),
         metric,
-        sampleSize: sampled.length,
+        sampleSize: sampledNewestFirst.length,
         velocity,
+        velocitySeries: velocitySeriesNewestFirst.toReversed(),
         windowSize,
     };
 }
@@ -113,4 +149,13 @@ function resolveMetric(
 
 function roundMetric(value: number): number {
     return Math.round(value * 100) / 100;
+}
+
+function sprintLabel(sprint: SprintKpiSprint): string {
+    const name = sprint.name?.trim();
+    if (name) return name;
+    if (sprint.closedAt) {
+        return sprint.closedAt.slice(0, 10);
+    }
+    return sprint.id.slice(0, 8);
 }

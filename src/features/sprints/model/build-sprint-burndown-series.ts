@@ -5,10 +5,17 @@ import type { SprintEventType, SprintState } from "./types";
 export type BurndownMetric = "count" | "points";
 
 export type SprintBurndownDay = {
+    /** Completed work cumulative; null for calendar days after asOfDate. */
+    completedCumulative: null | number;
     date: string;
+    /** Ideal remaining (burndown guideline). */
     ideal: number;
+    /** Ideal completed (burnup guideline from 0 → commitment). */
+    idealCompleted: number;
     /** Remaining work; null for calendar days after asOfDate. */
     remaining: null | number;
+    /** In-sprint scope (membership measure); null after asOfDate. */
+    scope: null | number;
 };
 
 export type SprintBurndownEmptyReason =
@@ -88,25 +95,45 @@ export function buildSprintBurndownSeries(input: {
             lastIndex === 0
                 ? 0
                 : commitmentTotal * ((lastIndex - index) / lastIndex);
-        const remaining =
-            date > input.asOfDate
-                ? null
-                : measureRemaining({
-                      closedOn: input.closedOn,
-                      completed,
-                      date,
-                      doneColumnIds: input.doneColumnIds,
-                      events: scopeEvents,
-                      initialIds: input.committedTaskIds,
-                      metric,
-                      state: input.state,
-                      tasksById,
-                  });
+        const idealCompleted =
+            lastIndex === 0
+                ? commitmentTotal
+                : commitmentTotal * (index / lastIndex);
+        if (date > input.asOfDate) {
+            return {
+                completedCumulative: null,
+                date,
+                ideal: roundMetric(ideal),
+                idealCompleted: roundMetric(idealCompleted),
+                remaining: null,
+                scope: null,
+            };
+        }
+        const members = membershipAsOf(
+            input.committedTaskIds,
+            scopeEvents,
+            date
+        );
+        const scope = measureIds(members, metric, tasksById);
+        const remaining = measureRemainingFromMembers({
+            closedOn: input.closedOn,
+            completed,
+            date,
+            doneColumnIds: input.doneColumnIds,
+            members,
+            metric,
+            state: input.state,
+            tasksById,
+        });
+        const completedCumulative = Math.max(0, scope - remaining);
 
         return {
+            completedCumulative: roundMetric(completedCumulative),
             date,
             ideal: roundMetric(ideal),
-            remaining: remaining === null ? null : roundMetric(remaining),
+            idealCompleted: roundMetric(idealCompleted),
+            remaining: roundMetric(remaining),
+            scope: roundMetric(scope),
         };
     });
 
@@ -181,27 +208,25 @@ function measureIds(
     return sum;
 }
 
-function measureRemaining(input: {
+function measureRemainingFromMembers(input: {
     closedOn?: string;
     completed: ReadonlySet<string>;
     date: string;
     doneColumnIds: ReadonlySet<string>;
-    events: readonly SprintBurndownEvent[];
-    initialIds: readonly string[];
+    members: readonly string[];
     metric: BurndownMetric;
     state: SprintState;
     tasksById: ReadonlyMap<string, SprintBurndownTask>;
 }): number {
-    const members = membershipAsOf(input.initialIds, input.events, input.date);
     const remainingIds =
         input.state === "closed"
-            ? members.filter((id) => {
+            ? input.members.filter((id) => {
                   if (input.closedOn && input.date >= input.closedOn) {
                       return !input.completed.has(id);
                   }
                   return true;
               })
-            : members.filter((id) => {
+            : input.members.filter((id) => {
                   const task = input.tasksById.get(id);
                   if (!task) return true;
                   return !input.doneColumnIds.has(task.status);
