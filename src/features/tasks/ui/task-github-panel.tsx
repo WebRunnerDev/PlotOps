@@ -27,9 +27,11 @@ import {
     isGitHubApiError,
 } from "@/features/git-integration/api/github-git-api";
 import { canFetchPullRequestFiles } from "@/features/git-integration/lib/can-fetch-git-data";
+import { canReviewGithubPr } from "@/features/git-integration/lib/can-review-github-pr";
 import { canWriteGithubPr } from "@/features/git-integration/lib/can-write-github-pr";
 import { defaultPullRequestTitle } from "@/features/git-integration/lib/default-pull-request-title";
 import {
+    useApprovePullRequest,
     useClosePullRequest,
     useCreatePullRequest,
     useMergePullRequest,
@@ -111,6 +113,7 @@ export function TaskGithubPanel({
     const createPr = useCreatePullRequest();
     const mergePr = useMergePullRequest();
     const closePr = useClosePullRequest();
+    const approvePr = useApprovePullRequest();
 
     const [copied, setCopied] = useState(false);
     const [linkingBranch, setLinkingBranch] = useState(false);
@@ -134,6 +137,14 @@ export function TaskGithubPanel({
     const canWritePr =
         isSettled &&
         canWriteGithubPr({
+            isGuest: isGuest(),
+            role,
+            task,
+            userId: user?.id,
+        });
+    const canReviewPr =
+        isSettled &&
+        canReviewGithubPr({
             isGuest: isGuest(),
             role,
             task,
@@ -176,7 +187,10 @@ export function TaskGithubPanel({
     });
     const headIsShared = Boolean(branchName && isSharedBranch(branchName));
     const writeActionPending =
-        createPr.isPending || mergePr.isPending || closePr.isPending;
+        createPr.isPending ||
+        mergePr.isPending ||
+        closePr.isPending ||
+        approvePr.isPending;
     const canOpenPr =
         canWritePr &&
         canFetchGithub &&
@@ -190,6 +204,11 @@ export function TaskGithubPanel({
         !writeActionPending;
     const canClosePr =
         canWritePr &&
+        canFetchGithub &&
+        task.pr?.state === "open" &&
+        !writeActionPending;
+    const canApprovePr =
+        canReviewPr &&
         canFetchGithub &&
         task.pr?.state === "open" &&
         !writeActionPending;
@@ -360,6 +379,23 @@ export function TaskGithubPanel({
             toast.success(t("github.closePrToast", { number: task.pr.number }));
         } catch (error) {
             toastWriteFailure(error, "github.closePrFailed");
+        }
+    };
+
+    const handleApprovePr = async () => {
+        if (!canApprovePr || !githubToken || !repoFullName || !task.pr) return;
+
+        try {
+            await approvePr.mutateAsync({
+                prNumber: task.pr.number,
+                repoFullName,
+                token: githubToken,
+            });
+            toast.success(
+                t("github.approvePrToast", { number: task.pr.number })
+            );
+        } catch (error) {
+            toastWriteFailure(error, "github.approvePrFailed");
         }
     };
 
@@ -588,8 +624,24 @@ export function TaskGithubPanel({
                 prNumber={task.pr.number}
                 repoFullName={repoFullName}
             />
-            {canMergePr || canClosePr ? (
+            {canApprovePr || canMergePr || canClosePr ? (
                 <div className="flex flex-wrap items-center gap-2">
+                    {canApprovePr ? (
+                        <Button
+                            disabled={writeActionPending}
+                            onClick={() => {
+                                void handleApprovePr();
+                            }}
+                            size="xs"
+                            type="button"
+                            variant="outline"
+                        >
+                            {approvePr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.approvePr")}
+                        </Button>
+                    ) : undefined}
                     {canMergePr ? (
                         <Button
                             disabled={writeActionPending}

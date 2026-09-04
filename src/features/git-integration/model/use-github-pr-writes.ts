@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/features/auth";
 import {
+    approvePullRequest,
     closePullRequest,
     createPullRequest,
     type GitMergeMethod,
@@ -11,6 +12,13 @@ import {
     gitAuthFingerprint,
     gitKeys,
 } from "@/features/git-integration/model/query-keys";
+
+export type ApprovePullRequestVariables = {
+    body?: string;
+    prNumber: number;
+    repoFullName: string;
+    token: string;
+};
 
 export type ClosePullRequestVariables = {
     headBranchName?: string;
@@ -27,6 +35,18 @@ export type MergePullRequestVariables = {
     repoFullName: string;
     token: string;
 };
+
+export function useApprovePullRequest() {
+    return useMutation({
+        mutationFn: (variables: ApprovePullRequestVariables) =>
+            approvePullRequest({
+                body: variables.body,
+                prNumber: variables.prNumber,
+                repoFullName: variables.repoFullName,
+                token: variables.token,
+            }),
+    });
+}
 
 export function useClosePullRequest() {
     const queryClient = useQueryClient();

@@ -15,6 +15,18 @@ const GITHUB_HEADERS = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
+export type ApprovePullRequestInput = {
+    body?: string;
+    prNumber: number;
+    repoFullName: string;
+    token: string;
+};
+
+export type ApprovePullRequestResult = {
+    id: number;
+    state: string;
+};
+
 export type ClosePullRequestInput = {
     prNumber: number;
     repoFullName: string;
@@ -208,6 +220,28 @@ export class GitHubApiError extends Error {
         this.name = "GitHubApiError";
         this.status = status;
     }
+}
+
+/** Submit an APPROVE review on an open PR (GitHub enforces own-PR / review rules). */
+export async function approvePullRequest(
+    input: ApprovePullRequestInput
+): Promise<ApprovePullRequestResult> {
+    type RawReviewPayload = {
+        id: number;
+        state: string;
+    };
+
+    return githubFetch<RawReviewPayload>(
+        `/repos/${input.repoFullName}/pulls/${input.prNumber}/reviews`,
+        input.token,
+        {
+            body: {
+                ...(input.body === undefined ? {} : { body: input.body }),
+                event: "APPROVE",
+            },
+            method: "POST",
+        }
+    );
 }
 
 /** Close an open PR without merging. */

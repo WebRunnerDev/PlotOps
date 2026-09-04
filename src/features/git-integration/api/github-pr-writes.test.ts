@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+    approvePullRequest,
     closePullRequest,
     createPullRequest,
     GitHubApiError,
@@ -170,5 +171,50 @@ describe("closePullRequest", () => {
         expect(url).toBe("https://api.github.com/repos/o/r/pulls/7");
         expect(init.method).toBe("PATCH");
         expect(JSON.parse(String(init.body))).toEqual({ state: "closed" });
+    });
+});
+
+describe("approvePullRequest", () => {
+    it("POSTs a review with APPROVE event", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                id: 99,
+                state: "APPROVED",
+                user: { login: "reviewer" },
+            }),
+            ok: true,
+            status: 200,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const result = await approvePullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        });
+
+        expect(result.id).toBe(99);
+        expect(result.state).toBe("APPROVED");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7/reviews");
+        expect(init.method).toBe("POST");
+        expect(JSON.parse(String(init.body))).toEqual({
+            event: "APPROVE",
+        });
+    });
+
+    it("throws GitHubApiError on failure (e.g. own-PR 422)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({ ok: false, status: 422 })
+        );
+
+        await expect(
+            approvePullRequest({
+                prNumber: 7,
+                repoFullName: "o/r",
+                token: "tok",
+            })
+        ).rejects.toMatchObject({ status: 422 });
     });
 });
