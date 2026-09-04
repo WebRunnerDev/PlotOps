@@ -12,11 +12,23 @@ type PageTransitionChangeInfo = {
     toLocation: TransitionLocation;
 };
 
+type ProjectSection = "backlog" | "board" | "cicd" | "settings";
+
 type TransitionLocation = Pick<ParsedLocation, "pathname" | "state">;
+
+/** Nav order in `ProjectSectionNav` — drives slide direction. */
+const PROJECT_SECTION_ORDER: readonly ProjectSection[] = [
+    "board",
+    "backlog",
+    "cicd",
+    "settings",
+];
 
 /**
  * Directional full-page view-transition types for TanStack Router.
- * Cross board/non-board layout → fade only (shell width differs).
+ * Same-project section switches (board / backlog / CI/CD / settings) follow
+ * nav order with a subtler `section-slide-*` motion.
+ * Cross project/non-project layout → fade only (shell width differs).
  * Deeper routes → slide-left; shallower → slide-right; same depth → fade.
  * Search/hash-only updates (e.g. `?task=` while the task drawer opens) → none.
  */
@@ -33,10 +45,18 @@ export function getPageTransitionTypes({
         return ["fade"];
     }
 
-    const fromBoard = fromLocation.pathname.startsWith("/projects/");
-    const toBoard = toLocation.pathname.startsWith("/projects/");
-    if (fromBoard !== toBoard) {
+    const fromProject = fromLocation.pathname.startsWith("/projects/");
+    const toProject = toLocation.pathname.startsWith("/projects/");
+    if (fromProject !== toProject) {
         return ["fade"];
+    }
+
+    const sectionTransition = projectSectionTransition(
+        fromLocation.pathname,
+        toLocation.pathname
+    );
+    if (sectionTransition) {
+        return sectionTransition;
     }
 
     const fromDepth = routeDepth(fromLocation.pathname);
@@ -60,6 +80,36 @@ export function getPageTransitionTypes({
     }
 
     return ["fade"];
+}
+
+/** @internal Exported for unit tests. */
+export function resolveProjectSection(
+    pathname: string
+): null | { projectId: string; section: ProjectSection } {
+    const parts = pathname.split("/").filter(Boolean);
+    if (parts[0] !== "projects" || typeof parts[1] !== "string") {
+        return null;
+    }
+
+    const projectId = parts[1];
+    const rest = parts.slice(2);
+
+    if (rest[0] === "ci-cd" && rest.length === 1) {
+        return { projectId, section: "cicd" };
+    }
+    if (rest[0] === "settings" && rest.length === 1) {
+        return { projectId, section: "settings" };
+    }
+    if (rest[0] === "boards" && typeof rest[1] === "string") {
+        if (rest.length === 2) {
+            return { projectId, section: "board" };
+        }
+        if (rest.length === 3 && rest[2] === "backlog") {
+            return { projectId, section: "backlog" };
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -105,6 +155,25 @@ function historyIndex(location: TransitionLocation): number | undefined {
     const index = (location.state as undefined | { __TSR_index?: unknown })
         ?.__TSR_index;
     return typeof index === "number" ? index : undefined;
+}
+
+function projectSectionTransition(
+    fromPathname: string,
+    toPathname: string
+): null | string[] {
+    const from = resolveProjectSection(fromPathname);
+    const to = resolveProjectSection(toPathname);
+    if (!from || !to) return null;
+    if (from.projectId !== to.projectId) return null;
+    if (from.section === to.section) return null;
+
+    const fromOrder = PROJECT_SECTION_ORDER.indexOf(from.section);
+    const toOrder = PROJECT_SECTION_ORDER.indexOf(to.section);
+    if (fromOrder === -1 || toOrder === -1) return null;
+
+    return toOrder > fromOrder
+        ? ["section-slide-left"]
+        : ["section-slide-right"];
 }
 
 function routeDepth(pathname: string): number {

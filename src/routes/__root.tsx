@@ -19,9 +19,7 @@ function RootChrome({ children }: { children: ReactNode }) {
     return (
         <>
             <main className="min-h-screen">
-                <div className="min-h-screen [view-transition-name:main-content]">
-                    {children}
-                </div>
+                <div className="min-h-screen">{children}</div>
                 <GridPattern
                     className={cn(
                         "stroke-grid/40 -z-50 [view-transition-name:page-backdrop]",

@@ -46,15 +46,15 @@ function MainLayoutContent() {
             <TopBar />
             <CommandPalette />
             {layoutMode === "kanban" ? (
-                <div className="min-h-0 flex-1 overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-hidden [view-transition-name:main-content]">
                     <Outlet />
                 </div>
             ) : layoutMode === "project" ? (
-                <div className="w-full">
+                <div className="w-full [view-transition-name:main-content]">
                     <Outlet />
                 </div>
             ) : (
-                <div className="mx-auto w-full max-w-5xl p-4">
+                <div className="mx-auto w-full max-w-5xl p-4 [view-transition-name:main-content]">
                     <Outlet />
                 </div>
             )}
