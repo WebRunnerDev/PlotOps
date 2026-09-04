@@ -1,43 +1,45 @@
 {
-    "description": "PlotOps is a git-native project tracker in the spirit of Linear and Jira — tasks live next to branches, pull requests, and builds. An open-source portfolio pet project.",
-    "featuresTitle": "What you can do",
+    "title": "About",
+    "tagline": "Board to pipeline",
+    "description": "Git-native tracker in the spirit of Linear — tasks live next to branches, PRs, and builds. Open-source portfolio project.",
+    "pillarsTitle": "The pipeline",
+    "featuresTitle": "Also on the board",
     "features": {
         "kanban": {
             "title": "Git Kanban",
-            "body": "Custom columns, labels, priority, and deadlines. Filter the board, nest subtasks, soft-archive work, and generate branch names like feature/TASK-123-login."
+            "body": "Columns, labels, filters, subtasks, and branch names like feature/TASK-123-login."
         },
         "git": {
             "title": "In-app Git",
-            "body": "Link a branch or PR from the task drawer, review code diffs without leaving PlotOps, open a PR, merge, and see check-run rollups."
+            "body": "Link a branch or PR, review diffs, open and merge — without leaving the board."
         },
         "cicd": {
             "title": "CI/CD dashboard",
-            "body": "Browse GitHub Actions per branch: run status, jobs, and streaming logs — live polling while builds are in flight."
+            "body": "GitHub Actions per branch: status, jobs, and streaming logs while builds run."
         },
         "sprints": {
             "title": "Sprints & backlog",
-            "body": "Board-scoped sprints with backlog, estimates, start/close/cancel, and insights (velocity, burndown) when you plan iterations."
+            "body": "Board-scoped sprints with estimates, close flows, and velocity insights."
         },
         "teams": {
             "title": "Teams & permissions",
-            "body": "Team → Project hierarchy with roles, invites, and GitHub repo connect. Multi-board setups with base branch and allowed branch patterns."
+            "body": "Team → Project roles, invites, and GitHub repo connect with multi-board setup."
         },
         "collaboration": {
             "title": "Collaboration",
-            "body": "Rich-text descriptions with images and tables, comments with replies, @mentions, Watch notifications, and a live activity feed."
+            "body": "Rich text, comments, @mentions, Watch, and a live activity feed."
         },
         "palette": {
             "title": "Command palette",
-            "body": "Ctrl/Cmd+K to search tasks, create work, jump boards/CI/settings, switch projects, and toggle theme without leaving the keyboard."
+            "body": "Ctrl/Cmd+K to search, create, jump boards/CI, and switch projects."
         },
         "guest": {
             "title": "Guest Mode",
-            "body": "Try the demo without GitHub OAuth — a local sandbox with seeded teams, tasks, fake diffs, and CI logs."
+            "body": "Demo without OAuth — local sandbox with tasks, fake diffs, and CI logs."
         }
     },
     "stackTitle": "Stack",
-    "stack": "Vite, React 19, TanStack Router & Query, Tailwind CSS 4, shadcn/ui, Supabase (Auth, Postgres, Realtime, Edge Functions), and the GitHub API.",
+    "stack": "Vite · React 19 · TanStack Router & Query · Tailwind 4 · shadcn/ui · Supabase · GitHub API",
     "openSource": "Open source ({{license}})",
-    "title": "About",
     "viewOnGitHub": "View on GitHub"
 }

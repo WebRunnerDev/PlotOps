@@ -1,43 +1,45 @@
 {
-    "description": "PlotOps — git-native трекер задач в духе Linear и Jira: задачи рядом с ветками, pull request и сборками. Открытый портфолио-пет-проект.",
-    "featuresTitle": "Что умеет",
+    "title": "О проекте",
+    "tagline": "От доски к пайплайну",
+    "description": "Git-native трекер в духе Linear: задачи рядом с ветками, PR и сборками. Открытый портфолио-проект.",
+    "pillarsTitle": "Пайплайн",
+    "featuresTitle": "Ещё на доске",
     "features": {
         "kanban": {
             "title": "Git-канбан",
-            "body": "Свои колонки, метки, приоритет и дедлайны. Фильтры доски, подзадачи, мягкий архив и генерация имён веток вроде feature/TASK-123-login."
+            "body": "Колонки, метки, фильтры, подзадачи и имена веток вроде feature/TASK-123-login."
         },
         "git": {
             "title": "Git в приложении",
-            "body": "Привязка ветки или PR из карточки задачи, просмотр diff без ухода на GitHub, открытие PR, merge и сводка check runs."
+            "body": "Ветка или PR из карточки, diff, open/merge — не уходя с доски."
         },
         "cicd": {
             "title": "Дашборд CI/CD",
-            "body": "GitHub Actions по веткам: статусы прогонов, джобы и стриминг логов с опросом, пока сборка идёт."
+            "body": "GitHub Actions по веткам: статусы, джобы и стриминг логов на лету."
         },
         "sprints": {
             "title": "Спринты и бэклог",
-            "body": "Спринты на уровне доски: бэклог, оценки, старт/закрытие/отмена и insights (velocity, burndown) для планирования."
+            "body": "Спринты на доске: оценки, закрытие и velocity insights."
         },
         "teams": {
             "title": "Команды и права",
-            "body": "Иерархия Team → Project с ролями, инвайтами и подключением репозитория GitHub. Несколько досок с base branch и паттернами веток."
+            "body": "Team → Project, роли, инвайты и подключение репозитория GitHub."
         },
         "collaboration": {
             "title": "Совместная работа",
-            "body": "Rich-text описания с картинками и таблицами, комментарии с ответами, @упоминания, Watch-уведомления и лента активности."
+            "body": "Rich text, комментарии, @упоминания, Watch и лента активности."
         },
         "palette": {
             "title": "Command palette",
-            "body": "Ctrl/Cmd+K: поиск задач, создание работы, переход на доски/CI/настройки, смена проекта и темы с клавиатуры."
+            "body": "Ctrl/Cmd+K: поиск, создание, переход на доски/CI и смена проекта."
         },
         "guest": {
             "title": "Гостевой режим",
-            "body": "Демо без GitHub OAuth — локальная песочница с командами, задачами, фейковыми diff и логами CI."
+            "body": "Демо без OAuth — локальная песочница с задачами, diff и логами CI."
         }
     },
     "stackTitle": "Стек",
-    "stack": "Vite, React 19, TanStack Router & Query, Tailwind CSS 4, shadcn/ui, Supabase (Auth, Postgres, Realtime, Edge Functions) и GitHub API.",
+    "stack": "Vite · React 19 · TanStack Router & Query · Tailwind 4 · shadcn/ui · Supabase · GitHub API",
     "openSource": "Открытый исходный код ({{license}})",
-    "title": "О проекте",
     "viewOnGitHub": "Смотреть на GitHub"
 }
