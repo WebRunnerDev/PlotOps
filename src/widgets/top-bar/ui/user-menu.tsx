@@ -120,7 +120,7 @@ export function UserMenu() {
             <DropdownMenu>
                 <DropdownMenuTrigger
                     aria-label={t("accountMenu")}
-                    className="flex h-8 min-h-9 max-w-48 cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-1.5 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-8 sm:min-h-0"
+                    className="flex h-8 min-h-9 max-w-48 cursor-pointer items-center gap-2 rounded-none border-0 bg-transparent px-1.5 text-foreground outline-none transition-colors duration-200 ease-[var(--ease-out-quart)] hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-8 sm:min-h-0"
                 >
                     <Avatar size="sm">
                         {avatarUrl ? (

@@ -42,7 +42,7 @@ export function TaskWatchersList(properties: {
     return (
         <section className="flex items-center justify-between gap-3 pt-1">
             <div className="min-w-0">
-                <Label className="text-meta text-muted-foreground">
+                <Label className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                     {t("watchers.title")}
                 </Label>
                 {isLoading ? (

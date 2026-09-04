@@ -16,6 +16,7 @@ export function PublicPageShell({
         <div
             className={cn(
                 "mx-auto flex w-full min-w-0 max-w-md flex-col gap-6 px-4 py-8 sm:py-16",
+                "[view-transition-name:main-content]",
                 className
             )}
         >

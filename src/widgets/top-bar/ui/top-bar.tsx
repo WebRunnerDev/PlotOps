@@ -39,7 +39,7 @@ export function TopBar() {
     return (
         <header
             className={cn(
-                "sticky top-0 z-40 shrink-0 border-b border-border bg-background/95 px-4 backdrop-blur-sm",
+                "sticky top-0 z-40 shrink-0 border-b border-primary/25 bg-background/90 px-4 backdrop-blur-md",
                 // Mobile: brand | actions, nav on second row.
                 // sm+: three equal columns — center scrolls instead of overlapping sides.
                 "grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto] items-center gap-x-2 gap-y-1 py-1",
@@ -49,7 +49,7 @@ export function TopBar() {
         >
             <div className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
                 <Link
-                    className="shrink-0 font-mono text-sm font-semibold tracking-tight text-foreground hover:text-foreground/80 focus-visible:ring-2"
+                    className="shrink-0 font-mono text-sm font-semibold tracking-tight text-foreground transition-colors duration-200 ease-[var(--ease-out-quart)] hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     to="/home"
                 >
                     PlotOps
@@ -77,7 +77,7 @@ export function TopBar() {
                         {teamId && team?.name ? (
                             <Link
                                 className={cn(
-                                    "hidden min-w-0 truncate hover:text-foreground focus-visible:ring-2 sm:inline",
+                                    "hidden min-w-0 truncate transition-colors duration-200 ease-[var(--ease-out-quart)] hover:text-primary focus-visible:ring-2 focus-visible:ring-ring sm:inline",
                                     !projectId && "text-foreground"
                                 )}
                                 params={{ teamId }}
@@ -94,7 +94,7 @@ export function TopBar() {
                                 />
                                 {boardId ? (
                                     <Link
-                                        className="truncate text-foreground hover:text-foreground/80 focus-visible:ring-2"
+                                        className="truncate text-foreground transition-colors duration-200 ease-[var(--ease-out-quart)] hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
                                         params={{ boardId, projectId }}
                                         to="/projects/$projectId/boards/$boardId"
                                     >
