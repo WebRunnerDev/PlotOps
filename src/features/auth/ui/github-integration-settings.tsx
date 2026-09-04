@@ -120,15 +120,23 @@ export function GitHubIntegrationSettings() {
               : "destructive";
 
     return (
-        <Card className="max-w-lg">
-            <CardHeader>
-                <CardTitle>{t("settings.githubIntegration.title")}</CardTitle>
-                <CardDescription>
-                    {t("settings.githubIntegration.description")}{" "}
-                    {t("settings.githubIntegration.connectedAccountsHint")}
-                </CardDescription>
+        <Card className="max-w-none rounded-none border border-border bg-card/60 shadow-none ring-1 ring-primary/15 backdrop-blur-sm">
+            <CardHeader className="gap-3 border-b border-border/80 pb-4">
+                <div className="flex min-w-0 flex-col gap-2">
+                    <p className="font-mono text-meta text-primary uppercase tracking-[0.14em]">
+                        03
+                    </p>
+                    <CardTitle>
+                        {t("settings.githubIntegration.title")}
+                    </CardTitle>
+                    <div aria-hidden className="h-px w-10 bg-primary/60" />
+                    <CardDescription>
+                        {t("settings.githubIntegration.description")}{" "}
+                        {t("settings.githubIntegration.connectedAccountsHint")}
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4">
+            <CardContent className="flex flex-col gap-4 pt-5">
                 {error ? (
                     <Alert variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
@@ -145,8 +153,8 @@ export function GitHubIntegrationSettings() {
                     </Alert>
                 ) : null}
 
-                <div className="divide-y divide-border rounded-lg border border-border">
-                    <div className="flex min-w-0 items-center gap-3 px-3 py-3">
+                <div className="divide-y divide-border border border-border">
+                    <div className="flex min-w-0 items-center gap-3 px-3.5 py-3 transition-colors duration-300 ease-(--ease-out-expo) hover:bg-muted/35">
                         <AuthProviderIcon provider="github" />
                         <div className="min-w-0 flex-1">
                             <p className="font-medium">
@@ -154,7 +162,7 @@ export function GitHubIntegrationSettings() {
                                     "settings.githubIntegration.githubLoginLabel"
                                 )}
                             </p>
-                            <p className="truncate font-mono text-meta text-muted-foreground">
+                            <p className="truncate font-mono text-meta text-muted-foreground normal-case tracking-normal">
                                 {githubLogin ||
                                     t(
                                         "settings.githubIntegration.githubLoginMissing"
@@ -162,21 +170,21 @@ export function GitHubIntegrationSettings() {
                             </p>
                         </div>
                     </div>
-                    <div className="flex min-w-0 items-center justify-between gap-3 px-3 py-3">
+                    <div className="flex min-w-0 items-center justify-between gap-3 px-3.5 py-3 transition-colors duration-300 ease-(--ease-out-expo) hover:bg-muted/35">
                         <div className="min-w-0">
                             <p className="font-medium">
                                 {t(
                                     "settings.githubIntegration.tokenStatusLabel"
                                 )}
                             </p>
-                            <p className="text-meta text-muted-foreground">
+                            <p className="text-meta text-muted-foreground normal-case tracking-normal">
                                 {t(
                                     "settings.githubIntegration.tokenStatusHint"
                                 )}
                             </p>
                         </div>
                         <Badge
-                            className="shrink-0"
+                            className="shrink-0 font-mono tracking-wide uppercase"
                             variant={tokenStatusBadgeVariant}
                         >
                             {t(

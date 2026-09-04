@@ -18,13 +18,6 @@ import {
     AlertDialogTitle,
 } from "@/shared/shadcn/ui/alert-dialog";
 import { Button } from "@/shared/shadcn/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/shared/shadcn/ui/card";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type TeamDangerZoneProperties = {
@@ -65,19 +58,28 @@ export function TeamDangerZone({ teamId }: TeamDangerZoneProperties) {
 
     return (
         <>
-            <Card className="border-destructive/40">
-                <CardHeader>
-                    <CardTitle className="text-destructive">
+            <section
+                aria-labelledby="team-settings-danger-heading"
+                className="flex flex-col gap-5 border-t border-border pt-8 sm:gap-6 sm:pt-10"
+            >
+                <div className="flex min-w-0 flex-col gap-2">
+                    <h2
+                        className="text-h2 text-destructive"
+                        id="team-settings-danger-heading"
+                    >
                         {t("teamSettings.dangerTitle")}
-                    </CardTitle>
-                    <CardDescription>
+                    </h2>
+                    <div aria-hidden className="h-px w-12 bg-destructive/55" />
+                    <p className="max-w-prose text-ui text-muted-foreground">
                         {hasProjects
                             ? t("teamSettings.deleteBlocked")
                             : t("teamSettings.dangerDescription")}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
+                    </p>
+                </div>
+
+                <div className="flex flex-col gap-4 rounded-xl border border-dashed border-destructive/45 bg-destructive/5 p-4 sm:p-5">
                     <Button
+                        className="w-fit"
                         disabled={!canDeleteNow || deleteTeam.isPending}
                         onClick={() => setConfirmOpen(true)}
                         type="button"
@@ -88,8 +90,8 @@ export function TeamDangerZone({ teamId }: TeamDangerZoneProperties) {
                         ) : null}
                         {t("teamSettings.delete")}
                     </Button>
-                </CardContent>
-            </Card>
+                </div>
+            </section>
 
             <AlertDialog
                 onOpenChange={(open) => {

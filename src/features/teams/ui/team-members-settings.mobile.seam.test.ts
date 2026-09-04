@@ -13,10 +13,10 @@ describe("TeamMembersSettings mobile seam", () => {
         );
 
         expect(source).toMatch(
-            /flex flex-wrap items-center gap-3 px-3\.5 py-2/
+            /flex flex-wrap items-center gap-3 px-3\.5 py-2\.5/
         );
         expect(source).not.toMatch(
-            /className="flex items-center gap-3 px-3\.5 py-2"/
+            /className="flex items-center gap-3 px-3\.5 py-2(?:\.5)?"/
         );
     });
 });

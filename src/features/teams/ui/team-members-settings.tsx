@@ -213,10 +213,16 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
     };
 
     return (
-        <section className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
-                <h2 className="text-h3">{t("members.title")}</h2>
-                <p className="text-ui text-muted-foreground">
+        <section
+            aria-labelledby="team-settings-members-heading"
+            className="flex flex-col gap-6 border-t border-border pt-8 sm:gap-7 sm:pt-10"
+        >
+            <div className="flex min-w-0 flex-col gap-2">
+                <h2 className="text-h2" id="team-settings-members-heading">
+                    {t("members.title")}
+                </h2>
+                <div aria-hidden className="h-px w-12 bg-primary/60" />
+                <p className="max-w-prose text-ui text-muted-foreground">
                     {t("members.description")}
                 </p>
                 {guest ? (
@@ -232,7 +238,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                     className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
                 />
                 <Input
-                    className="pl-8"
+                    className="bg-card/70 pl-8 ring-1 ring-foreground/5"
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder={t("members.searchPlaceholder")}
                     value={searchQuery}
@@ -240,7 +246,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
             </div>
 
             <div className="flex flex-col gap-3">
-                <h3 className="text-meta tracking-wide text-muted-foreground uppercase">
+                <h3 className="font-mono text-meta tracking-[0.12em] text-muted-foreground uppercase">
                     {query
                         ? t("members.peopleFilteredCount", {
                               count: visiblePeopleCount,
@@ -255,10 +261,10 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                         {t("members.noSearchMatches")}
                     </p>
                 ) : (
-                    <ul className="divide-y divide-border border border-border bg-card">
+                    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card/70 ring-1 ring-foreground/5">
                         {showOwner && team && ownerProfile ? (
-                            <li className="flex flex-wrap items-center gap-3 px-3.5 py-2">
-                                <Avatar className="size-8 rounded-md">
+                            <li className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 transition-colors duration-300 [transition-timing-function:var(--ease-out-expo)] hover:bg-muted/35">
+                                <Avatar className="size-8 rounded-md ring-1 ring-foreground/10">
                                     {ownerProfile.avatar_url ? (
                                         <AvatarImage
                                             alt=""
@@ -319,10 +325,10 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
 
                             return (
                                 <li
-                                    className="flex flex-wrap items-center gap-3 px-3.5 py-2"
+                                    className="flex flex-wrap items-center gap-3 px-3.5 py-2.5 transition-colors duration-300 [transition-timing-function:var(--ease-out-expo)] hover:bg-muted/35"
                                     key={member.user_id}
                                 >
-                                    <Avatar className="size-8 rounded-md">
+                                    <Avatar className="size-8 rounded-md ring-1 ring-foreground/10">
                                         {member.profile?.avatar_url ? (
                                             <AvatarImage
                                                 alt=""
@@ -484,7 +490,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                 <>
                     {guest ? undefined : (
                         <div className="flex flex-col gap-3">
-                            <h3 className="text-meta tracking-wide text-muted-foreground uppercase">
+                            <h3 className="font-mono text-meta tracking-[0.12em] text-muted-foreground uppercase">
                                 {query
                                     ? t("members.pendingInvitesFilteredCount", {
                                           count: pendingInvites.length,
@@ -505,10 +511,10 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                     {t("members.noSearchMatches")}
                                 </p>
                             ) : (
-                                <ul className="divide-y divide-border border border-border bg-card">
+                                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border/80 bg-card/70 ring-1 ring-foreground/5">
                                     {pendingInvites.map((invite) => (
                                         <li
-                                            className="flex flex-col gap-2 px-3.5 py-2 sm:flex-row sm:items-center"
+                                            className="flex flex-col gap-2 px-3.5 py-2.5 transition-colors duration-300 [transition-timing-function:var(--ease-out-expo)] hover:bg-muted/35 sm:flex-row sm:items-center"
                                             key={invite.id}
                                         >
                                             <div className="min-w-0 flex-1">
@@ -649,16 +655,18 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                     )}
 
                     {canCreateInvite ? (
-                        <div className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
-                            <div className="flex items-center gap-2">
-                                <UserPlus className="size-4 text-muted-foreground" />
-                                <h3 className="text-ui font-medium">
-                                    {t("members.inviteTitle")}
-                                </h3>
+                        <div className="flex flex-col gap-4 rounded-xl border border-border/80 border-l-2 border-l-primary/70 bg-card/70 p-4 ring-1 ring-foreground/5 sm:p-5">
+                            <div className="flex min-w-0 flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <UserPlus className="size-4 shrink-0 text-primary" />
+                                    <h3 className="text-h3">
+                                        {t("members.inviteTitle")}
+                                    </h3>
+                                </div>
+                                <p className="max-w-prose text-ui text-muted-foreground">
+                                    {t("members.inviteHint")}
+                                </p>
                             </div>
-                            <p className="text-ui text-muted-foreground">
-                                {t("members.inviteHint")}
-                            </p>
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <div className="flex flex-col gap-1.5 sm:col-span-2">
                                     <Label htmlFor="invite-email">
@@ -787,10 +795,10 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                             </div>
                         </div>
                     ) : guest ? (
-                        <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-4">
+                        <div className="flex flex-col gap-2 rounded-xl border border-dashed border-border/80 bg-card/50 p-4 sm:p-5">
                             <div className="flex items-center gap-2">
-                                <UserPlus className="size-4 text-muted-foreground" />
-                                <h3 className="text-ui font-medium">
+                                <UserPlus className="size-4 shrink-0 text-muted-foreground" />
+                                <h3 className="text-h3">
                                     {t("members.inviteTitle")}
                                 </h3>
                             </div>

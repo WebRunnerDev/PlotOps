@@ -1,4 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import {
+    ArrowLeft,
+    Columns3,
+    GitBranch,
+    type LucideIcon,
+    SlidersHorizontal,
+    Tag,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -26,6 +34,7 @@ import {
     useTeam,
     useTeamMembers,
 } from "@/features/teams/model/use-team-members";
+import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -36,9 +45,17 @@ export const Route = createFileRoute("/(main)/projects/$projectId/settings")({
 
 type SettingsSection = "boards" | "customFields" | "labels";
 
+const SECTION_ICONS = {
+    boards: Columns3,
+    customFields: SlidersHorizontal,
+    labels: Tag,
+} as const satisfies Record<SettingsSection, LucideIcon>;
+
 function ProjectSettingsRoute() {
     const { projectId } = Route.useParams();
+    const router = useRouter();
     const { t } = useTranslation("board");
+    const { t: tCommon } = useTranslation("common");
     const { githubAccessToken } = useAuth();
     const { data: project, error, isLoading } = useProject(projectId);
     const {
@@ -134,7 +151,7 @@ function ProjectSettingsRoute() {
 
     if (accessError) {
         return (
-            <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 px-4 py-4">
+            <div className="relative mx-auto flex h-full w-full max-w-6xl flex-col gap-4 px-4 py-8">
                 <Alert variant="destructive">
                     <AlertDescription>{t("projectError")}</AlertDescription>
                 </Alert>
@@ -146,25 +163,44 @@ function ProjectSettingsRoute() {
         navItems.find((item) => item.id === section)?.id ??
         navItems[0]?.id ??
         "boards";
+    const repoLinked = project
+        ? projectHasGithubRepo(project.github_repo_id)
+        : false;
 
     return (
-        <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-4 overflow-y-auto px-4 py-4">
-            <header className="flex flex-col gap-3 border-b border-border pb-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <h1 className="truncate text-sm font-semibold">
-                            {t("settings.title")}
-                        </h1>
-                        {project ? (
-                            <span className="truncate font-mono text-meta text-muted-foreground">
-                                {project.name}
-                            </span>
-                        ) : undefined}
-                    </div>
+        <div className="relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10">
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 -top-8 h-72 bg-auth-atmosphere opacity-80 sm:-top-10 sm:h-96"
+            />
+
+            <header className="relative flex min-w-0 flex-col gap-5 motion-reveal sm:gap-6">
+                <Button
+                    className="w-fit shrink-0 text-muted-foreground"
+                    onClick={() => router.history.back()}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                >
+                    <ArrowLeft data-icon="inline-start" />
+                    {tCommon("back")}
+                </Button>
+
+                <div className="flex min-w-0 flex-col gap-3">
+                    <p className="font-mono text-meta text-primary uppercase tracking-[0.14em]">
+                        {t("settings.nav.projectSettings")}
+                    </p>
+                    <h1 className="min-w-0 truncate text-h1 text-foreground">
+                        {project?.name ?? t("settings.title")}
+                    </h1>
+                    <div aria-hidden className="h-px w-14 bg-primary/70" />
+                    <p className="max-w-xl text-body text-muted-foreground">
+                        {t("settings.description")}
+                    </p>
                 </div>
 
                 {(canManageMembers || canView) && project?.team_id ? (
-                    <Alert>
+                    <Alert className="motion-reveal max-w-2xl [animation-delay:120ms]">
                         <AlertDescription className="flex flex-wrap items-center gap-2">
                             <span>{t("settings.membersMoved")}</span>
                             <Button
@@ -183,95 +219,191 @@ function ProjectSettingsRoute() {
                         </AlertDescription>
                     </Alert>
                 ) : undefined}
-
-                <div className="flex flex-wrap gap-1">
-                    {navItems.map((item) => {
-                        const active = item.id === activeSection;
-                        return (
-                            <Button
-                                key={item.id}
-                                onClick={() => setSection(item.id)}
-                                size="sm"
-                                type="button"
-                                variant={active ? "secondary" : "ghost"}
-                            >
-                                {item.label}
-                                {item.count == undefined ? undefined : (
-                                    <span className="font-mono text-meta text-muted-foreground tabular-nums">
-                                        {item.count}
-                                    </span>
-                                )}
-                            </Button>
-                        );
-                    })}
-                </div>
             </header>
 
             {error || !project ? (
-                <Alert variant="destructive">
+                <Alert className="relative" variant="destructive">
                     <AlertDescription>{t("projectError")}</AlertDescription>
                 </Alert>
             ) : (
-                <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-                    <section
-                        className="scroll-mt-4 rounded-xl border border-border p-4"
-                        id={resolveProjectConnectHash()}
-                    >
-                        <h2 className="text-ui font-medium">
-                            {t("settings.repository.title")}
-                        </h2>
-                        {projectHasGithubRepo(project.github_repo_id) ? (
-                            <p className="mt-2 min-w-0 truncate font-mono text-code text-muted-foreground">
-                                {project.github_full_name ??
-                                    t("settings.repository.linked")}
-                            </p>
-                        ) : canManageSettings ? (
-                            <ConnectProjectRepository
-                                projectId={projectId}
-                                teamId={project.team_id}
-                            />
-                        ) : (
-                            <p className="mt-2 text-ui text-muted-foreground">
-                                {t("settings.repository.connect")}
-                            </p>
-                        )}
-                    </section>
+                <div className="relative grid min-w-0 gap-8 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[15rem_minmax(0,1fr)]">
+                    {navItems.length > 0 ? (
+                        <nav
+                            aria-label={t("settings.nav.projectSettings")}
+                            className="motion-reveal min-w-0 [animation-delay:160ms] lg:sticky lg:top-4 lg:self-start"
+                        >
+                            <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+                                {navItems.map((item, index) => {
+                                    const active = item.id === activeSection;
+                                    const Icon = SECTION_ICONS[item.id];
+                                    return (
+                                        <li
+                                            className="shrink-0 lg:w-full"
+                                            key={item.id}
+                                        >
+                                            <button
+                                                aria-current={
+                                                    active ? "page" : undefined
+                                                }
+                                                className={cn(
+                                                    "group flex w-full min-w-0 items-center gap-2.5 border border-transparent px-3 py-2.5 text-left transition-[color,background-color,border-color,transform] duration-300 ease-(--ease-out-expo)",
+                                                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                                                    active
+                                                        ? "border-border bg-card text-foreground shadow-[inset_3px_0_0_0_var(--primary)]"
+                                                        : "text-muted-foreground hover:border-border/80 hover:bg-muted/40 hover:text-foreground"
+                                                )}
+                                                onClick={() =>
+                                                    setSection(item.id)
+                                                }
+                                                style={{
+                                                    transitionDelay: `${index * 40}ms`,
+                                                }}
+                                                type="button"
+                                            >
+                                                <Icon
+                                                    aria-hidden
+                                                    className={cn(
+                                                        "size-3.5 shrink-0 transition-transform duration-300 ease-(--ease-out-expo)",
+                                                        active
+                                                            ? "text-primary"
+                                                            : "text-muted-foreground group-hover:translate-x-0.5 group-hover:text-primary"
+                                                    )}
+                                                />
+                                                <span className="min-w-0 flex-1 truncate text-ui">
+                                                    {item.label}
+                                                </span>
+                                                {item.count ==
+                                                undefined ? undefined : (
+                                                    <span
+                                                        className={cn(
+                                                            "font-mono text-meta tabular-nums",
+                                                            active
+                                                                ? "text-primary/80"
+                                                                : "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        {String(
+                                                            item.count
+                                                        ).padStart(2, "0")}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </nav>
+                    ) : undefined}
 
-                    {activeSection === "boards" &&
-                    isSettled &&
-                    canManageBoard ? (
-                        <ProjectBoardsSettings
-                            defaultBaseBranch={
-                                project.github_default_branch ?? "main"
-                            }
-                            projectId={projectId}
-                            showAutoAssignToCreator={showAutoAssignToCreator}
-                        />
-                    ) : undefined}
-                    {activeSection === "labels" &&
-                    isSettled &&
-                    canManageBoard ? (
-                        <ProjectLabelsSettings
-                            onOpenTask={selectTask}
-                            projectId={projectId}
-                        />
-                    ) : undefined}
-                    {activeSection === "customFields" &&
-                    isSettled &&
-                    canManageBoard ? (
-                        <ProjectCustomFieldsSettings
-                            onOpenTask={selectTask}
-                            projectId={projectId}
-                        />
-                    ) : undefined}
-                    {defaultBoardId ? (
-                        <TaskDrawer
-                            boardId={defaultBoardId}
-                            githubToken={githubAccessToken}
-                            projectId={projectId}
-                            repoFullName={project.github_full_name ?? undefined}
-                        />
-                    ) : undefined}
+                    <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-8 lg:mx-0 lg:max-w-none">
+                        <section
+                            className={cn(
+                                "scroll-mt-4 motion-reveal border border-border bg-card/60 p-5 backdrop-blur-sm [animation-delay:220ms] sm:p-6",
+                                repoLinked
+                                    ? "ring-1 ring-primary/20"
+                                    : "border-dashed"
+                            )}
+                            id={resolveProjectConnectHash()}
+                        >
+                            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2.5">
+                                    <GitBranch
+                                        aria-hidden
+                                        className="size-4 shrink-0 text-primary"
+                                    />
+                                    <h2 className="text-h3">
+                                        {t("settings.repository.title")}
+                                    </h2>
+                                </div>
+                                <span
+                                    className={cn(
+                                        "inline-flex items-center gap-2 font-mono text-meta uppercase tracking-[0.12em]",
+                                        repoLinked
+                                            ? "text-success"
+                                            : "text-muted-foreground"
+                                    )}
+                                >
+                                    <span
+                                        aria-hidden
+                                        className={cn(
+                                            "size-1.5 shrink-0 rounded-full",
+                                            repoLinked
+                                                ? "bg-success shadow-[0_0_0_3px_color-mix(in_oklab,var(--success)_28%,transparent)]"
+                                                : "bg-muted-foreground/50"
+                                        )}
+                                    />
+                                    {repoLinked
+                                        ? t("settings.repository.statusLinked")
+                                        : t(
+                                              "settings.repository.statusUnlinked"
+                                          )}
+                                </span>
+                            </div>
+
+                            {repoLinked ? (
+                                <p className="mt-4 min-w-0 truncate font-mono text-code text-foreground/90">
+                                    {project.github_full_name ??
+                                        t("settings.repository.linked")}
+                                </p>
+                            ) : canManageSettings ? (
+                                <ConnectProjectRepository
+                                    projectId={projectId}
+                                    teamId={project.team_id}
+                                />
+                            ) : (
+                                <p className="mt-4 text-ui text-muted-foreground">
+                                    {t("settings.repository.connect")}
+                                </p>
+                            )}
+                        </section>
+
+                        <div
+                            className="motion-reveal min-w-0 [animation-delay:300ms]"
+                            key={activeSection}
+                        >
+                            {activeSection === "boards" &&
+                            isSettled &&
+                            canManageBoard ? (
+                                <ProjectBoardsSettings
+                                    defaultBaseBranch={
+                                        project.github_default_branch ?? "main"
+                                    }
+                                    projectId={projectId}
+                                    showAutoAssignToCreator={
+                                        showAutoAssignToCreator
+                                    }
+                                    showGitBranchSettings={repoLinked}
+                                />
+                            ) : undefined}
+                            {activeSection === "labels" &&
+                            isSettled &&
+                            canManageBoard ? (
+                                <ProjectLabelsSettings
+                                    onOpenTask={selectTask}
+                                    projectId={projectId}
+                                />
+                            ) : undefined}
+                            {activeSection === "customFields" &&
+                            isSettled &&
+                            canManageBoard ? (
+                                <ProjectCustomFieldsSettings
+                                    onOpenTask={selectTask}
+                                    projectId={projectId}
+                                />
+                            ) : undefined}
+                        </div>
+
+                        {defaultBoardId ? (
+                            <TaskDrawer
+                                boardId={defaultBoardId}
+                                githubToken={githubAccessToken}
+                                projectId={projectId}
+                                repoFullName={
+                                    project.github_full_name ?? undefined
+                                }
+                            />
+                        ) : undefined}
+                    </div>
                 </div>
             )}
         </div>

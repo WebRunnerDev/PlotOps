@@ -194,10 +194,9 @@ export function ProjectLabelsSettings({
 
     return (
         <section className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
-                <h2 className="text-h3 font-medium">
-                    {t("labelSettings.title")}
-                </h2>
+            <div className="flex flex-col gap-2">
+                <h2 className="text-h3">{t("labelSettings.title")}</h2>
+                <div aria-hidden className="h-px w-12 bg-primary/55" />
                 <p className="text-ui text-muted-foreground">
                     {t("labelSettings.description")}
                 </p>
