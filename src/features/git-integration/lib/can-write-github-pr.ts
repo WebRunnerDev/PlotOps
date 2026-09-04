@@ -9,7 +9,7 @@ export type CanWriteGithubPrInput = {
 };
 
 /**
- * PlotOps gate for in-app Open PR / Merge (ADR 0022).
+ * PlotOps gate for in-app Open PR / Merge / Close (ADR 0022).
  * GitHub still enforces repo rights via the user's provider_token.
  */
 export function canWriteGithubPr(input: CanWriteGithubPrInput): boolean {

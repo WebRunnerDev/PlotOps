@@ -30,6 +30,7 @@ import { canFetchPullRequestFiles } from "@/features/git-integration/lib/can-fet
 import { canWriteGithubPr } from "@/features/git-integration/lib/can-write-github-pr";
 import { defaultPullRequestTitle } from "@/features/git-integration/lib/default-pull-request-title";
 import {
+    useClosePullRequest,
     useCreatePullRequest,
     useMergePullRequest,
 } from "@/features/git-integration/model/use-github-pr-writes";
@@ -109,6 +110,7 @@ export function TaskGithubPanel({
     const { isSettled, role } = useProjectAccess(projectId);
     const createPr = useCreatePullRequest();
     const mergePr = useMergePullRequest();
+    const closePr = useClosePullRequest();
 
     const [copied, setCopied] = useState(false);
     const [linkingBranch, setLinkingBranch] = useState(false);
@@ -122,6 +124,7 @@ export function TaskGithubPanel({
     const [diffOpen, setDiffOpen] = useState(false);
     const [pendingBranch, setPendingBranch] = useState<null | string>(null);
     const [mergeOpen, setMergeOpen] = useState(false);
+    const [closeOpen, setCloseOpen] = useState(false);
     const [mergeMethod, setMergeMethod] = useState<GitMergeMethod>("squash");
     const prLinkAbort = useRef<AbortController | undefined>(undefined);
     const commitLinkAbort = useRef<AbortController | undefined>(undefined);
@@ -156,6 +159,7 @@ export function TaskGithubPanel({
         setDiffOpen(false);
         setPendingBranch(null);
         setMergeOpen(false);
+        setCloseOpen(false);
         setMergeMethod("squash");
     }, [task.id]);
 
@@ -171,6 +175,8 @@ export function TaskGithubPanel({
         token: githubToken,
     });
     const headIsShared = Boolean(branchName && isSharedBranch(branchName));
+    const writeActionPending =
+        createPr.isPending || mergePr.isPending || closePr.isPending;
     const canOpenPr =
         canWritePr &&
         canFetchGithub &&
@@ -181,14 +187,18 @@ export function TaskGithubPanel({
         canWritePr &&
         canFetchGithub &&
         task.pr?.state === "open" &&
-        !createPr.isPending &&
-        !mergePr.isPending;
+        !writeActionPending;
+    const canClosePr =
+        canWritePr &&
+        canFetchGithub &&
+        task.pr?.state === "open" &&
+        !writeActionPending;
 
     if (githubPanelNeedsRepo(repoFullName)) {
         return (
-            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+            <div className="flex flex-col gap-3 rounded-none bg-muted/40 p-3 ring-1 ring-primary/20">
                 <div className="flex flex-col gap-0.5">
-                    <p className="text-meta text-muted-foreground">
+                    <p className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         {t("github.title")}
                     </p>
                     <p className="text-ui text-muted-foreground">
@@ -329,6 +339,27 @@ export function TaskGithubPanel({
             toast.success(t("github.mergePrToast", { number: task.pr.number }));
         } catch (error) {
             toastWriteFailure(error, "github.mergePrFailed");
+        }
+    };
+
+    const handleCloseConfirm = async () => {
+        if (!canClosePr || !githubToken || !repoFullName || !task.pr) return;
+
+        try {
+            await closePr.mutateAsync({
+                headBranchName: branchName ?? undefined,
+                prNumber: task.pr.number,
+                repoFullName,
+                token: githubToken,
+            });
+            onPrChange({
+                ...task.pr,
+                state: "closed",
+            });
+            setCloseOpen(false);
+            toast.success(t("github.closePrToast", { number: task.pr.number }));
+        } catch (error) {
+            toastWriteFailure(error, "github.closePrFailed");
         }
     };
 
@@ -557,20 +588,36 @@ export function TaskGithubPanel({
                 prNumber={task.pr.number}
                 repoFullName={repoFullName}
             />
-            {canMergePr ? (
+            {canMergePr || canClosePr ? (
                 <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                        disabled={mergePr.isPending}
-                        onClick={() => setMergeOpen(true)}
-                        size="xs"
-                        type="button"
-                        variant="default"
-                    >
-                        {mergePr.isPending ? (
-                            <Spinner className="size-3.5" />
-                        ) : undefined}
-                        {t("github.mergePr")}
-                    </Button>
+                    {canMergePr ? (
+                        <Button
+                            disabled={writeActionPending}
+                            onClick={() => setMergeOpen(true)}
+                            size="xs"
+                            type="button"
+                            variant="default"
+                        >
+                            {mergePr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.mergePr")}
+                        </Button>
+                    ) : undefined}
+                    {canClosePr ? (
+                        <Button
+                            disabled={writeActionPending}
+                            onClick={() => setCloseOpen(true)}
+                            size="xs"
+                            type="button"
+                            variant="outline"
+                        >
+                            {closePr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.closePr")}
+                        </Button>
+                    ) : undefined}
                 </div>
             ) : undefined}
         </div>
@@ -673,9 +720,9 @@ export function TaskGithubPanel({
 
     return (
         <>
-            <div className="flex min-w-0 flex-col gap-3 rounded-xl bg-muted/40 p-3 ring-1 ring-foreground/10">
+            <div className="flex min-w-0 flex-col gap-3 rounded-none bg-muted/40 p-3 ring-1 ring-primary/20">
                 <div className="flex flex-col gap-0.5">
-                    <p className="text-meta text-muted-foreground">
+                    <p className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         {t("github.title")}
                     </p>
                     <p className="text-meta font-mono text-muted-foreground">
@@ -707,7 +754,7 @@ export function TaskGithubPanel({
                                 ) : undefined}
                             </div>
                             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                                <code className="min-w-0 flex-1 truncate rounded-md bg-background px-2.5 py-1.5 text-code ring-1 ring-foreground/10">
+                                <code className="min-w-0 flex-1 truncate rounded-none bg-background px-2.5 py-1.5 font-mono text-code ring-1 ring-primary/15">
                                     {checkoutCommand}
                                 </code>
                                 <Button
@@ -788,7 +835,7 @@ export function TaskGithubPanel({
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex items-center justify-between gap-2 rounded-md border border-foreground/10 px-2.5 py-1.5">
+                            <div className="flex items-center justify-between gap-2 rounded-none border border-primary/15 px-2.5 py-1.5">
                                 <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
                                     <GitBranch
                                         aria-hidden
@@ -831,7 +878,7 @@ export function TaskGithubPanel({
                     </>
                 )}
 
-                <div className="flex flex-col gap-2 border-t border-foreground/10 pt-3">
+                <div className="flex flex-col gap-2 border-t border-primary/15 pt-3">
                     <p className="text-ui text-muted-foreground">
                         {t("github.smartCommitsHint", { key: task.key })}
                     </p>
@@ -1055,6 +1102,43 @@ export function TaskGithubPanel({
                                 <Spinner className="size-3.5" />
                             ) : undefined}
                             {t("github.mergePrConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open && !closePr.isPending) setCloseOpen(false);
+                }}
+                open={closeOpen}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("github.closePrTitle", {
+                                number: task.pr?.number ?? 0,
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("github.closePrBody")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={closePr.isPending}>
+                            {t("github.closePrCancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={closePr.isPending}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                void handleCloseConfirm();
+                            }}
+                        >
+                            {closePr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.closePrConfirm")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

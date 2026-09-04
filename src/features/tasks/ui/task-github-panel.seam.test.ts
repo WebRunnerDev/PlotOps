@@ -10,7 +10,7 @@ function read(relativePath: string) {
     return readFileSync(path.join(root, relativePath), "utf8");
 }
 
-describe("TaskGithubPanel Open/Merge seam", () => {
+describe("TaskGithubPanel Open/Merge/Close seam", () => {
     it("gates writes with canWriteGithubPr and hides guest path", () => {
         const panel = read("src/features/tasks/ui/task-github-panel.tsx");
 
@@ -18,8 +18,10 @@ describe("TaskGithubPanel Open/Merge seam", () => {
         expect(panel).toMatch(/isGuest\(/);
         expect(panel).toMatch(/useCreatePullRequest/);
         expect(panel).toMatch(/useMergePullRequest/);
+        expect(panel).toMatch(/useClosePullRequest/);
         expect(panel).toMatch(/github\.openPr/);
         expect(panel).toMatch(/github\.mergePr/);
+        expect(panel).toMatch(/github\.closePr/);
         expect(panel).toMatch(/defaultPullRequestTitle/);
         expect(panel).toMatch(/mergeMethod/);
         expect(panel).toMatch(/gitHubWriteErrorKind/);
@@ -42,6 +44,9 @@ describe("TaskGithubPanel Open/Merge seam", () => {
         for (const source of [en, ru]) {
             expect(source).toMatch(/"openPr"/);
             expect(source).toMatch(/"mergePr"/);
+            expect(source).toMatch(/"closePr"/);
+            expect(source).toMatch(/"closePrTitle"/);
+            expect(source).toMatch(/"closePrConfirm"/);
             expect(source).toMatch(/"mergeMethodSquash"/);
             expect(source).toMatch(/"writeError"/);
         }

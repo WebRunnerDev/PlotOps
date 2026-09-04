@@ -731,6 +731,13 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Merged PR #{{number}}",
         "mergePrFailed": "Could not merge pull request",
+        "closePr": "Close",
+        "closePrTitle": "Close pull request #{{number}}?",
+        "closePrBody": "Closes without merging. The task stays in its current column.",
+        "closePrConfirm": "Close pull request",
+        "closePrCancel": "Cancel",
+        "closePrToast": "Closed PR #{{number}}",
+        "closePrFailed": "Could not close pull request",
         "smartCommitsHint": "Include {{key}} in commit messages (e.g. “{{key}}: Fix login”) — matching commits appear automatically below.",
         "linkCommit": "Link commit",
         "linkCommitHint": "Enter a commit SHA or GitHub commit URL.",
@@ -772,7 +779,7 @@
             "forbidden": "GitHub denied this action — check repo permissions",
             "not_found": "Branch or pull request was not found on GitHub",
             "conflict": "Pull request cannot be merged (conflicts or checks)",
-            "validation": "GitHub rejected the request (PR may already exist or be a draft)",
+            "validation": "GitHub rejected the request (rules, existing review, or invalid state)",
             "rate_limit": "GitHub rate limit hit — wait a moment and try again",
             "unknown": "GitHub request failed — try again"
         }

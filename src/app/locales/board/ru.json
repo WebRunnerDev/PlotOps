@@ -737,6 +737,13 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Слит PR #{{number}}",
         "mergePrFailed": "Не удалось слить pull request",
+        "closePr": "Закрыть",
+        "closePrTitle": "Закрыть pull request #{{number}}?",
+        "closePrBody": "Закрывает без слияния. Задача остаётся в текущей колонке.",
+        "closePrConfirm": "Закрыть pull request",
+        "closePrCancel": "Отмена",
+        "closePrToast": "Закрыт PR #{{number}}",
+        "closePrFailed": "Не удалось закрыть pull request",
         "smartCommitsHint": "Указывайте {{key}} в сообщении коммита (например «{{key}}: Fix login») — подходящие коммиты появятся ниже автоматически.",
         "linkCommit": "Привязать коммит",
         "linkCommitHint": "Введите SHA коммита или URL коммита на GitHub.",
@@ -778,7 +785,7 @@
             "forbidden": "GitHub отклонил действие — проверьте права на репозиторий",
             "not_found": "Ветка или pull request не найдены на GitHub",
             "conflict": "Pull request нельзя слить (конфликты или проверки)",
-            "validation": "GitHub отклонил запрос (PR уже существует или это draft)",
+            "validation": "GitHub отклонил запрос (правила, существующий review или недопустимое состояние)",
             "rate_limit": "Лимит GitHub — подождите и повторите",
             "unknown": "Запрос к GitHub не удался — попробуйте снова"
         }

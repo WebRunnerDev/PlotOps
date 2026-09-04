@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+    closePullRequest,
     createPullRequest,
     GitHubApiError,
     gitHubWriteErrorKind,
@@ -132,5 +133,42 @@ describe("mergePullRequest", () => {
             commit_title: "TASK-1: Login",
             merge_method: "squash",
         });
+    });
+});
+
+describe("closePullRequest", () => {
+    it("PATCHes pull with state closed", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                body: null,
+                created_at: "2026-08-11T00:00:00Z",
+                draft: false,
+                head: { ref: "feature/TASK-1" },
+                html_url: "https://github.com/o/r/pull/7",
+                mergeable: false,
+                merged_at: null,
+                number: 7,
+                state: "closed",
+                title: "TASK-1: Login",
+                updated_at: "2026-08-11T01:00:00Z",
+            }),
+            ok: true,
+            status: 200,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const pr = await closePullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        });
+
+        expect(pr.number).toBe(7);
+        expect(pr.state).toBe("closed");
+        expect(pr.merged_at).toBeNull();
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7");
+        expect(init.method).toBe("PATCH");
+        expect(JSON.parse(String(init.body))).toEqual({ state: "closed" });
     });
 });
