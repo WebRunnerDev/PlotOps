@@ -44,7 +44,7 @@ export function TaskActivitySection({
             <section className="flex flex-col gap-3">
                 <CollapsibleTrigger className="group flex w-full items-center gap-2 text-left">
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
-                    <h3 className="text-ui font-medium">
+                    <h3 className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         {t("activity.title")}
                     </h3>
                     {open && events.length > 0 ? (

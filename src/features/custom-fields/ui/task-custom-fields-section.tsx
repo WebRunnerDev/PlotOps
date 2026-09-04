@@ -24,7 +24,8 @@ import { Label } from "@/shared/shadcn/ui/label";
 import { Textarea } from "@/shared/shadcn/ui/textarea";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 
-const FIELD_LABEL_CLASS = "text-meta text-muted-foreground";
+const FIELD_LABEL_CLASS =
+    "text-meta font-medium tracking-[0.06em] text-muted-foreground";
 const FIELD_CONTROL_CLASS = "w-full min-h-16 font-mono text-code";
 
 type DescriptionFieldProperties = {

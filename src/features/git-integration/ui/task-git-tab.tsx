@@ -137,7 +137,7 @@ export function TaskGitTab({
 
             {showBranchPrs ? (
                 <section className="flex flex-col gap-2">
-                    <p className="flex items-center gap-1.5 text-ui font-medium">
+                    <p className="flex items-center gap-1.5 text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         <GitPullRequest aria-hidden className="size-3.5" />
                         {t("git.pullRequests")}
                     </p>
@@ -237,7 +237,7 @@ export function TaskGitTab({
 
             <section className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1.5 text-ui font-medium">
+                    <p className="flex min-w-0 items-center gap-1.5 text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         <GitCommit aria-hidden className="size-3.5" />
                         {t("git.commits")}
                     </p>

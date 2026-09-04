@@ -18,6 +18,7 @@ import { useBoardColumns } from "@/features/boards";
 import { resolveColumnDeleteMoveTarget } from "@/features/boards/model/resolve-column-delete-move-target";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
+    columnAccentClass,
     type SubtaskProgress,
     type Task,
     taskKeys,
@@ -237,9 +238,11 @@ export function KanbanColumn({
         <>
             <section
                 className={cn(
-                    "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col gap-3 px-3 py-1 transition-colors last:border-r-0 border-r border-border",
-                    isOver && !isDragging && "bg-primary/5",
-                    isTaskListOver && !isDragging && "bg-primary/5",
+                    "group/column flex h-full min-h-0 min-w-72 flex-1 shrink-0 flex-col border border-border bg-card/50 transition-colors duration-150 ease-[var(--ease-out-quart)]",
+                    isOver && !isDragging && "border-primary/40 bg-primary/5",
+                    isTaskListOver &&
+                        !isDragging &&
+                        "border-primary/40 bg-primary/5",
                     isDragging && "opacity-40"
                 )}
                 data-column-id={status}
@@ -249,11 +252,11 @@ export function KanbanColumn({
                     transition,
                 }}
             >
-                <header className="flex items-center gap-1.5 px-0.5">
+                <header className="flex items-center gap-1.5 border-b border-border px-2.5 py-2">
                     {canManage ? (
                         <button
                             aria-label={t("columns.dragAria")}
-                            className="flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                            className="flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-none text-muted-foreground outline-none transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
                             type="button"
                             {...attributes}
                             {...listeners}
@@ -262,10 +265,18 @@ export function KanbanColumn({
                         </button>
                     ) : undefined}
 
+                    <span
+                        aria-hidden
+                        className={cn(
+                            "size-2 shrink-0",
+                            columnAccentClass(status)
+                        )}
+                    />
+
                     {isEditing && canManage ? (
                         <Input
                             aria-label={t("columns.renameAria")}
-                            className="h-7 flex-1 border-transparent bg-transparent px-1 text-ui font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
+                            className="h-7 flex-1 rounded-none border-transparent bg-transparent px-1 text-meta font-medium shadow-none focus-visible:border-ring focus-visible:bg-background"
                             onBlur={() => {
                                 if (skipBlurCommit.current) {
                                     skipBlurCommit.current = false;
@@ -292,7 +303,7 @@ export function KanbanColumn({
                         />
                     ) : canManage ? (
                         <button
-                            className="min-w-0 flex-1 truncate rounded-md px-1 py-0.5 text-left text-ui font-medium outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring"
+                            className="min-w-0 flex-1 truncate rounded-none px-1 py-0.5 text-left text-meta font-medium outline-none transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => setIsEditing(true)}
                             type="button"
                         >
@@ -303,7 +314,7 @@ export function KanbanColumn({
                             {name}
                         </span>
                     )}
-                    <span className="shrink-0 text-meta text-muted-foreground">
+                    <span className="ml-auto shrink-0 text-meta text-muted-foreground/70 tabular-nums">
                         {tasks.length}
                     </span>
                     {canManage ? (
@@ -315,10 +326,10 @@ export function KanbanColumn({
                             }
                             aria-pressed={isDone}
                             className={cn(
-                                "size-7 shrink-0 opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100",
+                                "size-7 shrink-0 rounded-none opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100",
                                 isDone
                                     ? "text-success opacity-100"
-                                    : "text-muted-foreground"
+                                    : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
                             )}
                             onClick={() => void handleToggleDone()}
                             size="icon-sm"
@@ -336,7 +347,7 @@ export function KanbanColumn({
                     {canManage ? (
                         <Button
                             aria-label={t("columns.deleteAria")}
-                            className="size-7 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 focus-visible:opacity-100"
+                            className="size-7 shrink-0 rounded-none text-muted-foreground opacity-0 transition-opacity group-focus-within/column:opacity-100 group-hover/column:opacity-100 hover:bg-primary/10 hover:text-primary focus-visible:opacity-100"
                             onClick={handleDeleteClick}
                             size="icon-sm"
                             type="button"
@@ -351,7 +362,7 @@ export function KanbanColumn({
                     className="scrollbar-board flex min-h-0 flex-1 flex-col overflow-y-auto"
                     ref={setTaskListDropReference}
                 >
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-px p-px">
                         <SortableContext
                             items={tasks.map((task) => task.id)}
                             strategy={
@@ -377,16 +388,25 @@ export function KanbanColumn({
                         </SortableContext>
                     </div>
                     {tasks.length === 0 ? (
-                        <div aria-hidden className="min-h-0 flex-1 shrink-0" />
+                        <div
+                            aria-hidden
+                            className="flex min-h-16 flex-1 shrink-0 items-center justify-center px-3"
+                        >
+                            <span className="text-meta text-muted-foreground/50">
+                                {t("columns.empty")}
+                            </span>
+                        </div>
                     ) : undefined}
                 </div>
-                <KanbanAddTask
-                    boardId={boardId}
-                    createSprintId={createSprintId}
-                    projectId={projectId}
-                    startOpen={startAddingTask}
-                    status={status}
-                />
+                <div className="border-t border-border px-1 py-1">
+                    <KanbanAddTask
+                        boardId={boardId}
+                        createSprintId={createSprintId}
+                        projectId={projectId}
+                        startOpen={startAddingTask}
+                        status={status}
+                    />
+                </div>
             </section>
 
             <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>

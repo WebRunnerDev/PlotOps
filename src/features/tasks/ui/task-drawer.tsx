@@ -141,8 +141,11 @@ import { copyRichTextToClipboard } from "@/shared/ui/rich-text-editor/copy-rich-
 const TASK_DRAWER_SNAP_POINTS = ["32rem", 0.92] as const;
 const PRIORITY_NONE = "__none__";
 const ESTIMATE_NONE = "__none__";
-const FIELD_LABEL_CLASS = "text-meta text-muted-foreground";
-const FIELD_CONTROL_CLASS = "w-full font-mono text-code";
+const FIELD_LABEL_CLASS =
+    "text-meta font-medium tracking-[0.06em] text-muted-foreground";
+const FIELD_CONTROL_CLASS = "w-full rounded-none font-mono text-code";
+const DRAWER_ACTION_CLASS =
+    "rounded-none transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary";
 
 type MoveBoardTarget = {
     boardId: string;
@@ -672,13 +675,19 @@ export function TaskDrawer({
                             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                                 <DrawerHeader
                                     className={cn(
-                                        "shrink-0 border-b border-border p-4 text-left",
+                                        "shrink-0 border-b border-primary/20 p-4 text-left",
                                         isArchived &&
                                             "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
                                     )}
                                 >
                                     <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
-                                        <span>{task.key}</span>
+                                        <span
+                                            aria-hidden
+                                            className="size-1.5 shrink-0 bg-primary"
+                                        />
+                                        <span className="font-mono text-code text-foreground/80">
+                                            {task.key}
+                                        </span>
                                         {isArchived
                                             ? ` · ${t("archive.badge")}`
                                             : undefined}
@@ -712,7 +721,10 @@ export function TaskDrawer({
                                                     </Label>
                                                     <div className="flex shrink-0 items-center gap-2">
                                                         <Button
-                                                            className="shrink-0"
+                                                            className={cn(
+                                                                "shrink-0",
+                                                                DRAWER_ACTION_CLASS
+                                                            )}
                                                             onClick={() => {
                                                                 void handleCopyTaskLink();
                                                             }}
@@ -740,7 +752,10 @@ export function TaskDrawer({
                                                             </span>
                                                         </Button>
                                                         <Button
-                                                            className="shrink-0"
+                                                            className={cn(
+                                                                "shrink-0",
+                                                                DRAWER_ACTION_CLASS
+                                                            )}
                                                             onClick={() => {
                                                                 void handleCopyTaskText();
                                                             }}
@@ -770,7 +785,7 @@ export function TaskDrawer({
                                                     </div>
                                                 </div>
                                                 <Textarea
-                                                    className="min-h-8 resize-none py-1 text-h3 font-semibold wrap-anywhere"
+                                                    className="min-h-8 resize-none rounded-none border-primary/25 py-1 text-h3 font-semibold wrap-anywhere"
                                                     disabled={!canEdit}
                                                     id="task-title"
                                                     maxLength={
@@ -1486,10 +1501,13 @@ export function TaskDrawer({
                                                 />
                                             ) : undefined}
 
-                                            <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
+                                            <div className="mt-auto flex flex-col gap-2 border-t border-primary/20 pt-4">
                                                 {canDelete && !isArchived ? (
                                                     <Button
-                                                        className="w-full"
+                                                        className={cn(
+                                                            "w-full",
+                                                            DRAWER_ACTION_CLASS
+                                                        )}
                                                         disabled={isArchiving}
                                                         onClick={() => {
                                                             void handleArchive();
@@ -1504,7 +1522,10 @@ export function TaskDrawer({
                                                 {canDelete && isArchived ? (
                                                     <>
                                                         <Button
-                                                            className="w-full"
+                                                            className={cn(
+                                                                "w-full",
+                                                                DRAWER_ACTION_CLASS
+                                                            )}
                                                             disabled={
                                                                 isRestoring
                                                             }
@@ -1520,7 +1541,7 @@ export function TaskDrawer({
                                                             )}
                                                         </Button>
                                                         <Button
-                                                            className="w-full"
+                                                            className="w-full rounded-none"
                                                             disabled={
                                                                 isDeleting
                                                             }
@@ -1756,6 +1777,7 @@ function TaskDeadlineField({
             {selected && !disabled ? (
                 <Button
                     aria-label={t("fields.deadlineClear")}
+                    className="rounded-none"
                     onClick={() => {
                         onChange(null);
                     }}

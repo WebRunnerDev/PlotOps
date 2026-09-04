@@ -208,7 +208,7 @@ export function KanbanAddTask({
     if (!open) {
         return (
             <Button
-                className="h-9 w-full justify-start gap-2 text-muted-foreground sm:h-8"
+                className="h-9 w-full justify-start gap-2 rounded-none text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary sm:h-8"
                 onClick={() => setOpen(true)}
                 type="button"
                 variant="ghost"
@@ -243,7 +243,7 @@ export function KanbanAddTask({
             ) : null}
             <Input
                 aria-label={t("tasks.addPlaceholder")}
-                className="h-8 bg-background text-ui shadow-none"
+                className="h-8 rounded-none border-primary/25 bg-background text-ui shadow-none"
                 disabled={isSubmitting}
                 maxLength={TASK_TITLE_MAX_LENGTH}
                 onBlur={() => {
