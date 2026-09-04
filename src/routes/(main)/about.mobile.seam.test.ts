@@ -15,7 +15,7 @@ const aboutSource = read("src/routes/(main)/about.tsx");
 describe("about page seam", () => {
     it("prevents long copy from forcing horizontal overflow", () => {
         expect(aboutSource).toMatch(/min-w-0/);
-        expect(aboutSource).toMatch(/break-words/);
+        expect(aboutSource).toMatch(/wrap-break-word|break-words/);
     });
 
     it("uses the shared PlotOps repo URL and MIT license on View on GitHub", () => {
@@ -25,14 +25,46 @@ describe("about page seam", () => {
         expect(aboutSource).not.toMatch(/https:\/\/github\.com\//);
     });
 
-    it("has en+ru copy for the product blurb, MIT mark, and GitHub action", () => {
-        const en = read("src/app/locales/about/en.json");
-        const ru = read("src/app/locales/about/ru.json");
+    it("renders a features grid from i18n keys", () => {
+        expect(aboutSource).toMatch(/featuresTitle/);
+        expect(aboutSource).toMatch(/FEATURES/);
+        expect(aboutSource).toMatch(/features\.\$\{key\}\.title/);
+        expect(aboutSource).toMatch(/features\.\$\{key\}\.body/);
+    });
 
-        for (const source of [en, ru]) {
-            expect(source).toMatch(/"openSource"/);
-            expect(source).toMatch(/\{\{license\}\}/);
-            expect(source).toMatch(/"viewOnGitHub"/);
+    it("has en+ru copy for blurb, features, stack, MIT mark, and GitHub action", () => {
+        const en = JSON.parse(read("src/app/locales/about/en.json")) as {
+            features: Record<string, { body: string; title: string }>;
+            openSource: string;
+            stack: string;
+            viewOnGitHub: string;
+        };
+        const ru = JSON.parse(read("src/app/locales/about/ru.json")) as {
+            features: Record<string, { body: string; title: string }>;
+            openSource: string;
+            stack: string;
+            viewOnGitHub: string;
+        };
+
+        const keys = [
+            "kanban",
+            "git",
+            "cicd",
+            "sprints",
+            "teams",
+            "collaboration",
+            "palette",
+            "guest",
+        ];
+
+        for (const locale of [en, ru]) {
+            expect(locale.openSource).toMatch(/\{\{license\}\}/);
+            expect(locale.viewOnGitHub.length).toBeGreaterThan(0);
+            expect(locale.stack.length).toBeGreaterThan(0);
+            for (const key of keys) {
+                expect(locale.features[key]?.title.length).toBeGreaterThan(0);
+                expect(locale.features[key]?.body.length).toBeGreaterThan(0);
+            }
         }
     });
 });

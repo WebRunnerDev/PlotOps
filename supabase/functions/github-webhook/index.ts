@@ -3,7 +3,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 import { createSlidingWindowRateLimiter } from "../_shared/sliding-window-rate-limit.ts";
-import { syncMergedPullRequest } from "./sync.ts";
+import { syncClosedPullRequest, syncMergedPullRequest } from "./sync.ts";
 import { verifyGitHubSignature } from "./verify-signature.ts";
 
 const webhookIpLimiter = createSlidingWindowRateLimiter({
@@ -99,12 +99,21 @@ Deno.serve(async (request) => {
     });
 
     try {
-        const result = await syncMergedPullRequest(
+        const mergeResult = await syncMergedPullRequest(
             supabase,
             payload as Record<string, unknown>,
             log
         );
-        return json(result);
+        if (!mergeResult.skipped || mergeResult.reason !== "not_merged_pr") {
+            return json(mergeResult);
+        }
+
+        const closeResult = await syncClosedPullRequest(
+            supabase,
+            payload as Record<string, unknown>,
+            log
+        );
+        return json(closeResult);
     } catch (error) {
         console.error(
             JSON.stringify({

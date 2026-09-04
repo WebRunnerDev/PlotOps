@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+    approvePullRequest,
+    closePullRequest,
     createPullRequest,
     GitHubApiError,
     gitHubWriteErrorKind,
@@ -132,5 +134,87 @@ describe("mergePullRequest", () => {
             commit_title: "TASK-1: Login",
             merge_method: "squash",
         });
+    });
+});
+
+describe("closePullRequest", () => {
+    it("PATCHes pull with state closed", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                body: null,
+                created_at: "2026-08-11T00:00:00Z",
+                draft: false,
+                head: { ref: "feature/TASK-1" },
+                html_url: "https://github.com/o/r/pull/7",
+                mergeable: false,
+                merged_at: null,
+                number: 7,
+                state: "closed",
+                title: "TASK-1: Login",
+                updated_at: "2026-08-11T01:00:00Z",
+            }),
+            ok: true,
+            status: 200,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const pr = await closePullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        });
+
+        expect(pr.number).toBe(7);
+        expect(pr.state).toBe("closed");
+        expect(pr.merged_at).toBeNull();
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7");
+        expect(init.method).toBe("PATCH");
+        expect(JSON.parse(String(init.body))).toEqual({ state: "closed" });
+    });
+});
+
+describe("approvePullRequest", () => {
+    it("POSTs a review with APPROVE event", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                id: 99,
+                state: "APPROVED",
+                user: { login: "reviewer" },
+            }),
+            ok: true,
+            status: 200,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const result = await approvePullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        });
+
+        expect(result.id).toBe(99);
+        expect(result.state).toBe("APPROVED");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7/reviews");
+        expect(init.method).toBe("POST");
+        expect(JSON.parse(String(init.body))).toEqual({
+            event: "APPROVE",
+        });
+    });
+
+    it("throws GitHubApiError on failure (e.g. own-PR 422)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({ ok: false, status: 422 })
+        );
+
+        await expect(
+            approvePullRequest({
+                prNumber: 7,
+                repoFullName: "o/r",
+                token: "tok",
+            })
+        ).rejects.toMatchObject({ status: 422 });
     });
 });

@@ -95,24 +95,32 @@ export function ConnectedAccountsSettings() {
     };
 
     return (
-        <Card className="max-w-lg">
-            <CardHeader>
-                <CardTitle>{t("settings.connectedAccountsTitle")}</CardTitle>
-                <CardDescription>
-                    {t("settings.connectedAccountsDescription")}
-                </CardDescription>
+        <Card className="max-w-none rounded-none border border-border bg-card/60 shadow-none ring-1 ring-primary/15 backdrop-blur-sm">
+            <CardHeader className="gap-3 border-b border-border/80 pb-4">
+                <div className="flex min-w-0 flex-col gap-2">
+                    <p className="font-mono text-meta text-primary uppercase tracking-[0.14em]">
+                        04
+                    </p>
+                    <CardTitle>
+                        {t("settings.connectedAccountsTitle")}
+                    </CardTitle>
+                    <div aria-hidden className="h-px w-10 bg-primary/60" />
+                    <CardDescription>
+                        {t("settings.connectedAccountsDescription")}
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
                 {error ? (
                     <Alert className="mb-4" variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 ) : null}
 
-                <ul className="divide-y divide-border rounded-lg border border-border">
+                <ul className="divide-y divide-border border border-border">
                     {providerSlots.map((slot) => (
                         <li
-                            className="flex min-w-0 items-center gap-3 px-3 py-3"
+                            className="flex min-w-0 items-center gap-3 px-3.5 py-3 transition-colors duration-300 ease-(--ease-out-expo) hover:bg-muted/35"
                             key={slot.provider}
                         >
                             <AuthProviderIcon provider={slot.provider} />
@@ -121,7 +129,7 @@ export function ConnectedAccountsSettings() {
                                     {t(`settings.providers.${slot.provider}`)}
                                 </p>
                                 {slot.identifier ? (
-                                    <p className="truncate font-mono text-meta text-muted-foreground">
+                                    <p className="truncate font-mono text-meta text-muted-foreground normal-case tracking-normal">
                                         {slot.identifier}
                                     </p>
                                 ) : null}

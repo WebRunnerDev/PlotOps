@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 import {
+    planClosePullRequestSync,
+    shouldHandleClosedUnmergedPr,
+} from "./close-sync.ts";
+import {
     type CandidateTask,
     isAlreadySynced,
     matchTask,
@@ -26,6 +30,59 @@ type PullRequestPayload = {
         id?: number;
     };
 };
+
+/** Closed without merge — update `pr_state` only (no column move). */
+export async function syncClosedPullRequest(
+    supabase: SupabaseClient,
+    payload: PullRequestPayload,
+    log: (fields: Record<string, unknown>) => void
+): Promise<SyncResult> {
+    if (!shouldHandleClosedUnmergedPr(payload)) {
+        return { ok: true, reason: "not_closed_unmerged_pr", skipped: true };
+    }
+
+    const pr = payload.pull_request;
+    const repoFullName = payload.repository?.full_name;
+    const prNumber = pr?.number;
+    const headReference = pr?.head?.ref;
+
+    if (typeof prNumber !== "number" || !headReference || !repoFullName) {
+        return { ok: true, reason: "not_closed_unmerged_pr", skipped: true };
+    }
+
+    const { data: projects, error: projectError } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("github_full_name", repoFullName);
+
+    if (projectError) {
+        throw projectError;
+    }
+
+    if (!projects?.length) {
+        log({ reason: "no_project", repo: repoFullName });
+        return { ok: true, reason: "no_project", skipped: true };
+    }
+
+    for (const project of projects) {
+        const result = await syncClosedInProject(supabase, {
+            headRef: headReference,
+            log,
+            prHtmlUrl: pr?.html_url ?? null,
+            prNumber,
+            projectId: project.id,
+        });
+        if (!result.skipped) {
+            return result;
+        }
+        if (result.reason !== "no_task") {
+            return result;
+        }
+    }
+
+    log({ pr: prNumber, reason: "no_task", repo: repoFullName });
+    return { ok: true, reason: "no_task", skipped: true };
+}
 
 export async function syncMergedPullRequest(
     supabase: SupabaseClient,
@@ -83,6 +140,102 @@ export async function syncMergedPullRequest(
 
     log({ pr: prNumber, reason: "no_task", repo: repoFullName });
     return { ok: true, reason: "no_task", skipped: true };
+}
+
+async function syncClosedInProject(
+    supabase: SupabaseClient,
+    input: {
+        headRef: string;
+        log: (fields: Record<string, unknown>) => void;
+        prHtmlUrl: null | string;
+        prNumber: number;
+        projectId: string;
+    }
+): Promise<SyncResult> {
+    const { data: taskRows, error: tasksError } = await supabase
+        .from("tasks")
+        .select(
+            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
+        )
+        .eq("project_id", input.projectId);
+
+    if (tasksError) {
+        throw tasksError;
+    }
+
+    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+        headRef: input.headRef,
+        prNumber: input.prNumber,
+    });
+
+    const plan = planClosePullRequestSync(matched, {
+        prHtmlUrl: input.prHtmlUrl,
+        prNumber: input.prNumber,
+    });
+
+    if (plan.skip) {
+        input.log({
+            reason: plan.reason,
+            ...(matched ? { taskId: matched.id } : {}),
+        });
+        return { ok: true, reason: plan.reason, skipped: true };
+    }
+
+    const previousPrNumber = matched?.pr_number ?? null;
+    const previousPrState = matched?.pr_state ?? null;
+    const previousStatus = matched?.status ?? "";
+
+    const { error: updateError } = await supabase
+        .from("tasks")
+        .update(plan.update)
+        .eq("id", plan.taskId);
+
+    if (updateError) {
+        throw updateError;
+    }
+
+    const changes = [
+        {
+            field: "pr",
+            from: previousPrNumber
+                ? {
+                      number: previousPrNumber,
+                      state: previousPrState ?? "open",
+                  }
+                : null,
+            to: {
+                number: input.prNumber,
+                state: "closed",
+            },
+        },
+    ];
+
+    const { error: activityError } = await supabase
+        .from("activity_log")
+        .insert({
+            action: "updated",
+            metadata: { changes, source: "github_webhook" },
+            project_id: input.projectId,
+            task_id: plan.taskId,
+            user_id: null,
+        });
+
+    if (activityError) {
+        throw activityError;
+    }
+
+    input.log({
+        projectId: input.projectId,
+        reason: "closed_pr_synced",
+        taskId: plan.taskId,
+    });
+
+    return {
+        ok: true,
+        skipped: false,
+        status: previousStatus,
+        taskId: plan.taskId,
+    };
 }
 
 async function syncInProject(

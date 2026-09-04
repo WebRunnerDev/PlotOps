@@ -184,7 +184,7 @@ export function TaskSubtasksSection({
     return (
         <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
-                <h3 className="text-ui font-medium">
+                <h3 className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                     {setParentOpen
                         ? t("subtasks.setParentTitle")
                         : isSubtask

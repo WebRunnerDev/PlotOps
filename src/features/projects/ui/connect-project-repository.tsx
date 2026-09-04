@@ -81,8 +81,8 @@ export function ConnectProjectRepository({
 
     if (!hasGitHubToken) {
         return (
-            <div className="mt-2 flex flex-col gap-3">
-                <p className="text-ui text-muted-foreground">
+            <div className="mt-4 flex flex-col gap-3">
+                <p className="max-w-prose text-ui text-muted-foreground">
                     {t("settings.repository.connect")}
                 </p>
                 <Alert>
@@ -105,8 +105,8 @@ export function ConnectProjectRepository({
     }
 
     return (
-        <div className="mt-2 flex flex-col gap-3">
-            <p className="text-ui text-muted-foreground">
+        <div className="mt-4 flex flex-col gap-3">
+            <p className="max-w-prose text-ui text-muted-foreground">
                 {t("settings.repository.connect")}
             </p>
             <Input
@@ -116,10 +116,10 @@ export function ConnectProjectRepository({
                 value={search}
             />
 
-            <ScrollArea className="h-72 rounded-lg border border-border">
+            <ScrollArea className="h-72 border border-border bg-background/40">
                 <div className="p-1 pr-3">
                     {isLoading ? (
-                        <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted-foreground">
+                        <div className="flex items-center justify-center gap-2 px-3 py-8 text-ui text-muted-foreground">
                             <Spinner />
                             {t("settings.repository.loadingRepos")}
                         </div>
@@ -155,16 +155,16 @@ export function ConnectProjectRepository({
                     ) : undefined}
 
                     {!isLoading && !error && availableRepos.length === 0 ? (
-                        <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                        <p className="px-3 py-8 text-center text-ui text-muted-foreground">
                             {t("settings.repository.noReposFound")}
                         </p>
                     ) : undefined}
 
-                    <ul className="flex flex-col gap-1">
+                    <ul className="flex flex-col gap-0.5">
                         {availableRepos.map((repo) => (
                             <li key={repo.id}>
                                 <Button
-                                    className="h-auto w-full justify-between px-3 py-2.5 text-left"
+                                    className="h-auto w-full justify-between rounded-none px-3 py-2.5 text-left transition-[background-color,transform] duration-300 ease-(--ease-out-expo) hover:translate-x-0.5"
                                     disabled={connect.isPending}
                                     onClick={() => {
                                         void handleConnect(repo);
@@ -184,11 +184,11 @@ export function ConnectProjectRepository({
                                                 />
                                             ) : undefined}
                                         </div>
-                                        <p className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+                                        <p className="min-w-0 truncate font-mono text-code text-muted-foreground">
                                             {repo.full_name}
                                         </p>
                                         {repo.description ? (
-                                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                                            <p className="mt-1 line-clamp-1 text-ui font-normal text-muted-foreground">
                                                 {repo.description}
                                             </p>
                                         ) : undefined}

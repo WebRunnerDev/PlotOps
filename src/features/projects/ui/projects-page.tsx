@@ -128,8 +128,9 @@ export function ProjectsPage() {
 
             {projects.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2">
-                    {projects.map((project) => (
+                    {projects.map((project, index) => (
                         <ProjectCard
+                            index={index}
                             isRemoving={
                                 deleteProject.isPending &&
                                 projectToRemove?.id === project.id

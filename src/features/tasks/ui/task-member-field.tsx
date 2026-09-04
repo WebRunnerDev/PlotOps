@@ -88,7 +88,11 @@ export function TaskMemberField({
             }}
             value={selected}
         >
-            <ComboboxInput className="w-full" disabled={disabled} id={id}>
+            <ComboboxInput
+                className="w-full rounded-none font-mono text-code"
+                disabled={disabled}
+                id={id}
+            >
                 {selected.id === NONE_ID ? undefined : (
                     <InputGroupAddon align="inline-start">
                         <MemberAvatar member={selected} />

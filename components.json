@@ -1,29 +1,30 @@
 {
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "base-nova",
-  "rsc": false,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "src/app/styles/index.css",
-    "baseColor": "neutral",
-    "cssVariables": true,
-    "prefix": ""
-  },
-  "iconLibrary": "lucide",
-  "rtl": false,
-  "menuColor": "default",
-  "menuAccent": "subtle",
-  "aliases": {
-    "components": "@/shared/shadcn",
-    "utils": "@/shared/lib/utils",
-    "ui": "@/shared/shadcn/ui",
-    "lib": "@/shared/lib",
-    "hooks": "@/shared/hooks"
-  },
-  "registries": {
-    "@magicui": "https://magicui.design/r/{name}",
-    "@beui": "https://beui.dev/r/{name}.json",
-    "@reui": "https://reui.io/r/{style}/{name}.json"
-  }
+    "$schema": "https://ui.shadcn.com/schema.json",
+    "style": "base-nova",
+    "rsc": false,
+    "tsx": true,
+    "tailwind": {
+        "config": "",
+        "css": "src/app/styles/index.css",
+        "baseColor": "neutral",
+        "cssVariables": true,
+        "prefix": ""
+    },
+    "iconLibrary": "lucide",
+    "rtl": false,
+    "menuColor": "default",
+    "menuAccent": "subtle",
+    "aliases": {
+        "components": "@/shared/shadcn",
+        "utils": "@/shared/lib/utils",
+        "ui": "@/shared/shadcn/ui",
+        "lib": "@/shared/lib",
+        "hooks": "@/shared/hooks"
+    },
+    "registries": {
+        "@magicui": "https://magicui.design/r/{name}",
+        "@beui": "https://beui.dev/r/{name}.json",
+        "@reui": "https://reui.io/r/{style}/{name}.json",
+        "@bklit": "https://ui.bklit.com/r/{name}.json"
+    }
 }

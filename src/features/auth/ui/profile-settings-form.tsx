@@ -61,14 +61,20 @@ export function ProfileSettingsForm() {
     };
 
     return (
-        <Card className="max-w-lg">
-            <CardHeader>
-                <CardTitle>{t("settings.profileTitle")}</CardTitle>
-                <CardDescription>
-                    {t("settings.profileDescription")}
-                </CardDescription>
+        <Card className="max-w-none rounded-none border border-border bg-card/60 shadow-none ring-1 ring-primary/15 backdrop-blur-sm">
+            <CardHeader className="gap-3 border-b border-border/80 pb-4">
+                <div className="flex min-w-0 flex-col gap-2">
+                    <p className="font-mono text-meta text-primary uppercase tracking-[0.14em]">
+                        02
+                    </p>
+                    <CardTitle>{t("settings.profileTitle")}</CardTitle>
+                    <div aria-hidden className="h-px w-10 bg-primary/60" />
+                    <CardDescription>
+                        {t("settings.profileDescription")}
+                    </CardDescription>
+                </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
                 {error ? (
                     <Alert className="mb-4" variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
@@ -87,7 +93,7 @@ export function ProfileSettingsForm() {
                                 readOnly
                                 value={profile.username}
                             />
-                            <p className="text-meta text-muted-foreground">
+                            <p className="text-meta text-muted-foreground normal-case tracking-normal">
                                 {t("settings.usernameHint")}
                             </p>
                         </div>

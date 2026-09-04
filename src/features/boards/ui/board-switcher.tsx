@@ -84,7 +84,7 @@ export function BoardSwitcher({
     return (
         <>
             <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                <span className="shrink-0 text-meta text-muted-foreground">
                     {t("boards.label")}
                 </span>
                 <DropdownMenu>
@@ -92,7 +92,7 @@ export function BoardSwitcher({
                         render={
                             <Button
                                 aria-label={`${t("boards.label")}: ${currentName}`}
-                                className="min-w-36 justify-between font-normal"
+                                className="min-w-36 justify-between rounded-none border-primary/25 font-normal transition-colors duration-150 ease-[var(--ease-out-quart)] hover:border-primary/40 hover:bg-primary/5"
                                 disabled={isLoading}
                                 size="sm"
                                 variant="outline"

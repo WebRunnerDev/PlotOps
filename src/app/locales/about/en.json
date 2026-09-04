@@ -1,6 +1,45 @@
 {
-    "description": "PlotOps is a git-native project tracker with Kanban, GitHub, and CI — an open-source portfolio pet project.",
-    "openSource": "Open source ({{license}})",
     "title": "About",
+    "tagline": "Board to pipeline",
+    "description": "Git-native tracker in the spirit of Linear — tasks live next to branches, PRs, and builds. Open-source portfolio project.",
+    "pillarsTitle": "The pipeline",
+    "featuresTitle": "Also on the board",
+    "features": {
+        "kanban": {
+            "title": "Git Kanban",
+            "body": "Columns, labels, filters, subtasks, and branch names like feature/TASK-123-login."
+        },
+        "git": {
+            "title": "In-app Git",
+            "body": "Link a branch or PR, review diffs, open and merge — without leaving the board."
+        },
+        "cicd": {
+            "title": "CI/CD dashboard",
+            "body": "GitHub Actions per branch: status, jobs, and streaming logs while builds run."
+        },
+        "sprints": {
+            "title": "Sprints & backlog",
+            "body": "Board-scoped sprints with estimates, close flows, and velocity insights."
+        },
+        "teams": {
+            "title": "Teams & permissions",
+            "body": "Team → Project roles, invites, and GitHub repo connect with multi-board setup."
+        },
+        "collaboration": {
+            "title": "Collaboration",
+            "body": "Rich text, comments, @mentions, Watch, and a live activity feed."
+        },
+        "palette": {
+            "title": "Command palette",
+            "body": "Ctrl/Cmd+K to search, create, jump boards/CI, and switch projects."
+        },
+        "guest": {
+            "title": "Guest Mode",
+            "body": "Demo without OAuth — local sandbox with tasks, fake diffs, and CI logs."
+        }
+    },
+    "stackTitle": "Stack",
+    "stack": "Vite · React 19 · TanStack Router & Query · Tailwind 4 · shadcn/ui · Supabase · GitHub API",
+    "openSource": "Open source ({{license}})",
     "viewOnGitHub": "View on GitHub"
 }

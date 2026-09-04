@@ -39,6 +39,23 @@ describe("sprint burndown series seam", () => {
             null,
             null,
         ]);
+        expect(series.days.map((day) => day.scope)).toEqual([
+            8,
+            8,
+            8,
+            null,
+            null,
+        ]);
+        expect(series.days.map((day) => day.completedCumulative)).toEqual([
+            3,
+            3,
+            3,
+            null,
+            null,
+        ]);
+        expect(series.days.map((day) => day.idealCompleted)).toEqual([
+            0, 2, 4, 6, 8,
+        ]);
     });
 
     it("applies scope add/remove on the event calendar day", () => {
@@ -74,6 +91,10 @@ describe("sprint burndown series seam", () => {
             8, // b only
             8,
         ]);
+        expect(series.days.map((day) => day.scope)).toEqual([5, 13, 8, 8]);
+        expect(series.days.map((day) => day.completedCumulative)).toEqual([
+            0, 0, 0, 0,
+        ]);
     });
 
     it("for Closed sprints, keeps remaining open until closedOn then drops completed", () => {
@@ -99,6 +120,13 @@ describe("sprint burndown series seam", () => {
             3, // closedOn: incomplete b remains
             3,
         ]);
+        expect(series.days.map((day) => day.completedCumulative)).toEqual([
+            0,
+            0,
+            5, // closedOn: a completed
+            5,
+        ]);
+        expect(series.days.map((day) => day.scope)).toEqual([8, 8, 8, 8]);
     });
 
     it("falls back to task count when no Estimates exist", () => {

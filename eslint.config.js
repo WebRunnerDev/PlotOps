@@ -14,6 +14,8 @@ export default config(
       'src/app/routeTree.gen.ts',
       // Upstream shadcn primitives — keep stock formatting
       'src/shared/shadcn/ui/**',
+      // Bklit chart primitives — keep stock formatting
+      'src/components/**',
     ],
   },
   eslint.configs.recommended,

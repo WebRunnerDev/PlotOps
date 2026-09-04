@@ -12,8 +12,16 @@ import {
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
+import NumberFlow from "@number-flow/react";
 import { ChevronDown, MoreHorizontal, Play, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import {
+    type CSSProperties,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -33,6 +41,7 @@ import { useProject } from "@/features/projects/model/use-projects";
 import { todayIsoDate } from "@/features/sprints/api/sprints-api";
 import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
+import { computeSprintTimeline } from "@/features/sprints/model/compute-sprint-timeline";
 import { listSprintCompletionTasks } from "@/features/sprints/model/list-sprint-completion-tasks";
 import {
     BACKLOG_LIST_PAGE_SIZE,
@@ -45,6 +54,7 @@ import {
     useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
+import { ActiveSprintLiveStrip } from "@/features/sprints/ui/active-sprint-live-strip";
 import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
 import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
 import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
@@ -78,6 +88,8 @@ import {
     useBoardTasks,
     useTasksUiStore,
 } from "@/features/tasks";
+import { EASE_OUT, SPRING_PRESS } from "@/shared/lib/ease";
+import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
     AlertDialog,
@@ -123,8 +135,11 @@ type BacklogPageProperties = {
     projectId: string;
 };
 
+type BacklogSectionAccent = "active" | "draft" | "history" | "pool";
+
 export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const { t } = useTranslation("board");
+    const reduceMotion = useReducedMotion();
     const { githubAccessToken } = useAuth();
     const { canManageBoard, isSettled } = useProjectAccess(projectId);
     const canManage = isSettled && canManageBoard;
@@ -203,6 +218,14 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     const active = sprints.find((sprint) => sprint.state === "active");
     const drafts = sprints.filter((sprint) => sprint.state === "draft");
+    const activeTimeline = useMemo(() => {
+        if (!active) return null;
+        return computeSprintTimeline({
+            endsOn: active.endsOn,
+            startsOn: active.startsOn,
+            today: todayIsoDate(),
+        });
+    }, [active?.endsOn, active?.id, active?.startsOn]);
     const pastSprints = useMemo(() => {
         const past = sprints.filter(
             (sprint) => sprint.state === "closed" || sprint.state === "canceled"
@@ -374,7 +397,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     if (sprintsError) {
         return (
-            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
+            <BacklogPageFrame>
                 <Alert variant="destructive">
                     <AlertDescription>
                         {t("sprints.loadFailed")}
@@ -387,23 +410,23 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 >
                     {t("sprints.retry")}
                 </Button>
-            </div>
+            </BacklogPageFrame>
         );
     }
 
     if (error) {
         return (
-            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
+            <BacklogPageFrame>
                 <Alert variant="destructive">
                     <AlertDescription>{t("boardLoadFailed")}</AlertDescription>
                 </Alert>
-            </div>
+            </BacklogPageFrame>
         );
     }
 
     if (boardsError) {
         return (
-            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
+            <BacklogPageFrame>
                 <Alert variant="destructive">
                     <AlertDescription>{t("boardsLoadFailed")}</AlertDescription>
                 </Alert>
@@ -414,17 +437,17 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 >
                     {t("sprints.retry")}
                 </Button>
-            </div>
+            </BacklogPageFrame>
         );
     }
 
     if (!boardsLoading && !boardsList.some((board) => board.id === boardId)) {
         return (
-            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
+            <BacklogPageFrame>
                 <Alert variant="destructive">
                     <AlertDescription>{t("boardNotFound")}</AlertDescription>
                 </Alert>
-            </div>
+            </BacklogPageFrame>
         );
     }
 
@@ -432,9 +455,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const firstColumnId = columns[0]?.id;
 
     return (
-        <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 px-4 py-4">
-            <header className="flex flex-col gap-3 border-b border-border pb-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <BacklogPageFrame>
+            <header className="relative flex flex-col gap-5 border-b border-primary/25 pb-5 sm:gap-6 sm:pb-6">
+                <div
+                    className="flex min-w-0 flex-wrap items-center gap-2 motion-reveal"
+                    style={{ animationDelay: "0ms" }}
+                >
                     <BoardSwitcher
                         boardId={boardId}
                         canManage={canManage}
@@ -444,15 +470,74 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         destination="backlog"
                         projectId={projectId}
                     />
-                    <h1 className="min-w-0 truncate text-sm font-semibold">
-                        {t("sprints.backlogTitle")}
-                    </h1>
                 </div>
 
+                <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
+                    <p
+                        className="font-mono text-meta text-primary uppercase tracking-[0.14em] motion-reveal"
+                        style={{ animationDelay: "40ms" }}
+                    >
+                        {t("sprints.planningEyebrow")}
+                    </p>
+                    <h1
+                        className="min-w-0 font-heading text-[clamp(2.125rem,1rem+3.8vw,3.75rem)] font-bold leading-[0.94] tracking-[-0.045em] text-balance wrap-break-word motion-reveal"
+                        style={{ animationDelay: "120ms" }}
+                    >
+                        {t("sprints.backlogTitle")}
+                    </h1>
+                    <div
+                        aria-hidden
+                        className="h-px w-14 origin-left bg-primary/70 motion-reveal"
+                        style={{ animationDelay: "200ms" }}
+                    />
+                    <p
+                        className="max-w-2xl text-body text-muted-foreground motion-reveal"
+                        style={{ animationDelay: "260ms" }}
+                    >
+                        {t("sprints.backlogSubtitle")}
+                    </p>
+                </div>
+
+                <dl
+                    className="grid grid-cols-3 gap-px overflow-hidden rounded-none border border-primary/25 bg-primary/25 motion-reveal"
+                    style={{ animationDelay: "320ms" }}
+                >
+                    <PlanningPulseStat
+                        emphasize={Boolean(active)}
+                        label={
+                            active &&
+                            activeTimeline &&
+                            activeTimeline.daysRemaining !== null
+                                ? t("sprints.pulseDaysLeft")
+                                : t("sprints.pulseActive")
+                        }
+                        value={
+                            active &&
+                            activeTimeline &&
+                            activeTimeline.daysRemaining !== null
+                                ? activeTimeline.daysRemaining
+                                : active
+                                  ? 1
+                                  : 0
+                        }
+                    />
+                    <PlanningPulseStat
+                        label={t("sprints.pulseDrafts")}
+                        value={drafts.length}
+                    />
+                    <PlanningPulseStat
+                        label={t("sprints.pulsePool")}
+                        value={backlogTasks.length}
+                    />
+                </dl>
+
                 {canManage ? (
-                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    <div
+                        className="flex min-w-0 flex-col gap-2 motion-reveal sm:flex-row sm:flex-wrap sm:items-center"
+                        style={{ animationDelay: "380ms" }}
+                    >
                         <Input
-                            className="min-w-0 w-full sm:max-w-xs"
+                            className="min-w-0 w-full rounded-none border-primary/25 bg-input/30 font-mono text-code shadow-none transition-[border-color,box-shadow] duration-300 ease-(--ease-out-expo) focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 sm:max-w-xs"
                             onChange={(event) => setNewName(event.target.value)}
                             onKeyDown={(event) => {
                                 if (event.key === "Enter") {
@@ -464,6 +549,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             value={newName}
                         />
                         <Button
+                            className="rounded-none transition-transform duration-300 ease-(--ease-out-expo) enabled:hover:-translate-y-0.5"
                             disabled={createDraft.isPending || !newName.trim()}
                             onClick={() => void handleCreateDraft()}
                             size="sm"
@@ -475,32 +561,47 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     </div>
                 ) : null}
 
-                <BoardTaskToolbar
-                    filters={filters}
-                    hideCompleted={hideCompleted}
-                    labels={projectLabels}
-                    onChange={setFilters}
-                    onHideCompletedChange={(next) => {
-                        setHideCompleted(boardId, next);
-                    }}
-                    onSearchQueryChange={setSearchQuery}
-                    onSortChange={(sort) => {
-                        setBoardSort(boardId, sort);
-                    }}
-                    people={people}
-                    searchQuery={searchQuery}
-                    sort={boardSort}
-                />
+                <div
+                    className="motion-reveal"
+                    style={{ animationDelay: "440ms" }}
+                >
+                    <BoardTaskToolbar
+                        filters={filters}
+                        hideCompleted={hideCompleted}
+                        labels={projectLabels}
+                        onChange={setFilters}
+                        onHideCompletedChange={(next) => {
+                            setHideCompleted(boardId, next);
+                        }}
+                        onSearchQueryChange={setSearchQuery}
+                        onSortChange={(sort) => {
+                            setBoardSort(boardId, sort);
+                        }}
+                        people={people}
+                        searchQuery={searchQuery}
+                        sort={boardSort}
+                    />
+                </div>
             </header>
 
+            {!showBodySpinner && active ? (
+                <ActiveSprintLiveStrip
+                    sizeLabel={formatSprintSizeLabel(
+                        t,
+                        tasksBySprint.get(active.id) ?? []
+                    )}
+                    sprint={active}
+                />
+            ) : null}
+
             {showBodySpinner ? (
-                <div className="flex h-40 items-center justify-center">
-                    <Spinner />
+                <div className="relative flex h-48 items-center justify-center motion-reveal [animation-delay:120ms]">
+                    <Spinner className="size-8 text-primary" />
                 </div>
             ) : (
                 <>
                     {canManage && planningSprints.length === 0 ? (
-                        <Alert>
+                        <Alert className="relative motion-reveal rounded-none border-primary/25 [animation-delay:80ms]">
                             <AlertDescription>
                                 {t("sprints.emptyPlanningHint")}
                             </AlertDescription>
@@ -508,11 +609,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     ) : null}
 
                     {filtersActive && visibleTasks.length === 0 ? (
-                        <div className="flex flex-col items-start gap-2 rounded-md border border-border px-4 py-6">
+                        <div className="relative flex flex-col items-start gap-3 border border-dashed border-primary/30 bg-card/40 px-4 py-8 motion-reveal [animation-delay:100ms]">
                             <p className="text-ui text-muted-foreground">
                                 {t("sprints.noFilterMatches")}
                             </p>
                             <Button
+                                className="rounded-none"
                                 onClick={clearFilters}
                                 size="sm"
                                 type="button"
@@ -525,7 +627,14 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
                     {canManage && selectedCount > 0 ? (
                         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
-                            <div className="pointer-events-auto flex w-full min-w-0 max-w-6xl flex-col items-stretch gap-2 rounded-md border border-primary bg-background/95 px-3 py-2 shadow-lg ring-1 ring-foreground/5 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+                            <motion.div
+                                animate={{ opacity: 1, y: 0 }}
+                                className="pointer-events-auto flex w-full min-w-0 max-w-6xl flex-col items-stretch gap-2 rounded-none border border-primary bg-background/95 px-3 py-2.5 shadow-[0_0_0_1px_color-mix(in_oklab,var(--primary)_20%,transparent)] backdrop-blur-md sm:flex-row sm:flex-wrap sm:items-center"
+                                initial={
+                                    reduceMotion ? false : { opacity: 0, y: 20 }
+                                }
+                                transition={{ duration: 0.45, ease: EASE_OUT }}
+                            >
                                 <p className="text-ui whitespace-nowrap">
                                     {t("sprints.selectedCount", {
                                         count: selectedCount,
@@ -545,7 +654,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                 >
                                     <SelectTrigger
                                         aria-label={t("sprints.moveSelected")}
-                                        className="w-full min-w-0 sm:min-w-44"
+                                        className="w-full min-w-0 rounded-none sm:min-w-44"
                                         size="sm"
                                     >
                                         <span>
@@ -573,7 +682,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                 >
                                     {t("sprints.clearSelection")}
                                 </Button>
-                            </div>
+                            </motion.div>
                         </div>
                     ) : null}
 
@@ -585,45 +694,70 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             onDragStart={handleDragStart}
                             sensors={sensors}
                         >
-                            <div className="flex flex-col gap-4">
-                                {planningSprints.map((sprint) => (
-                                    <SprintSection
-                                        activeSprint={active}
-                                        allTasks={tasks}
-                                        boardId={boardId}
-                                        canManage={canManage}
-                                        columns={columns}
-                                        drafts={drafts}
-                                        draggingTaskIds={draggingTasks.map(
-                                            (task) => task.id
-                                        )}
-                                        firstColumnId={firstColumnId}
+                            <div className="relative flex flex-col gap-5 sm:gap-6">
+                                {planningSprints.map((sprint, index) => (
+                                    <div
+                                        className="motion-reveal"
                                         key={sprint.id}
-                                        labels={projectLabels}
-                                        onOpenTask={selectTask}
-                                        onRowSelectionChange={setRowSelection}
-                                        projectId={projectId}
-                                        resetKey={listWindowResetKey}
-                                        rowSelection={rowSelection}
-                                        sprint={sprint}
-                                        tasks={
-                                            tasksBySprint.get(sprint.id) ?? []
-                                        }
-                                    />
+                                        style={{
+                                            animationDelay: `${120 + index * 80}ms`,
+                                        }}
+                                    >
+                                        <SprintSection
+                                            activeSprint={active}
+                                            allTasks={tasks}
+                                            boardId={boardId}
+                                            canManage={canManage}
+                                            columns={columns}
+                                            drafts={drafts}
+                                            draggingTaskIds={draggingTasks.map(
+                                                (task) => task.id
+                                            )}
+                                            firstColumnId={firstColumnId}
+                                            labels={projectLabels}
+                                            onOpenTask={selectTask}
+                                            onRowSelectionChange={
+                                                setRowSelection
+                                            }
+                                            projectId={projectId}
+                                            resetKey={listWindowResetKey}
+                                            rowSelection={rowSelection}
+                                            sprint={sprint}
+                                            tasks={
+                                                tasksBySprint.get(sprint.id) ??
+                                                []
+                                            }
+                                        />
+                                    </div>
                                 ))}
 
-                                <section className="rounded-md border border-border bg-card">
-                                    <header className="border-b border-border px-3 py-2">
-                                        <h2 className="text-h3">
-                                            {t("sprints.backlog")}
-                                        </h2>
-                                        <p className="text-meta text-muted-foreground">
-                                            {formatSprintSizeLabel(
-                                                t,
-                                                backlogTasks
-                                            )}
-                                        </p>
-                                    </header>
+                                <BacklogSectionShell
+                                    accent="pool"
+                                    className="motion-reveal"
+                                    header={
+                                        <header className="flex min-w-0 flex-col gap-1 border-b border-border/80 px-3 py-3 sm:px-4">
+                                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                                <h2 className="text-h3">
+                                                    {t("sprints.backlog")}
+                                                </h2>
+                                                <p className="text-meta text-muted-foreground">
+                                                    {formatSprintSizeLabel(
+                                                        t,
+                                                        backlogTasks
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <p className="text-ui text-muted-foreground">
+                                                {t(
+                                                    "sprints.backlogPoolDescription"
+                                                )}
+                                            </p>
+                                        </header>
+                                    }
+                                    style={{
+                                        animationDelay: `${120 + planningSprints.length * 80}ms`,
+                                    }}
+                                >
                                     <WindowedSprintTaskTable
                                         canManage={canManage}
                                         containerId={BACKLOG_DROP_ID}
@@ -638,19 +772,26 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         tasks={backlogTasks}
                                     />
                                     {firstColumnId ? (
-                                        <BacklogAddTask
-                                            boardId={boardId}
-                                            projectId={projectId}
-                                            sprintId={null}
-                                            status={firstColumnId}
-                                        />
+                                        <div className="border-t border-border/80 px-1">
+                                            <BacklogAddTask
+                                                boardId={boardId}
+                                                projectId={projectId}
+                                                sprintId={null}
+                                                status={firstColumnId}
+                                            />
+                                        </div>
                                     ) : null}
-                                </section>
+                                </BacklogSectionShell>
 
                                 {pastSprints.length > 0 ? (
-                                    <section className="space-y-3">
+                                    <section
+                                        className="space-y-3 motion-reveal"
+                                        style={{
+                                            animationDelay: `${200 + planningSprints.length * 80}ms`,
+                                        }}
+                                    >
                                         <button
-                                            className="flex items-center gap-1.5 text-h3"
+                                            className="group flex min-w-0 items-center gap-2 text-left transition-colors duration-300 ease-(--ease-out-expo) hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
                                             onClick={() =>
                                                 setHistoryOpen(
                                                     (value) => !value
@@ -660,10 +801,17 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         >
                                             <ChevronDown
                                                 aria-hidden
-                                                className={`size-4 transition-transform ${historyOpen ? "" : "-rotate-90"}`}
+                                                className={cn(
+                                                    "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-expo) group-hover:text-primary",
+                                                    historyOpen
+                                                        ? ""
+                                                        : "-rotate-90"
+                                                )}
                                             />
-                                            {t("sprints.historyList")}
-                                            <span className="text-meta font-normal text-muted-foreground">
+                                            <span className="text-h3">
+                                                {t("sprints.historyList")}
+                                            </span>
+                                            <span className="text-meta text-muted-foreground">
                                                 ({pastSprints.length})
                                             </span>
                                         </button>
@@ -714,7 +862,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
                             <DragOverlay dropAnimation={null}>
                                 {draggingTasks.length > 0 ? (
-                                    <div className="flex w-72 max-w-[min(18rem,calc(100vw-2rem))] cursor-grabbing flex-col gap-1 rounded-md border border-border bg-background px-3 py-2.5 shadow-lg ring-1 ring-primary/20">
+                                    <div className="flex w-72 max-w-[min(18rem,calc(100vw-2rem))] cursor-grabbing flex-col gap-1 rounded-none border border-primary/40 bg-background px-3 py-2.5 shadow-lg ring-1 ring-primary/20">
                                         {draggingTasks.length === 1 ? (
                                             <>
                                                 <p className="text-code text-muted-foreground">
@@ -747,7 +895,9 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         </DndContext>
                     )}
 
-                    <SprintInsightsPanel sprints={sprints} tasks={tasks} />
+                    <div className="relative motion-reveal [animation-delay:360ms]">
+                        <SprintInsightsPanel sprints={sprints} tasks={tasks} />
+                    </div>
 
                     <TaskDrawer
                         boardId={boardId}
@@ -757,7 +907,55 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     />
                 </>
             )}
+        </BacklogPageFrame>
+    );
+}
+
+function BacklogPageFrame({ children }: { children: ReactNode }) {
+    return (
+        <div className="relative mx-auto flex h-full w-full min-w-0 max-w-6xl scroll-smooth flex-col gap-8 overflow-y-auto px-4 py-6 scrollbar-board sm:gap-10 sm:px-6 sm:py-8">
+            <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 -top-8 h-72 bg-auth-atmosphere opacity-85 sm:-top-10 sm:h-80"
+            />
+            <div className="relative flex flex-col gap-8 sm:gap-10">
+                {children}
+            </div>
         </div>
+    );
+}
+
+function BacklogSectionShell({
+    accent,
+    children,
+    className,
+    header,
+    style,
+}: {
+    accent: BacklogSectionAccent;
+    children: ReactNode;
+    className?: string;
+    header: ReactNode;
+    style?: CSSProperties;
+}) {
+    return (
+        <section
+            className={cn(
+                "overflow-hidden rounded-none border bg-card/50",
+                accent === "active" &&
+                    "border-primary/40 shadow-[inset_3px_0_0_0_var(--color-primary)]",
+                accent === "draft" &&
+                    "border-border shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--muted-foreground)_40%,transparent)]",
+                accent === "pool" &&
+                    "border-border shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--border)_100%,transparent)]",
+                accent === "history" && "border-border/80 bg-card/30",
+                className
+            )}
+            style={style}
+        >
+            {header}
+            {children}
+        </section>
     );
 }
 
@@ -814,62 +1012,65 @@ function PastSprintSection({
     };
 
     return (
-        <section className="rounded-md border border-border bg-card">
-            <header className="flex min-w-0 flex-col gap-2 border-b border-border px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-h3">{sprint.name}</h2>
-                        <span className="text-meta text-muted-foreground">
-                            {t(`sprints.state.${sprint.state}`)}
-                        </span>
+        <BacklogSectionShell
+            accent="history"
+            header={
+                <header className="flex min-w-0 flex-col gap-2 border-b border-border/80 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-h3">{sprint.name}</h2>
+                            <SprintStateBadge state={sprint.state} />
+                        </div>
+                        {sprint.startsOn && sprint.endsOn ? (
+                            <p className="text-code text-muted-foreground">
+                                {sprint.startsOn} → {sprint.endsOn}
+                            </p>
+                        ) : null}
+                        {isCanceled && sprint.canceledAt ? (
+                            <p className="text-meta text-muted-foreground">
+                                {t("sprints.canceledAt", {
+                                    date: new Date(
+                                        sprint.canceledAt
+                                    ).toLocaleString(),
+                                })}
+                            </p>
+                        ) : null}
+                        {!isCanceled && sprint.closedAt ? (
+                            <p className="text-meta text-muted-foreground">
+                                {t("sprints.closedAt", {
+                                    date: new Date(
+                                        sprint.closedAt
+                                    ).toLocaleString(),
+                                })}
+                            </p>
+                        ) : null}
                     </div>
-                    {sprint.startsOn && sprint.endsOn ? (
-                        <p className="text-code text-muted-foreground">
-                            {sprint.startsOn} → {sprint.endsOn}
-                        </p>
-                    ) : null}
-                    {isCanceled && sprint.canceledAt ? (
-                        <p className="text-meta text-muted-foreground">
-                            {t("sprints.canceledAt", {
-                                date: new Date(
-                                    sprint.canceledAt
-                                ).toLocaleString(),
-                            })}
-                        </p>
-                    ) : null}
-                    {!isCanceled && sprint.closedAt ? (
-                        <p className="text-meta text-muted-foreground">
-                            {t("sprints.closedAt", {
-                                date: new Date(
-                                    sprint.closedAt
-                                ).toLocaleString(),
-                            })}
-                        </p>
-                    ) : null}
-                </div>
-                <Button
-                    onClick={() => setReportOpen((value) => !value)}
-                    size="xs"
-                    type="button"
-                    variant="outline"
-                >
-                    {reportOpen
-                        ? t("sprints.hideReport")
-                        : isCanceled
-                          ? t("sprints.showDetails")
-                          : t("sprints.showReport")}
-                </Button>
-                {canManage ? (
                     <Button
-                        onClick={() => setDeleteOpen(true)}
+                        className="rounded-none"
+                        onClick={() => setReportOpen((value) => !value)}
                         size="xs"
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                     >
-                        {t("sprints.deletePast")}
+                        {reportOpen
+                            ? t("sprints.hideReport")
+                            : isCanceled
+                              ? t("sprints.showDetails")
+                              : t("sprints.showReport")}
                     </Button>
-                ) : null}
-            </header>
+                    {canManage ? (
+                        <Button
+                            onClick={() => setDeleteOpen(true)}
+                            size="xs"
+                            type="button"
+                            variant="ghost"
+                        >
+                            {t("sprints.deletePast")}
+                        </Button>
+                    ) : null}
+                </header>
+            }
+        >
             {reportOpen ? (
                 <SprintReportPanel
                     boardId={boardId}
@@ -909,7 +1110,38 @@ function PastSprintSection({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </section>
+        </BacklogSectionShell>
+    );
+}
+
+function PlanningPulseStat({
+    emphasize = false,
+    label,
+    value,
+}: {
+    emphasize?: boolean;
+    label: string;
+    value: number;
+}) {
+    const reduceMotion = useReducedMotion();
+    return (
+        <div className="flex min-w-0 flex-col gap-1 bg-background/90 px-3 py-3 sm:px-4 sm:py-3.5">
+            <dt className="truncate text-meta text-muted-foreground">
+                {label}
+            </dt>
+            <dd
+                className={cn(
+                    "font-heading text-h3 tabular-nums tracking-tight",
+                    emphasize ? "text-primary" : "text-foreground"
+                )}
+            >
+                {reduceMotion ? (
+                    value
+                ) : (
+                    <NumberFlow isolate value={value} willChange />
+                )}
+            </dd>
+        </div>
     );
 }
 
@@ -1196,6 +1428,7 @@ function SprintSection({
     tasks: Task[];
 }) {
     const { t } = useTranslation("board");
+    const reduceMotion = useReducedMotion();
     const { removeDraft } = useSprintMutations(projectId, boardId);
     const [startOpen, setStartOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
@@ -1203,118 +1436,153 @@ function SprintSection({
     const [reportOpen, setReportOpen] = useState(false);
 
     return (
-        <section className="rounded-md border border-border bg-card">
-            <header className="flex min-w-0 flex-col gap-2 border-b border-border px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-h3">{sprint.name}</h2>
-                        <span className="text-meta text-muted-foreground">
-                            {t(`sprints.state.${sprint.state}`)}
-                        </span>
-                        <span className="text-meta text-muted-foreground">
-                            {formatSprintSizeLabel(t, tasks)}
-                        </span>
+        <BacklogSectionShell
+            accent={sprint.state === "active" ? "active" : "draft"}
+            header={
+                <header className="flex min-w-0 flex-col gap-2 border-b border-border/80 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
+                    <div className="min-w-0 flex-1">
+                        {sprint.state === "active" ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <SprintStateBadge state={sprint.state} />
+                                <span className="text-meta text-muted-foreground">
+                                    {formatSprintSizeLabel(t, tasks)}
+                                </span>
+                                <span className="sr-only">{sprint.name}</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-h3">{sprint.name}</h2>
+                                    <SprintStateBadge state={sprint.state} />
+                                    <span className="text-meta text-muted-foreground">
+                                        {formatSprintSizeLabel(t, tasks)}
+                                    </span>
+                                </div>
+                                {sprint.goal ? (
+                                    <p className="mt-1 max-w-2xl text-ui text-muted-foreground">
+                                        {sprint.goal}
+                                    </p>
+                                ) : null}
+                                {sprint.startsOn && sprint.endsOn ? (
+                                    <p className="text-code text-muted-foreground">
+                                        {sprint.startsOn} → {sprint.endsOn}
+                                    </p>
+                                ) : null}
+                            </>
+                        )}
                     </div>
-                    {sprint.goal ? (
-                        <p className="text-ui text-muted-foreground">
-                            {sprint.goal}
-                        </p>
+                    {sprint.state === "active" ? (
+                        <Button
+                            className="rounded-none"
+                            onClick={() => setReportOpen((value) => !value)}
+                            size="xs"
+                            type="button"
+                            variant="outline"
+                        >
+                            {reportOpen
+                                ? t("sprints.hideReport")
+                                : t("sprints.showReport")}
+                        </Button>
                     ) : null}
-                    {sprint.startsOn && sprint.endsOn ? (
-                        <p className="text-code text-muted-foreground">
-                            {sprint.startsOn} → {sprint.endsOn}
-                        </p>
-                    ) : null}
-                </div>
-                {sprint.state === "active" ? (
-                    <Button
-                        onClick={() => setReportOpen((value) => !value)}
-                        size="xs"
-                        type="button"
-                        variant="outline"
-                    >
-                        {reportOpen
-                            ? t("sprints.hideReport")
-                            : t("sprints.showReport")}
-                    </Button>
-                ) : null}
-                {canManage && sprint.state === "draft" ? (
-                    <Button
-                        disabled={Boolean(activeSprint)}
-                        onClick={() => setStartOpen(true)}
-                        size="sm"
-                        title={
-                            activeSprint
-                                ? t("sprints.startBlockedActive")
-                                : undefined
-                        }
-                        type="button"
-                    >
-                        <Play data-icon="inline-start" />
-                        {t("sprints.start")}
-                    </Button>
-                ) : null}
-                {canManage && sprint.state === "active" ? (
-                    <Button
-                        onClick={() => setCloseOpen(true)}
-                        size="xs"
-                        type="button"
-                    >
-                        {t("sprints.close")}
-                    </Button>
-                ) : null}
-                {canManage ? (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger
-                            render={
-                                <Button
-                                    aria-label={t("sprints.sprintActions")}
-                                    size="icon-xs"
-                                    type="button"
-                                    variant="ghost"
-                                />
+                    {canManage && sprint.state === "draft" ? (
+                        <motion.div
+                            className="inline-flex"
+                            transition={SPRING_PRESS}
+                            whileHover={
+                                reduceMotion || activeSprint
+                                    ? undefined
+                                    : { x: 3, y: -1 }
+                            }
+                            whileTap={
+                                reduceMotion || activeSprint
+                                    ? undefined
+                                    : { scale: 0.97 }
                             }
                         >
-                            <MoreHorizontal className="size-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {sprint.state === "draft" && tasks.length === 0 ? (
-                                <DropdownMenuItem
-                                    onClick={() => {
-                                        void removeDraft
-                                            .mutateAsync(sprint.id)
-                                            .then(() =>
-                                                toast.success(
-                                                    t("sprints.draftDeleted")
-                                                )
-                                            )
-                                            .catch(() =>
-                                                toast.error(
-                                                    t(
-                                                        "sprints.draftDeleteFailed"
+                            <Button
+                                className="rounded-none shadow-[2px_2px_0_0_color-mix(in_oklab,var(--primary)_45%,transparent)]"
+                                disabled={Boolean(activeSprint)}
+                                onClick={() => setStartOpen(true)}
+                                size="sm"
+                                title={
+                                    activeSprint
+                                        ? t("sprints.startBlockedActive")
+                                        : undefined
+                                }
+                                type="button"
+                            >
+                                <Play data-icon="inline-start" />
+                                {t("sprints.start")}
+                            </Button>
+                        </motion.div>
+                    ) : null}
+                    {canManage && sprint.state === "active" ? (
+                        <Button
+                            className="rounded-none"
+                            onClick={() => setCloseOpen(true)}
+                            size="xs"
+                            type="button"
+                        >
+                            {t("sprints.close")}
+                        </Button>
+                    ) : null}
+                    {canManage ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={
+                                    <Button
+                                        aria-label={t("sprints.sprintActions")}
+                                        size="icon-xs"
+                                        type="button"
+                                        variant="ghost"
+                                    />
+                                }
+                            >
+                                <MoreHorizontal className="size-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {sprint.state === "draft" &&
+                                tasks.length === 0 ? (
+                                    <DropdownMenuItem
+                                        onClick={() => {
+                                            void removeDraft
+                                                .mutateAsync(sprint.id)
+                                                .then(() =>
+                                                    toast.success(
+                                                        t(
+                                                            "sprints.draftDeleted"
+                                                        )
                                                     )
                                                 )
-                                            );
-                                    }}
-                                    variant="destructive"
-                                >
-                                    {t("sprints.deleteDraft")}
-                                </DropdownMenuItem>
-                            ) : null}
-                            {sprint.state === "active" ||
-                            (sprint.state === "draft" && tasks.length > 0) ? (
-                                <DropdownMenuItem
-                                    onClick={() => setCancelOpen(true)}
-                                    variant="destructive"
-                                >
-                                    {t("sprints.cancel")}
-                                </DropdownMenuItem>
-                            ) : null}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                ) : null}
-            </header>
-
+                                                .catch(() =>
+                                                    toast.error(
+                                                        t(
+                                                            "sprints.draftDeleteFailed"
+                                                        )
+                                                    )
+                                                );
+                                        }}
+                                        variant="destructive"
+                                    >
+                                        {t("sprints.deleteDraft")}
+                                    </DropdownMenuItem>
+                                ) : null}
+                                {sprint.state === "active" ||
+                                (sprint.state === "draft" &&
+                                    tasks.length > 0) ? (
+                                    <DropdownMenuItem
+                                        onClick={() => setCancelOpen(true)}
+                                        variant="destructive"
+                                    >
+                                        {t("sprints.cancel")}
+                                    </DropdownMenuItem>
+                                ) : null}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : null}
+                </header>
+            }
+        >
             {reportOpen && sprint.state === "active" ? (
                 <SprintReportPanel
                     boardId={boardId}
@@ -1338,12 +1606,14 @@ function SprintSection({
                 tasks={tasks}
             />
             {firstColumnId ? (
-                <BacklogAddTask
-                    boardId={boardId}
-                    projectId={projectId}
-                    sprintId={sprint.id}
-                    status={firstColumnId}
-                />
+                <div className="border-t border-border/80 px-1">
+                    <BacklogAddTask
+                        boardId={boardId}
+                        projectId={projectId}
+                        sprintId={sprint.id}
+                        status={firstColumnId}
+                    />
+                </div>
             ) : null}
 
             <StartSprintDialog
@@ -1371,6 +1641,33 @@ function SprintSection({
                 projectId={projectId}
                 sprint={sprint}
             />
-        </section>
+        </BacklogSectionShell>
+    );
+}
+
+function SprintStateBadge({ state }: { state: Sprint["state"] }) {
+    const { t } = useTranslation("board");
+    return (
+        <span
+            className={cn(
+                "inline-flex items-center gap-1.5 text-meta",
+                state === "active" && "text-primary",
+                state === "draft" && "text-muted-foreground",
+                state === "closed" && "text-muted-foreground",
+                state === "canceled" && "text-warning"
+            )}
+        >
+            <span
+                aria-hidden
+                className={cn(
+                    "size-1.5 shrink-0",
+                    state === "active" && "bg-primary",
+                    state === "draft" && "bg-muted-foreground/60",
+                    state === "closed" && "bg-muted-foreground/40",
+                    state === "canceled" && "bg-warning"
+                )}
+            />
+            {t(`sprints.state.${state}`)}
+        </span>
     );
 }

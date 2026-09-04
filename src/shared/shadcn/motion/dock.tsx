@@ -1,5 +1,5 @@
 "use client";
-// beui.dev/components/motion/dock
+// beui.dev/components/motion/dock — PlotOps skin: sharp blueprint chrome
 
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -47,7 +47,7 @@ export function Dock({ children, className, size = 44 }: DockProperties) {
         <DockContext.Provider value={context}>
             <div
                 className={cn(
-                    "inline-flex h-auto items-end gap-1.5 rounded-xl border border-border/80 bg-card/90 px-2 py-1 shadow-2xl shadow-black/40 backdrop-blur-xl",
+                    "inline-flex h-auto items-end gap-1 border border-border bg-card/90 px-1.5 py-1 shadow-none ring-1 ring-primary/20 backdrop-blur-md",
                     className
                 )}
             >
@@ -71,14 +71,15 @@ export function DockItem({
 
     const pill = active ? (
         <motion.span
-            className="absolute inset-x-1 bottom-0.5 -z-10 h-0.5 rounded-full bg-primary"
+            className="absolute inset-x-1 bottom-0.5 -z-10 h-0.5 bg-primary"
             layoutId={pillLayoutId}
             transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
         />
     ) : null;
     const sharedStyle = { height: size, width: size };
     const sharedClass = cn(
-        "relative flex shrink-0 items-center justify-center rounded-full text-foreground",
+        "relative flex shrink-0 items-center justify-center text-foreground transition-colors duration-200 ease-[var(--ease-out-quart)]",
+        "hover:bg-primary/10 hover:text-primary",
         className
     );
 
@@ -115,7 +116,7 @@ export function DockSeparator({ className }: { className?: string }) {
     return (
         <span
             aria-hidden
-            className={cn("mx-1 h-6 w-px self-center bg-border", className)}
+            className={cn("mx-1 h-6 w-px self-center bg-primary/25", className)}
         />
     );
 }

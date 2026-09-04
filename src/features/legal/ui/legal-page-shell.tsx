@@ -33,6 +33,7 @@ export function LegalPageShell({
         <div
             className={cn(
                 "mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-6 px-4 py-8 sm:py-12",
+                "[view-transition-name:main-content]",
                 className
             )}
         >

@@ -1,10 +1,17 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { SprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 
-const WIDTH = 480;
-const HEIGHT = 160;
-const PAD = { bottom: 28, left: 36, right: 12, top: 12 };
+import { Grid } from "@/components/charts/grid";
+import { Line } from "@/components/charts/line";
+import { LineChart } from "@/components/charts/line-chart";
+import { ChartTooltip } from "@/components/charts/tooltip";
+import { XAxis } from "@/components/charts/x-axis";
+import { Button } from "@/shared/shadcn/ui/button";
+import { ButtonGroup } from "@/shared/shadcn/ui/button-group";
+
+type ChartMode = "burndown" | "burnup";
 
 export function SprintBurndownChart({
     mode,
@@ -14,6 +21,20 @@ export function SprintBurndownChart({
     series: SprintBurndownSeries;
 }) {
     const { t } = useTranslation("board");
+    const [chartMode, setChartMode] = useState<ChartMode>("burndown");
+
+    const chartData = useMemo(() => {
+        return series.days
+            .filter((day) => day.remaining !== null)
+            .map((day) => ({
+                completedCumulative: day.completedCumulative ?? 0,
+                date: parseIsoDateLocal(day.date),
+                ideal: day.ideal,
+                idealCompleted: day.idealCompleted,
+                remaining: day.remaining ?? 0,
+                scope: day.scope ?? 0,
+            }));
+    }, [series.days]);
 
     if (series.emptyReason) {
         return (
@@ -23,7 +44,7 @@ export function SprintBurndownChart({
         );
     }
 
-    if (series.days.length === 0) {
+    if (series.days.length === 0 || chartData.length === 0) {
         return (
             <p className="text-ui text-muted-foreground">
                 {t("sprints.burndownEmpty.missing_dates")}
@@ -31,54 +52,54 @@ export function SprintBurndownChart({
         );
     }
 
-    const plotWidth = WIDTH - PAD.left - PAD.right;
-    const plotHeight = HEIGHT - PAD.top - PAD.bottom;
-    const maxY = Math.max(
-        series.commitmentTotal,
-        ...series.days.map((day) => day.ideal),
-        ...series.days.flatMap((day) =>
-            day.remaining === null ? [] : [day.remaining]
-        ),
-        1
-    );
-
-    const xAt = (index: number) => {
-        if (series.days.length === 1) return PAD.left + plotWidth / 2;
-        return PAD.left + (index / (series.days.length - 1)) * plotWidth;
-    };
-    const yAt = (value: number) => PAD.top + plotHeight * (1 - value / maxY);
-
-    const idealPath = series.days
-        .map((day, index) => {
-            const command = index === 0 ? "M" : "L";
-            return `${command}${xAt(index)},${yAt(day.ideal)}`;
-        })
-        .join(" ");
-
-    const remainingDays = series.days
-        .map((day, index) => ({ day, index }))
-        .filter((item) => item.day.remaining !== null);
-    const remainingPath = remainingDays
-        .map(({ day, index }, pathIndex) => {
-            const command = pathIndex === 0 ? "M" : "L";
-            return `${command}${xAt(index)},${yAt(day.remaining!)}`;
-        })
-        .join(" ");
-
-    const firstDate = series.days[0]?.date;
-    const lastDate = series.days.at(-1)?.date;
     const metricLabel =
         series.metric === "points"
-            ? t("sprints.burndownMetricPoints")
-            : t("sprints.burndownMetricCount");
+            ? t(
+                  chartMode === "burndown"
+                      ? "sprints.burndownMetricPoints"
+                      : "sprints.burnupMetricPoints"
+              )
+            : t(
+                  chartMode === "burndown"
+                      ? "sprints.burndownMetricCount"
+                      : "sprints.burnupMetricCount"
+              );
 
     return (
-        <div className="space-y-2">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-ui font-medium">
-                    {t("sprints.burndownTitle")}
-                </h3>
-                <p className="text-meta text-muted-foreground">{metricLabel}</p>
+        <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+                    <h3 className="text-ui font-medium">
+                        {t(
+                            chartMode === "burndown"
+                                ? "sprints.burndownTitle"
+                                : "sprints.burnupTitle"
+                        )}
+                    </h3>
+                    <p className="text-meta text-muted-foreground">
+                        {metricLabel}
+                    </p>
+                </div>
+                <ButtonGroup aria-label={t("sprints.chartModeLabel")}>
+                    <Button
+                        onClick={() => setChartMode("burndown")}
+                        size="xs"
+                        type="button"
+                        variant={
+                            chartMode === "burndown" ? "default" : "outline"
+                        }
+                    >
+                        {t("sprints.burndownTitle")}
+                    </Button>
+                    <Button
+                        onClick={() => setChartMode("burnup")}
+                        size="xs"
+                        type="button"
+                        variant={chartMode === "burnup" ? "default" : "outline"}
+                    >
+                        {t("sprints.burnupTitle")}
+                    </Button>
+                </ButtonGroup>
             </div>
             {series.metric === "points" && series.unestimatedCount > 0 ? (
                 <p className="text-meta text-muted-foreground">
@@ -92,95 +113,86 @@ export function SprintBurndownChart({
                     {t("sprints.burndownCountFallback")}
                 </p>
             ) : null}
-            <svg
-                aria-label={t("sprints.burndownTitle")}
-                className="h-auto w-full max-w-full text-foreground"
-                role="img"
-                viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            >
-                <line
-                    className="stroke-border"
-                    strokeWidth={1}
-                    x1={PAD.left}
-                    x2={PAD.left}
-                    y1={PAD.top}
-                    y2={HEIGHT - PAD.bottom}
-                />
-                <line
-                    className="stroke-border"
-                    strokeWidth={1}
-                    x1={PAD.left}
-                    x2={WIDTH - PAD.right}
-                    y1={HEIGHT - PAD.bottom}
-                    y2={HEIGHT - PAD.bottom}
-                />
-                <text
-                    className="fill-muted-foreground text-[10px]"
-                    textAnchor="end"
-                    x={PAD.left - 6}
-                    y={PAD.top + 4}
+            <div className="min-w-0 w-full">
+                <LineChart
+                    aspectRatio="2 / 1"
+                    className="min-h-[160px] w-full"
+                    data={chartData}
+                    margin={{ bottom: 28, left: 40, right: 12, top: 16 }}
+                    status="ready"
                 >
-                    {maxY}
-                </text>
-                <text
-                    className="fill-muted-foreground text-[10px]"
-                    textAnchor="end"
-                    x={PAD.left - 6}
-                    y={HEIGHT - PAD.bottom}
-                >
-                    0
-                </text>
-                {firstDate ? (
-                    <text
-                        className="fill-muted-foreground text-[10px]"
-                        textAnchor="start"
-                        x={PAD.left}
-                        y={HEIGHT - 8}
-                    >
-                        {firstDate}
-                    </text>
-                ) : null}
-                {lastDate ? (
-                    <text
-                        className="fill-muted-foreground text-[10px]"
-                        textAnchor="end"
-                        x={WIDTH - PAD.right}
-                        y={HEIGHT - 8}
-                    >
-                        {lastDate}
-                    </text>
-                ) : null}
-                <path
-                    className="stroke-muted-foreground"
-                    d={idealPath}
-                    fill="none"
-                    strokeDasharray="4 3"
-                    strokeWidth={1.5}
-                />
-                {remainingPath ? (
-                    <path
-                        className="stroke-primary"
-                        d={remainingPath}
-                        fill="none"
-                        strokeWidth={2}
-                    />
-                ) : null}
-            </svg>
+                    <Grid horizontal />
+                    {chartMode === "burndown" ? (
+                        <>
+                            <Line
+                                dataKey="ideal"
+                                fadeEdges={false}
+                                showHighlight={false}
+                                stroke="var(--chart-line-secondary)"
+                                strokeWidth={1.5}
+                            />
+                            <Line
+                                dataKey="remaining"
+                                fadeEdges={false}
+                                stroke="var(--chart-line-primary)"
+                                strokeWidth={2}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <Line
+                                dataKey="idealCompleted"
+                                fadeEdges={false}
+                                showHighlight={false}
+                                stroke="var(--chart-line-secondary)"
+                                strokeWidth={1.5}
+                            />
+                            <Line
+                                dataKey="scope"
+                                fadeEdges={false}
+                                stroke="var(--chart-3)"
+                                strokeWidth={1.5}
+                            />
+                            <Line
+                                dataKey="completedCumulative"
+                                fadeEdges={false}
+                                stroke="var(--chart-line-primary)"
+                                strokeWidth={2}
+                            />
+                        </>
+                    )}
+                    <XAxis numTicks={Math.min(5, chartData.length)} />
+                    <ChartTooltip />
+                </LineChart>
+            </div>
             <div className="flex flex-wrap gap-4 text-meta text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                    <span
-                        aria-hidden
-                        className="inline-block h-px w-4 border-t border-dashed border-muted-foreground"
-                    />
-                    {t("sprints.burndownIdeal")}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                    <span
-                        aria-hidden
-                        className="inline-block h-0.5 w-4 bg-primary"
-                    />
-                    {t("sprints.burndownActual")}
-                </span>
+                {chartMode === "burndown" ? (
+                    <>
+                        <LegendSwatch
+                            label={t("sprints.burndownIdeal")}
+                            tone="secondary"
+                        />
+                        <LegendSwatch
+                            label={t("sprints.burndownActual")}
+                            tone="primary"
+                        />
+                    </>
+                ) : (
+                    <>
+                        <LegendSwatch
+                            label={t("sprints.burnupIdeal")}
+                            tone="secondary"
+                        />
+                        <LegendSwatch
+                            label={t("sprints.burnupScope")}
+                            tone="muted"
+                        />
+                        <LegendSwatch
+                            label={t("sprints.burnupCompleted")}
+                            tone="primary"
+                        />
+                    </>
+                )}
             </div>
             <p className="text-meta text-muted-foreground">
                 {t(
@@ -191,4 +203,33 @@ export function SprintBurndownChart({
             </p>
         </div>
     );
+}
+
+function LegendSwatch({
+    label,
+    tone,
+}: {
+    label: string;
+    tone: "muted" | "primary" | "secondary";
+}) {
+    const className =
+        tone === "primary"
+            ? "bg-primary"
+            : tone === "secondary"
+              ? "bg-muted-foreground"
+              : "bg-chart-3";
+    return (
+        <span className="inline-flex items-center gap-1.5">
+            <span
+                aria-hidden
+                className={`inline-block h-0.5 w-4 ${className}`}
+            />
+            {label}
+        </span>
+    );
+}
+
+function parseIsoDateLocal(isoDate: string): Date {
+    const [year, month, day] = isoDate.split("-").map(Number);
+    return new Date(year!, month! - 1, day!);
 }

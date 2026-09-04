@@ -731,6 +731,16 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Merged PR #{{number}}",
         "mergePrFailed": "Could not merge pull request",
+        "closePr": "Close",
+        "closePrTitle": "Close pull request #{{number}}?",
+        "closePrBody": "Closes without merging. The task stays in its current column.",
+        "closePrConfirm": "Close pull request",
+        "closePrCancel": "Cancel",
+        "closePrToast": "Closed PR #{{number}}",
+        "closePrFailed": "Could not close pull request",
+        "approvePr": "Approve",
+        "approvePrToast": "Approved PR #{{number}}",
+        "approvePrFailed": "Could not approve pull request",
         "smartCommitsHint": "Include {{key}} in commit messages (e.g. “{{key}}: Fix login”) — matching commits appear automatically below.",
         "linkCommit": "Link commit",
         "linkCommitHint": "Enter a commit SHA or GitHub commit URL.",
@@ -772,7 +782,7 @@
             "forbidden": "GitHub denied this action — check repo permissions",
             "not_found": "Branch or pull request was not found on GitHub",
             "conflict": "Pull request cannot be merged (conflicts or checks)",
-            "validation": "GitHub rejected the request (PR may already exist or be a draft)",
+            "validation": "GitHub rejected the request (rules, existing review, or invalid state)",
             "rate_limit": "GitHub rate limit hit — wait a moment and try again",
             "unknown": "GitHub request failed — try again"
         }
@@ -1006,9 +1016,18 @@
         "burndownProxyHintClosed": "Remaining stays open until Close day, then drops Completed tasks.",
         "burndownTitle": "Burndown",
         "burndownUnestimated": "{{count}} in-scope task(s) unestimated (omitted from points).",
+        "burnupCompleted": "Completed",
+        "burnupIdeal": "Ideal",
+        "burnupMetricCount": "Tasks",
+        "burnupMetricPoints": "Points",
+        "burnupScope": "Scope",
+        "burnupTitle": "Burnup",
+        "chartModeLabel": "Chart type",
         "insightsAccuracyHint": "Completed ÷ committed over the same window",
         "insightsAccuracyLabel": "Commitment accuracy",
         "insightsAccuracyValue": "{{percent}}%",
+        "insightsCommittedBar": "Committed",
+        "insightsCompletedBar": "Completed",
         "insightsCountFallback": "No Estimates in window — metrics use task count.",
         "insightsEmpty": {
             "no_closed_sprints": "Complete a sprint to see velocity and commitment accuracy."
@@ -1016,6 +1035,7 @@
         "insightsSample": "Based on {{count}} closed sprint(s)",
         "insightsSubtitle": "Last {{count}} closed sprints on this board",
         "insightsTitle": "Sprint insights",
+        "insightsVelocityChart": "Velocity by sprint",
         "insightsVelocityCount": "{{value}} tasks / sprint",
         "insightsVelocityLabel": "Velocity",
         "insightsVelocityPoints": "{{value}} pts / sprint",
@@ -1060,6 +1080,16 @@
             "draft": "Draft"
         },
         "suggested": "suggested",
-        "taskCount": "{{count}} tasks"
+        "taskCount": "{{count}} tasks",
+        "planningEyebrow": "Planning",
+        "backlogSubtitle": "Shape the next sprint from the pool, then start when the board is ready.",
+        "pulseDaysLeft": "days left",
+        "pulseActive": "active",
+        "pulseDrafts": "drafts",
+        "pulsePool": "in backlog",
+        "activeLiveEyebrow": "Live sprint",
+        "activeLiveOverdue": "overdue",
+        "activeLiveUndated": "Set start and end dates to track the window.",
+        "activeLiveUpcoming": "days to go"
     }
 }

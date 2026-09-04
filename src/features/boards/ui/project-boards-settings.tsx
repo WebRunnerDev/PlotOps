@@ -58,12 +58,15 @@ type ProjectBoardsSettingsProperties = {
     defaultBaseBranch?: string;
     projectId: string;
     showAutoAssignToCreator?: boolean;
+    /** Base branch + allowed head patterns — only meaningful with a linked GitHub repo. */
+    showGitBranchSettings?: boolean;
 };
 
 export function ProjectBoardsSettings({
     defaultBaseBranch = "main",
     projectId,
     showAutoAssignToCreator = false,
+    showGitBranchSettings = false,
 }: ProjectBoardsSettingsProperties) {
     const { t } = useTranslation("board");
     const navigate = useNavigate();
@@ -121,7 +124,7 @@ export function ProjectBoardsSettings({
 
     return (
         <section className="flex flex-col gap-6">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <h2 className="text-h3">{t("boards.settingsTitle")}</h2>
                     <Button onClick={openCreate} size="sm" variant="outline">
@@ -129,6 +132,7 @@ export function ProjectBoardsSettings({
                         {t("boards.addBoard")}
                     </Button>
                 </div>
+                <div aria-hidden className="h-px w-12 bg-primary/55" />
                 <p className="text-ui text-muted-foreground">
                     {t("boards.settingsDescription")}
                 </p>
@@ -182,6 +186,7 @@ export function ProjectBoardsSettings({
                                 toast.success(t("boards.saved"));
                             }}
                             showAutoAssignToCreator={showAutoAssignToCreator}
+                            showGitBranchSettings={showGitBranchSettings}
                         />
                     ))}
                 </ul>
@@ -209,20 +214,22 @@ export function ProjectBoardsSettings({
                                 value={newName}
                             />
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="settings-board-base">
-                                {t("boards.baseBranch")}
-                            </Label>
-                            <Input
-                                className="font-mono text-sm"
-                                id="settings-board-base"
-                                onChange={(event) =>
-                                    setNewBaseBranch(event.target.value)
-                                }
-                                placeholder="main"
-                                value={newBaseBranch}
-                            />
-                        </div>
+                        {showGitBranchSettings ? (
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="settings-board-base">
+                                    {t("boards.baseBranch")}
+                                </Label>
+                                <Input
+                                    className="font-mono text-sm"
+                                    id="settings-board-base"
+                                    onChange={(event) =>
+                                        setNewBaseBranch(event.target.value)
+                                    }
+                                    placeholder="main"
+                                    value={newBaseBranch}
+                                />
+                            </div>
+                        ) : undefined}
                     </div>
                     <DialogFooter>
                         <Button
@@ -329,6 +336,7 @@ function BoardSettingsCard({
     onExpandedChange,
     onSave,
     showAutoAssignToCreator,
+    showGitBranchSettings,
 }: {
     boardId: string;
     canDelete: boolean;
@@ -349,6 +357,7 @@ function BoardSettingsCard({
         name?: string;
     }) => Promise<void>;
     showAutoAssignToCreator: boolean;
+    showGitBranchSettings: boolean;
 }) {
     const { t } = useTranslation("board");
     const [name, setName] = useState(initialName);
@@ -377,12 +386,13 @@ function BoardSettingsCard({
 
     const dirty =
         name.trim() !== initialName ||
-        baseBranch.trim() !== initialBase ||
+        (showGitBranchSettings && baseBranch.trim() !== initialBase) ||
         defaultTaskType !== initialDefaultTaskType ||
         (showAutoAssignToCreator &&
             autoAssignToCreator !== initialAutoAssignToCreator) ||
-        parseAllowedHeadPatterns(allowedRaw).join("\n") !==
-            parseAllowedHeadPatterns(initialAllowed).join("\n");
+        (showGitBranchSettings &&
+            parseAllowedHeadPatterns(allowedRaw).join("\n") !==
+                parseAllowedHeadPatterns(initialAllowed).join("\n"));
 
     const branchTone =
         baseBranch.trim() === "main" || baseBranch.trim() === "master"
@@ -418,20 +428,27 @@ function BoardSettingsCard({
                         >
                             {t(`taskType.${defaultTaskType}`)}
                         </Badge>
-                        <Badge
-                            className={cn(
-                                "shrink-0 rounded-sm px-1.5 font-mono text-[0.625rem]",
-                                branchTone
-                            )}
-                            variant="secondary"
-                        >
-                            {baseBranch.trim() || "—"}
-                        </Badge>
+                        {showGitBranchSettings ? (
+                            <Badge
+                                className={cn(
+                                    "shrink-0 rounded-sm px-1.5 font-mono text-[0.625rem]",
+                                    branchTone
+                                )}
+                                variant="secondary"
+                            >
+                                {baseBranch.trim() || "—"}
+                            </Badge>
+                        ) : undefined}
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
                         <div className="flex flex-col gap-4 border-t border-border px-3.5 py-4">
-                            <div className="grid gap-3 sm:grid-cols-2">
+                            <div
+                                className={cn(
+                                    "grid gap-3",
+                                    showGitBranchSettings && "sm:grid-cols-2"
+                                )}
+                            >
                                 <div className="flex flex-col gap-1.5">
                                     <Label htmlFor={`board-name-${boardId}`}>
                                         {t("boards.name")}
@@ -444,22 +461,28 @@ function BoardSettingsCard({
                                         value={name}
                                     />
                                 </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <Label htmlFor={`board-base-${boardId}`}>
-                                        {t("boards.baseBranch")}
-                                    </Label>
-                                    <Input
-                                        className="font-mono text-sm"
-                                        id={`board-base-${boardId}`}
-                                        onChange={(event) =>
-                                            setBaseBranch(event.target.value)
-                                        }
-                                        value={baseBranch}
-                                    />
-                                    <p className="text-meta text-muted-foreground">
-                                        {t("boards.baseBranchHint")}
-                                    </p>
-                                </div>
+                                {showGitBranchSettings ? (
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label
+                                            htmlFor={`board-base-${boardId}`}
+                                        >
+                                            {t("boards.baseBranch")}
+                                        </Label>
+                                        <Input
+                                            className="font-mono text-sm"
+                                            id={`board-base-${boardId}`}
+                                            onChange={(event) =>
+                                                setBaseBranch(
+                                                    event.target.value
+                                                )
+                                            }
+                                            value={baseBranch}
+                                        />
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.baseBranchHint")}
+                                        </p>
+                                    </div>
+                                ) : undefined}
                             </div>
 
                             <div className="flex flex-col gap-1.5 sm:max-w-xs">
@@ -531,23 +554,27 @@ function BoardSettingsCard({
                                 </div>
                             ) : undefined}
 
-                            <div className="flex flex-col gap-1.5">
-                                <Label htmlFor={`board-patterns-${boardId}`}>
-                                    {t("boards.allowedPatterns")}
-                                </Label>
-                                <Textarea
-                                    className="min-h-24 font-mono text-sm"
-                                    id={`board-patterns-${boardId}`}
-                                    onChange={(event) =>
-                                        setAllowedRaw(event.target.value)
-                                    }
-                                    placeholder={"feature/*\nfix/*"}
-                                    value={allowedRaw}
-                                />
-                                <p className="text-meta text-muted-foreground">
-                                    {t("boards.allowedPatternsHint")}
-                                </p>
-                            </div>
+                            {showGitBranchSettings ? (
+                                <div className="flex flex-col gap-1.5">
+                                    <Label
+                                        htmlFor={`board-patterns-${boardId}`}
+                                    >
+                                        {t("boards.allowedPatterns")}
+                                    </Label>
+                                    <Textarea
+                                        className="min-h-24 font-mono text-sm"
+                                        id={`board-patterns-${boardId}`}
+                                        onChange={(event) =>
+                                            setAllowedRaw(event.target.value)
+                                        }
+                                        placeholder={"feature/*\nfix/*"}
+                                        value={allowedRaw}
+                                    />
+                                    <p className="text-meta text-muted-foreground">
+                                        {t("boards.allowedPatternsHint")}
+                                    </p>
+                                </div>
+                            ) : undefined}
 
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                 <Button
@@ -565,21 +592,27 @@ function BoardSettingsCard({
                                         !dirty ||
                                         isSaving ||
                                         !name.trim() ||
-                                        !baseBranch.trim()
+                                        (showGitBranchSettings &&
+                                            !baseBranch.trim())
                                     }
                                     onClick={() =>
                                         void onSave({
-                                            allowed_head_patterns:
-                                                parseAllowedHeadPatterns(
-                                                    allowedRaw
-                                                ),
+                                            ...(showGitBranchSettings
+                                                ? {
+                                                      allowed_head_patterns:
+                                                          parseAllowedHeadPatterns(
+                                                              allowedRaw
+                                                          ),
+                                                      base_branch:
+                                                          baseBranch.trim(),
+                                                  }
+                                                : {}),
                                             ...(showAutoAssignToCreator
                                                 ? {
                                                       auto_assign_to_creator:
                                                           autoAssignToCreator,
                                                   }
                                                 : {}),
-                                            base_branch: baseBranch.trim(),
                                             default_task_type: defaultTaskType,
                                             name: name.trim(),
                                         })

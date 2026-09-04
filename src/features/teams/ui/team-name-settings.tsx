@@ -6,13 +6,6 @@ import { useTeamAccess } from "@/features/teams/model/use-team-access";
 import { useTeam } from "@/features/teams/model/use-team-members";
 import { useUpdateTeam } from "@/features/teams/model/use-teams";
 import { Button } from "@/shared/shadcn/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/shared/shadcn/ui/card";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
@@ -54,45 +47,51 @@ export function TeamNameSettings({ teamId }: TeamNameSettingsProperties) {
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>{t("teamSettings.nameTitle")}</CardTitle>
-                <CardDescription>
+        <section
+            aria-labelledby="team-settings-name-heading"
+            className="flex flex-col gap-5 border-t border-border pt-8 sm:gap-6 sm:pt-10"
+        >
+            <div className="flex min-w-0 flex-col gap-2">
+                <h2 className="text-h2" id="team-settings-name-heading">
+                    {t("teamSettings.nameTitle")}
+                </h2>
+                <div aria-hidden className="h-px w-12 bg-primary/60" />
+                <p className="max-w-prose text-ui text-muted-foreground">
                     {t("teamSettings.nameDescription")}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form
-                    className="flex flex-col gap-4"
-                    onSubmit={(event) => void handleSubmit(event)}
-                >
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="team-settings-name">
-                            {tHome("teamNameLabel")}
-                        </Label>
-                        <Input
-                            disabled={updateTeam.isPending}
-                            id="team-settings-name"
-                            onChange={(event) => setName(event.target.value)}
-                            placeholder={tHome("teamNamePlaceholder")}
-                            value={name}
-                        />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button disabled={!canSave} type="submit">
-                            {updateTeam.isPending ? (
-                                <Spinner data-icon="inline-start" />
-                            ) : null}
-                            {t("teamSettings.nameSave")}
-                        </Button>
-                        {isDirty ? (
-                            <span className="text-meta text-muted-foreground">
-                                {t("boards.unsaved")}
-                            </span>
+                </p>
+            </div>
+
+            <form
+                className="flex flex-col gap-4 rounded-xl border border-border/80 bg-card/60 p-4 ring-1 ring-foreground/5 sm:p-5"
+                onSubmit={(event) => void handleSubmit(event)}
+            >
+                <div className="flex min-w-0 flex-col gap-2">
+                    <Label htmlFor="team-settings-name">
+                        {tHome("teamNameLabel")}
+                    </Label>
+                    <Input
+                        className="font-heading text-base tracking-tight"
+                        disabled={updateTeam.isPending}
+                        id="team-settings-name"
+                        onChange={(event) => setName(event.target.value)}
+                        placeholder={tHome("teamNamePlaceholder")}
+                        value={name}
+                    />
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button disabled={!canSave} type="submit">
+                        {updateTeam.isPending ? (
+                            <Spinner data-icon="inline-start" />
                         ) : null}
-                    </div>
-                </form>
-            </CardContent>
-        </Card>
+                        {t("teamSettings.nameSave")}
+                    </Button>
+                    {isDirty ? (
+                        <span className="font-mono text-meta text-amber-500/90">
+                            {t("boards.unsaved")}
+                        </span>
+                    ) : null}
+                </div>
+            </form>
+        </section>
     );
 }

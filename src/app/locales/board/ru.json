@@ -737,6 +737,16 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Слит PR #{{number}}",
         "mergePrFailed": "Не удалось слить pull request",
+        "closePr": "Закрыть",
+        "closePrTitle": "Закрыть pull request #{{number}}?",
+        "closePrBody": "Закрывает без слияния. Задача остаётся в текущей колонке.",
+        "closePrConfirm": "Закрыть pull request",
+        "closePrCancel": "Отмена",
+        "closePrToast": "Закрыт PR #{{number}}",
+        "closePrFailed": "Не удалось закрыть pull request",
+        "approvePr": "Одобрить",
+        "approvePrToast": "Одобрен PR #{{number}}",
+        "approvePrFailed": "Не удалось одобрить pull request",
         "smartCommitsHint": "Указывайте {{key}} в сообщении коммита (например «{{key}}: Fix login») — подходящие коммиты появятся ниже автоматически.",
         "linkCommit": "Привязать коммит",
         "linkCommitHint": "Введите SHA коммита или URL коммита на GitHub.",
@@ -778,7 +788,7 @@
             "forbidden": "GitHub отклонил действие — проверьте права на репозиторий",
             "not_found": "Ветка или pull request не найдены на GitHub",
             "conflict": "Pull request нельзя слить (конфликты или проверки)",
-            "validation": "GitHub отклонил запрос (PR уже существует или это draft)",
+            "validation": "GitHub отклонил запрос (правила, существующий review или недопустимое состояние)",
             "rate_limit": "Лимит GitHub — подождите и повторите",
             "unknown": "Запрос к GitHub не удался — попробуйте снова"
         }
@@ -1012,9 +1022,18 @@
         "burndownProxyHintClosed": "До дня Close остаток открыт; в день Close вычитаются Completed.",
         "burndownTitle": "Burndown",
         "burndownUnestimated": "{{count}} задач(и) в scope без оценки (не входят в очки).",
+        "burnupCompleted": "Completed",
+        "burnupIdeal": "Идеал",
+        "burnupMetricCount": "Задачи",
+        "burnupMetricPoints": "Очки",
+        "burnupScope": "Scope",
+        "burnupTitle": "Burnup",
+        "chartModeLabel": "Тип графика",
         "insightsAccuracyHint": "Completed ÷ committed за то же окно",
         "insightsAccuracyLabel": "Точность commitment",
         "insightsAccuracyValue": "{{percent}}%",
+        "insightsCommittedBar": "Committed",
+        "insightsCompletedBar": "Completed",
         "insightsCountFallback": "В окне нет Estimate — метрики по числу задач.",
         "insightsEmpty": {
             "no_closed_sprints": "Завершите спринт, чтобы увидеть velocity и точность commitment."
@@ -1022,6 +1041,7 @@
         "insightsSample": "По {{count}} закрытым спринтам",
         "insightsSubtitle": "Последние {{count}} закрытых спринтов на этой доске",
         "insightsTitle": "Sprint insights",
+        "insightsVelocityChart": "Velocity по спринтам",
         "insightsVelocityCount": "{{value}} задач / спринт",
         "insightsVelocityLabel": "Velocity",
         "insightsVelocityPoints": "{{value}} pts / спринт",
@@ -1066,6 +1086,16 @@
             "draft": "Draft"
         },
         "suggested": "рекомендация",
-        "taskCount": "{{count}} задач"
+        "taskCount": "{{count}} задач",
+        "planningEyebrow": "Планирование",
+        "backlogSubtitle": "Соберите следующий спринт из пула и запустите, когда доска готова.",
+        "pulseDaysLeft": "дней осталось",
+        "pulseActive": "активный",
+        "pulseDrafts": "черновики",
+        "pulsePool": "в бэклоге",
+        "activeLiveEyebrow": "Активный спринт",
+        "activeLiveOverdue": "просрочен",
+        "activeLiveUndated": "Укажите даты старта и конца, чтобы отслеживать окно.",
+        "activeLiveUpcoming": "дней до конца"
     }
 }

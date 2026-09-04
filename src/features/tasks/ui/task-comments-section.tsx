@@ -307,7 +307,7 @@ export function TaskCommentsSection({
 
     return (
         <section className="flex flex-col gap-4" data-task-comments="">
-            <h3 className="text-ui font-medium">
+            <h3 className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                 {t("comments.title", { count: comments.length })}
             </h3>
 

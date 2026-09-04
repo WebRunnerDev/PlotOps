@@ -4,14 +4,14 @@
         "resend": "Отправить письмо ещё раз",
         "resendLoading": "Отправка...",
         "resent": "Письмо с подтверждением отправлено повторно.",
-        "title": "Проверьте почту"
+        "title": "check_email"
     },
     "completeProfile": {
         "description": "Нужны имя и фамилия, чтобы коллеги узнавали вас на досках и в упоминаниях.",
         "save": "Продолжить",
         "saving": "Сохранение...",
         "signOut": "Выйти и войти другим аккаунтом",
-        "title": "Заполните профиль"
+        "title": "complete_profile"
     },
     "confirmPassword": "Подтвердите пароль",
     "email": "Email",
@@ -76,7 +76,7 @@
         "profileDescription": "Как вас видят участники проектов. Username (handle) остаётся отдельно.",
         "profileTitle": "Профиль",
         "githubIntegration": {
-            "connectedAccountsHint": "Способы входа настраиваются в блоке «Подключённые аккаунты» ниже.",
+            "connectedAccountsHint": "Способы входа настраиваются в разделе «Подключённые аккаунты».",
             "description": "Доступ к GitHub API для репозиториев, pull request и CI в PlotOps.",
             "githubLoginLabel": "Привязанный аккаунт GitHub",
             "githubLoginMissing": "Не привязан",
@@ -105,24 +105,26 @@
     },
     "signIn": "Войти",
     "signInLoading": "Вход...",
-    "signInSubtitle": "Войдите через GitHub или Google, попробуйте демо или используйте email и пароль",
+    "signInPanel": "session.sign_in",
+    "signInSubtitle": "GitHub, Google, демо или email",
     "signInTitle": "Войти в PlotOps",
     "tryDemo": "Попробовать демо без регистрации",
     "tryDemoLoading": "Открываем демо...",
     "signUp": "Создать аккаунт",
     "signUpLoading": "Создание аккаунта...",
-    "signUpSubtitle": "Регистрация через GitHub, Google или email — email нужен для приглашений без GitHub",
+    "signUpPanel": "session.sign_up",
+    "signUpSubtitle": "GitHub, Google или email — email нужен для приглашений без GitHub",
     "signUpTitle": "Создать аккаунт PlotOps",
     "username": "Username",
     "marketing": {
         "eyebrow": "Git-native трекер проектов",
-        "title": "Канбан, GitHub и CI в одном месте",
-        "description": "Привязывайте задачи к веткам, смотрите pull request и diff без переключения вкладок, следите за GitHub Actions — открытый портфолио-проект.",
+        "title": "От доски к пайплайну",
+        "description": "Задачи привязаны к веткам. PR и Actions — не уходя с доски.",
         "seoDescription": "PlotOps — git-native трекер проектов с канбан-доской, просмотром PR и diff в приложении и дашбордом CI/CD. Войдите или попробуйте демо без регистрации.",
         "features": {
-            "kanban": "Git-канбан: задачи и ветки",
-            "git": "PR и diff внутри приложения",
-            "ci": "CI/CD и логи сборок"
+            "kanban": "Git-канбан",
+            "git": "PR в приложении",
+            "ci": "Логи CI/CD"
         }
     }
 }

@@ -190,7 +190,7 @@ export function DraggableTaskCard({
         <div
             aria-label={task.key}
             className={cn(
-                "group/task relative min-w-0 cursor-pointer select-none rounded-lg outline-none transition-opacity duration-150",
+                "group/task relative min-w-0 cursor-pointer select-none rounded-none outline-none transition-opacity duration-150",
                 "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                 (isDragging || multiDragGhost) &&
                     "opacity-40 ring-2 ring-inset ring-primary/50",

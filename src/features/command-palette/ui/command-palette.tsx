@@ -393,7 +393,7 @@ export function CommandPalette() {
             title={t("command:title")}
         >
             <Command
-                className="**:data-[selected=true]:bg-muted **:data-selected:bg-transparent"
+                className="**:data-[selected=true]:bg-primary/12 **:data-selected:bg-transparent"
                 shouldFilter={false}
             >
                 <CommandInput
@@ -402,7 +402,7 @@ export function CommandPalette() {
                     value={query}
                 />
                 {visibility.tasks ? (
-                    <div className="flex items-center gap-2 border-b px-3 py-2">
+                    <div className="flex items-center gap-2 border-b border-primary/15 px-3 py-2">
                         <Checkbox
                             checked={includeArchived}
                             id="command-include-archived"
@@ -411,7 +411,7 @@ export function CommandPalette() {
                             }}
                         />
                         <Label
-                            className="cursor-pointer text-xs font-normal text-muted-foreground"
+                            className="cursor-pointer font-mono text-xs font-normal tracking-wide text-muted-foreground"
                             htmlFor="command-include-archived"
                         >
                             {t("command:includeArchived")}
@@ -419,7 +419,17 @@ export function CommandPalette() {
                     </div>
                 ) : null}
                 <CommandList>
-                    <CommandEmpty>{t("command:empty")}</CommandEmpty>
+                    <CommandEmpty>
+                        <span
+                            aria-hidden
+                            className="font-mono text-meta text-primary/70"
+                        >
+                            // no_matches
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                            {t("command:empty")}
+                        </span>
+                    </CommandEmpty>
                     {showActions ? (
                         <CommandGroup heading={t("command:actions")}>
                             {showTheme ? (

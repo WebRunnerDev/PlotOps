@@ -272,8 +272,9 @@ export function SprintTaskTable({
         return (
             <div
                 className={cn(
-                    "px-3 py-6 transition-colors",
-                    isOver && "bg-primary/5"
+                    "m-3 flex flex-col items-start justify-center gap-2 border border-dashed border-border/70 px-4 py-10 transition-[border-color,background-color,transform,box-shadow] duration-300 ease-(--ease-out-expo)",
+                    isOver &&
+                        "scale-[1.01] border-primary bg-primary/8 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_25%,transparent)]"
                 )}
                 ref={setNodeRef}
             >
@@ -281,7 +282,12 @@ export function SprintTaskTable({
                     {t("sprints.emptySection")}
                 </p>
                 {canManage ? (
-                    <p className="mt-1 text-meta text-muted-foreground">
+                    <p
+                        className={cn(
+                            "text-meta transition-colors duration-300 ease-(--ease-out-expo)",
+                            isOver ? "text-primary" : "text-muted-foreground"
+                        )}
+                    >
                         {t("sprints.dropHint")}
                     </p>
                 ) : null}
@@ -294,8 +300,9 @@ export function SprintTaskTable({
     return (
         <div
             className={cn(
-                "transition-colors",
-                isOver && "bg-primary/5 ring-1 ring-inset ring-primary/30"
+                "transition-[background-color,box-shadow] duration-300 ease-(--ease-out-expo)",
+                isOver &&
+                    "bg-primary/5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
             )}
             ref={setNodeRef}
         >

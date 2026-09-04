@@ -96,7 +96,7 @@ export function TaskDrawerSideEdgeHandle({
         >
             <span
                 aria-hidden="true"
-                className="h-24 w-1 rounded-full bg-muted-foreground/55 transition-colors duration-150 hover:bg-muted-foreground/80"
+                className="h-24 w-1 rounded-none bg-muted-foreground/55 transition-colors duration-150 hover:bg-primary/70"
             />
         </div>
     );

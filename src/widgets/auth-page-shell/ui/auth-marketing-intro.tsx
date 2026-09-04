@@ -6,7 +6,7 @@ type AuthMarketingIntroProperties = {
     className?: string;
 };
 
-/** Visible product pitch on auth pages — helps visitors and search crawlers. */
+/** Brand-first pitch — PlotOps is the hero signal, not an eyebrow. */
 export function AuthMarketingIntro({
     className,
 }: AuthMarketingIntroProperties) {
@@ -15,36 +15,44 @@ export function AuthMarketingIntro({
     return (
         <header
             className={cn(
-                "mx-auto flex w-full min-w-0 max-w-lg flex-col items-center gap-3 text-center",
+                "flex w-full min-w-0 max-w-xl flex-col gap-5 text-left sm:gap-6 lg:max-w-none",
                 className
             )}
         >
-            <img
-                alt=""
-                className="size-16 shrink-0 rounded-sm border border-border"
-                height={64}
-                src="/PlotOps.png"
-                width={64}
-            />
-            <div className="flex min-w-0 flex-col gap-2">
-                <p className="font-mono text-meta text-primary uppercase tracking-wider">
-                    {t("marketing.eyebrow")}
-                </p>
-                <h1 className="text-h2 wrap-break-word">
-                    {t("marketing.title")}
+            <p className="font-mono text-meta text-primary uppercase tracking-[0.14em] motion-reveal [animation-delay:80ms]">
+                {t("marketing.eyebrow")}
+            </p>
+
+            <div className="flex min-w-0 flex-col gap-4">
+                <h1 className="text-display text-foreground motion-reveal [animation-delay:160ms]">
+                    PlotOps
                 </h1>
-                <p className="text-body text-muted-foreground wrap-break-word">
+                <div
+                    aria-hidden
+                    className="h-px w-14 bg-primary/70 motion-reveal [animation-delay:200ms]"
+                />
+                <p className="max-w-[16ch] text-h1 text-foreground/90 wrap-break-word motion-reveal [animation-delay:240ms]">
+                    {t("marketing.title")}
+                </p>
+                <p className="max-w-md text-body text-muted-foreground wrap-break-word motion-reveal [animation-delay:320ms]">
                     {t("marketing.description")}
                 </p>
             </div>
-            <ul className="grid w-full min-w-0 gap-2 text-left text-meta text-muted-foreground sm:grid-cols-3">
-                <li className="min-w-0 rounded-sm border border-border px-3 py-2 wrap-break-word">
+
+            <ul className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 font-mono text-meta text-muted-foreground motion-reveal [animation-delay:400ms]">
+                <li className="min-w-0 wrap-break-word">
                     {t("marketing.features.kanban")}
                 </li>
-                <li className="min-w-0 rounded-sm border border-border px-3 py-2 wrap-break-word">
+                <li aria-hidden className="text-primary/50">
+                    /
+                </li>
+                <li className="min-w-0 wrap-break-word">
                     {t("marketing.features.git")}
                 </li>
-                <li className="min-w-0 rounded-sm border border-border px-3 py-2 wrap-break-word">
+                <li aria-hidden className="text-primary/50">
+                    /
+                </li>
+                <li className="min-w-0 wrap-break-word">
                     {t("marketing.features.ci")}
                 </li>
             </ul>

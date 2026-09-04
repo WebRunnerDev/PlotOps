@@ -1,6 +1,45 @@
 {
-    "description": "PlotOps — git-native трекер задач с канбаном, GitHub и CI: портфолио-пет-проект с открытым исходным кодом.",
-    "openSource": "Открытый исходный код ({{license}})",
     "title": "О проекте",
+    "tagline": "От доски к пайплайну",
+    "description": "Git-native трекер в духе Linear: задачи рядом с ветками, PR и сборками. Открытый портфолио-проект.",
+    "pillarsTitle": "Пайплайн",
+    "featuresTitle": "Ещё на доске",
+    "features": {
+        "kanban": {
+            "title": "Git-канбан",
+            "body": "Колонки, метки, фильтры, подзадачи и имена веток вроде feature/TASK-123-login."
+        },
+        "git": {
+            "title": "Git в приложении",
+            "body": "Ветка или PR из карточки, diff, open/merge — не уходя с доски."
+        },
+        "cicd": {
+            "title": "Дашборд CI/CD",
+            "body": "GitHub Actions по веткам: статусы, джобы и стриминг логов на лету."
+        },
+        "sprints": {
+            "title": "Спринты и бэклог",
+            "body": "Спринты на доске: оценки, закрытие и velocity insights."
+        },
+        "teams": {
+            "title": "Команды и права",
+            "body": "Team → Project, роли, инвайты и подключение репозитория GitHub."
+        },
+        "collaboration": {
+            "title": "Совместная работа",
+            "body": "Rich text, комментарии, @упоминания, Watch и лента активности."
+        },
+        "palette": {
+            "title": "Command palette",
+            "body": "Ctrl/Cmd+K: поиск, создание, переход на доски/CI и смена проекта."
+        },
+        "guest": {
+            "title": "Гостевой режим",
+            "body": "Демо без OAuth — локальная песочница с задачами, diff и логами CI."
+        }
+    },
+    "stackTitle": "Стек",
+    "stack": "Vite · React 19 · TanStack Router & Query · Tailwind 4 · shadcn/ui · Supabase · GitHub API",
+    "openSource": "Открытый исходный код ({{license}})",
     "viewOnGitHub": "Смотреть на GitHub"
 }

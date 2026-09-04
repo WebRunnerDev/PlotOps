@@ -44,6 +44,46 @@ describe("sprint KPIs seam", () => {
         expect(kpis.windowSize).toBe(2);
         expect(kpis.velocity).toBe(11.5);
         expect(kpis.commitmentAccuracy).toBe(1);
+        expect(kpis.completedSum).toBe(23);
+        expect(kpis.committedSum).toBe(23);
+        expect(kpis.velocitySeries).toEqual([
+            {
+                committed: 10,
+                completed: 10,
+                label: "2026-03-20",
+                sprintId: "s2",
+            },
+            {
+                committed: 13,
+                completed: 13,
+                label: "2026-03-30",
+                sprintId: "s3",
+            },
+        ]);
+    });
+
+    it("labels velocity bars from sprint name when present", () => {
+        const kpis = buildSprintKpis({
+            closedSprints: [
+                {
+                    closedAt: "2026-03-20T12:00:00.000Z",
+                    committedTaskIds: ["a"],
+                    completedTaskIds: ["a"],
+                    id: "s1",
+                    name: "Sprint Alpha",
+                },
+            ],
+            tasks: [{ estimate: 5, id: "a" }],
+        });
+
+        expect(kpis.velocitySeries).toEqual([
+            {
+                committed: 5,
+                completed: 5,
+                label: "Sprint Alpha",
+                sprintId: "s1",
+            },
+        ]);
     });
 
     it("falls back to task count when no Estimates exist in the window", () => {

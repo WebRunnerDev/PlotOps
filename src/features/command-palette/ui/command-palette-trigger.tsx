@@ -12,7 +12,7 @@ export function CommandPaletteTrigger() {
     return (
         <Button
             aria-label={t("open")}
-            className="gap-2 font-mono text-muted-foreground"
+            className="gap-2 rounded-none font-mono text-muted-foreground transition-colors duration-200 ease-[var(--ease-out-quart)] hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
             onClick={open}
             size="sm"
             type="button"
@@ -20,7 +20,7 @@ export function CommandPaletteTrigger() {
         >
             <SearchIcon className="size-3.5" />
             <span className="hidden xl:inline">{t("open")}</span>
-            <kbd className="pointer-events-none hidden h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground xl:inline-flex">
+            <kbd className="pointer-events-none hidden h-5 items-center border border-primary/30 bg-primary/10 px-1.5 font-mono text-[10px] font-medium text-primary xl:inline-flex">
                 {shortcutLabel}
             </kbd>
         </Button>

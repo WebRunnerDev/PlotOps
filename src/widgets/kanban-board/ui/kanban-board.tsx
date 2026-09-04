@@ -551,7 +551,7 @@ export function KanbanBoard({
                     items={columnIds}
                     strategy={horizontalListSortingStrategy}
                 >
-                    <div className="flex min-h-0 min-w-full w-max flex-1 items-stretch gap-0">
+                    <div className="flex min-h-0 min-w-full w-max flex-1 items-stretch gap-1">
                         {columns.map((column) => (
                             <KanbanColumn
                                 boardId={boardId}
@@ -580,7 +580,7 @@ export function KanbanBoard({
                         {canManage ? (
                             <div className="flex w-48 shrink-0 flex-col pt-0.5">
                                 <Button
-                                    className="justify-start gap-2 text-muted-foreground"
+                                    className="justify-start gap-2 rounded-none text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary"
                                     onClick={handleAddColumn}
                                     type="button"
                                     variant="ghost"

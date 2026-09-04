@@ -6,14 +6,26 @@ import {
     PLOTOPS_GITHUB_URL,
     PLOTOPS_LICENSE,
 } from "@/shared/config/open-source";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
 
+type AuthOpenSourceFooterProperties = {
+    className?: string;
+};
+
 /** MIT + GitHub line for the auth shell — not an OAuth control. */
-export function AuthOpenSourceFooter() {
+export function AuthOpenSourceFooter({
+    className,
+}: AuthOpenSourceFooterProperties) {
     const { t } = useTranslation("auth");
 
     return (
-        <footer className="flex w-full min-w-0 max-w-sm flex-wrap items-center justify-center gap-x-2 gap-y-1 px-1 text-center text-meta text-muted-foreground">
+        <footer
+            className={cn(
+                "flex w-full min-w-0 max-w-sm flex-wrap items-center justify-center gap-x-2 gap-y-1 px-1 text-center text-meta text-muted-foreground motion-reveal [animation-delay:640ms] lg:justify-start lg:text-left",
+                className
+            )}
+        >
             <span className="min-w-0 wrap-break-word">
                 {t("openSource.line", { license: PLOTOPS_LICENSE })}
             </span>

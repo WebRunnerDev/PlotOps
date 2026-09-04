@@ -109,13 +109,14 @@ export function ProjectSectionNav({
                         aria-label={item.label}
                         className={cn(
                             buttonVariants({ size: "sm", variant: "ghost" }),
-                            "shrink-0 text-muted-foreground",
+                            "relative shrink-0 rounded-none text-muted-foreground transition-colors duration-200 ease-[var(--ease-out-quart)]",
+                            "hover:bg-primary/10 hover:text-foreground",
                             // Inset ring stays inside the button so focus/press
                             // cannot inflate scrollable overflow in the header.
-                            "focus-visible:ring-2 focus-visible:ring-inset",
+                            "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
                             "max-sm:px-2",
                             isActive &&
-                                "bg-secondary text-secondary-foreground hover:bg-secondary hover:text-secondary-foreground"
+                                "bg-transparent text-foreground shadow-[inset_0_-2px_0_0_var(--primary)] hover:bg-primary/10 hover:text-foreground"
                         )}
                         key={item.id}
                         params={item.params}

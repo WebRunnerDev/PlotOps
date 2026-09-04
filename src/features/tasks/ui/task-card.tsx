@@ -88,7 +88,9 @@ export function TaskCard({
     return (
         <Card
             className={cn(
-                "relative cursor-grab ring-0 transition-colors active:cursor-grabbing",
+                "relative cursor-grab rounded-none bg-background py-2.5 ring-1 ring-border transition-[background,box-shadow] duration-150 ease-[var(--ease-out-quart)] active:cursor-grabbing",
+                "hover:bg-muted/80 hover:ring-primary/25",
+                "group-hover/task:bg-muted/80 group-hover/task:ring-primary/25",
                 task.priority &&
                     cn(
                         "before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:content-['']",
@@ -227,7 +229,7 @@ export function TaskCard({
                         <Tooltip>
                             <TooltipTrigger
                                 className={cn(
-                                    "inline-flex min-w-0 max-w-full cursor-default items-center gap-1.5 text-code",
+                                    "inline-flex min-w-0 max-w-full cursor-default items-center gap-1.5 border border-border bg-background px-1.5 py-0.5 text-code",
                                     shared
                                         ? "text-muted-foreground/70"
                                         : "text-muted-foreground"

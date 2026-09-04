@@ -67,7 +67,7 @@ export function BoardTaskToolbar({
                     className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
                 />
                 <Input
-                    className="pl-8"
+                    className="rounded-none border-primary/25 bg-input/30 pl-8 font-mono text-code shadow-none focus-visible:border-primary/50"
                     onChange={(event) => {
                         onSearchQueryChange(event.target.value);
                     }}
@@ -117,7 +117,7 @@ export function BoardTaskToolbar({
 
 function ToolbarSection({ children }: { children: ReactNode }) {
     return (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 not-first:sm:ml-3 not-first:sm:border-l not-first:sm:border-border not-first:sm:pl-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 not-first:sm:ml-3 not-first:sm:border-l not-first:sm:border-primary/20 not-first:sm:pl-3">
             {children}
         </div>
     );

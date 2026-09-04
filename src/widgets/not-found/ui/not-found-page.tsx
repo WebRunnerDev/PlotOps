@@ -41,7 +41,7 @@ export function NotFoundPage() {
 
     if (!inApp) {
         return (
-            <div className="flex min-h-[70vh] items-center justify-center">
+            <div className="flex min-h-[70vh] items-center justify-center [view-transition-name:main-content]">
                 {content}
             </div>
         );
@@ -51,7 +51,9 @@ export function NotFoundPage() {
         <div className="min-h-dvh">
             <TopBar />
             <CommandPalette />
-            <div className="mx-auto w-full max-w-5xl p-4">{content}</div>
+            <div className="mx-auto w-full max-w-5xl p-4 [view-transition-name:main-content]">
+                {content}
+            </div>
         </div>
     );
 }

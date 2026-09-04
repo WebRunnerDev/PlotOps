@@ -29,8 +29,21 @@ describe("platform settings mounts TaskDrawerSettings", () => {
         );
 
         expect(source).toMatch(/TaskDrawerSettings/);
-        expect(source).toMatch(
-            /<TaskDrawerSettings \/>[\s\S]*\{guest \? null : \(/
+        expect(source).toMatch(/activeSection === "drawer"/);
+        expect(source).toMatch(/\{guest \? null : \(/);
+        expect(source).toMatch(/ProfileSettingsForm/);
+    });
+});
+
+describe("TaskDrawerSettings placement picker", () => {
+    it("exposes a radiogroup of drawer-side glyphs", () => {
+        const source = readFileSync(
+            path.join(dirname, "task-drawer-settings.tsx"),
+            "utf8"
         );
+
+        expect(source).toMatch(/role="radiogroup"/);
+        expect(source).toMatch(/DrawerSideGlyph/);
+        expect(source).toMatch(/setDrawerSide/);
     });
 });
