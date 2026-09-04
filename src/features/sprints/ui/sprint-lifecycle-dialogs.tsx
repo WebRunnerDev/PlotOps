@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -20,6 +21,11 @@ import {
 import { suggestedCompletedTaskIds } from "@/features/sprints/model/suggested-completed-task-ids";
 import { useSprintMutations } from "@/features/sprints/model/use-sprints";
 import { Button } from "@/shared/shadcn/ui/button";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/shared/shadcn/ui/collapsible";
 import {
     Dialog,
     DialogContent,
@@ -145,6 +151,8 @@ export function CloseSprintDialog({
     >({});
     const [bulkTarget, setBulkTarget] = useState<CarryoverTarget>("backlog");
     const [newDraftName, setNewDraftName] = useState("");
+    const [showCompletedReview, setShowCompletedReview] = useState(false);
+    const [showCarryoverCustomize, setShowCarryoverCustomize] = useState(false);
     const wasOpenReference = useRef(false);
 
     const incompleteIds = useMemo(
@@ -174,6 +182,8 @@ export function CloseSprintDialog({
             setCarryoverByTaskId(defaultCarryoverByTaskId(nextIncomplete));
             setBulkTarget("backlog");
             setNewDraftName("");
+            setShowCompletedReview(false);
+            setShowCarryoverCustomize(false);
         }
         wasOpenReference.current = open;
     }, [open, suggestedCompleted, tasks]);
@@ -205,9 +215,10 @@ export function CloseSprintDialog({
         }));
     };
 
-    const handleBulkApply = () => {
+    const setBulkCarryover = (target: CarryoverTarget) => {
+        setBulkTarget(target);
         setCarryoverByTaskId((previous) =>
-            setAllCarryoverTargets(previous, bulkTarget)
+            setAllCarryoverTargets(previous, target)
         );
     };
 
@@ -260,140 +271,181 @@ export function CloseSprintDialog({
 
     return (
         <Dialog onOpenChange={handleOpen} open={open}>
-            <DialogContent className="max-h-[85dvh] w-full min-w-0 overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
+            <DialogContent className="flex max-h-[min(85dvh,28rem)] w-full min-w-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+                <DialogHeader className="shrink-0 px-4 pt-4">
                     <DialogTitle>
                         {t("sprints.closeTitle", { name: sprint.name })}
                     </DialogTitle>
                     <DialogDescription>
-                        {t("sprints.closeDescription")}
+                        {t("sprints.closeSummary", {
+                            completed: completedIds.size,
+                            incomplete: incompleteTasks.length,
+                            total: tasks.length,
+                        })}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-2">
-                    <p className="text-ui text-muted-foreground">
-                        {t("sprints.completedHint")}
-                    </p>
-                    <ul className="divide-y divide-border rounded-md border border-border">
-                        {tasks.map((task) => {
-                            const suggested = suggestedCompleted.has(task.id);
-                            const checked = completedIds.has(task.id);
-                            return (
-                                <li
-                                    className="flex items-start gap-3 px-3 py-2"
-                                    key={task.id}
+                <div className="scrollbar-board min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4">
+                    <div className="grid min-w-0 gap-4 pb-4">
+                        {incompleteTasks.length > 0 ? (
+                            <div className="grid min-w-0 gap-2">
+                                <Label htmlFor="carryover-bulk">
+                                    {t("sprints.carryoverMoveAll")}
+                                </Label>
+                                <select
+                                    aria-label={t("sprints.carryoverMoveAll")}
+                                    className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-ui focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                    id="carryover-bulk"
+                                    onChange={(event) =>
+                                        setBulkCarryover(
+                                            event.target
+                                                .value as CarryoverTarget
+                                        )
+                                    }
+                                    value={bulkTarget}
                                 >
-                                    <input
-                                        checked={checked}
-                                        className="mt-1 size-4 accent-primary"
+                                    {renderCarryoverOptions()}
+                                </select>
+                                {needsNewDraft ? (
+                                    <Input
                                         onChange={(event) =>
-                                            toggleCompleted(
-                                                task.id,
-                                                event.target.checked
-                                            )
+                                            setNewDraftName(event.target.value)
                                         }
-                                        type="checkbox"
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-code text-muted-foreground">
-                                            {task.key}
-                                            {suggested ? (
-                                                <span className="ml-2 text-meta text-primary">
-                                                    {t("sprints.suggested")}
-                                                </span>
-                                            ) : null}
-                                        </p>
-                                        <p className="truncate text-ui">
-                                            {task.title}
-                                        </p>
-                                    </div>
-                                </li>
-                            );
-                        })}
-                        {tasks.length === 0 ? (
-                            <li className="px-3 py-4 text-ui text-muted-foreground">
-                                {t("sprints.emptySprint")}
-                            </li>
-                        ) : null}
-                    </ul>
-                </div>
-
-                {incompleteTasks.length > 0 ? (
-                    <div className="grid gap-2">
-                        <Label>{t("sprints.carryoverLabel")}</Label>
-                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                            <select
-                                aria-label={t("sprints.carryoverBulkLabel")}
-                                className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-ui focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                                id="carryover-bulk"
-                                onChange={(event) =>
-                                    setBulkTarget(
-                                        event.target.value as CarryoverTarget
-                                    )
-                                }
-                                value={bulkTarget}
-                            >
-                                {renderCarryoverOptions()}
-                            </select>
-                            <Button
-                                className="shrink-0"
-                                onClick={handleBulkApply}
-                                type="button"
-                                variant="outline"
-                            >
-                                {t("sprints.carryoverBulkApply")}
-                            </Button>
-                        </div>
-                        <ul className="divide-y divide-border rounded-md border border-border">
-                            {incompleteTasks.map((task) => (
-                                <li
-                                    className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center"
-                                    key={task.id}
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-code text-muted-foreground">
-                                            {task.key}
-                                        </p>
-                                        <p className="truncate text-ui">
-                                            {task.title}
-                                        </p>
-                                    </div>
-                                    <select
-                                        aria-label={t(
-                                            "sprints.carryoverTaskLabel",
-                                            { key: task.key }
+                                        placeholder={t(
+                                            "sprints.newDraftPlaceholder"
                                         )}
-                                        className="h-9 w-full shrink-0 rounded-md border border-input bg-background px-3 text-ui focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:w-48"
-                                        onChange={(event) =>
-                                            setTaskCarryover(
-                                                task.id,
-                                                event.target
-                                                    .value as CarryoverTarget
-                                            )
-                                        }
-                                        value={
-                                            carryoverByTaskId[task.id] ??
-                                            "backlog"
-                                        }
-                                    >
-                                        {renderCarryoverOptions()}
-                                    </select>
-                                </li>
-                            ))}
-                        </ul>
-                        {needsNewDraft ? (
-                            <Input
-                                onChange={(event) =>
-                                    setNewDraftName(event.target.value)
-                                }
-                                placeholder={t("sprints.newDraftPlaceholder")}
-                                value={newDraftName}
-                            />
+                                        value={newDraftName}
+                                    />
+                                ) : null}
+                            </div>
+                        ) : null}
+
+                        {tasks.length > 0 ? (
+                            <Collapsible
+                                onOpenChange={setShowCompletedReview}
+                                open={showCompletedReview}
+                            >
+                                <CollapsibleTrigger className="group flex w-full min-w-0 items-center gap-2 text-left">
+                                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
+                                    <span className="text-ui font-medium">
+                                        {t("sprints.adjustCompleted")}
+                                    </span>
+                                    <span className="text-meta text-muted-foreground">
+                                        ({completedIds.size}/{tasks.length})
+                                    </span>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <ul className="mt-2 min-w-0 divide-y divide-border rounded-md border border-border">
+                                        {tasks.map((task) => {
+                                            const suggested =
+                                                suggestedCompleted.has(task.id);
+                                            const checked = completedIds.has(
+                                                task.id
+                                            );
+                                            return (
+                                                <li
+                                                    className="flex min-w-0 items-start gap-3 px-3 py-2"
+                                                    key={task.id}
+                                                >
+                                                    <input
+                                                        checked={checked}
+                                                        className="mt-1 size-4 shrink-0 accent-primary"
+                                                        onChange={(event) =>
+                                                            toggleCompleted(
+                                                                task.id,
+                                                                event.target
+                                                                    .checked
+                                                            )
+                                                        }
+                                                        type="checkbox"
+                                                    />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-code text-muted-foreground">
+                                                            {task.key}
+                                                            {suggested ? (
+                                                                <span className="ml-2 text-meta text-primary">
+                                                                    {t(
+                                                                        "sprints.suggested"
+                                                                    )}
+                                                                </span>
+                                                            ) : null}
+                                                        </p>
+                                                        <p className="truncate text-ui">
+                                                            {task.title}
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </CollapsibleContent>
+                            </Collapsible>
+                        ) : (
+                            <p className="text-ui text-muted-foreground">
+                                {t("sprints.emptySprint")}
+                            </p>
+                        )}
+
+                        {incompleteTasks.length > 0 ? (
+                            <Collapsible
+                                onOpenChange={setShowCarryoverCustomize}
+                                open={showCarryoverCustomize}
+                            >
+                                <CollapsibleTrigger className="group flex w-full min-w-0 items-center gap-2 text-left">
+                                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-90" />
+                                    <span className="text-ui font-medium">
+                                        {t("sprints.customizeCarryover")}
+                                    </span>
+                                    <span className="text-meta text-muted-foreground">
+                                        ({incompleteTasks.length})
+                                    </span>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <ul className="mt-2 min-w-0 divide-y divide-border rounded-md border border-border">
+                                        {incompleteTasks.map((task) => (
+                                            <li
+                                                className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center"
+                                                key={task.id}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-code text-muted-foreground">
+                                                        {task.key}
+                                                    </p>
+                                                    <p className="truncate text-ui">
+                                                        {task.title}
+                                                    </p>
+                                                </div>
+                                                <select
+                                                    aria-label={t(
+                                                        "sprints.carryoverTaskLabel",
+                                                        { key: task.key }
+                                                    )}
+                                                    className="h-9 w-full min-w-0 shrink-0 rounded-md border border-input bg-background px-3 text-ui focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:max-w-48"
+                                                    onChange={(event) =>
+                                                        setTaskCarryover(
+                                                            task.id,
+                                                            event.target
+                                                                .value as CarryoverTarget
+                                                        )
+                                                    }
+                                                    value={
+                                                        carryoverByTaskId[
+                                                            task.id
+                                                        ] ?? "backlog"
+                                                    }
+                                                >
+                                                    {renderCarryoverOptions()}
+                                                </select>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CollapsibleContent>
+                            </Collapsible>
                         ) : null}
                     </div>
-                ) : null}
+                </div>
 
-                <DialogFooter>
+                <DialogFooter className="shrink-0">
                     <Button
                         onClick={() => handleOpen(false)}
                         type="button"
