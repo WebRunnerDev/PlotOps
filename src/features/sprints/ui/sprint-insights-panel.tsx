@@ -64,28 +64,28 @@ export function SprintInsightsPanel({
     }, [accuracyPercent, t]);
 
     return (
-        <section className="rounded-md border border-border bg-card">
-            <header className="border-b border-border px-3 py-2">
+        <section className="overflow-hidden rounded-none border border-border bg-card/50 shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--primary)_35%,transparent)]">
+            <header className="border-b border-border/80 px-3 py-3 sm:px-4">
                 <h2 className="text-h3">{t("sprints.insightsTitle")}</h2>
-                <p className="text-meta text-muted-foreground">
+                <p className="mt-1 text-ui text-muted-foreground">
                     {t("sprints.insightsSubtitle", {
                         count: kpis.windowSize,
                     })}
                 </p>
             </header>
-            <div className="space-y-3 px-3 py-3">
+            <div className="space-y-4 px-3 py-4 sm:px-4">
                 {kpis.emptyReason ? (
                     <p className="text-ui text-muted-foreground">
                         {t(`sprints.insightsEmpty.${kpis.emptyReason}`)}
                     </p>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="min-w-0 space-y-1">
+                        <div className="grid grid-cols-1 gap-px overflow-hidden border border-primary/20 bg-primary/20 sm:grid-cols-2">
+                            <div className="min-w-0 space-y-1 bg-background/90 px-3 py-3">
                                 <p className="text-meta text-muted-foreground">
                                     {t("sprints.insightsVelocityLabel")}
                                 </p>
-                                <p className="text-h3 tabular-nums">
+                                <p className="font-heading text-h2 tabular-nums tracking-tight">
                                     {kpis.velocity === null
                                         ? "—"
                                         : t(
@@ -101,11 +101,11 @@ export function SprintInsightsPanel({
                                     })}
                                 </p>
                             </div>
-                            <div className="min-w-0 space-y-1">
+                            <div className="min-w-0 space-y-1 bg-background/90 px-3 py-3">
                                 <p className="text-meta text-muted-foreground">
                                     {t("sprints.insightsAccuracyLabel")}
                                 </p>
-                                <p className="text-h3 tabular-nums">
+                                <p className="font-heading text-h2 tabular-nums tracking-tight">
                                     {accuracyPercent === null
                                         ? "—"
                                         : t("sprints.insightsAccuracyValue", {

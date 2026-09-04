@@ -1076,6 +1076,16 @@
             "draft": "Draft"
         },
         "suggested": "suggested",
-        "taskCount": "{{count}} tasks"
+        "taskCount": "{{count}} tasks",
+        "planningEyebrow": "Planning",
+        "backlogSubtitle": "Shape the next sprint from the pool, then start when the board is ready.",
+        "pulseDaysLeft": "days left",
+        "pulseActive": "active",
+        "pulseDrafts": "drafts",
+        "pulsePool": "in backlog",
+        "activeLiveEyebrow": "Live sprint",
+        "activeLiveOverdue": "overdue",
+        "activeLiveUndated": "Set start and end dates to track the window.",
+        "activeLiveUpcoming": "days to go"
     }
 }

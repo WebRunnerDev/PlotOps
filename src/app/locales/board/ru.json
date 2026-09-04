@@ -1082,6 +1082,16 @@
             "draft": "Draft"
         },
         "suggested": "рекомендация",
-        "taskCount": "{{count}} задач"
+        "taskCount": "{{count}} задач",
+        "planningEyebrow": "Планирование",
+        "backlogSubtitle": "Соберите следующий спринт из пула и запустите, когда доска готова.",
+        "pulseDaysLeft": "дней осталось",
+        "pulseActive": "активный",
+        "pulseDrafts": "черновики",
+        "pulsePool": "в бэклоге",
+        "activeLiveEyebrow": "Активный спринт",
+        "activeLiveOverdue": "просрочен",
+        "activeLiveUndated": "Укажите даты старта и конца, чтобы отслеживать окно.",
+        "activeLiveUpcoming": "дней до конца"
     }
 }
