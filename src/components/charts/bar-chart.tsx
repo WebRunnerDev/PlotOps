@@ -18,7 +18,7 @@ import {
 
 import { cn } from "@/shared/lib/utils";
 
-import type { BarProps as BarProperties } from "./bar";
+import type { BarProperties } from "./bar";
 
 import { DEFAULT_ANIMATION_EASING } from "./animation";
 import { topSquareCenterY } from "./bar-squares-layout";

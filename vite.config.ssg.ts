@@ -33,6 +33,14 @@ export default defineConfig({
         },
     },
     ssr: {
-        noExternal: ["react-i18next", "i18next"],
+        // Bundle packages whose published ESM uses extensionless relative
+        // imports (Node native ESM cannot resolve them when left external).
+        noExternal: [
+            "react-i18next",
+            "i18next",
+            /^@visx\//,
+            /^d3-/,
+            /^internmap$/,
+        ],
     },
 });

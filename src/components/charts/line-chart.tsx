@@ -27,7 +27,7 @@ import {
     DEFAULT_Y_DOMAIN_TWEEN_MS,
     resolveRestingChartPhase,
 } from "./chart-phase";
-import { Line, type LineProps as LineProperties } from "./line";
+import { Line, type LineProperties } from "./line";
 import { TimeSeriesChartInner } from "./time-series-chart-shell";
 
 export interface LineChartProperties {
@@ -307,6 +307,6 @@ function registersLineDomain(
     );
 }
 
-export { Line, type LineProps } from "./line";
+export { Line, type LineProperties } from "./line";
 
 export default LineChart;

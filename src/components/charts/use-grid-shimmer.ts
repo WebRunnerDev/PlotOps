@@ -48,7 +48,7 @@ export function useGridShimmer({
         }
 
         let cancelled = false;
-        let timeoutId: number | undefined;
+        let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
         let controls: ReturnType<typeof animate> | undefined;
 
         const runSyncedCycle = () => {
