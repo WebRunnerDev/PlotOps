@@ -4,14 +4,14 @@
         "resend": "Resend confirmation email",
         "resendLoading": "Sending...",
         "resent": "Confirmation email sent again.",
-        "title": "Check your email"
+        "title": "check_email"
     },
     "completeProfile": {
         "description": "We need your name so teammates can recognize you across boards and mentions.",
         "save": "Continue",
         "saving": "Saving...",
         "signOut": "Sign out and use another account",
-        "title": "Complete your profile"
+        "title": "complete_profile"
     },
     "confirmPassword": "Confirm password",
     "email": "Email",
@@ -76,7 +76,7 @@
         "profileDescription": "How you appear to project members. Your username (handle) stays separate.",
         "profileTitle": "Profile",
         "githubIntegration": {
-            "connectedAccountsHint": "Sign-in methods are managed in Connected accounts below.",
+            "connectedAccountsHint": "Sign-in methods are managed under Connected accounts.",
             "description": "GitHub API access for repos, pull requests, and CI in PlotOps.",
             "githubLoginLabel": "Linked GitHub account",
             "githubLoginMissing": "Not linked",
@@ -105,24 +105,26 @@
     },
     "signIn": "Sign in",
     "signInLoading": "Signing in...",
-    "signInSubtitle": "Sign in with GitHub or Google, try the demo, or use email and password",
+    "signInPanel": "session.sign_in",
+    "signInSubtitle": "GitHub, Google, guest demo, or email",
     "signInTitle": "Sign in to PlotOps",
     "tryDemo": "Try demo without registration",
     "tryDemoLoading": "Opening demo...",
     "signUp": "Create account",
     "signUpLoading": "Creating account...",
-    "signUpSubtitle": "Register with GitHub, Google, or email — email is required for project invites without GitHub",
+    "signUpPanel": "session.sign_up",
+    "signUpSubtitle": "GitHub, Google, or email — email required for invites without GitHub",
     "signUpTitle": "Create your PlotOps account",
     "username": "Username",
     "marketing": {
         "eyebrow": "Git-native project tracker",
-        "title": "Kanban, GitHub, and CI in one workspace",
-        "description": "Link tasks to branches, review pull requests without leaving the board, and watch GitHub Actions — open source portfolio project.",
+        "title": "Board to pipeline",
+        "description": "Tasks linked to branches. PRs and Actions without leaving the board.",
         "seoDescription": "PlotOps is a git-native project tracker with Kanban, in-app GitHub PR/diff viewer, and CI/CD dashboard. Sign in or try the demo without registration.",
         "features": {
-            "kanban": "Git Kanban with branch-linked tasks",
-            "git": "In-app PRs and code diffs",
-            "ci": "CI/CD dashboard and build logs"
+            "kanban": "Git Kanban",
+            "git": "In-app PRs",
+            "ci": "CI/CD logs"
         }
     }
 }

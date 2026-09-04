@@ -6,16 +6,10 @@ import { updateProfileNames } from "@/features/auth/api/profile-api";
 import { mergeCompleteProfilePrefill } from "@/features/auth/lib/complete-profile-prefill";
 import { profileNamesFromUserMetadata } from "@/features/auth/lib/user-display";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { AuthPanel } from "@/features/auth/ui/auth-panel";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/shared/shadcn/ui/card";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 
@@ -133,105 +127,98 @@ export function CompleteProfileForm({
     };
 
     return (
-        <Card className="mx-auto w-full min-w-0 max-w-sm">
-            <CardHeader className="text-center">
-                <CardTitle>{t("completeProfile.title")}</CardTitle>
-                <CardDescription>
-                    {t("completeProfile.description")}
-                </CardDescription>
-            </CardHeader>
+        <AuthPanel
+            className="min-w-0"
+            description={t("completeProfile.description")}
+            title={t("completeProfile.title")}
+        >
+            {formError ? (
+                <Alert variant="destructive">
+                    <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+            ) : null}
 
-            <CardContent className="flex flex-col gap-6">
-                {formError ? (
-                    <Alert variant="destructive">
-                        <AlertDescription>{formError}</AlertDescription>
-                    </Alert>
-                ) : null}
+            <form
+                className="flex flex-col gap-4"
+                noValidate
+                onSubmit={handleSubmit}
+            >
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="complete-first-name">
+                        {t("firstName")}
+                    </Label>
+                    <Input
+                        aria-invalid={Boolean(fieldErrors.firstName)}
+                        autoComplete="given-name"
+                        id="complete-first-name"
+                        onChange={(event) => {
+                            setFirstName(event.target.value);
+                            if (fieldErrors.firstName) {
+                                setFieldErrors((current) => ({
+                                    ...current,
+                                    firstName: undefined,
+                                }));
+                            }
+                        }}
+                        placeholder={t("firstNamePlaceholder")}
+                        type="text"
+                        value={firstName}
+                    />
+                    {fieldErrors.firstName ? (
+                        <p className="text-meta text-destructive">
+                            {fieldErrors.firstName}
+                        </p>
+                    ) : null}
+                </div>
 
-                <form
-                    className="flex flex-col gap-4"
-                    noValidate
-                    onSubmit={handleSubmit}
-                >
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="complete-first-name">
-                            {t("firstName")}
-                        </Label>
-                        <Input
-                            aria-invalid={Boolean(fieldErrors.firstName)}
-                            autoComplete="given-name"
-                            id="complete-first-name"
-                            onChange={(event) => {
-                                setFirstName(event.target.value);
-                                if (fieldErrors.firstName) {
-                                    setFieldErrors((current) => ({
-                                        ...current,
-                                        firstName: undefined,
-                                    }));
-                                }
-                            }}
-                            placeholder={t("firstNamePlaceholder")}
-                            type="text"
-                            value={firstName}
-                        />
-                        {fieldErrors.firstName ? (
-                            <p className="text-meta text-destructive">
-                                {fieldErrors.firstName}
-                            </p>
-                        ) : null}
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="complete-last-name">
-                            {t("lastName")}
-                        </Label>
-                        <Input
-                            aria-invalid={Boolean(fieldErrors.lastName)}
-                            autoComplete="family-name"
-                            id="complete-last-name"
-                            onChange={(event) => {
-                                setLastName(event.target.value);
-                                if (fieldErrors.lastName) {
-                                    setFieldErrors((current) => ({
-                                        ...current,
-                                        lastName: undefined,
-                                    }));
-                                }
-                            }}
-                            placeholder={t("lastNamePlaceholder")}
-                            type="text"
-                            value={lastName}
-                        />
-                        {fieldErrors.lastName ? (
-                            <p className="text-meta text-destructive">
-                                {fieldErrors.lastName}
-                            </p>
-                        ) : null}
-                    </div>
-
-                    <Button
-                        className="w-full"
-                        disabled={isLoading || isSigningOut}
-                        size="lg"
-                        type="submit"
-                    >
-                        {isLoading
-                            ? t("completeProfile.saving")
-                            : t("completeProfile.save")}
-                    </Button>
-                </form>
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="complete-last-name">{t("lastName")}</Label>
+                    <Input
+                        aria-invalid={Boolean(fieldErrors.lastName)}
+                        autoComplete="family-name"
+                        id="complete-last-name"
+                        onChange={(event) => {
+                            setLastName(event.target.value);
+                            if (fieldErrors.lastName) {
+                                setFieldErrors((current) => ({
+                                    ...current,
+                                    lastName: undefined,
+                                }));
+                            }
+                        }}
+                        placeholder={t("lastNamePlaceholder")}
+                        type="text"
+                        value={lastName}
+                    />
+                    {fieldErrors.lastName ? (
+                        <p className="text-meta text-destructive">
+                            {fieldErrors.lastName}
+                        </p>
+                    ) : null}
+                </div>
 
                 <Button
                     className="w-full"
                     disabled={isLoading || isSigningOut}
-                    onClick={() => void handleSignOut()}
-                    type="button"
-                    variant="ghost"
+                    size="lg"
+                    type="submit"
                 >
-                    {t("completeProfile.signOut")}
+                    {isLoading
+                        ? t("completeProfile.saving")
+                        : t("completeProfile.save")}
                 </Button>
-            </CardContent>
-        </Card>
+            </form>
+
+            <Button
+                className="w-full"
+                disabled={isLoading || isSigningOut}
+                onClick={() => void handleSignOut()}
+                type="button"
+                variant="ghost"
+            >
+                {t("completeProfile.signOut")}
+            </Button>
+        </AuthPanel>
     );
 }
 

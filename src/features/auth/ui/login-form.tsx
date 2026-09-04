@@ -13,6 +13,7 @@ import {
     isAuthRateLimited,
 } from "@/features/auth/lib/auth-rate-limit";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { AuthPanel } from "@/features/auth/ui/auth-panel";
 import {
     GUEST_DEMO_BOARD_ID,
     GUEST_DEMO_PROJECT_ID,
@@ -22,13 +23,6 @@ import {
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/shared/shadcn/ui/card";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
@@ -224,104 +218,96 @@ export function LoginForm() {
     };
 
     return (
-        <Card className="mx-auto w-full min-w-0 max-w-sm">
-            <CardHeader className="text-center">
-                <CardTitle>{t("signInTitle")}</CardTitle>
-                <CardDescription>{t("signInSubtitle")}</CardDescription>
-            </CardHeader>
+        <AuthPanel
+            className="min-w-0"
+            description={t("signInSubtitle")}
+            title={t("signInPanel")}
+        >
+            {error ? (
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            ) : undefined}
 
-            <CardContent className="flex flex-col gap-6">
-                {error ? (
-                    <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                ) : undefined}
+            <div className="flex flex-col gap-3">
+                <OAuthSignInButtons
+                    disabled={isBusy}
+                    loading={oauthLoading}
+                    onGitHub={() => void handleOAuthLogin("github")}
+                    onGoogle={() => void handleOAuthLogin("google")}
+                />
 
-                <div className="flex flex-col gap-3">
-                    <OAuthSignInButtons
-                        disabled={isBusy}
-                        loading={oauthLoading}
-                        onGitHub={() => void handleOAuthLogin("github")}
-                        onGoogle={() => void handleOAuthLogin("google")}
-                    />
-
-                    <Button
-                        className="w-full"
-                        disabled={isBusy}
-                        onClick={handleGuestLogin}
-                        size="lg"
-                        type="button"
-                        variant="secondary"
-                    >
-                        {isGuestLoading ? t("tryDemoLoading") : t("tryDemo")}
-                    </Button>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <Separator className="flex-1" />
-                    <span className="text-meta text-muted-foreground">
-                        {t("or")}
-                    </span>
-                    <Separator className="flex-1" />
-                </div>
-
-                <form
-                    className="flex flex-col gap-4"
-                    onSubmit={handleEmailLogin}
+                <Button
+                    className="w-full"
+                    disabled={isBusy}
+                    onClick={handleGuestLogin}
+                    size="lg"
+                    type="button"
+                    variant="secondary"
                 >
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="email">{t("email")}</Label>
-                        <Input
-                            autoComplete="email"
-                            id="email"
-                            onChange={(event) => setEmail(event.target.value)}
-                            placeholder={t("emailPlaceholder")}
-                            required
-                            type="email"
-                            value={email}
-                        />
-                    </div>
+                    {isGuestLoading ? t("tryDemoLoading") : t("tryDemo")}
+                </Button>
+            </div>
 
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="password">{t("password")}</Label>
-                        <PasswordInput
-                            autoComplete="current-password"
-                            id="password"
-                            onChange={(event) =>
-                                setPassword(event.target.value)
-                            }
-                            placeholder={t("passwordPlaceholder")}
-                            required
-                            value={password}
-                        />
-                    </div>
+            <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-meta text-muted-foreground">
+                    {t("or")}
+                </span>
+                <Separator className="flex-1" />
+            </div>
 
-                    <AuthTurnstile
-                        action="login"
-                        onTokenChange={setCaptchaToken}
-                        resetKey={turnstileResetKey}
+            <form className="flex flex-col gap-4" onSubmit={handleEmailLogin}>
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="email">{t("email")}</Label>
+                    <Input
+                        autoComplete="email"
+                        id="email"
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder={t("emailPlaceholder")}
+                        required
+                        type="email"
+                        value={email}
                     />
+                </div>
 
-                    <Button
-                        className="w-full"
-                        disabled={isBusy || isRateLimited || !captchaReady}
-                        size="lg"
-                        type="submit"
-                    >
-                        {isEmailLoading ? t("signInLoading") : t("signIn")}
-                    </Button>
-                </form>
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="password">{t("password")}</Label>
+                    <PasswordInput
+                        autoComplete="current-password"
+                        id="password"
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder={t("passwordPlaceholder")}
+                        required
+                        value={password}
+                    />
+                </div>
 
-                <p className="text-center text-meta text-muted-foreground">
-                    {t("links.noAccount")}{" "}
-                    <Link
-                        className="underline underline-offset-2"
-                        to="/sign-up"
-                    >
-                        {t("links.signUp")}
-                    </Link>
-                </p>
-            </CardContent>
-        </Card>
+                <AuthTurnstile
+                    action="login"
+                    onTokenChange={setCaptchaToken}
+                    resetKey={turnstileResetKey}
+                />
+
+                <Button
+                    className="w-full"
+                    disabled={isBusy || isRateLimited || !captchaReady}
+                    size="lg"
+                    type="submit"
+                >
+                    {isEmailLoading ? t("signInLoading") : t("signIn")}
+                </Button>
+            </form>
+
+            <p className="text-center text-meta text-muted-foreground">
+                {t("links.noAccount")}{" "}
+                <Link
+                    className="text-primary underline underline-offset-2 transition-colors duration-300 [transition-timing-function:var(--ease-out-expo)] hover:text-foreground"
+                    to="/sign-up"
+                >
+                    {t("links.signUp")}
+                </Link>
+            </p>
+        </AuthPanel>
     );
 }

@@ -15,17 +15,11 @@ import {
 } from "@/features/auth/lib/auth-rate-limit";
 import { meetsPasswordPolicy } from "@/features/auth/lib/password-policy";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { AuthPanel } from "@/features/auth/ui/auth-panel";
 import { leaveGuestSession } from "@/features/guest-mode";
 import { safeGetItem, safeRemoveItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/shared/shadcn/ui/card";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Separator } from "@/shared/shadcn/ui/separator";
@@ -244,189 +238,169 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
 
     if (awaitingConfirmation) {
         return (
-            <Card className="mx-auto w-full min-w-0 max-w-sm">
-                <CardHeader className="text-center">
-                    <CardTitle>{t("checkEmail.title")}</CardTitle>
-                    <CardDescription>
-                        {t("checkEmail.description", { email })}
-                    </CardDescription>
-                </CardHeader>
-
-                <CardContent className="flex flex-col gap-4">
-                    {error ? (
-                        <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    ) : undefined}
-
-                    {resendMessage ? (
-                        <Alert>
-                            <AlertDescription>{resendMessage}</AlertDescription>
-                        </Alert>
-                    ) : undefined}
-
-                    <Button
-                        className="w-full"
-                        disabled={isResending}
-                        onClick={() => void handleResend()}
-                        size="lg"
-                        type="button"
-                        variant="outline"
-                    >
-                        {isResending
-                            ? t("checkEmail.resendLoading")
-                            : t("checkEmail.resend")}
-                    </Button>
-
-                    <p className="text-center text-meta text-muted-foreground">
-                        <Link
-                            className="underline underline-offset-2"
-                            to="/sign-in"
-                        >
-                            {t("links.backToSignIn")}
-                        </Link>
-                    </p>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    return (
-        <Card className="mx-auto w-full min-w-0 max-w-sm">
-            <CardHeader className="text-center">
-                <CardTitle>{t("signUpTitle")}</CardTitle>
-                <CardDescription>{t("signUpSubtitle")}</CardDescription>
-            </CardHeader>
-
-            <CardContent className="flex flex-col gap-6">
+            <AuthPanel
+                description={t("checkEmail.description", { email })}
+                title={t("checkEmail.title")}
+            >
                 {error ? (
                     <Alert variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
                     </Alert>
                 ) : undefined}
 
-                <OAuthSignInButtons
-                    disabled={isBusy}
-                    loading={oauthLoading}
-                    onGitHub={() => void handleOAuthSignUp("github")}
-                    onGoogle={() => void handleOAuthSignUp("google")}
-                />
+                {resendMessage ? (
+                    <Alert>
+                        <AlertDescription>{resendMessage}</AlertDescription>
+                    </Alert>
+                ) : undefined}
 
-                <div className="flex items-center gap-3">
-                    <Separator className="flex-1" />
-                    <span className="text-meta text-muted-foreground">
-                        {t("or")}
-                    </span>
-                    <Separator className="flex-1" />
-                </div>
-
-                <form className="flex flex-col gap-4" onSubmit={handleSignUp}>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="flex min-w-0 flex-col gap-2">
-                            <Label htmlFor="sign-up-first-name">
-                                {t("firstName")}
-                            </Label>
-                            <Input
-                                autoComplete="given-name"
-                                id="sign-up-first-name"
-                                onChange={(event) =>
-                                    setFirstName(event.target.value)
-                                }
-                                placeholder={t("firstNamePlaceholder")}
-                                required
-                                type="text"
-                                value={firstName}
-                            />
-                        </div>
-                        <div className="flex min-w-0 flex-col gap-2">
-                            <Label htmlFor="sign-up-last-name">
-                                {t("lastName")}
-                            </Label>
-                            <Input
-                                autoComplete="family-name"
-                                id="sign-up-last-name"
-                                onChange={(event) =>
-                                    setLastName(event.target.value)
-                                }
-                                placeholder={t("lastNamePlaceholder")}
-                                required
-                                type="text"
-                                value={lastName}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="sign-up-email">{t("email")}</Label>
-                        <Input
-                            autoComplete="email"
-                            id="sign-up-email"
-                            onChange={(event) => setEmail(event.target.value)}
-                            placeholder={t("emailPlaceholder")}
-                            required
-                            type="email"
-                            value={email}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="sign-up-password">
-                            {t("password")}
-                        </Label>
-                        <PasswordInput
-                            autoComplete="new-password"
-                            id="sign-up-password"
-                            onChange={(event) =>
-                                setPassword(event.target.value)
-                            }
-                            placeholder={t("passwordPlaceholder")}
-                            required
-                            value={password}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="sign-up-confirm">
-                            {t("confirmPassword")}
-                        </Label>
-                        <PasswordInput
-                            autoComplete="new-password"
-                            id="sign-up-confirm"
-                            onChange={(event) =>
-                                setConfirmPassword(event.target.value)
-                            }
-                            placeholder={t("passwordPlaceholder")}
-                            required
-                            value={confirmPassword}
-                        />
-                    </div>
-
-                    <AuthTurnstile
-                        action="signup"
-                        onTokenChange={setCaptchaToken}
-                        resetKey={turnstileResetKey}
-                    />
-
-                    <Button
-                        className="w-full"
-                        disabled={isBusy || isRateLimited || !captchaReady}
-                        size="lg"
-                        type="submit"
-                    >
-                        {isLoading ? t("signUpLoading") : t("signUp")}
-                    </Button>
-                </form>
+                <Button
+                    className="w-full"
+                    disabled={isResending}
+                    onClick={() => void handleResend()}
+                    size="lg"
+                    type="button"
+                    variant="outline"
+                >
+                    {isResending
+                        ? t("checkEmail.resendLoading")
+                        : t("checkEmail.resend")}
+                </Button>
 
                 <p className="text-center text-meta text-muted-foreground">
-                    {t("links.hasAccount")}{" "}
                     <Link
                         className="underline underline-offset-2"
                         to="/sign-in"
                     >
-                        {t("links.signIn")}
+                        {t("links.backToSignIn")}
                     </Link>
                 </p>
-            </CardContent>
-        </Card>
+            </AuthPanel>
+        );
+    }
+
+    return (
+        <AuthPanel description={t("signUpSubtitle")} title={t("signUpPanel")}>
+            {error ? (
+                <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            ) : undefined}
+
+            <OAuthSignInButtons
+                disabled={isBusy}
+                loading={oauthLoading}
+                onGitHub={() => void handleOAuthSignUp("github")}
+                onGoogle={() => void handleOAuthSignUp("google")}
+            />
+
+            <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-meta text-muted-foreground">
+                    {t("or")}
+                </span>
+                <Separator className="flex-1" />
+            </div>
+
+            <form className="flex flex-col gap-4" onSubmit={handleSignUp}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="flex min-w-0 flex-col gap-2">
+                        <Label htmlFor="sign-up-first-name">
+                            {t("firstName")}
+                        </Label>
+                        <Input
+                            autoComplete="given-name"
+                            id="sign-up-first-name"
+                            onChange={(event) =>
+                                setFirstName(event.target.value)
+                            }
+                            placeholder={t("firstNamePlaceholder")}
+                            required
+                            type="text"
+                            value={firstName}
+                        />
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-2">
+                        <Label htmlFor="sign-up-last-name">
+                            {t("lastName")}
+                        </Label>
+                        <Input
+                            autoComplete="family-name"
+                            id="sign-up-last-name"
+                            onChange={(event) =>
+                                setLastName(event.target.value)
+                            }
+                            placeholder={t("lastNamePlaceholder")}
+                            required
+                            type="text"
+                            value={lastName}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="sign-up-email">{t("email")}</Label>
+                    <Input
+                        autoComplete="email"
+                        id="sign-up-email"
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder={t("emailPlaceholder")}
+                        required
+                        type="email"
+                        value={email}
+                    />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="sign-up-password">{t("password")}</Label>
+                    <PasswordInput
+                        autoComplete="new-password"
+                        id="sign-up-password"
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder={t("passwordPlaceholder")}
+                        required
+                        value={password}
+                    />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="sign-up-confirm">
+                        {t("confirmPassword")}
+                    </Label>
+                    <PasswordInput
+                        autoComplete="new-password"
+                        id="sign-up-confirm"
+                        onChange={(event) =>
+                            setConfirmPassword(event.target.value)
+                        }
+                        placeholder={t("passwordPlaceholder")}
+                        required
+                        value={confirmPassword}
+                    />
+                </div>
+
+                <AuthTurnstile
+                    action="signup"
+                    onTokenChange={setCaptchaToken}
+                    resetKey={turnstileResetKey}
+                />
+
+                <Button
+                    className="w-full"
+                    disabled={isBusy || isRateLimited || !captchaReady}
+                    size="lg"
+                    type="submit"
+                >
+                    {isLoading ? t("signUpLoading") : t("signUp")}
+                </Button>
+            </form>
+
+            <p className="text-center text-meta text-muted-foreground">
+                {t("links.hasAccount")}{" "}
+                <Link className="underline underline-offset-2" to="/sign-in">
+                    {t("links.signIn")}
+                </Link>
+            </p>
+        </AuthPanel>
     );
 }
