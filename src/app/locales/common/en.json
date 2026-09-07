@@ -42,6 +42,7 @@
             "assigneeChange": "Assignee changed",
             "assigneeChangeDetail": "Assignee → {{name}}",
             "assigneeChangeFromDetail": "{{from}} → {{to}}",
+            "assigneeClearedDetail": "Assignee cleared (was {{from}})",
             "assigneeRemoved": "You are no longer the assignee",
             "assignment": "You were assigned",
             "assignmentDetail": "Assigned to {{name}}",

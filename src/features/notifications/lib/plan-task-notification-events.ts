@@ -92,31 +92,56 @@ export function planTaskNotificationEvents(
         });
     }
 
-    if (input.assignee?.to) {
+    if (input.assignee) {
         const previousAssignee = input.assignee.from;
-        const metadata = {
-            assignee: input.assignee.to,
-            previousAssignee,
-        };
-        events.push({
-            kind: "assignment",
-            metadata,
-            recipientId: input.assignee.to.id,
-        });
-        if (previousAssignee && previousAssignee.id !== input.assignee.to.id) {
+        const to = input.assignee.to;
+
+        if (to) {
+            const metadata = {
+                assignee: to,
+                previousAssignee,
+            };
+            events.push({
+                kind: "assignment",
+                metadata,
+                recipientId: to.id,
+            });
+            if (previousAssignee && previousAssignee.id !== to.id) {
+                events.push({
+                    kind: "assignee_change",
+                    metadata: {
+                        ...metadata,
+                        audience: "previous_assignee" as const,
+                    },
+                    recipientId: previousAssignee.id,
+                });
+            }
             events.push({
                 kind: "assignee_change",
-                metadata: {
-                    ...metadata,
-                    audience: "previous_assignee" as const,
-                },
-                recipientId: previousAssignee.id,
+                metadata,
             });
+        } else {
+            if (previousAssignee) {
+                const clearMetadata = {
+                    assignee: null,
+                    previousAssignee,
+                };
+                events.push(
+                    {
+                        kind: "assignee_change",
+                        metadata: {
+                            ...clearMetadata,
+                            audience: "previous_assignee" as const,
+                        },
+                        recipientId: previousAssignee.id,
+                    },
+                    {
+                        kind: "assignee_change",
+                        metadata: clearMetadata,
+                    }
+                );
+            }
         }
-        events.push({
-            kind: "assignee_change",
-            metadata,
-        });
     }
 
     if (input.author?.to) {

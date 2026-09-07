@@ -42,6 +42,7 @@
             "assigneeChange": "Исполнитель изменён",
             "assigneeChangeDetail": "Исполнитель → {{name}}",
             "assigneeChangeFromDetail": "{{from}} → {{to}}",
+            "assigneeClearedDetail": "Исполнитель снят (был {{from}})",
             "assigneeRemoved": "Вас сняли с роли исполнителя",
             "assignment": "Вас назначили исполнителем",
             "assignmentDetail": "Назначен {{name}}",

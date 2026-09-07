@@ -1,7 +1,10 @@
 /** Watcher / always-on previous-Assignee metadata. */
-export type AssigneeChangeMetadata = AssignmentMetadata & {
+export type AssigneeChangeMetadata = {
+    assignee?: null | { id: string; name: string };
     /** Always-on row for the previous Assignee (not Watcher fan-out). */
     audience?: "previous_assignee";
+    previousAssignee?: null | { id: string; name: string };
+    source?: "app" | "github_webhook";
 };
 
 export type AssignmentMetadata = {

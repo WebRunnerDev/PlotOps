@@ -9,6 +9,7 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.assigneeChange": "Assignee changed",
         "notifications.kinds.assigneeChangeDetail": `Assignee → ${options?.name ?? ""}`,
         "notifications.kinds.assigneeChangeFromDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
+        "notifications.kinds.assigneeClearedDetail": `Assignee cleared (was ${options?.from ?? ""})`,
         "notifications.kinds.assigneeRemoved": "You are no longer the assignee",
         "notifications.kinds.assignment": "You were assigned",
         "notifications.kinds.assignmentDetail": `Assigned to ${options?.name ?? ""}`,
@@ -116,6 +117,37 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Assignee → Alex");
+    });
+
+    it("shows Watcher assignee_change clear with previous Assignee name", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: null,
+                        previousAssignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Assignee cleared (was Alex)");
+    });
+
+    it("shows always-on previous-Assignee clear as You are no longer the assignee", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: null,
+                        audience: "previous_assignee",
+                        previousAssignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("You are no longer the assignee");
     });
 
     it("falls back when assignee_change metadata is incomplete", () => {

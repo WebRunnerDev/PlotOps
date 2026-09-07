@@ -38,6 +38,9 @@ export function formatNotificationContext(
         if (to) {
             return t("notifications.kinds.assigneeChangeDetail", { name: to });
         }
+        if (from) {
+            return t("notifications.kinds.assigneeClearedDetail", { from });
+        }
         return t("notifications.kinds.assigneeChange");
     }
 

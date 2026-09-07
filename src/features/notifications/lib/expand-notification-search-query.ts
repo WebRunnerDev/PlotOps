@@ -8,6 +8,7 @@ const KIND_PHRASE_KEYS = {
         "assigneeChange",
         "assigneeChangeDetail",
         "assigneeChangeFromDetail",
+        "assigneeClearedDetail",
         "assigneeRemoved",
     ],
     assignment: ["assignment", "assignmentDetail"],
@@ -43,7 +44,7 @@ const PRIORITY_VALUES = ["none", "urgent", "high", "medium", "low"] as const;
 
 /** Extra English stems users type that do not appear in raw `kind` (e.g. assigned vs assignment). */
 const KIND_ALIASES: Partial<Record<NotificationKind, readonly string[]>> = {
-    assignee_change: ["assignee", "assigned"],
+    assignee_change: ["assignee", "assigned", "cleared", "снят"],
     assignment: ["assigned", "assignee"],
     author_change: ["author"],
     board_move: ["board", "moved"],
