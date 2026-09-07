@@ -6,10 +6,8 @@ import type { Sprint } from "@/features/sprints/model/types";
 import { Bar } from "@/components/charts/bar";
 import { BarChart } from "@/components/charts/bar-chart";
 import { BarXAxis } from "@/components/charts/bar-x-axis";
+import { ChartYValueAxis } from "@/components/charts/chart-y-value-axis";
 import { Grid } from "@/components/charts/grid";
-import { Ring } from "@/components/charts/ring";
-import { RingCenter } from "@/components/charts/ring-center";
-import { RingChart } from "@/components/charts/ring-chart";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { buildSprintKpis } from "@/features/sprints/model/build-sprint-kpis";
 
@@ -17,6 +15,9 @@ type SprintInsightsPanelProperties = {
     sprints: readonly Sprint[];
     tasks: ReadonlyArray<{ estimate?: null | number; id: string }>;
 };
+
+/** Cap bar group width so a single sprint does not stretch wall-to-wall. */
+const MAX_BAR_GROUP_WIDTH_PX = 56;
 
 export function SprintInsightsPanel({
     sprints,
@@ -51,26 +52,31 @@ export function SprintInsightsPanel({
             ? null
             : Math.round(kpis.commitmentAccuracy * 100);
 
-    const ringData = useMemo(() => {
-        if (accuracyPercent === null) return [];
-        return [
-            {
-                color: "var(--chart-1)",
-                label: t("sprints.insightsAccuracyLabel"),
-                maxValue: 100,
-                value: accuracyPercent,
-            },
-        ];
-    }, [accuracyPercent, t]);
+    const barWidth =
+        barData.length > 0 && barData.length < 4
+            ? MAX_BAR_GROUP_WIDTH_PX
+            : undefined;
+
+    const chartMaxWidthClass =
+        barData.length <= 1
+            ? "max-w-xs"
+            : barData.length <= 3
+              ? "max-w-md"
+              : "w-full";
 
     return (
         <section className="overflow-hidden rounded-none border border-border bg-card/50 shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--primary)_35%,transparent)]">
             <header className="border-b border-border/80 px-3 py-3 sm:px-4">
                 <h2 className="text-h3">{t("sprints.insightsTitle")}</h2>
                 <p className="mt-1 text-ui text-muted-foreground">
-                    {t("sprints.insightsSubtitle", {
-                        count: kpis.windowSize,
-                    })}
+                    {kpis.emptyReason
+                        ? t("sprints.insightsSubtitle", {
+                              count: kpis.windowSize,
+                          })
+                        : t("sprints.insightsSubtitleSampled", {
+                              sample: kpis.sampleSize,
+                              window: kpis.windowSize,
+                          })}
                 </p>
             </header>
             <div className="space-y-4 px-3 py-4 sm:px-4">
@@ -82,7 +88,7 @@ export function SprintInsightsPanel({
                     <>
                         <div className="grid grid-cols-1 gap-px overflow-hidden border border-primary/20 bg-primary/20 sm:grid-cols-2">
                             <div className="min-w-0 space-y-1 bg-background/90 px-3 py-3">
-                                <p className="text-meta text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {t("sprints.insightsVelocityLabel")}
                                 </p>
                                 <p className="font-heading text-h2 tabular-nums tracking-tight">
@@ -95,14 +101,14 @@ export function SprintInsightsPanel({
                                               { value: kpis.velocity }
                                           )}
                                 </p>
-                                <p className="text-meta text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {t("sprints.insightsSample", {
                                         count: kpis.sampleSize,
                                     })}
                                 </p>
                             </div>
                             <div className="min-w-0 space-y-1 bg-background/90 px-3 py-3">
-                                <p className="text-meta text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {t("sprints.insightsAccuracyLabel")}
                                 </p>
                                 <p className="font-heading text-h2 tabular-nums tracking-tight">
@@ -112,23 +118,25 @@ export function SprintInsightsPanel({
                                               percent: accuracyPercent,
                                           })}
                                 </p>
-                                <p className="text-meta text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {t("sprints.insightsAccuracyHint")}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-                            <div className="min-w-0 space-y-2">
-                                <p className="text-meta text-muted-foreground">
-                                    {t("sprints.insightsVelocityChart")}
-                                </p>
+                        <div className="min-w-0 space-y-2">
+                            <p className="text-sm text-muted-foreground">
+                                {t("sprints.insightsVelocityChart")}
+                            </p>
+                            <div className={chartMaxWidthClass}>
                                 <BarChart
                                     aspectRatio="2 / 1"
+                                    barGap={0.35}
+                                    barWidth={barWidth}
                                     className="min-h-[140px] w-full"
                                     data={barData}
                                     margin={{
-                                        bottom: 36,
+                                        bottom: 28,
                                         left: 36,
                                         right: 12,
                                         top: 16,
@@ -136,7 +144,7 @@ export function SprintInsightsPanel({
                                     status="ready"
                                     xDataKey="name"
                                 >
-                                    <Grid horizontal />
+                                    <Grid horizontal numTicksRows={4} />
                                     <Bar
                                         dataKey="committed"
                                         fill="var(--chart-3)"
@@ -147,50 +155,56 @@ export function SprintInsightsPanel({
                                         fill="var(--chart-1)"
                                         lineCap="butt"
                                     />
+                                    <ChartYValueAxis numTicks={4} />
                                     <BarXAxis />
-                                    <ChartTooltip />
+                                    <ChartTooltip
+                                        backgroundColor="var(--popover)"
+                                        rows={(point) => [
+                                            {
+                                                color: "var(--chart-3)",
+                                                label: t(
+                                                    "sprints.insightsCommittedBar"
+                                                ),
+                                                value: Number(
+                                                    point.committed ?? 0
+                                                ),
+                                            },
+                                            {
+                                                color: "var(--chart-1)",
+                                                label: t(
+                                                    "sprints.insightsCompletedBar"
+                                                ),
+                                                value: Number(
+                                                    point.completed ?? 0
+                                                ),
+                                            },
+                                        ]}
+                                        showDatePill={false}
+                                        showDots={false}
+                                    />
                                 </BarChart>
-                                <div className="flex flex-wrap gap-4 text-meta text-muted-foreground">
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span
-                                            aria-hidden
-                                            className="inline-block size-2 bg-chart-3"
-                                        />
-                                        {t("sprints.insightsCommittedBar")}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span
-                                            aria-hidden
-                                            className="inline-block size-2 bg-chart-1"
-                                        />
-                                        {t("sprints.insightsCompletedBar")}
-                                    </span>
-                                </div>
                             </div>
-
-                            {ringData.length > 0 ? (
-                                <div className="mx-auto flex w-full max-w-[180px] flex-col items-center gap-2">
-                                    <RingChart
-                                        className="aspect-square w-full"
-                                        data={ringData}
-                                        size={160}
-                                        strokeWidth={14}
-                                    >
-                                        <Ring index={0} showGlow={false} />
-                                        <RingCenter
-                                            defaultLabel={t(
-                                                "sprints.insightsAccuracyLabel"
-                                            )}
-                                            suffix="%"
-                                        />
-                                    </RingChart>
-                                </div>
-                            ) : null}
+                            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span
+                                        aria-hidden
+                                        className="inline-block size-2.5 bg-chart-3"
+                                    />
+                                    {t("sprints.insightsCommittedBar")}
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span
+                                        aria-hidden
+                                        className="inline-block size-2.5 bg-chart-1"
+                                    />
+                                    {t("sprints.insightsCompletedBar")}
+                                </span>
+                            </div>
                         </div>
                     </>
                 )}
                 {kpis.metric === "count" && !kpis.emptyReason ? (
-                    <p className="text-meta text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         {t("sprints.insightsCountFallback")}
                     </p>
                 ) : null}

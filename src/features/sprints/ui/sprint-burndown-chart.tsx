@@ -3,11 +3,13 @@ import { useTranslation } from "react-i18next";
 
 import type { SprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
 
+import { ChartYValueAxis } from "@/components/charts/chart-y-value-axis";
 import { Grid } from "@/components/charts/grid";
 import { Line } from "@/components/charts/line";
 import { LineChart } from "@/components/charts/line-chart";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { XAxis } from "@/components/charts/x-axis";
+import { buildSprintBurndownDisplayPoints } from "@/features/sprints/model/build-sprint-burndown-display";
 import { Button } from "@/shared/shadcn/ui/button";
 import { ButtonGroup } from "@/shared/shadcn/ui/button-group";
 
@@ -23,18 +25,27 @@ export function SprintBurndownChart({
     const { t } = useTranslation("board");
     const [chartMode, setChartMode] = useState<ChartMode>("burndown");
 
-    const chartData = useMemo(() => {
-        return series.days
-            .filter((day) => day.remaining !== null)
-            .map((day) => ({
-                completedCumulative: day.completedCumulative ?? 0,
-                date: parseIsoDateLocal(day.date),
-                ideal: day.ideal,
-                idealCompleted: day.idealCompleted,
-                remaining: day.remaining ?? 0,
-                scope: day.scope ?? 0,
-            }));
-    }, [series.days]);
+    const chartData = useMemo(
+        () => buildSprintBurndownDisplayPoints(series, mode),
+        [mode, series]
+    );
+
+    const pace = useMemo(() => {
+        const last = chartData.at(-1);
+        if (!last) return null;
+        if (chartMode === "burndown") {
+            return {
+                actual: last.remaining,
+                ideal: last.ideal,
+                kind: "remaining" as const,
+            };
+        }
+        return {
+            actual: last.completedCumulative,
+            ideal: last.idealCompleted,
+            kind: "completed" as const,
+        };
+    }, [chartData, chartMode]);
 
     if (series.emptyReason) {
         return (
@@ -66,7 +77,7 @@ export function SprintBurndownChart({
               );
 
     return (
-        <div className="min-w-0 space-y-2">
+        <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-baseline gap-2">
                     <h3 className="text-ui font-medium">
@@ -76,7 +87,7 @@ export function SprintBurndownChart({
                                 : "sprints.burnupTitle"
                         )}
                     </h3>
-                    <p className="text-meta text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         {metricLabel}
                     </p>
                 </div>
@@ -101,27 +112,44 @@ export function SprintBurndownChart({
                     </Button>
                 </ButtonGroup>
             </div>
+
+            {pace ? (
+                <p className="text-sm text-muted-foreground">
+                    {chartMode === "burndown"
+                        ? t("sprints.burndownPaceRemaining", {
+                              actual: pace.actual,
+                              ideal: pace.ideal,
+                          })
+                        : t("sprints.burndownPaceCompleted", {
+                              actual: pace.actual,
+                              ideal: pace.ideal,
+                          })}
+                </p>
+            ) : null}
+
             {series.metric === "points" && series.unestimatedCount > 0 ? (
-                <p className="text-meta text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                     {t("sprints.burndownUnestimated", {
                         count: series.unestimatedCount,
                     })}
                 </p>
             ) : null}
             {series.metric === "count" ? (
-                <p className="text-meta text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                     {t("sprints.burndownCountFallback")}
                 </p>
             ) : null}
-            <div className="min-w-0 w-full">
+
+            <div className="min-w-0 w-full max-w-2xl">
                 <LineChart
-                    aspectRatio="2 / 1"
-                    className="min-h-[160px] w-full"
+                    aspectRatio="16 / 9"
+                    className="min-h-[180px] w-full"
                     data={chartData}
-                    margin={{ bottom: 28, left: 40, right: 12, top: 16 }}
+                    margin={{ bottom: 28, left: 40, right: 12, top: 12 }}
                     status="ready"
+                    yDomainTween={false}
                 >
-                    <Grid horizontal />
+                    <Grid horizontal numTicksRows={4} />
                     {chartMode === "burndown" ? (
                         <>
                             <Line
@@ -135,7 +163,7 @@ export function SprintBurndownChart({
                                 dataKey="remaining"
                                 fadeEdges={false}
                                 stroke="var(--chart-line-primary)"
-                                strokeWidth={2}
+                                strokeWidth={2.5}
                             />
                         </>
                     ) : (
@@ -157,15 +185,57 @@ export function SprintBurndownChart({
                                 dataKey="completedCumulative"
                                 fadeEdges={false}
                                 stroke="var(--chart-line-primary)"
-                                strokeWidth={2}
+                                strokeWidth={2.5}
                             />
                         </>
                     )}
+                    <ChartYValueAxis numTicks={4} />
                     <XAxis numTicks={Math.min(5, chartData.length)} />
-                    <ChartTooltip />
+                    <ChartTooltip
+                        backgroundColor="var(--popover)"
+                        rows={(point) =>
+                            chartMode === "burndown"
+                                ? [
+                                      {
+                                          color: "var(--chart-line-secondary)",
+                                          label: t("sprints.burndownIdeal"),
+                                          value: Number(point.ideal ?? 0),
+                                      },
+                                      {
+                                          color: "var(--chart-line-primary)",
+                                          label: t("sprints.burndownActual"),
+                                          value: Number(point.remaining ?? 0),
+                                      },
+                                  ]
+                                : [
+                                      {
+                                          color: "var(--chart-line-secondary)",
+                                          label: t("sprints.burnupIdeal"),
+                                          value: Number(
+                                              point.idealCompleted ?? 0
+                                          ),
+                                      },
+                                      {
+                                          color: "var(--chart-3)",
+                                          label: t("sprints.burnupScope"),
+                                          value: Number(point.scope ?? 0),
+                                      },
+                                      {
+                                          color: "var(--chart-line-primary)",
+                                          label: t("sprints.burnupCompleted"),
+                                          value: Number(
+                                              point.completedCumulative ?? 0
+                                          ),
+                                      },
+                                  ]
+                        }
+                        showDatePill={false}
+                        showDots
+                    />
                 </LineChart>
             </div>
-            <div className="flex flex-wrap gap-4 text-meta text-muted-foreground">
+
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {chartMode === "burndown" ? (
                     <>
                         <LegendSwatch
@@ -194,7 +264,8 @@ export function SprintBurndownChart({
                     </>
                 )}
             </div>
-            <p className="text-meta text-muted-foreground">
+
+            <p className="text-sm text-muted-foreground">
                 {t(
                     mode === "active"
                         ? "sprints.burndownProxyHintActive"
@@ -227,9 +298,4 @@ function LegendSwatch({
             {label}
         </span>
     );
-}
-
-function parseIsoDateLocal(isoDate: string): Date {
-    const [year, month, day] = isoDate.split("-").map(Number);
-    return new Date(year!, month! - 1, day!);
 }
