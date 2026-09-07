@@ -9,6 +9,7 @@ export {
     newMentioneeIds,
 } from "./lib/extract-mentionee-ids";
 export { notifyCommentWatchersBestEffort } from "./lib/notify-comment-watchers";
+export { notifyDescriptionWatchersBestEffort } from "./lib/notify-description-watchers";
 export { notifyNewMentionsBestEffort } from "./lib/notify-new-mentions";
 export { planAssigneeChangeNotifications } from "./lib/plan-assignee-change-notifications";
 export { planAuthorChangeNotifications } from "./lib/plan-author-change-notifications";
@@ -17,14 +18,17 @@ export { planBoardMoveWatcherNotification } from "./lib/plan-board-move-watcher-
 
 export { planCommentWatcherNotification } from "./lib/plan-comment-watcher-notification";
 
+export { planDescriptionWatcherNotification } from "./lib/plan-description-watcher-notification";
+
 export { planPriorityWatcherNotification } from "./lib/plan-priority-watcher-notification";
 export { planSubtaskChangeNotification } from "./lib/plan-subtask-change-notification";
-
 export {
     planTaskNotificationEvents,
     type PlanTaskNotificationInput,
     type TaskNotificationEvent,
 } from "./lib/plan-task-notification-events";
+
+export { planTitleWatcherNotification } from "./lib/plan-title-watcher-notification";
 
 export type {
     AssigneeChangeMetadata,
