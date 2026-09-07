@@ -33,7 +33,8 @@
         "markDoneAria": "Отметить как колонку Done для закрытия спринта",
         "clearDoneAria": "Снять отметку Done",
         "doneMarked": "«{{name}}» — колонка Done для закрытия спринта",
-        "doneCleared": "Отметка Done снята — при закрытии предложат правую колонку"
+        "doneCleared": "Отметка Done снята — при закрытии предложат правую колонку",
+        "empty": "Нет задач"
     },
     "tasks": {
         "add": "Добавить задачу",
@@ -335,6 +336,7 @@
     "cicd": {
         "link": "CI/CD",
         "title": "CI/CD",
+        "eyebrow": "Pipeline",
         "backToBoard": "К доске",
         "description": "Прогоны GitHub Actions для связанного репозитория проекта. Выберите прогон, чтобы посмотреть jobs и логи.",
         "refreshing": "Обновление…",
@@ -343,10 +345,23 @@
         "connectRepoAction": "Подключить репозиторий",
         "empty": "Прогонов пока нет. Сделайте push или добавьте workflow в .github/workflows.",
         "emptyFilter": "Нет прогонов по этому фильтру.",
+        "emptyFilterTitle": "Нет совпадений",
+        "emptyIdle": "Ожидание",
+        "emptyPrompt": "git push && await run",
+        "emptyTitle": "Прогонов пока нет",
+        "emptyWorkflows": ".github/workflows",
         "loadingMore": "Загрузка следующих прогонов…",
         "loadFailed": "Не удалось загрузить прогоны из GitHub.",
         "failedOn": "Ошибка: {{reason}}",
         "openLogs": "Открыть детали прогона {{branch}}",
+        "sections": {
+            "history": "История",
+            "live": "Сейчас"
+        },
+        "signal": {
+            "branch": "{{branch}}",
+            "live": "Live"
+        },
         "summary": {
             "label": "Сводка",
             "defaultBranch": "{{branch}}",
@@ -372,6 +387,9 @@
         "logs": {
             "title": "{{workflow}} · {{branch}}",
             "titleFallback": "Детали прогона",
+            "eyebrow": "Лог сборки",
+            "console": "Console",
+            "lines": "строк",
             "hint": "Логи GitHub Actions",
             "streaming": "Загрузка логов…",
             "empty": "Нет строк лога для этого прогона.",
@@ -385,11 +403,14 @@
     "settings": {
         "link": "Настройки",
         "title": "Настройки",
+        "description": "Репозиторий, доски, метки и поля этого проекта.",
         "backToBoard": "К доске",
         "membersMoved": "Участники и приглашения управляются на уровне Команды.",
         "openTeamSettings": "Открыть настройки Команды",
         "repository": {
             "title": "Репозиторий",
+            "statusLinked": "Подключён",
+            "statusUnlinked": "Не подключён",
             "linked": "Репозиторий подключён",
             "connect": "Подключите репозиторий, чтобы включить Git и CI/CD для этого проекта.",
             "connectSuccess": "Репозиторий подключён",
@@ -414,6 +435,7 @@
     },
     "teamSettings": {
         "title": "Настройки Команды",
+        "subtitle": "Название, участники и опасная зона этой Команды.",
         "loadFailed": "Не удалось загрузить эту Команду.",
         "noAccess": "У вас нет доступа к этой Команде.",
         "nameTitle": "Название Команды",
@@ -926,6 +948,7 @@
     "sprints": {
         "backlog": "Бэклог",
         "backlogLink": "Бэклог",
+        "backlogPoolDescription": "Задачи вне спринта. Перетащите в черновик или активный спринт, чтобы спланировать работу.",
         "backlogTitle": "Бэклог и спринты",
         "backToBoard": "К доске",
         "loadFailed": "Не удалось загрузить спринты",
