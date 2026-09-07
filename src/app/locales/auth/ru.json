@@ -4,14 +4,14 @@
         "resend": "Отправить письмо ещё раз",
         "resendLoading": "Отправка...",
         "resent": "Письмо с подтверждением отправлено повторно.",
-        "title": "check_email"
+        "title": "Проверьте почту"
     },
     "completeProfile": {
         "description": "Нужны имя и фамилия, чтобы коллеги узнавали вас на досках и в упоминаниях.",
         "save": "Продолжить",
         "saving": "Сохранение...",
         "signOut": "Выйти и войти другим аккаунтом",
-        "title": "complete_profile"
+        "title": "Заполните профиль"
     },
     "confirmPassword": "Подтвердите пароль",
     "email": "Email",
@@ -105,14 +105,14 @@
     },
     "signIn": "Войти",
     "signInLoading": "Вход...",
-    "signInPanel": "session.sign_in",
+    "signInPanel": "Войти в PlotOps",
     "signInSubtitle": "GitHub, Google, демо или email",
     "signInTitle": "Войти в PlotOps",
     "tryDemo": "Попробовать демо без регистрации",
     "tryDemoLoading": "Открываем демо...",
     "signUp": "Создать аккаунт",
     "signUpLoading": "Создание аккаунта...",
-    "signUpPanel": "session.sign_up",
+    "signUpPanel": "Создать аккаунт PlotOps",
     "signUpSubtitle": "GitHub, Google или email — email нужен для приглашений без GitHub",
     "signUpTitle": "Создать аккаунт PlotOps",
     "username": "Username",
