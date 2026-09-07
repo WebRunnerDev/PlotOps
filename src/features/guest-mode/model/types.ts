@@ -127,6 +127,8 @@ export type GuestSandbox = {
     sprints: GuestSprint[];
     taskLinks: GuestTaskLink[];
     tasks: GuestTask[];
+    /** Sticky Watch rows (ADR 0028); optional on older stored sessions. */
+    taskWatchers?: GuestTaskWatch[];
     teams: GuestTeam[];
 };
 
@@ -183,6 +185,11 @@ export type GuestTaskLink = {
     kind: "blocks" | "relates_to";
     sourceTaskId: string;
     targetTaskId: string;
+};
+
+export type GuestTaskWatch = {
+    taskId: string;
+    userId: string;
 };
 
 export type GuestTeam = {

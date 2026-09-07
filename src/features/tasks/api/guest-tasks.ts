@@ -3,6 +3,7 @@ import type {
     GuestSandbox,
     GuestTask,
 } from "@/features/guest-mode";
+import type { StakePersonIds } from "@/features/notifications/lib/apply-stake-watch-enrollment";
 import type { TaskRecordPatch } from "@/features/tasks/api/tasks-api";
 import type { TasksProvider } from "@/features/tasks/api/tasks-provider";
 import type {
@@ -18,6 +19,7 @@ import {
     GUEST_SEED_ACTOR_ID,
     updateGuestSandbox,
 } from "@/features/guest-mode";
+import { applyGuestStakeWatchEnrollment } from "@/features/notifications/api/guest-task-watchers";
 import { sortTasksByPosition } from "@/features/tasks/api/board-mappers";
 import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
@@ -182,6 +184,28 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     }
 }
 
+function applyPatchWithWatchEnrollment(
+    sandbox: GuestSandbox,
+    task: GuestTask,
+    patch: TaskRecordPatch
+): void {
+    const previous = stakeIdsFromTask(task);
+    applyPatch(task, patch);
+    const next = stakeIdsFromTask(task);
+    if (
+        previous.authorId === next.authorId &&
+        previous.assigneeId === next.assigneeId
+    ) {
+        return;
+    }
+    applyGuestStakeWatchEnrollment({
+        next,
+        previous,
+        sandbox,
+        taskId: task.id,
+    });
+}
+
 function assertDoneMoveLegal(
     sandbox: GuestSandbox,
     taskId: string,
@@ -199,6 +223,15 @@ function assertDoneMoveLegal(
         parentGateTasks(sandbox),
         taskLinkEdges(sandbox)
     );
+}
+
+function enrollWatchersOnCreate(sandbox: GuestSandbox, task: GuestTask): void {
+    applyGuestStakeWatchEnrollment({
+        next: stakeIdsFromTask(task),
+        previous: { assigneeId: null, authorId: null },
+        sandbox,
+        taskId: task.id,
+    });
 }
 
 function findTaskOrThrow(tasks: GuestTask[], taskId: string): GuestTask {
@@ -370,6 +403,13 @@ function relatedPeersOf(
     return peers;
 }
 
+function stakeIdsFromTask(task: GuestTask): StakePersonIds {
+    return {
+        assigneeId: task.assignee?.id ?? null,
+        authorId: task.author?.id ?? null,
+    };
+}
+
 function taskLinkEdges(
     sandbox: Pick<GuestSandbox, "taskLinks">
 ): TaskLinkEdge[] {
@@ -534,6 +574,8 @@ export const guestTasksProvider: TasksProvider = {
             };
             sandbox.tasks.push(created);
 
+            enrollWatchersOnCreate(sandbox, created);
+
             appendParentActivity(sandbox, {
                 field: "subtask",
                 from: null,
@@ -670,6 +712,7 @@ export const guestTasksProvider: TasksProvider = {
                 type: resolvedType,
             };
             sandbox.tasks.push(created);
+            enrollWatchersOnCreate(sandbox, created);
         });
 
         if (!created) {
@@ -725,6 +768,11 @@ export const guestTasksProvider: TasksProvider = {
                 (link) =>
                     link.sourceTaskId !== taskId && link.targetTaskId !== taskId
             );
+            if (sandbox.taskWatchers) {
+                sandbox.taskWatchers = sandbox.taskWatchers.filter(
+                    (row) => row.taskId !== taskId
+                );
+            }
             sandbox.notifications = sandbox.notifications.filter(
                 (row) => row.taskId !== taskId
             );
@@ -1007,7 +1055,7 @@ export const guestTasksProvider: TasksProvider = {
     async updateTaskDetails(taskId, patch, labelIds) {
         updateGuestSandbox((sandbox) => {
             const task = findTaskOrThrow(sandbox.tasks, taskId);
-            applyPatch(task, patch);
+            applyPatchWithWatchEnrollment(sandbox, task, patch);
             if (labelIds !== undefined) {
                 task.labelIds =
                     labelIds === null || labelIds.length === 0
@@ -1028,7 +1076,7 @@ export const guestTasksProvider: TasksProvider = {
                     task.boardId
                 );
             }
-            applyPatch(task, patch);
+            applyPatchWithWatchEnrollment(sandbox, task, patch);
         });
     },
 };

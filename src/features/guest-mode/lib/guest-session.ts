@@ -59,6 +59,9 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!Array.isArray(sandbox.customFieldValues)) {
         sandbox.customFieldValues = [];
     }
+    if (!Array.isArray(sandbox.taskWatchers)) {
+        sandbox.taskWatchers = [];
+    }
     ensureGuestDescriptionFields(sandbox);
     return sandbox;
 }
@@ -188,6 +191,8 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
         record.comments === undefined || Array.isArray(record.comments);
     const taskLinksOk =
         record.taskLinks === undefined || Array.isArray(record.taskLinks);
+    const taskWatchersOk =
+        record.taskWatchers === undefined || Array.isArray(record.taskWatchers);
     const customFieldsOk =
         record.customFieldDefinitions === undefined ||
         Array.isArray(record.customFieldDefinitions);
@@ -197,6 +202,7 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
     return (
         commentsOk &&
         taskLinksOk &&
+        taskWatchersOk &&
         customFieldsOk &&
         customFieldValuesOk &&
         Array.isArray(record.teams) &&
