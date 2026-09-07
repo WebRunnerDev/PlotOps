@@ -1312,7 +1312,7 @@ function SprintReportPanel({
                                         </span>
                                         {canManage && row.stillMember ? (
                                             <Button
-                                                className="shrink-0"
+                                                className="min-h-9 shrink-0"
                                                 disabled={moveTasks.isPending}
                                                 onClick={() => {
                                                     void moveTasks
@@ -1339,7 +1339,7 @@ function SprintReportPanel({
                                                             );
                                                         });
                                                 }}
-                                                size="xs"
+                                                size="sm"
                                                 type="button"
                                                 variant="outline"
                                             >
