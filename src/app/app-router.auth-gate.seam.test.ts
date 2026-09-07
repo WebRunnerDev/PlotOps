@@ -20,12 +20,13 @@ describe("AppRouter auth gate seam", () => {
         );
     });
 
-    it("skips invalidate while auth.isLoading so beforeLoad never sees auth: undefined", () => {
-        // Hooks run before the isLoading early return that mounts RouterProvider.
+    it("skips invalidate while auth is booting so beforeLoad never sees auth: undefined", () => {
+        // Hooks run before the boot UI unmounts RouterProvider.
         // Invalidating during boot hits createRouter's placeholder context
         // (auth: undefined!) and throws in beforeLoad — error flash, then OK.
+        // Also skip during the post-load boot hold (showBoot) before the app mounts.
         expect(source).toMatch(
-            /useEffect\(\s*\(\)\s*=>\s*\{[\s\S]*?if\s*\(\s*auth\.isLoading\s*\)\s*return;[\s\S]*?router\.invalidate\([\s\S]*?\}\s*,\s*\[[\s\S]*?auth\.isLoading[\s\S]*?auth\.user/
+            /useEffect\(\s*\(\)\s*=>\s*\{[\s\S]*?if\s*\(\s*auth\.isLoading\s*\|\|\s*showBoot\s*\)\s*return;[\s\S]*?router\.invalidate\([\s\S]*?\}\s*,\s*\[[\s\S]*?auth\.isLoading[\s\S]*?auth\.user[\s\S]*?showBoot/
         );
     });
 });
