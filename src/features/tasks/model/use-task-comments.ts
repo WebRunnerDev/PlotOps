@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { isGuest } from "@/features/guest-mode";
+import { notifyCommentWatchersBestEffort } from "@/features/notifications/lib/notify-comment-watchers";
 import { notifyNewMentionsBestEffort } from "@/features/notifications/lib/notify-new-mentions";
 import {
     createGuestTaskComment,
@@ -49,6 +50,13 @@ export function useCreateTaskComment(taskId: string, projectId: string) {
                 nextBody: body,
                 previousBody: "",
                 source: "comment",
+                taskId,
+            });
+
+            await notifyCommentWatchersBestEffort({
+                body,
+                commentId: data.id,
+                projectId,
                 taskId,
             });
 

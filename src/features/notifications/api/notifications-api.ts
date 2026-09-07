@@ -168,6 +168,12 @@ export async function createTaskNotifications(input: {
                 ...(event.recipientId
                     ? { recipient_id: event.recipientId }
                     : {}),
+                ...(event.excludeRecipientIds &&
+                event.excludeRecipientIds.length > 0
+                    ? {
+                          exclude_recipient_ids: event.excludeRecipientIds,
+                      }
+                    : {}),
             }))
         ),
         p_project_id: input.projectId,

@@ -27,6 +27,12 @@ export type BoardMoveMetadata = {
     toStatus?: null | { id: string; name: string };
 };
 
+/** Watcher Comment create. */
+export type CommentMetadata = {
+    commentId: string;
+    source?: "app" | "github_webhook";
+};
+
 export type DeadlineChangeMetadata = {
     from: null | string;
     source?: "app" | "github_webhook";
@@ -77,6 +83,7 @@ export type NotificationMetadata =
     | AssignmentMetadata
     | AuthorChangeMetadata
     | BoardMoveMetadata
+    | CommentMetadata
     | DeadlineChangeMetadata
     | MentionMetadata
     | PriorityChangeMetadata

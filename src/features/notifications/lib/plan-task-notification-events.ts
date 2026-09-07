@@ -37,6 +37,12 @@ export type PlanTaskNotificationInput = {
 
 /** Event payload for `create_task_notifications` (one round-trip, multi-kind). */
 export type TaskNotificationEvent = {
+    /**
+     * Extra Watcher fan-out exclusions (e.g. Mentionees who already get
+     * `mention` for the same Comment/Description save). Actor exclusion is
+     * always applied in the RPC.
+     */
+    excludeRecipientIds?: string[];
     kind: NotificationKind;
     metadata: Record<string, unknown>;
     /** Always-on delivery target. Absent → Watcher fan-out. */
