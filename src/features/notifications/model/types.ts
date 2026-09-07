@@ -60,11 +60,17 @@ export type NotificationKind =
     | "assignment"
     | "author_change"
     | "board_move"
+    | "comment"
     | "deadline_change"
+    | "description_change"
+    | "estimate_change"
+    | "labels_change"
     | "mention"
     | "priority_change"
+    | "sprint_change"
     | "status_change"
-    | "subtask_change";
+    | "subtask_change"
+    | "title_change";
 
 export type NotificationMetadata =
     | AssigneeChangeMetadata
