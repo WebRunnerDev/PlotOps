@@ -104,6 +104,10 @@ export type Database = {
         Args: { project_uuid: string }
         Returns: boolean
       }
+      can_manage_task_watcher: {
+        Args: { p_project_id: string; p_target_user_id: string }
+        Returns: boolean
+      }
       can_manage_team_members: { Args: { team_uuid: string }; Returns: boolean }
       can_view_project: { Args: { project_uuid: string }; Returns: boolean }
       cancel_sprint: {

@@ -13,6 +13,8 @@ export type ProjectCapabilities = {
     canManageBoard: boolean;
     canManageMembers: boolean;
     canManageSettings: boolean;
+    /** Owner/Admin/Manager/Contributor — add/remove other Members' Watches (ADR 0029). */
+    canManageWatchers: boolean;
     canView: boolean;
     role: null | ProjectAccessRole;
 };
@@ -44,6 +46,7 @@ export function capabilitiesForRole(
         canManageBoard,
         canManageMembers,
         canManageSettings: canManageMembers,
+        canManageWatchers: canEditTasks,
         canView: isOwner || isAdmin || isManager || isContributor || isViewer,
         role,
     };

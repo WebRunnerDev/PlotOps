@@ -62,8 +62,16 @@ export function fetchGuestTaskWatchers(input: {
 
 export function setGuestTaskWatch(input: {
     taskId: string;
+    userId?: string;
     watching: boolean;
 }): void {
+    const targetUserId = input.userId ?? GUEST_SEED_ACTOR_ID;
+    if (targetUserId !== GUEST_SEED_ACTOR_ID) {
+        throw new Error(
+            "Guest Mode Watch is self-only; manage-others is unavailable"
+        );
+    }
+
     updateGuestSandbox((sandbox) => {
         ensureTaskWatchers(sandbox);
         const withoutSelf = sandbox.taskWatchers!.filter(
