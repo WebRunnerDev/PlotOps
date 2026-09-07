@@ -4,14 +4,14 @@
         "resend": "Resend confirmation email",
         "resendLoading": "Sending...",
         "resent": "Confirmation email sent again.",
-        "title": "check_email"
+        "title": "Check your email"
     },
     "completeProfile": {
         "description": "We need your name so teammates can recognize you across boards and mentions.",
         "save": "Continue",
         "saving": "Saving...",
         "signOut": "Sign out and use another account",
-        "title": "complete_profile"
+        "title": "Complete your profile"
     },
     "confirmPassword": "Confirm password",
     "email": "Email",
@@ -113,14 +113,14 @@
     },
     "signIn": "Sign in",
     "signInLoading": "Signing in...",
-    "signInPanel": "session.sign_in",
+    "signInPanel": "Sign in to PlotOps",
     "signInSubtitle": "GitHub, Google, guest demo, or email",
     "signInTitle": "Sign in to PlotOps",
     "tryDemo": "Try demo without registration",
     "tryDemoLoading": "Opening demo...",
     "signUp": "Create account",
     "signUpLoading": "Creating account...",
-    "signUpPanel": "session.sign_up",
+    "signUpPanel": "Create your PlotOps account",
     "signUpSubtitle": "GitHub, Google, or email — email required for invites without GitHub",
     "signUpTitle": "Create your PlotOps account",
     "username": "Username",

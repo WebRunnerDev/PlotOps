@@ -33,7 +33,8 @@
         "markDoneAria": "Mark as Done column for Sprint Close",
         "clearDoneAria": "Clear Done column",
         "doneMarked": "“{{name}}” is the Done column for Sprint Close",
-        "doneCleared": "Done column cleared — Close will suggest the rightmost status"
+        "doneCleared": "Done column cleared — Close will suggest the rightmost status",
+        "empty": "No tasks"
     },
     "tasks": {
         "add": "Add task",
@@ -335,6 +336,7 @@
     "cicd": {
         "link": "CI/CD",
         "title": "CI/CD",
+        "eyebrow": "Pipeline",
         "backToBoard": "Back to board",
         "description": "GitHub Actions runs for this project’s linked repository. Select a run to inspect jobs and logs.",
         "refreshing": "Refreshing…",
@@ -343,10 +345,23 @@
         "connectRepoAction": "Connect a repository",
         "empty": "No workflow runs yet. Push a commit or add a workflow under .github/workflows.",
         "emptyFilter": "No runs match this filter.",
+        "emptyFilterTitle": "No matches",
+        "emptyIdle": "Idle",
+        "emptyPrompt": "git push && await run",
+        "emptyTitle": "No runs yet",
+        "emptyWorkflows": ".github/workflows",
         "loadingMore": "Loading more runs…",
         "loadFailed": "Could not load workflow runs from GitHub.",
         "failedOn": "Failed on {{reason}}",
         "openLogs": "Open run details for {{branch}}",
+        "sections": {
+            "history": "History",
+            "live": "In flight"
+        },
+        "signal": {
+            "branch": "{{branch}}",
+            "live": "Live"
+        },
         "summary": {
             "label": "Run summary",
             "defaultBranch": "{{branch}}",
@@ -372,6 +387,9 @@
         "logs": {
             "title": "{{workflow}} · {{branch}}",
             "titleFallback": "Run details",
+            "eyebrow": "Build log",
+            "console": "Console",
+            "lines": "lines",
             "hint": "Logs from GitHub Actions",
             "streaming": "Loading logs…",
             "empty": "No log lines for this run.",
@@ -385,11 +403,14 @@
     "settings": {
         "link": "Settings",
         "title": "Settings",
+        "description": "Repository, boards, labels, and custom fields for this project.",
         "backToBoard": "Back to board",
         "membersMoved": "Members and invites are managed on the Team.",
         "openTeamSettings": "Open Team settings",
         "repository": {
             "title": "Repository",
+            "statusLinked": "Linked",
+            "statusUnlinked": "Not linked",
             "linked": "Repository linked",
             "connect": "Connect a repository to enable Git and CI/CD for this project.",
             "connectSuccess": "Repository connected",
@@ -414,6 +435,7 @@
     },
     "teamSettings": {
         "title": "Team settings",
+        "subtitle": "Name, members, and danger zone for this Team.",
         "loadFailed": "Could not load this Team.",
         "noAccess": "You do not have access to this Team.",
         "nameTitle": "Team name",
@@ -920,6 +942,7 @@
     "sprints": {
         "backlog": "Backlog",
         "backlogLink": "Backlog",
+        "backlogPoolDescription": "Tasks not assigned to a sprint. Drag into a draft or active sprint to plan work.",
         "backlogTitle": "Backlog & sprints",
         "backToBoard": "Back to board",
         "loadFailed": "Could not load sprints",
