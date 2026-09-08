@@ -11,8 +11,6 @@ import {
     watchToggle,
 } from "./helpers/guest-watch";
 
-const COMMENT_KIND_COPY = ["New Comment", "Новый комментарий"];
-
 test.describe("Guest Comment create enrolls Watcher", () => {
     test("Guest who is not watching creates a Comment → Watching", async ({
         page,
@@ -75,6 +73,8 @@ test.describe("Guest Comment create enrolls Watcher", () => {
     test("Comment edit adds no Watcher comment Notification for the actor", async ({
         page,
     }) => {
+        test.setTimeout(90_000);
+
         await enterGuestDemo(page);
         await openSeededTaskDrawer(page);
 
@@ -91,16 +91,17 @@ test.describe("Guest Comment create enrolls Watcher", () => {
         );
         await closeTaskDrawer(page);
 
+        // Guest seed includes one representative `comment` kind (#254). Edit must
+        // not add another self Notification — keep the seeded count, no edit body.
         const preview = await openNotificationsBell(page);
-        for (const copy of COMMENT_KIND_COPY) {
-            await expect(preview.getByText(copy)).toHaveCount(0);
-        }
+        await expect(preview.getByText("New Comment")).toHaveCount(1);
+        await expect(preview.getByText("Новый комментарий")).toHaveCount(0);
+        await expect(preview.getByText(edited)).toHaveCount(0);
 
         await page.getByTestId("notifications-view-all").click();
         await expect(page).toHaveURL(/\/notifications/);
         await expect(page.getByTestId("notifications-search")).toBeVisible();
-        for (const copy of COMMENT_KIND_COPY) {
-            await expect(page.getByText(copy)).toHaveCount(0);
-        }
+        await expect(page.getByText("New Comment")).toHaveCount(1);
+        await expect(page.getByText(edited)).toHaveCount(0);
     });
 });
