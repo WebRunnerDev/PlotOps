@@ -1,4 +1,5 @@
 export { createNotificationsForMentions } from "./api/notifications-api";
+export { applyCommentWatchEnrollment } from "./lib/apply-comment-watch-enrollment";
 export {
     buildMentionFanOutRequest,
     type MentionFanOutRequest,

@@ -78,4 +78,37 @@ describe("guest task comments", () => {
         expect(remaining.some((row) => row.id === seed.id)).toBe(false);
         expect(remaining.some((row) => row.id === reply.id)).toBe(false);
     });
+
+    it("Comment create auto-enrolls Watch; edit does not", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+        const { createGuestTaskComment, updateGuestTaskComment } =
+            await import("@/features/tasks/api/guest-task-comments");
+        const { fetchGuestTaskWatchers, setGuestTaskWatch } =
+            await import("@/features/notifications/api/guest-task-watchers");
+
+        startGuestSession();
+        const seed = getGuestSandbox()!.comments[0]!;
+
+        setGuestTaskWatch({ taskId: seed.taskId, watching: false });
+        expect(fetchGuestTaskWatchers({ taskId: seed.taskId }).isWatching).toBe(
+            false
+        );
+
+        const created = createGuestTaskComment({
+            body: "<p>Enroll me</p>",
+            projectId: seed.projectId,
+            taskId: seed.taskId,
+        });
+
+        expect(fetchGuestTaskWatchers({ taskId: seed.taskId }).isWatching).toBe(
+            true
+        );
+
+        setGuestTaskWatch({ taskId: seed.taskId, watching: false });
+        updateGuestTaskComment(created.id, "<p>Edit only</p>");
+        expect(fetchGuestTaskWatchers({ taskId: seed.taskId }).isWatching).toBe(
+            false
+        );
+    });
 });

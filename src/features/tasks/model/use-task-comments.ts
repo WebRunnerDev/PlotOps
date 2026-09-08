@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isGuest } from "@/features/guest-mode";
 import { notifyCommentWatchersBestEffort } from "@/features/notifications/lib/notify-comment-watchers";
 import { notifyNewMentionsBestEffort } from "@/features/notifications/lib/notify-new-mentions";
+import { notificationsKeys } from "@/features/notifications/model/query-keys";
 import {
     createGuestTaskComment,
     deleteGuestTaskComment,
@@ -20,6 +21,7 @@ import { taskKeys } from "@/features/tasks/model/query-keys";
 export function useCreateTaskComment(taskId: string, projectId: string) {
     const queryClient = useQueryClient();
     const guest = isGuest();
+    const watchersKey = notificationsKeys.taskWatchers({ projectId, taskId });
 
     return useMutation({
         mutationFn: async (input: {
@@ -66,6 +68,8 @@ export function useCreateTaskComment(taskId: string, projectId: string) {
             void queryClient.invalidateQueries({
                 queryKey: commentsKey(taskId),
             });
+            // Comment create auto-enrolls Watch (DB trigger / Guest sandbox).
+            void queryClient.invalidateQueries({ queryKey: watchersKey });
         },
     });
 }

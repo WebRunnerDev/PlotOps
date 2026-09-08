@@ -7,12 +7,35 @@ import {
     GUEST_SEED_ACTOR_ID,
     updateGuestSandbox,
 } from "@/features/guest-mode";
+import { applyCommentWatchEnrollment } from "@/features/notifications/lib/apply-comment-watch-enrollment";
 import { applyStakeWatchEnrollment } from "@/features/notifications/lib/apply-stake-watch-enrollment";
 
 type GuestWatchersState = {
     isWatching: boolean;
     watchers: TaskWatcher[];
 };
+
+/** Apply Comment-create Watch enrollment inside an open sandbox mutator. */
+export function applyGuestCommentWatchEnrollment(input: {
+    action: "create" | "edit";
+    commenterId?: string;
+    sandbox: GuestSandbox;
+    taskId: string;
+}): void {
+    if (input.action !== "create") return;
+
+    ensureTaskWatchers(input.sandbox);
+    const commenterId = input.commenterId ?? GUEST_SEED_ACTOR_ID;
+    const currentIds = input.sandbox
+        .taskWatchers!.filter((row) => row.taskId === input.taskId)
+        .map((row) => row.userId);
+    const nextIds = applyCommentWatchEnrollment({
+        action: "create",
+        commenterId,
+        watcherIds: currentIds,
+    });
+    replaceTaskWatchers(input.sandbox, input.taskId, nextIds);
+}
 
 /** Apply sticky stake enrollment for one Task inside an open sandbox mutator. */
 export function applyGuestStakeWatchEnrollment(input: {
@@ -30,13 +53,7 @@ export function applyGuestStakeWatchEnrollment(input: {
         previous: input.previous,
         watcherIds: currentIds,
     });
-    const others = input.sandbox.taskWatchers!.filter(
-        (row) => row.taskId !== input.taskId
-    );
-    input.sandbox.taskWatchers = [
-        ...others,
-        ...nextIds.map((userId) => ({ taskId: input.taskId, userId })),
-    ];
+    replaceTaskWatchers(input.sandbox, input.taskId, nextIds);
 }
 
 /**
@@ -94,6 +111,18 @@ function ensureTaskWatchers(sandbox: GuestSandbox): void {
     if (!Array.isArray(sandbox.taskWatchers)) {
         sandbox.taskWatchers = [];
     }
+}
+
+function replaceTaskWatchers(
+    sandbox: GuestSandbox,
+    taskId: string,
+    nextIds: readonly string[]
+): void {
+    const others = sandbox.taskWatchers!.filter((row) => row.taskId !== taskId);
+    sandbox.taskWatchers = [
+        ...others,
+        ...nextIds.map((userId) => ({ taskId, userId })),
+    ];
 }
 
 function toTaskWatcher(sandbox: GuestSandbox, userId: string): TaskWatcher {

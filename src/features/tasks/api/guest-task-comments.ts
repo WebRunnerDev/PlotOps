@@ -6,6 +6,7 @@ import {
     GUEST_SEED_ACTOR_ID,
     updateGuestSandbox,
 } from "@/features/guest-mode";
+import { applyGuestCommentWatchEnrollment } from "@/features/notifications/api/guest-task-watchers";
 
 export function createGuestTaskComment(input: {
     body: string;
@@ -27,6 +28,11 @@ export function createGuestTaskComment(input: {
 
     updateGuestSandbox((sandbox) => {
         sandbox.comments.push(comment);
+        applyGuestCommentWatchEnrollment({
+            action: "create",
+            sandbox,
+            taskId: input.taskId,
+        });
     });
 
     return mapComment(comment);
