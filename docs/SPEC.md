@@ -7,12 +7,12 @@
 
 **PlotOps** (in development, open pet project) — a Jira/Linear-style task tracker built around GitHub.
 
-|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Shipped**     | Auth (GitHub + Google OAuth + email); local Guest Mode (“Try demo” → client sandbox, ADR 0018 — no shared remote demo); Team → Project with roles and invites; multi-board + branch mapping; Kanban (filters, comments, soft-archive, activity feed, rich text + media); board-scoped sprints and backlog; notifications (Watch + structural kinds) and `@` mentions; command palette; CI/CD dashboard on GitHub Actions; PR-merge → Task column sync via `github-webhook`; branch/PR link and in-app code diff; in-app Open PR + Merge + Close + Approve (ADR 0022); PR checks rollup in task drawer (ADR 0025). |
-| **In progress** | Deeper Git integration (commits/PR/diff polish).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| **Deferred**    | Palette/invite expansions, request-review, and other parked items — see [Deferred / later](#deferred--later) and [`docs/deferred/`](deferred/README.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| **Stack**       | Vite + React 19 + TypeScript; TanStack Router + TanStack Query; Zustand (UI); Tailwind CSS 4 + shadcn/ui + lucide-react; i18next; TipTap; dnd-kit; Motion. Backend — Supabase (PostgreSQL, Auth, RLS, Realtime, Storage, Edge Functions) + GitHub API / Actions / App webhooks.                                                                                                                                                                                                                                                                                                                                   |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Shipped**     | Auth (GitHub + Google OAuth + email); local Guest Mode (“Try demo” → client sandbox, ADR 0018 — no shared remote demo); Team → Project with roles and invites; multi-board + branch mapping; Kanban (filters, comments, soft-archive, activity feed, rich text + media); board-scoped sprints and backlog; notifications (Jira-like Watch + Mentions, ADRs 0027–0029) and `@` mentions; command palette; CI/CD dashboard on GitHub Actions; PR-merge → Task column sync via `github-webhook`; branch/PR link and in-app code diff; in-app Open PR + Merge + Close + Approve (ADR 0022); PR checks rollup in task drawer (ADR 0025). |
+| **In progress** | Deeper Git integration (commits/PR/diff polish).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Deferred**    | Palette/invite expansions, request-review, and other parked items — see [Deferred / later](#deferred--later) and [`docs/deferred/`](deferred/README.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Stack**       | Vite + React 19 + TypeScript; TanStack Router + TanStack Query; Zustand (UI); Tailwind CSS 4 + shadcn/ui + lucide-react; i18next; TipTap; dnd-kit; Motion. Backend — Supabase (PostgreSQL, Auth, RLS, Realtime, Storage, Edge Functions) + GitHub API / Actions / App webhooks.                                                                                                                                                                                                                                                                                                                                                     |
 
 Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** below when features land or move to Deferred.
 
@@ -42,61 +42,35 @@ Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** b
 | Sprints (Board-scoped)                                        | ✅ Done (ADR 0008; schema+RPCs; Backlog UI; Start/Close/Cancel; board scope; report; owned by `features/sprints` — ADR 0009 / #5; Close Done column via `board_columns.is_done` — wave 3.1; per-task Close carryover — wave 3.2; Fibonacci Estimates — wave 3.3 / ADR 0020; burndown/burnup Line charts via Bklit — wave 3.4; Insights Velocity Bar + Commitment Ring via Bklit — wave 3.5; Closed retains completed members, Kanban hides them — ADR 0021)                                                         |
 | Feature modules (ADR 0009)                                    | ✅ Done (`features/labels` #4; `features/sprints` #5; `features/boards` #6; slim tasks + composition root #7 — no BoardProvider)                                                                                                                                                                                                                                                                                                                                                                                    |
 | Top bar                                                       | ✅ Done (logo→/home, Team→Project breadcrumbs, project section tabs Board/Backlog/CI/CD/Settings, avatar menu; compact board-local toolbar)                                                                                                                                                                                                                                                                                                                                                                         |
-| Notifications (Watch + assignment)                            | ✅ Done (MVP + structural expansion #35–#39; Parent Task `subtask_change` #200)                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Notifications (Watch + assignment)                            | ✅ Done (MVP + structural expansion #35–#39; Parent Task `subtask_change` #200; Jira-like Watch #240 / ADRs 0027–0029 — sticky Watch, broadened kinds, manage Watchers, Comment-create enroll)                                                                                                                                                                                                                                                                                                                      |
 | Mentions (Description + Comment → always-on)                  | 🟡 Schema + RPC (#41) + editor/extract (#42) + inbox/deep-link (#43) done; polish/verify as needed                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Custom text fields (Project-scoped)                           | ✅ Done (ADR 0024) — Project-scoped text defs ≤10 (+ built-in Description); `applies_to` Task types; Settings CRUD + copy transfer; drawer left column ordered by position; values kept on type change; Guest stub seed                                                                                                                                                                                                                                                                                             |
 
-## Notifications (MVP → structural expansion)
+## Notifications (MVP → Jira-like Watch)
 
-> Domain glossary: `CONTEXT.md` (Awareness + Priority). Decisions: `docs/adr/0010-notifications-fan-out.md`, `0011-expanded-structural-notifications.md`, `0012-auto-unwatch-without-stake.md`, `0013-board-move-notification-coalesce.md`. Mentions: ADR 0014 (section below).
+> Domain glossary: `CONTEXT.md` (Awareness + Priority). Decisions: `docs/adr/0010-notifications-fan-out.md`, **0027–0029** (Jira-like Watch), `0013-board-move-notification-coalesce.md`. Historical: `0011-expanded-structural-notifications.md` (**superseded by 0027**), `0012-auto-unwatch-without-stake.md` (**superseded by 0028**). Mentions: ADR 0014 (section below).
 
 ### Model
 
-- **Watch** is a per-Task personal subscription for a **curated set of structural** Task events (not every Activity).
-    - Watcher kinds: **status change**, **Board move**, **Priority change**, **Assignee set/reassign**, **Author change**, **Subtask created or closed** on a watched Parent Task (`subtask_change`, ADR 0023).
-    - Not Watcher kinds: clear Assignee, title/description, Labels, Estimate, Sprint membership, git fields, archive/restore, comments. Mentions are **not** Watcher kinds (always-on — see Mentions).
+- **Watch** is a per-Task personal subscription for a **broadened Jira-like** set of Task events (field edits and Comment create included — not every Activity).
+    - Watcher kinds: **status change**, **Board move**, **Priority change**, **deadline change**, **Assignee set/reassign/clear**, **Author change**, **Subtask created or closed** on a watched Parent Task (`subtask_change`, ADR 0023), **Comment create** (`comment`), **title change**, **description change**, **Labels change**, **Estimate change**, **Sprint membership change**.
+    - **Not** Watcher kinds: archive/restore, git fields, custom fields, Task type, **Comment edit**. Mentions are **not** Watcher kinds (always-on — see Mentions).
     - `Author` is auto-enrolled as Watcher on create and when set via transfer; may Unwatch.
     - `Assignee` is auto-enrolled as Watcher when set; may Unwatch.
-    - Mentionees are **not** auto-enrolled as Watchers.
-    - **Auto-Unwatch (ADR 0012):** after Author transfer or Assignee clear/reassign, remove that user's Watch only if they are **neither** Author **nor** Assignee. Manual Watchers without those roles keep Watch.
+    - **Comment create** auto-enrolls the commenter as a Watcher (ADR 0029); Comment **edit** does not enroll and creates no Watcher Notification.
+    - Mentionees are **not** auto-enrolled as Watchers by Mention alone.
+    - **Sticky Watch (ADR 0028):** losing Author or Assignee does **not** remove Watch. Manual Unwatch (self or via Manage Watchers) sticks while the user remains Author/Assignee — auto-enroll runs again only when Author/Assignee is set onto them again (including transfer/reassign) or when they create a Comment.
+    - **Manage Watchers (ADR 0029):** any Team Owner or Member who can view the Task (including Viewer) may Watch/Unwatch themselves. Owner, Admin, Manager, and Contributor may add or remove Watches for any other Team Member who can view the Task (including Viewer); Viewer may only manage their own. Guest Mode mirrors kinds and auto-enroll in the sandbox (no multi-user manage).
+    - Leaving/removed from the Team deletes that user's Watches on the Team's Projects' Tasks.
 - **Notification** is an in-app inbox row addressed to one user about a Task event.
-    - **Always-on:** assignment → new Assignee; **Assignee reassign → previous Assignee** (`assignee_change`); Author transfer → new Author; **Mention → Mentionee** (independent of Watch).
-    - **Watchers** also get person-field kinds; **one row per recipient per change** if always-on and Watcher would both apply (dedupe).
+    - **Always-on:** assignment → new Assignee; **Assignee reassign or clear → previous Assignee** (`assignee_change`); Author transfer → new Author; **Mention → Mentionee** (independent of Watch).
+    - **Watchers** also get person-field kinds (including Assignee clear); **one row per recipient per change** if always-on and Watcher would both apply (dedupe).
+    - **Comment / Description + Mentions (ADR 0029):** Comment create that also Mentions → Mentionees get `mention` only (no separate `comment`); other Watchers get `comment`. Description save that also adds Mentions → Mentionees get `mention` only; other Watchers get `description_change`.
     - **Board move (ADR 0013):** one `board_move` Notification including remapped status — no separate `status_change` for that remap. Same-Board column move → `status_change` only.
     - **Multi-field save:** one Notification **per changed kind** (not one summary row).
 - **Self-notify is excluded**: never create Notifications for the actor of the change.
     - For GitHub webhook (automated, `user_id=null`), notify all Watchers of status change as today.
-- **Free-tier posture (ADR 0011):** keep fan-out + Realtime; control volume via curated kinds, coalesce, dedupe, retention — no mute-per-kind or digest in this expansion.
-
-## Mentions (Description + Comment)
-
-> Domain glossary: `CONTEXT.md` (Mention, Mentionee, Notification, Watch). Decision: `docs/adr/0014-mentions-always-on-structured.md`.
-
-### Model
-
-- **Mention** is a structured rich-text reference to a single Project Owner or Member (including Viewer), keyed by user id — inside Task **Description** or **Comment**.
-- Free-text `@Name` without a structured node is **not** a Mention. Group Mentions (`@everyone`, whole Roles) are out of scope.
-- **Always-on Notification** kind `mention` to each newly added Mentionee on create/edit (diff vs previous body). Unchanged Mentionees are not re-notified. Same Mentionee twice in one save → one row. Actor (including self-Mention) is never notified.
-- Does **not** auto-enroll Watch. Does **not** make plain Comments a Notification kind.
-- Mentionee who left the Project: body may keep a stale Mention for display; further edits must **not** notify until they are Owner/Member again; existing inbox rows are not purged.
-- Opening a `mention` Notification opens the Task; Comment Mentions also target that Comment (`commentId` in metadata). Metadata includes `source: "description" | "comment"`, actor, and optional `commentId`.
-
-### Fan-out
-
-- App extracts Mentionee ids from the saved body, computes new-only vs previous body, calls an RPC.
-- RPC validates each Mentionee is a current Project Owner or Member, excludes the actor, inserts fan-out rows. No Postgres HTML-parse trigger.
-
-### UI
-
-- `@` suggestion picker in Description and Comment editors: current Project Owner + Members only.
-- Stale Mentions render without resolving to a current Member (label snapshot / unknown).
-- Inbox + bell: kind-specific copy for `mention`; search expansion includes mention terms (en/ru) like other kinds.
-
-### Implementation plan
-
-1. **Schema + RPC** — widen `notifications.kind` with `mention`; RPC for always-on mention fan-out (validate membership, exclude actor, accept mentionee id set + source metadata). (#41) ✅
-2. **Editor + extract** — TipTap Mention node + `@` picker; pure helpers to extract Mentionee ids and compute new-only delta; wire Description + Comment save → RPC. (#42) ✅
-3. **Inbox + deep link** — format/i18n/search for `mention`; open Task from Notification; Comment Mentions scroll/highlight that Comment. (#43) ✅
+- **Free-tier posture (ADR 0027):** keep fan-out + Realtime; control volume via explicit exclusions, coalesce, always-on/Watcher and Mention/`comment`/`description_change` dedupe, and retention — no mute-per-kind or digest in this wave.
 
 ### Storage + fan-out
 
@@ -115,21 +89,56 @@ Portfolio copy (RU) may mirror this section; keep it aligned with **Progress** b
     - Global inbox with optional Project filter.
     - Search `q` by Task key/title (and show kind-specific context).
     - Pagination via query params (`limit` + `offset`).
-- Kind-specific context copy must cover all Watcher + always-on kinds above.
+- Kind-specific context copy must cover all Watcher + always-on kinds above (including `comment`, `title_change`, `description_change`, `labels_change`, `estimate_change`, `sprint_change`).
+- Task drawer **Watchers** list: eligible Roles add/remove others (Member picker = Team Members who can view the Task); Viewer keeps self toggle only.
 
 ### Realtime
 
 - Subscribe (Realtime) to `notifications` changes for the current user (`recipient_id = auth.uid()`), primarily to refresh unread badge + drawer contents.
 
-### Implementation plan (structural expansion)
+### Implementation plan (structural expansion → Jira-like Watch)
 
-1. **Schema + RPC primitives** — widen `notifications.kind`; Watcher fan-out by kind; Author always-on helper; auto-Unwatch when neither Author nor Assignee; prefer one round-trip that can insert multiple kinds for one Task save. ✅ (#35)
+1. **Schema + RPC primitives** — widen `notifications.kind`; Watcher fan-out by kind; Author always-on helper; prefer one round-trip that can insert multiple kinds for one Task save. ✅ (#35) _(auto-Unwatch on stake loss was later removed — ADR 0028)_
 2. **Priority** — fan-out on Priority change to Watchers; inbox formatting + i18n. ✅ (#36)
 3. **Board move** — fan-out `board_move` (coalesce status); stop double `status_change` on cross-Board moves; inbox formatting + i18n. ✅ (#37)
-4. **Assignee** — Watchers get set/reassign; keep always-on to new Assignee with dedupe; always-on `assignee_change` to previous Assignee on reassign; auto-Unwatch previous when no remaining stake. ✅ (#38)
-5. **Author** — always-on to new Author + Watchers; auto-enroll Watch on new Author; auto-Unwatch previous when no remaining stake; inbox formatting + i18n. ✅ (#39)
+4. **Assignee** — Watchers get set/reassign; keep always-on to new Assignee with dedupe; always-on `assignee_change` to previous Assignee on reassign. ✅ (#38) _(clear Assignee + sticky Watch: #242 / ADR 0028)_
+5. **Author** — always-on to new Author + Watchers; auto-enroll Watch on new Author; inbox formatting + i18n. ✅ (#39) _(sticky Watch: #241 / ADR 0028)_
+6. **Jira-like broaden** — widen kinds (`comment`, `title_change`, `description_change`, `labels_change`, `estimate_change`, `sprint_change`); Assignee clear always-on + Watchers; Mention/`comment`/`description_change` dedupe. ✅ (#243, #245–#247 / ADR 0027)
+7. **Sticky Watch** — remove auto-Unwatch on Author/Assignee stake loss; re-enroll only on role set again or Comment create. ✅ (#241 / ADR 0028)
+8. **Manage Watchers + Comment enroll** — Role-gated add/remove others; Comment-create auto-enroll; Guest parity for kinds/enroll. ✅ (#244, #248, #249 / ADR 0029)
+9. **SPEC + Progress** — align Notifications section with ADRs 0027–0029 and Awareness glossary. ✅ (#250)
 
 MVP baseline (already shipped): `task_watchers`, status + assignment RPCs, app + webhook fan-out paths, bell + `/notifications`, Watchers list.
+
+## Mentions (Description + Comment)
+
+> Domain glossary: `CONTEXT.md` (Mention, Mentionee, Notification, Watch). Decision: `docs/adr/0014-mentions-always-on-structured.md`.
+
+### Model
+
+- **Mention** is a structured rich-text reference to a single Team Owner or Member (including Viewer), keyed by user id — inside Task **Description** or **Comment**.
+- Free-text `@Name` without a structured node is **not** a Mention. Group Mentions (`@everyone`, whole Roles) are out of scope.
+- **Always-on Notification** kind `mention` to each newly added Mentionee on create/edit (diff vs previous body). Unchanged Mentionees are not re-notified. Same Mentionee twice in one save → one row. Actor (including self-Mention) is never notified.
+- Does **not** auto-enroll Watch. Plain Comment **create** is a Watcher kind (`comment`); Mentionees on that Comment receive `mention` only (no separate `comment` for them).
+- Mentionee who left the Team: body may keep a stale Mention for display; further edits must **not** notify until they are Owner/Member again; existing inbox rows are not purged.
+- Opening a `mention` Notification opens the Task; Comment Mentions also target that Comment (`commentId` in metadata). Metadata includes `source: "description" | "comment"`, actor, and optional `commentId`.
+
+### Fan-out
+
+- App extracts Mentionee ids from the saved body, computes new-only vs previous body, calls an RPC.
+- RPC validates each Mentionee is a current Team Owner or Member, excludes the actor, inserts fan-out rows. No Postgres HTML-parse trigger.
+
+### UI
+
+- `@` suggestion picker in Description and Comment editors: current Team Owner + Members only.
+- Stale Mentions render without resolving to a current Member (label snapshot / unknown).
+- Inbox + bell: kind-specific copy for `mention`; search expansion includes mention terms (en/ru) like other kinds.
+
+### Implementation plan
+
+1. **Schema + RPC** — widen `notifications.kind` with `mention`; RPC for always-on mention fan-out (validate membership, exclude actor, accept mentionee id set + source metadata). (#41) ✅
+2. **Editor + extract** — TipTap Mention node + `@` picker; pure helpers to extract Mentionee ids and compute new-only delta; wire Description + Comment save → RPC. (#42) ✅
+3. **Inbox + deep link** — format/i18n/search for `mention`; open Task from Notification; Comment Mentions scroll/highlight that Comment. (#43) ✅
 
 ## Custom text fields (Project-scoped)
 
@@ -199,7 +208,7 @@ Project was the collaboration boundary. Owner = `projects.owner_id`. Members: Ad
 | Sprint KPI / velocity dashboards     | Shipped (wave 3.5): Backlog Insights — Velocity Bar (committed vs completed per Closed) + Commitment accuracy Ring over last N; client-side; no reporting export.                                                                          |
 | In-app Approve / request review      | Open PR + Merge + Close + Approve shipped (ADR 0022). Request-review remains parked.                                                                                                                                                       |
 | Group Mentions (`@everyone` / Roles) | Mentions MVP is single-user only (ADR 0014).                                                                                                                                                                                               |
-| Comment events without Mention       | Plain Comments stay out of Notifications; only Mentions fan out.                                                                                                                                                                           |
+| Comment events without Mention       | Shipped with Jira-like Watch (#245 / ADR 0027): Comment **create** notifies Watchers (`comment`); Mentionees get `mention` only. Comment **edit** stays silent.                                                                            |
 | Custom field types beyond text       | Text MVP is Project-scoped + Task-type filtered (ADR 0024). Number / select / date, required, filters, Kanban chips, user-defined Task types — pull separately.                                                                            |
 
 ### Ideas to revisit (Command Palette)
