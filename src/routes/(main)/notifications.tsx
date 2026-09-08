@@ -181,6 +181,7 @@ function NotificationsPage() {
             <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                     className="sm:max-w-sm"
+                    data-testid="notifications-search"
                     onChange={(event) => setQDraft(event.target.value)}
                     onKeyDown={(event) => {
                         if (event.key === "Enter") {

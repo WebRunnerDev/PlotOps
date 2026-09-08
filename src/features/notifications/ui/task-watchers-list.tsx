@@ -96,7 +96,10 @@ export function TaskWatchersList(properties: {
         isLoading;
 
     return (
-        <section className="flex items-center justify-between gap-3 pt-1">
+        <section
+            className="flex items-center justify-between gap-3 pt-1"
+            data-testid="task-watchers"
+        >
             <div className="min-w-0">
                 <Label className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                     {t("watchers.title")}
@@ -135,6 +138,7 @@ export function TaskWatchersList(properties: {
                             render={
                                 <Button
                                     aria-label={t("watchers.manage")}
+                                    data-testid="task-watchers-manage"
                                     disabled={busy}
                                     size="sm"
                                     type="button"
@@ -179,6 +183,8 @@ export function TaskWatchersList(properties: {
                 ) : null}
 
                 <Button
+                    data-testid="task-watch-toggle"
+                    data-watching={isWatching ? "true" : "false"}
                     disabled={busy}
                     onClick={() => {
                         void toggleWatch.mutateAsync(isWatching).catch(() => {
