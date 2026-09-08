@@ -32,6 +32,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:e2e": "playwright test",
+        "test:e2e:auth": "E2E_AUTH=1 playwright test e2e/auth-*.spec.ts --project=chromium",
         "test:e2e:dev": "E2E_USE_DEV=true playwright test",
         "test:e2e:install": "playwright install --with-deps chromium firefox webkit",
         "test:e2e:ui": "playwright test --ui",
