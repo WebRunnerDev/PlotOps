@@ -243,6 +243,8 @@ function ManageWatchersPanel({
                                     name: watcher.name,
                                 })}
                                 className="size-7 shrink-0"
+                                data-testid="task-watcher-remove"
+                                data-user-id={watcher.userId}
                                 disabled={busy}
                                 onClick={() => onRemove(watcher.userId)}
                                 size="icon"
@@ -281,6 +283,7 @@ function ManageWatchersPanel({
                 >
                     <ComboboxInput
                         className="w-full rounded-none font-mono text-code"
+                        data-testid="task-watchers-add"
                         disabled={busy || candidates.length === 0}
                         id="add-watcher"
                         placeholder={t("watchers.addPlaceholder")}
