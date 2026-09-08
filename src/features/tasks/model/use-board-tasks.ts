@@ -40,6 +40,7 @@ import { planDeadlineWatcherNotification } from "@/features/notifications/lib/pl
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { planSubtaskChangeNotification } from "@/features/notifications/lib/plan-subtask-change-notification";
 import { planTitleWatcherNotification } from "@/features/notifications/lib/plan-title-watcher-notification";
+import { notificationsKeys } from "@/features/notifications/model/query-keys";
 import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -387,8 +388,21 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             toast.error("Failed to update task");
         },
-        onSettled: () => {
+        onSettled: (_data, _error, variables) => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            // Stake enroll (ADR 0028) mutates task_watchers / Guest sandbox —
+            // refresh Watchers UI when Author/Assignee changes.
+            if (
+                variables.details.assignee !== undefined ||
+                variables.details.author !== undefined
+            ) {
+                void queryClient.invalidateQueries({
+                    queryKey: notificationsKeys.taskWatchers({
+                        projectId,
+                        taskId: variables.id,
+                    }),
+                });
+            }
         },
     });
 
