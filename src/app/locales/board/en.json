@@ -136,6 +136,11 @@
         "empty": "No watchers yet",
         "watch": "Watch",
         "unwatch": "Unwatch",
+        "manage": "Manage",
+        "add": "Add watcher",
+        "addPlaceholder": "Find a team member…",
+        "addEmpty": "No members to add",
+        "remove": "Remove {{name}}",
         "updateFailed": "Could not update watch",
         "loadFailed": "Could not load watchers",
         "retry": "Retry"
