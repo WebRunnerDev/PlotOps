@@ -30,7 +30,8 @@ test.describe("Auth Mentionee dedupe + Comment Watcher", () => {
         browser,
     }) => {
         test.skip(!isAuthE2EEnabled(), authE2ESkipReason());
-        test.setTimeout(360_000);
+        // Fail-fast inbox asserts; sequential Turnstile ×3 is the long pole.
+        test.setTimeout(180_000);
 
         const trio = await createAuthBrowserTrio(browser);
         const mentionee = AUTH_E2E_USERS.b;
@@ -86,7 +87,8 @@ test.describe("Auth Mentionee dedupe + Comment Watcher", () => {
         browser,
     }) => {
         test.skip(!isAuthE2EEnabled(), authE2ESkipReason());
-        test.setTimeout(360_000);
+        // Fail-fast inbox asserts; sequential Turnstile ×3 is the long pole.
+        test.setTimeout(180_000);
 
         const trio = await createAuthBrowserTrio(browser);
         const mentionee = AUTH_E2E_USERS.b;

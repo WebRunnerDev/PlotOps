@@ -225,17 +225,50 @@ export async function expectNoNotificationCopy(
     await expect(preview.getByText(copy)).toHaveCount(0);
 }
 
-/** Assert preview eventually shows `copy` (Realtime / refetch). */
+/**
+ * Assert preview eventually shows `copy`.
+ * Reopens (and once reloads) so drawer `staleTime` / Realtime races do not
+ * leave an empty preview while Postgres already has the row — and fail in
+ * ~25s instead of sitting on a single 45s expect.
+ */
 export async function expectNotificationCopy(
     page: Page,
     copy: RegExp | string
 ): Promise<Locator> {
-    const preview = await openAuthNotificationsBell(page);
-    // `.first()` tolerates leftover rows from prior Auth e2e runs on local DB.
-    await expect(preview.getByText(copy).first()).toBeVisible({
-        timeout: 45_000,
-    });
-    return preview;
+    const deadline = Date.now() + 25_000;
+    let attempt = 0;
+    let lastError: unknown;
+
+    while (Date.now() < deadline) {
+        attempt += 1;
+        const previewOpen = page.getByTestId("notifications-preview");
+        if (await previewOpen.isVisible().catch(() => false)) {
+            await page.keyboard.press("Escape");
+            await expect(previewOpen)
+                .toBeHidden({ timeout: 3000 })
+                .catch(() => {});
+        }
+
+        if (attempt === 3) {
+            await page.reload({ waitUntil: "domcontentloaded" });
+            await expect(page.getByTestId("notifications-bell")).toBeVisible({
+                timeout: 30_000,
+            });
+        }
+
+        const preview = await openAuthNotificationsBell(page);
+        const match = preview.getByText(copy).first();
+        try {
+            await expect(match).toBeVisible({ timeout: 8000 });
+            return preview;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError instanceof Error
+        ? lastError
+        : new Error(`Notification copy not visible: ${String(copy)}`);
 }
 
 /**
@@ -292,10 +325,16 @@ export function manageWatchersButton(page: Page) {
 
 /** Open the notifications bell preview drawer. */
 export async function openAuthNotificationsBell(page: Page): Promise<Locator> {
+    const preview = page.getByTestId("notifications-preview");
+    // Already open (e.g. second expectNoNotificationCopy on the same page) —
+    // clicking the bell again is blocked by the drawer portal and retries forever.
+    if (await preview.isVisible().catch(() => false)) {
+        return preview;
+    }
+
     const bell = page.getByTestId("notifications-bell");
     await expect(bell).toBeVisible({ timeout: 30_000 });
     await bell.click();
-    const preview = page.getByTestId("notifications-preview");
     await expect(preview).toBeVisible({ timeout: 15_000 });
     return preview;
 }
@@ -497,14 +536,26 @@ export async function setSelfWatch(
     watching: boolean
 ): Promise<void> {
     const toggle = page.getByTestId("task-watch-toggle");
-    await expect(toggle).toBeVisible();
+    await expect(toggle).toBeVisible({ timeout: 15_000 });
+    // Wait for watchers query to settle — early reads of data-watching during
+    // loading are always "false" and a premature click is ignored while busy.
+    await expect(toggle).toBeEnabled({ timeout: 15_000 });
 
     const desired = watching ? "true" : "false";
     if ((await toggle.getAttribute("data-watching")) === desired) {
         return;
     }
 
+    const write = page.waitForResponse(
+        (response) => {
+            if (!response.ok()) return false;
+            if (response.request().method() === "GET") return false;
+            return /\/rest\/v1\/task_watchers/i.test(response.url());
+        },
+        { timeout: 15_000 }
+    );
     await toggle.click();
+    await write;
     await expect(toggle).toHaveAttribute("data-watching", desired, {
         timeout: 15_000,
     });
