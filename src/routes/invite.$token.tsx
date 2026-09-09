@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { AppShellSeo } from "@/features/app-shell/ui/app-shell-seo";
 import { useAuth } from "@/features/auth";
 import {
     acceptInviteByToken,
@@ -120,166 +121,180 @@ function InviteAcceptPage() {
         safeSetItem("sessionStorage", "plotops_pending_invite", token);
     };
 
-    if (authLoading || (user && isLoadingInvite)) {
-        return (
-            <div className="flex min-h-[50vh] w-full min-w-0 items-center justify-center px-4">
-                <Spinner className="size-8 text-primary" />
-            </div>
-        );
-    }
+    const content = (() => {
+        if (authLoading || (user && isLoadingInvite)) {
+            return (
+                <div className="flex min-h-[50vh] w-full min-w-0 items-center justify-center px-4">
+                    <Spinner className="size-8 text-primary" />
+                </div>
+            );
+        }
 
-    if (!user) {
+        if (!user) {
+            return (
+                <PublicPageShell>
+                    <header className="flex min-w-0 flex-col gap-1 break-words">
+                        <p className="text-meta text-muted-foreground">
+                            {t("invite.eyebrow")}
+                        </p>
+                        <h1 className="text-h1">{t("invite.signInTitle")}</h1>
+                        <p className="text-ui text-muted-foreground">
+                            {t("invite.createAccountFirst")}
+                        </p>
+                    </header>
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            className="w-full"
+                            nativeButton={false}
+                            onClick={goSignUp}
+                            render={<Link to="/sign-up" />}
+                            size="lg"
+                        >
+                            {t("invite.createAccount")}
+                        </Button>
+                        <Button
+                            className="w-full"
+                            nativeButton={false}
+                            onClick={goSignIn}
+                            render={<Link to="/sign-in" />}
+                            size="lg"
+                            variant="outline"
+                        >
+                            {t("invite.signIn")}
+                        </Button>
+                    </div>
+                </PublicPageShell>
+            );
+        }
+
+        if (loadError || !invite) {
+            return (
+                <PublicPageShell className="gap-4">
+                    <Alert variant="destructive">
+                        <AlertDescription>
+                            {t("invite.notFound")}
+                        </AlertDescription>
+                    </Alert>
+                    <Button
+                        className="w-full"
+                        nativeButton={false}
+                        render={<Link to="/home" />}
+                        size="lg"
+                    >
+                        {t("invite.goHome")}
+                    </Button>
+                </PublicPageShell>
+            );
+        }
+
         return (
             <PublicPageShell>
                 <header className="flex min-w-0 flex-col gap-1 break-words">
                     <p className="text-meta text-muted-foreground">
                         {t("invite.eyebrow")}
                     </p>
-                    <h1 className="text-h1">{t("invite.signInTitle")}</h1>
+                    <h1 className="text-h1">{invite.team_name}</h1>
                     <p className="text-ui text-muted-foreground">
-                        {t("invite.createAccountFirst")}
+                        {t("invite.asRole", {
+                            role: t(`members.roles.${invite.role}`),
+                        })}
                     </p>
                 </header>
-                <div className="flex flex-col gap-3">
-                    <Button
-                        className="w-full"
-                        nativeButton={false}
-                        onClick={goSignUp}
-                        render={<Link to="/sign-up" />}
-                        size="lg"
-                    >
-                        {t("invite.createAccount")}
-                    </Button>
-                    <Button
-                        className="w-full"
-                        nativeButton={false}
-                        onClick={goSignIn}
-                        render={<Link to="/sign-in" />}
-                        size="lg"
-                        variant="outline"
-                    >
-                        {t("invite.signIn")}
-                    </Button>
-                </div>
-            </PublicPageShell>
-        );
-    }
 
-    if (loadError || !invite) {
-        return (
-            <PublicPageShell className="gap-4">
-                <Alert variant="destructive">
-                    <AlertDescription>{t("invite.notFound")}</AlertDescription>
-                </Alert>
-                <Button
-                    className="w-full"
-                    nativeButton={false}
-                    render={<Link to="/home" />}
-                    size="lg"
-                >
-                    {t("invite.goHome")}
-                </Button>
-            </PublicPageShell>
-        );
-    }
-
-    return (
-        <PublicPageShell>
-            <header className="flex min-w-0 flex-col gap-1 break-words">
-                <p className="text-meta text-muted-foreground">
-                    {t("invite.eyebrow")}
-                </p>
-                <h1 className="text-h1">{invite.team_name}</h1>
-                <p className="text-ui text-muted-foreground">
-                    {t("invite.asRole", {
-                        role: t(`members.roles.${invite.role}`),
-                    })}
-                </p>
-            </header>
-
-            <div className="min-w-0 break-words border border-border p-4 text-ui">
-                <p>
-                    {invite.kind === "open"
-                        ? t("invite.openDescription")
-                        : invite.email_matches
-                          ? t("invite.forYourEmail", {
-                                email: user.email ?? t("members.unknownUser"),
-                            })
-                          : t("invite.forOtherEmail")}
-                </p>
-                {invite.expires_at ? (
-                    <p className="mt-1 text-muted-foreground">
-                        {t("invite.expires", {
-                            date: new Date(invite.expires_at).toLocaleString(),
-                        })}
+                <div className="min-w-0 break-words border border-border p-4 text-ui">
+                    <p>
+                        {invite.kind === "open"
+                            ? t("invite.openDescription")
+                            : invite.email_matches
+                              ? t("invite.forYourEmail", {
+                                    email:
+                                        user.email ?? t("members.unknownUser"),
+                                })
+                              : t("invite.forOtherEmail")}
                     </p>
-                ) : (
-                    <p className="mt-1 text-muted-foreground">
-                        {t("invite.noExpiry")}
-                    </p>
-                )}
-            </div>
-
-            {invite.status === "pending" ? undefined : (
-                <Alert>
-                    <AlertDescription>
-                        {t(`invite.status.${invite.status}`)}
-                    </AlertDescription>
-                </Alert>
-            )}
-
-            {invite.status === "pending" ? (
-                <div className="flex flex-col gap-3">
-                    <p className="text-ui text-muted-foreground">
-                        {t("invite.signedInAs", {
-                            email: user.email ?? t("members.unknownUser"),
-                        })}
-                    </p>
-                    {invite.kind === "open" || invite.email_matches ? (
-                        <Button
-                            className="w-full"
-                            disabled={isActing}
-                            onClick={() => void onAccept()}
-                            size="lg"
-                            type="button"
-                        >
-                            {isActing ? (
-                                <Spinner className="size-4" />
-                            ) : undefined}
-                            {t("invite.accept")}
-                        </Button>
-                    ) : invite.is_claimed ? (
-                        <Alert>
-                            <AlertDescription>
-                                {invite.claimed_by_me
-                                    ? t("invite.claimWaitingSelf")
-                                    : t("invite.claimWaitingOther")}
-                            </AlertDescription>
-                        </Alert>
+                    {invite.expires_at ? (
+                        <p className="mt-1 text-muted-foreground">
+                            {t("invite.expires", {
+                                date: new Date(
+                                    invite.expires_at
+                                ).toLocaleString(),
+                            })}
+                        </p>
                     ) : (
-                        <>
-                            <Alert>
-                                <AlertDescription>
-                                    {t("invite.emailMismatch")}
-                                </AlertDescription>
-                            </Alert>
+                        <p className="mt-1 text-muted-foreground">
+                            {t("invite.noExpiry")}
+                        </p>
+                    )}
+                </div>
+
+                {invite.status === "pending" ? undefined : (
+                    <Alert>
+                        <AlertDescription>
+                            {t(`invite.status.${invite.status}`)}
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {invite.status === "pending" ? (
+                    <div className="flex flex-col gap-3">
+                        <p className="text-ui text-muted-foreground">
+                            {t("invite.signedInAs", {
+                                email: user.email ?? t("members.unknownUser"),
+                            })}
+                        </p>
+                        {invite.kind === "open" || invite.email_matches ? (
                             <Button
                                 className="w-full"
                                 disabled={isActing}
-                                onClick={() => void onClaim()}
+                                onClick={() => void onAccept()}
                                 size="lg"
                                 type="button"
-                                variant="outline"
                             >
                                 {isActing ? (
                                     <Spinner className="size-4" />
                                 ) : undefined}
-                                {t("invite.claim")}
+                                {t("invite.accept")}
                             </Button>
-                        </>
-                    )}
-                </div>
-            ) : undefined}
-        </PublicPageShell>
+                        ) : invite.is_claimed ? (
+                            <Alert>
+                                <AlertDescription>
+                                    {invite.claimed_by_me
+                                        ? t("invite.claimWaitingSelf")
+                                        : t("invite.claimWaitingOther")}
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <>
+                                <Alert>
+                                    <AlertDescription>
+                                        {t("invite.emailMismatch")}
+                                    </AlertDescription>
+                                </Alert>
+                                <Button
+                                    className="w-full"
+                                    disabled={isActing}
+                                    onClick={() => void onClaim()}
+                                    size="lg"
+                                    type="button"
+                                    variant="outline"
+                                >
+                                    {isActing ? (
+                                        <Spinner className="size-4" />
+                                    ) : undefined}
+                                    {t("invite.claim")}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                ) : undefined}
+            </PublicPageShell>
+        );
+    })();
+
+    return (
+        <>
+            <AppShellSeo />
+            {content}
+        </>
     );
 }

@@ -17,6 +17,14 @@
     "email": "Email",
     "emailPlaceholder": "you@example.com",
     "boot": {
+        "eyebrow": "session.boot",
+        "loading": "restoring session",
+        "loadingAria": "PlotOps is restoring your session",
+        "loadingPhases": [
+            "restoring session",
+            "hydrating workspace",
+            "opening board"
+        ],
         "oauthFailed": "Google or GitHub sign-in failed. Try again or use email.",
         "retry": "Retry",
         "title": "Could not restore your session. Check your connection and try again."

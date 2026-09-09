@@ -22,10 +22,13 @@ export type GuestActivityEvent = {
 export type GuestBoard = {
     allowedHeadPatterns: string[];
     autoAssignToCreator?: boolean;
-    baseBranch: string;
+    /** PR merge target; required when isDevelopment. */
+    baseBranch: null | string;
     columns: GuestBoardColumn[];
     defaultTaskType: "bug" | "feature" | "task";
     id: string;
+    /** Git branch mapping (Base branch + Allowed head patterns). */
+    isDevelopment?: boolean;
     name: string;
     position: number;
     projectId: string;
@@ -127,6 +130,8 @@ export type GuestSandbox = {
     sprints: GuestSprint[];
     taskLinks: GuestTaskLink[];
     tasks: GuestTask[];
+    /** Sticky Watch rows (ADR 0028); optional on older stored sessions. */
+    taskWatchers?: GuestTaskWatch[];
     teams: GuestTeam[];
 };
 
@@ -183,6 +188,11 @@ export type GuestTaskLink = {
     kind: "blocks" | "relates_to";
     sourceTaskId: string;
     targetTaskId: string;
+};
+
+export type GuestTaskWatch = {
+    taskId: string;
+    userId: string;
 };
 
 export type GuestTeam = {

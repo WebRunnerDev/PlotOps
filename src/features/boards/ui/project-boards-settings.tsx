@@ -87,6 +87,9 @@ export function ProjectBoardsSettings({
     const [deleteId, setDeleteId] = useState<null | string>(null);
     const [createOpen, setCreateOpen] = useState(false);
     const [newName, setNewName] = useState("");
+    const [newIsDevelopment, setNewIsDevelopment] = useState(
+        showGitBranchSettings
+    );
     const [newBaseBranch, setNewBaseBranch] = useState(defaultBaseBranch);
     const [expandedId, setExpandedId] = useState<null | string>(null);
 
@@ -107,17 +110,20 @@ export function ProjectBoardsSettings({
 
     const openCreate = () => {
         setNewName("");
+        setNewIsDevelopment(showGitBranchSettings);
         setNewBaseBranch(defaultBaseBranch);
         setCreateOpen(true);
     };
 
     const handleCreate = async () => {
-        await createBoard(
-            newName.trim() || t("boards.defaultNewName"),
-            newBaseBranch.trim() || defaultBaseBranch || "main"
-        );
+        const isDevelopment = showGitBranchSettings && newIsDevelopment;
+        await createBoard(newName.trim() || t("boards.defaultNewName"), {
+            baseBranch: isDevelopment ? newBaseBranch.trim() : undefined,
+            isDevelopment,
+        });
         setCreateOpen(false);
         setNewName("");
+        setNewIsDevelopment(showGitBranchSettings);
         setNewBaseBranch(defaultBaseBranch);
         toast.success(t("boards.created"));
     };
@@ -172,8 +178,9 @@ export function ProjectBoardsSettings({
                             initialAutoAssignToCreator={
                                 board.autoAssignToCreator
                             }
-                            initialBase={board.baseBranch}
+                            initialBase={board.baseBranch ?? ""}
                             initialDefaultTaskType={board.defaultTaskType}
+                            initialIsDevelopment={board.isDevelopment}
                             initialName={board.name}
                             isSaving={isUpdating}
                             key={board.id}
@@ -215,20 +222,52 @@ export function ProjectBoardsSettings({
                             />
                         </div>
                         {showGitBranchSettings ? (
-                            <div className="flex flex-col gap-1.5">
-                                <Label htmlFor="settings-board-base">
-                                    {t("boards.baseBranch")}
-                                </Label>
-                                <Input
-                                    className="font-mono text-sm"
-                                    id="settings-board-base"
-                                    onChange={(event) =>
-                                        setNewBaseBranch(event.target.value)
-                                    }
-                                    placeholder="main"
-                                    value={newBaseBranch}
-                                />
-                            </div>
+                            <>
+                                <div className="flex items-start gap-3">
+                                    <Checkbox
+                                        checked={newIsDevelopment}
+                                        className="mt-0.5"
+                                        id="settings-board-is-dev"
+                                        onCheckedChange={(checked) => {
+                                            setNewIsDevelopment(
+                                                checked === true
+                                            );
+                                        }}
+                                    />
+                                    <div className="flex min-w-0 flex-col gap-1">
+                                        <Label
+                                            className="cursor-pointer"
+                                            htmlFor="settings-board-is-dev"
+                                        >
+                                            {t("boards.isDevelopment")}
+                                        </Label>
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.isDevelopmentHint")}
+                                        </p>
+                                    </div>
+                                </div>
+                                {newIsDevelopment ? (
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label htmlFor="settings-board-base">
+                                            {t("boards.baseBranch")}
+                                        </Label>
+                                        <Input
+                                            className="font-mono text-sm"
+                                            id="settings-board-base"
+                                            onChange={(event) =>
+                                                setNewBaseBranch(
+                                                    event.target.value
+                                                )
+                                            }
+                                            placeholder="main"
+                                            value={newBaseBranch}
+                                        />
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.baseBranchHint")}
+                                        </p>
+                                    </div>
+                                ) : undefined}
+                            </>
                         ) : undefined}
                     </div>
                     <DialogFooter>
@@ -239,7 +278,12 @@ export function ProjectBoardsSettings({
                             {t("boards.cancel")}
                         </Button>
                         <Button
-                            disabled={isCreating}
+                            disabled={
+                                isCreating ||
+                                (showGitBranchSettings &&
+                                    newIsDevelopment &&
+                                    !newBaseBranch.trim())
+                            }
                             onClick={() => void handleCreate()}
                             type="button"
                         >
@@ -330,6 +374,7 @@ function BoardSettingsCard({
     initialAutoAssignToCreator,
     initialBase,
     initialDefaultTaskType,
+    initialIsDevelopment,
     initialName,
     isSaving,
     onDelete,
@@ -345,6 +390,7 @@ function BoardSettingsCard({
     initialAutoAssignToCreator: boolean;
     initialBase: string;
     initialDefaultTaskType: BoardDefaultTaskType;
+    initialIsDevelopment: boolean;
     initialName: string;
     isSaving: boolean;
     onDelete: () => void;
@@ -352,8 +398,9 @@ function BoardSettingsCard({
     onSave: (patch: {
         allowed_head_patterns?: string[];
         auto_assign_to_creator?: boolean;
-        base_branch?: string;
+        base_branch?: null | string;
         default_task_type?: BoardDefaultTaskType;
+        is_development?: boolean;
         name?: string;
     }) => Promise<void>;
     showAutoAssignToCreator: boolean;
@@ -361,6 +408,7 @@ function BoardSettingsCard({
 }) {
     const { t } = useTranslation("board");
     const [name, setName] = useState(initialName);
+    const [isDevelopment, setIsDevelopment] = useState(initialIsDevelopment);
     const [baseBranch, setBaseBranch] = useState(initialBase);
     const [defaultTaskType, setDefaultTaskType] = useState(
         initialDefaultTaskType
@@ -372,6 +420,7 @@ function BoardSettingsCard({
 
     useEffect(() => {
         setName(initialName);
+        setIsDevelopment(initialIsDevelopment);
         setBaseBranch(initialBase);
         setDefaultTaskType(initialDefaultTaskType);
         setAutoAssignToCreator(initialAutoAssignToCreator);
@@ -381,16 +430,20 @@ function BoardSettingsCard({
         initialAutoAssignToCreator,
         initialBase,
         initialDefaultTaskType,
+        initialIsDevelopment,
         initialName,
     ]);
 
+    const showDevelopmentFields = showGitBranchSettings && isDevelopment;
+
     const dirty =
         name.trim() !== initialName ||
-        (showGitBranchSettings && baseBranch.trim() !== initialBase) ||
+        (showGitBranchSettings && isDevelopment !== initialIsDevelopment) ||
+        (showDevelopmentFields && baseBranch.trim() !== initialBase) ||
         defaultTaskType !== initialDefaultTaskType ||
         (showAutoAssignToCreator &&
             autoAssignToCreator !== initialAutoAssignToCreator) ||
-        (showGitBranchSettings &&
+        (showDevelopmentFields &&
             parseAllowedHeadPatterns(allowedRaw).join("\n") !==
                 parseAllowedHeadPatterns(initialAllowed).join("\n"));
 
@@ -428,7 +481,7 @@ function BoardSettingsCard({
                         >
                             {t(`taskType.${defaultTaskType}`)}
                         </Badge>
-                        {showGitBranchSettings ? (
+                        {showGitBranchSettings && isDevelopment ? (
                             <Badge
                                 className={cn(
                                     "shrink-0 rounded-sm px-1.5 font-mono text-[0.625rem]",
@@ -446,7 +499,7 @@ function BoardSettingsCard({
                             <div
                                 className={cn(
                                     "grid gap-3",
-                                    showGitBranchSettings && "sm:grid-cols-2"
+                                    showDevelopmentFields && "sm:grid-cols-2"
                                 )}
                             >
                                 <div className="flex flex-col gap-1.5">
@@ -461,7 +514,7 @@ function BoardSettingsCard({
                                         value={name}
                                     />
                                 </div>
-                                {showGitBranchSettings ? (
+                                {showDevelopmentFields ? (
                                     <div className="flex flex-col gap-1.5">
                                         <Label
                                             htmlFor={`board-base-${boardId}`}
@@ -484,6 +537,36 @@ function BoardSettingsCard({
                                     </div>
                                 ) : undefined}
                             </div>
+
+                            {showGitBranchSettings ? (
+                                <div className="flex items-start gap-3">
+                                    <Checkbox
+                                        checked={isDevelopment}
+                                        className="mt-0.5"
+                                        id={`board-is-dev-${boardId}`}
+                                        onCheckedChange={(checked) => {
+                                            const next = checked === true;
+                                            setIsDevelopment(next);
+                                            if (next && !baseBranch.trim()) {
+                                                setBaseBranch(
+                                                    initialBase || "main"
+                                                );
+                                            }
+                                        }}
+                                    />
+                                    <div className="flex min-w-0 flex-col gap-1">
+                                        <Label
+                                            className="cursor-pointer"
+                                            htmlFor={`board-is-dev-${boardId}`}
+                                        >
+                                            {t("boards.isDevelopment")}
+                                        </Label>
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.isDevelopmentHint")}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : undefined}
 
                             <div className="flex flex-col gap-1.5 sm:max-w-xs">
                                 <Label
@@ -554,7 +637,7 @@ function BoardSettingsCard({
                                 </div>
                             ) : undefined}
 
-                            {showGitBranchSettings ? (
+                            {showDevelopmentFields ? (
                                 <div className="flex flex-col gap-1.5">
                                     <Label
                                         htmlFor={`board-patterns-${boardId}`}
@@ -592,20 +675,25 @@ function BoardSettingsCard({
                                         !dirty ||
                                         isSaving ||
                                         !name.trim() ||
-                                        (showGitBranchSettings &&
+                                        (showDevelopmentFields &&
                                             !baseBranch.trim())
                                     }
                                     onClick={() =>
                                         void onSave({
                                             ...(showGitBranchSettings
-                                                ? {
-                                                      allowed_head_patterns:
-                                                          parseAllowedHeadPatterns(
-                                                              allowedRaw
-                                                          ),
-                                                      base_branch:
-                                                          baseBranch.trim(),
-                                                  }
+                                                ? isDevelopment
+                                                    ? {
+                                                          allowed_head_patterns:
+                                                              parseAllowedHeadPatterns(
+                                                                  allowedRaw
+                                                              ),
+                                                          base_branch:
+                                                              baseBranch.trim(),
+                                                          is_development: true,
+                                                      }
+                                                    : {
+                                                          is_development: false,
+                                                      }
                                                 : {}),
                                             ...(showAutoAssignToCreator
                                                 ? {

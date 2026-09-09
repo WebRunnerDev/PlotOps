@@ -87,7 +87,7 @@ function SettingsPage() {
         "drawer";
 
     return (
-        <div className="relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10">
+        <div className="relative flex min-w-0 flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10">
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 -top-8 h-72 bg-auth-atmosphere opacity-80 sm:-top-10 sm:h-96"

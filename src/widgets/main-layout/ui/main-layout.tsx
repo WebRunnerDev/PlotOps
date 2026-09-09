@@ -1,5 +1,6 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
+import { AppShellSeo } from "@/features/app-shell/ui/app-shell-seo";
 import { CommandPalette } from "@/features/command-palette";
 import { cn } from "@/shared/lib/utils";
 import { TopBar } from "@/widgets/top-bar";
@@ -12,7 +13,7 @@ export function MainLayoutWidget() {
 
 function MainLayoutContent() {
     // Use settled location — pending navigations update `location` immediately while
-    // home is still painted; flipping layout then strips max-w-5xl for ~1s (board fetch).
+    // home is still painted; flipping layout then strips max-w-6xl for ~1s (board fetch).
     const layoutMode = useRouterState({
         select: (state) => {
             const path =
@@ -42,6 +43,7 @@ function MainLayoutContent() {
                 layoutMode === "default" && "min-h-dvh"
             )}
         >
+            <AppShellSeo />
             <AuthSessionGuard />
             <TopBar />
             <CommandPalette />
@@ -54,7 +56,7 @@ function MainLayoutContent() {
                     <Outlet />
                 </div>
             ) : (
-                <div className="mx-auto w-full max-w-5xl p-4 [view-transition-name:main-content]">
+                <div className="mx-auto w-full max-w-6xl [view-transition-name:main-content]">
                     <Outlet />
                 </div>
             )}

@@ -10,9 +10,9 @@ type IdName = { id: string; name: string };
 
 /**
  * Call-site seam: Activity assignee diff → always-on assignment (new Assignee),
- * always-on `assignee_change` (previous Assignee on reassign), plus Watcher
- * `assignee_change`. Clear Assignee plans nothing. Actor exclusion and
- * always-on/Watcher dedupe happen in `create_task_notifications`.
+ * always-on `assignee_change` (previous Assignee on reassign or clear), plus
+ * Watcher `assignee_change`. Actor exclusion and always-on/Watcher dedupe
+ * happen in `create_task_notifications`.
  */
 export function planAssigneeChangeNotifications(
     activityChanges: ActivityChangeLike[]
@@ -20,10 +20,34 @@ export function planAssigneeChangeNotifications(
     const change = activityChanges.find((entry) => entry.field === "assignee");
     if (!change) return [];
 
-    const to = asIdName(change.to);
-    if (!to) return [];
-
     const previousAssignee = asIdName(change.from) ?? null;
+    const to = asIdName(change.to);
+
+    if (!to) {
+        if (!previousAssignee) return [];
+
+        const clearMetadata = {
+            assignee: null,
+            previousAssignee,
+            source: "app" as const,
+        };
+
+        return [
+            {
+                kind: "assignee_change",
+                metadata: {
+                    ...clearMetadata,
+                    audience: "previous_assignee" as const,
+                },
+                recipientId: previousAssignee.id,
+            },
+            {
+                kind: "assignee_change",
+                metadata: clearMetadata,
+            },
+        ];
+    }
+
     const metadata = {
         assignee: to,
         previousAssignee,

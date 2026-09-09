@@ -308,28 +308,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            if (!isOAuthCallback) return;
-
+            // Always confirm via getSession: INITIAL_SESSION may arrive with
+            // null while localStorage still has a live token (Vite + prod).
+            // Finishing as logged-out then paints sign-in before SIGNED_IN.
             const {
                 data: { session: recoveredSession },
             } = await supabase.auth.getSession();
-            if (!mounted || bootFinished || !recoveredSession?.user) return;
+            if (!mounted || bootFinished) return;
 
-            const eventGeneration = authEventGate.begin();
-            try {
-                await applyValidatedBootSession(
-                    recoveredSession,
-                    eventGeneration
-                );
-            } catch {
-                if (!mounted) return;
-                if (!authEventGate.isCurrent(eventGeneration)) return;
-                clearGitHubAccessToken();
-                setSession(null);
-                applySessionUser(null);
-                setProfile(null);
-                finishBoot({ error: true, reason: "oauth" });
+            if (recoveredSession?.user) {
+                const eventGeneration = authEventGate.begin();
+                try {
+                    await applyValidatedBootSession(
+                        recoveredSession,
+                        eventGeneration
+                    );
+                } catch {
+                    if (!mounted) return;
+                    if (!authEventGate.isCurrent(eventGeneration)) return;
+                    clearGitHubAccessToken();
+                    setSession(null);
+                    applySessionUser(null);
+                    setProfile(null);
+                    finishBoot({
+                        error: true,
+                        reason: isOAuthCallback ? "oauth" : "session",
+                    });
+                }
+                return;
             }
+
+            if (isOAuthCallback) {
+                // PKCE exchange still running — wait for SIGNED_IN / timeout.
+                return;
+            }
+
+            finishBoot();
         })();
 
         return () => {

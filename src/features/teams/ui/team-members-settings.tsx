@@ -1,4 +1,4 @@
-import { Copy, Link2, Search, UserPlus } from "lucide-react";
+import { Copy, Link2, Mail, Search, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
+import { ButtonGroup } from "@/shared/shadcn/ui/button-group";
 import { Input } from "@/shared/shadcn/ui/input";
 import { Label } from "@/shared/shadcn/ui/label";
 import {
@@ -49,6 +50,8 @@ import {
     SelectValue,
 } from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
+
+type InviteMode = "email" | "open";
 
 type TeamMembersSettingsProperties = {
     teamId: string;
@@ -85,6 +88,7 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
     const removeMember = useRemoveTeamMember(teamId);
     const transferOwnership = useTransferTeamOwnership(teamId);
 
+    const [inviteMode, setInviteMode] = useState<InviteMode>("email");
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<ProjectMemberRole>("contributor");
     const [ttl, setTtl] = useState<InviteTtlValue>("7");
@@ -165,51 +169,63 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
         return null;
     }
 
-    const copyInviteLink = async (token: string) => {
+    const copyInviteLink = async (
+        token: string,
+        options?: { silent?: boolean }
+    ) => {
         try {
             await navigator.clipboard.writeText(inviteUrl(token));
-            toast.success(t("members.linkCopied"));
+            if (!options?.silent) {
+                toast.success(t("members.linkCopied"));
+            }
+            return true;
         } catch {
-            toast.error(t("members.copyFailed"));
+            if (!options?.silent) {
+                toast.error(t("members.copyFailed"));
+            }
+            return false;
         }
     };
 
     const onCreateInvite = async () => {
         if (!canCreateInvite) return;
-        const trimmed = email.trim();
-        if (!trimmed) return;
+        if (inviteMode === "email" && !email.trim()) return;
         try {
-            const invite = await createInvite.mutateAsync({
-                email: trimmed,
-                kind: "email",
-                role,
-                ttl,
-            });
+            const invite =
+                inviteMode === "email"
+                    ? await createInvite.mutateAsync({
+                          email: email.trim(),
+                          kind: "email",
+                          role,
+                          ttl,
+                      })
+                    : await createInvite.mutateAsync({
+                          kind: "open",
+                          role,
+                          ttl,
+                      });
+
             if (!invite) throw new Error("Invite create returned empty");
-            setEmail("");
+
+            if (inviteMode === "email") setEmail("");
             setLastInviteToken(invite.token);
-            await copyInviteLink(invite.token);
-            toast.success(t("members.inviteCreated"));
+            const copied = await copyInviteLink(invite.token, {
+                silent: true,
+            });
+            toast.success(
+                inviteMode === "email"
+                    ? t("members.inviteCreated")
+                    : t("members.openInviteCreated")
+            );
+            if (!copied) toast.error(t("members.copyFailed"));
         } catch {
             toast.error(t("members.inviteFailed"));
         }
     };
 
-    const onCreateOpenInvite = async () => {
-        if (!canCreateInvite) return;
-        try {
-            const invite = await createInvite.mutateAsync({
-                kind: "open",
-                role,
-                ttl,
-            });
-            if (!invite) throw new Error("Invite create returned empty");
-            setLastInviteToken(invite.token);
-            await copyInviteLink(invite.token);
-            toast.success(t("members.openInviteCreated"));
-        } catch {
-            toast.error(t("members.inviteFailed"));
-        }
+    const setMode = (mode: InviteMode) => {
+        setInviteMode(mode);
+        setLastInviteToken(null);
     };
 
     return (
@@ -663,28 +679,65 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                         {t("members.inviteTitle")}
                                     </h3>
                                 </div>
+                                <ButtonGroup
+                                    aria-label={t("members.inviteTitle")}
+                                    className="w-full sm:w-fit"
+                                >
+                                    <Button
+                                        aria-pressed={inviteMode === "email"}
+                                        className="min-w-0 flex-1 sm:flex-none"
+                                        onClick={() => setMode("email")}
+                                        type="button"
+                                        variant={
+                                            inviteMode === "email"
+                                                ? "default"
+                                                : "outline"
+                                        }
+                                    >
+                                        <Mail data-icon="inline-start" />
+                                        {t("members.inviteModeEmail")}
+                                    </Button>
+                                    <Button
+                                        aria-pressed={inviteMode === "open"}
+                                        className="min-w-0 flex-1 sm:flex-none"
+                                        onClick={() => setMode("open")}
+                                        type="button"
+                                        variant={
+                                            inviteMode === "open"
+                                                ? "default"
+                                                : "outline"
+                                        }
+                                    >
+                                        <Link2 data-icon="inline-start" />
+                                        {t("members.inviteModeOpen")}
+                                    </Button>
+                                </ButtonGroup>
                                 <p className="max-w-prose text-ui text-muted-foreground">
-                                    {t("members.inviteHint")}
+                                    {inviteMode === "email"
+                                        ? t("members.inviteHintEmail")
+                                        : t("members.inviteHintOpen")}
                                 </p>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                                    <Label htmlFor="invite-email">
-                                        {t("members.email")}
-                                    </Label>
-                                    <Input
-                                        autoComplete="email"
-                                        id="invite-email"
-                                        onChange={(event) =>
-                                            setEmail(event.target.value)
-                                        }
-                                        placeholder={t(
-                                            "members.emailPlaceholder"
-                                        )}
-                                        type="email"
-                                        value={email}
-                                    />
-                                </div>
+                                {inviteMode === "email" ? (
+                                    <div className="flex flex-col gap-1.5 sm:col-span-2">
+                                        <Label htmlFor="invite-email">
+                                            {t("members.email")}
+                                        </Label>
+                                        <Input
+                                            autoComplete="email"
+                                            id="invite-email"
+                                            onChange={(event) =>
+                                                setEmail(event.target.value)
+                                            }
+                                            placeholder={t(
+                                                "members.emailPlaceholder"
+                                            )}
+                                            type="email"
+                                            value={email}
+                                        />
+                                    </div>
+                                ) : undefined}
                                 <div className="flex flex-col gap-1.5">
                                     <Label>{t("members.role")}</Label>
                                     <Select
@@ -752,45 +805,57 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                     </Select>
                                 </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-col gap-3">
                                 <Button
+                                    className="w-full sm:w-fit"
                                     disabled={
-                                        createInvite.isPending || !email.trim()
+                                        createInvite.isPending ||
+                                        (inviteMode === "email" &&
+                                            !email.trim())
                                     }
                                     onClick={() => void onCreateInvite()}
                                     type="button"
                                 >
                                     {createInvite.isPending ? (
                                         <Spinner className="size-4" />
+                                    ) : inviteMode === "email" ? (
+                                        <Mail data-icon="inline-start" />
                                     ) : (
                                         <Link2 data-icon="inline-start" />
                                     )}
-                                    {t("members.createInvite")}
-                                </Button>
-                                <Button
-                                    disabled={createInvite.isPending}
-                                    onClick={() => void onCreateOpenInvite()}
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    {createInvite.isPending ? (
-                                        <Spinner className="size-4" />
-                                    ) : (
-                                        <Link2 data-icon="inline-start" />
-                                    )}
-                                    {t("members.createOpenInvite")}
+                                    {inviteMode === "email"
+                                        ? t("members.createInvite")
+                                        : t("members.createOpenInvite")}
                                 </Button>
                                 {lastInviteToken ? (
-                                    <Button
-                                        onClick={() =>
-                                            void copyInviteLink(lastInviteToken)
-                                        }
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        <Copy data-icon="inline-start" />
-                                        {t("members.copyLink")}
-                                    </Button>
+                                    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border/70 bg-background/60 p-3">
+                                        <Label htmlFor="last-invite-url">
+                                            {t("members.lastInviteLabel")}
+                                        </Label>
+                                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                                            <Input
+                                                className="min-w-0 font-mono text-meta"
+                                                id="last-invite-url"
+                                                readOnly
+                                                value={inviteUrl(
+                                                    lastInviteToken
+                                                )}
+                                            />
+                                            <Button
+                                                className="shrink-0"
+                                                onClick={() =>
+                                                    void copyInviteLink(
+                                                        lastInviteToken
+                                                    )
+                                                }
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                <Copy data-icon="inline-start" />
+                                                {t("members.copyLink")}
+                                            </Button>
+                                        </div>
+                                    </div>
                                 ) : undefined}
                             </div>
                         </div>

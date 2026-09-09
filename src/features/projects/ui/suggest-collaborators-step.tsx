@@ -157,9 +157,6 @@ export function SuggestCollaboratorsStep({
     const [submitting, setSubmitting] = useState(false);
     const [openLinkCopied, setOpenLinkCopied] = useState(false);
 
-    const onDoneReference = useRef(onDone);
-    onDoneReference.current = onDone;
-
     useEffect(() => {
         mountedReference.current = true;
         return () => {
@@ -178,13 +175,6 @@ export function SuggestCollaboratorsStep({
         );
         setSelectionSeeded(true);
     }, [contextLoading, plan.suggestions, selectionSeeded]);
-
-    useEffect(() => {
-        if (contextLoading || error || !selectionSeeded) return;
-        if (plan.suggestions.length === 0) {
-            onDoneReference.current();
-        }
-    }, [contextLoading, error, plan.suggestions.length, selectionSeeded]);
 
     const toggleId = (id: number, checked: boolean) => {
         setSelectedIds((previous) => {
@@ -292,14 +282,39 @@ export function SuggestCollaboratorsStep({
         );
     }
 
-    if (plan.suggestions.length === 0) {
-        return null;
-    }
-
     const busy = submitting || createInvite.isPending;
 
+    if (plan.suggestions.length === 0) {
+        return (
+            <div className="flex flex-col">
+                <div className="flex flex-col gap-4 p-4">
+                    <p className="text-sm text-muted-foreground">
+                        {t("collaboratorSuggestEmptyDescription")}
+                    </p>
+                    <Button
+                        disabled={busy || openLinkCopied}
+                        onClick={() => {
+                            void copyOpenInviteLink();
+                        }}
+                        type="button"
+                        variant="outline"
+                    >
+                        {openLinkCopied
+                            ? t("collaboratorSuggestOpenLinkCopied")
+                            : t("collaboratorSuggestCopyOpenLink")}
+                    </Button>
+                </div>
+                <DialogFooter className="mx-0 mb-0 sm:justify-end">
+                    <Button onClick={onDone} type="button" variant="ghost">
+                        {t("collaboratorSuggestSkip")}
+                    </Button>
+                </DialogFooter>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex h-[min(60vh,480px)] max-h-[min(60vh,480px)] flex-col">
             <div className="border-b border-border px-4 py-3">
                 <p className="text-sm text-muted-foreground">
                     {t("collaboratorSuggestDescription")}

@@ -5,7 +5,11 @@ import {
     TASK_DRAWER_SIDES,
     type TaskDrawerSide,
 } from "@/features/tasks/lib/resolve-task-drawer-placement";
-import { useTaskDrawerPreferencesStore } from "@/features/tasks/model/task-drawer-preferences-store";
+import {
+    TASK_COPY_METADATA_FIELDS,
+    type TaskCopyMetadataField,
+    useTaskDrawerPreferencesStore,
+} from "@/features/tasks/model/task-drawer-preferences-store";
 import { cn } from "@/shared/lib/utils";
 import {
     Card,
@@ -19,17 +23,36 @@ import { Label } from "@/shared/shadcn/ui/label";
 
 export function TaskDrawerSettings() {
     const { t } = useTranslation("common");
+    const { t: tBoard } = useTranslation("board");
     const openAfterCreate = useTaskDrawerPreferencesStore(
         (state) => state.openAfterCreate
     );
     const drawerSide = useTaskDrawerPreferencesStore(
         (state) => state.drawerSide
     );
+    const copyIncludeTaskKey = useTaskDrawerPreferencesStore(
+        (state) => state.copyIncludeTaskKey
+    );
+    const copyIncludeTaskType = useTaskDrawerPreferencesStore(
+        (state) => state.copyIncludeTaskType
+    );
+    const copyMetadataFields = useTaskDrawerPreferencesStore(
+        (state) => state.copyMetadataFields
+    );
     const setOpenAfterCreate = useTaskDrawerPreferencesStore(
         (state) => state.setOpenAfterCreate
     );
     const setDrawerSide = useTaskDrawerPreferencesStore(
         (state) => state.setDrawerSide
+    );
+    const setCopyIncludeTaskKey = useTaskDrawerPreferencesStore(
+        (state) => state.setCopyIncludeTaskKey
+    );
+    const setCopyIncludeTaskType = useTaskDrawerPreferencesStore(
+        (state) => state.setCopyIncludeTaskType
+    );
+    const setCopyMetadataField = useTaskDrawerPreferencesStore(
+        (state) => state.setCopyMetadataField
     );
 
     return (
@@ -114,8 +137,90 @@ export function TaskDrawerSettings() {
                         {t("uiSettings.drawerSideHint")}
                     </p>
                 </fieldset>
+
+                <fieldset className="flex min-w-0 flex-col gap-4">
+                    <legend className="mb-0 text-ui text-foreground">
+                        {t("uiSettings.copyFields")}
+                    </legend>
+                    <p className="text-meta text-muted-foreground normal-case tracking-normal">
+                        {t("uiSettings.copyFieldsHint")}
+                    </p>
+                    <CopyFieldCheckbox
+                        checked={copyIncludeTaskKey}
+                        hint={t("uiSettings.copyTaskKeyHint")}
+                        id="settings-copy-task-key"
+                        label={t("uiSettings.copyTaskKey")}
+                        onCheckedChange={setCopyIncludeTaskKey}
+                    />
+                    <CopyFieldCheckbox
+                        checked={copyIncludeTaskType}
+                        id="settings-copy-task-type"
+                        label={t("uiSettings.copyTaskType")}
+                        onCheckedChange={setCopyIncludeTaskType}
+                    />
+                    <div className="flex min-w-0 flex-col gap-3">
+                        <div className="flex min-w-0 flex-col gap-1">
+                            <p className="text-ui text-foreground">
+                                {t("uiSettings.copyTaskMetadata")}
+                            </p>
+                            <p className="text-meta text-muted-foreground normal-case tracking-normal">
+                                {t("uiSettings.copyTaskMetadataHint")}
+                            </p>
+                        </div>
+                        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                            {TASK_COPY_METADATA_FIELDS.map((field) => (
+                                <CopyFieldCheckbox
+                                    checked={copyMetadataFields[field]}
+                                    id={`settings-copy-meta-${field}`}
+                                    key={field}
+                                    label={metadataFieldLabel(field, tBoard)}
+                                    onCheckedChange={(checked) => {
+                                        setCopyMetadataField(field, checked);
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </fieldset>
             </CardContent>
         </Card>
+    );
+}
+
+function CopyFieldCheckbox({
+    checked,
+    hint,
+    id,
+    label,
+    onCheckedChange,
+}: {
+    checked: boolean;
+    hint?: string;
+    id: string;
+    label: string;
+    onCheckedChange: (checked: boolean) => void;
+}) {
+    return (
+        <div className="flex items-start gap-3">
+            <Checkbox
+                checked={checked}
+                className="mt-0.5"
+                id={id}
+                onCheckedChange={(next) => {
+                    onCheckedChange(next === true);
+                }}
+            />
+            <div className="flex min-w-0 flex-col gap-1">
+                <Label className="cursor-pointer leading-snug" htmlFor={id}>
+                    {label}
+                </Label>
+                {hint ? (
+                    <p className="text-meta text-muted-foreground normal-case tracking-normal">
+                        {hint}
+                    </p>
+                ) : undefined}
+            </div>
+        </div>
     );
 }
 
@@ -154,4 +259,11 @@ function drawerSideLabel(
     if (side === "left") return t("uiSettings.drawerSideLeft");
     if (side === "right") return t("uiSettings.drawerSideRight");
     return t("uiSettings.drawerSideBottom");
+}
+
+function metadataFieldLabel(
+    field: TaskCopyMetadataField,
+    tBoard: (key: string) => string
+): string {
+    return tBoard(`fields.${field}`);
 }

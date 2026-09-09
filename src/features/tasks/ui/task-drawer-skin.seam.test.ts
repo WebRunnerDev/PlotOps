@@ -21,7 +21,9 @@ describe("Task drawer skin seam (ADR 0007)", () => {
         expect(drawer).toMatch(
             /text-meta font-medium tracking-\[0\.06em\] text-muted-foreground/
         );
-        expect(drawer).toMatch(/w-full rounded-none font-mono text-code/);
+        expect(drawer).toMatch(
+            /w-full min-w-0 overflow-hidden rounded-none font-mono text-code/
+        );
         expect(drawer).toMatch(/border-t border-primary\/20/);
         expect(drawer).toMatch(/hover:bg-primary\/10 hover:text-primary/);
         expect(handle).toMatch(/rounded-none/);

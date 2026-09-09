@@ -9,6 +9,7 @@ import {
     type GuestNotification,
     updateGuestSandbox,
 } from "@/features/guest-mode";
+import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
 
 export function countGuestUnreadNotifications(projectId?: string): number {
     const sandbox = getGuestSandbox();
@@ -43,10 +44,13 @@ export function listGuestNotifications(input: {
     }
 
     if (query) {
+        const expansion = expandNotificationSearchQuery(query);
+        const matchedKinds = new Set(expansion.matchedKinds);
         rows = rows.filter(
             (row) =>
                 row.taskKey.toLowerCase().includes(query) ||
-                row.taskTitle.toLowerCase().includes(query)
+                row.taskTitle.toLowerCase().includes(query) ||
+                matchedKinds.has(row.kind)
         );
     }
 

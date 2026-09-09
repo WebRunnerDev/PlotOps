@@ -11,6 +11,7 @@ const BOARD_AFFORDANCES = [
     "canEditEstimate",
     "canEditTasks",
     "canManageBoard",
+    "canManageWatchers",
 ] as const;
 
 describe("Project Role access seam — Board affordances", () => {
@@ -24,14 +25,22 @@ describe("Project Role access seam — Board affordances", () => {
         expect(caps.canManageBoard).toBe(false);
     });
 
-    it("Contributor can edit Tasks but not estimates, create/delete, or manage Board", () => {
+    it("Contributor can edit Tasks and manage Watchers but not estimates, create/delete, or manage Board", () => {
         const caps = capabilitiesForRole("contributor");
 
         expect(caps.canEditTasks).toBe(true);
+        expect(caps.canManageWatchers).toBe(true);
         expect(caps.canEditEstimate).toBe(false);
         expect(caps.canCreateTasks).toBe(false);
         expect(caps.canDeleteTasks).toBe(false);
         expect(caps.canManageBoard).toBe(false);
+    });
+
+    it("Viewer cannot manage other Members' Watches", () => {
+        const caps = capabilitiesForRole("viewer");
+
+        expect(caps.canView).toBe(true);
+        expect(caps.canManageWatchers).toBe(false);
     });
 
     it("Contributor Subtask create uses canEditTasks; root create stays Manager+", () => {

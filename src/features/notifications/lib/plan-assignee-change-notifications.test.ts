@@ -73,7 +73,7 @@ describe("planAssigneeChangeNotifications", () => {
         ]);
     });
 
-    it("plans nothing when Assignee is cleared", () => {
+    it("plans always-on previous assignee_change plus Watcher fan-out when Assignee is cleared", () => {
         expect(
             planAssigneeChangeNotifications([
                 {
@@ -82,7 +82,26 @@ describe("planAssigneeChangeNotifications", () => {
                     to: null,
                 },
             ])
-        ).toEqual([]);
+        ).toEqual([
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: null,
+                    audience: "previous_assignee",
+                    previousAssignee: { id: "u2", name: "Alex" },
+                    source: "app",
+                },
+                recipientId: "u2",
+            },
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: null,
+                    previousAssignee: { id: "u2", name: "Alex" },
+                    source: "app",
+                },
+            },
+        ]);
     });
 
     it("plans nothing when Assignee did not change", () => {

@@ -14,6 +14,13 @@ import {
     richTextToPlainText,
 } from "@/shared/ui/rich-text-editor/content";
 
+export type TaskCopyRelatedPeer = {
+    direction: "incoming" | "outgoing";
+    kind: "blocks" | "relates_to";
+    otherKey: string;
+    otherTitle: string;
+};
+
 export type TaskCopySection = {
     name: string;
     richText?: boolean;
@@ -25,18 +32,50 @@ export function buildTaskCopySections(input: {
     customFields: ProjectCustomField[];
     description: string;
     descriptionFallbackLabel: string;
+    includeTaskKey?: boolean;
+    includeTaskType?: boolean;
+    metadataSections?: TaskCopySection[];
+    taskKey?: string;
     taskType: CustomFieldTaskType;
+    taskTypeLabel?: string;
+    taskTypeSectionName?: string;
     title: string;
     titleLabel: string;
     valueByFieldId: ReadonlyMap<string, string>;
 }): TaskCopySection[] {
     const sections: TaskCopySection[] = [];
 
-    if (input.title.trim()) {
+    const titleValue = formatTaskCopyTitle({
+        includeTaskKey: input.includeTaskKey === true,
+        taskKey: input.taskKey,
+        title: input.title,
+    });
+    if (titleValue) {
         sections.push({
             name: input.titleLabel,
-            value: input.title,
+            value: titleValue,
         });
+    }
+
+    if (
+        input.includeTaskType === true &&
+        input.taskTypeSectionName?.trim() &&
+        input.taskTypeLabel?.trim()
+    ) {
+        sections.push({
+            name: input.taskTypeSectionName.trim(),
+            value: input.taskTypeLabel.trim(),
+        });
+    }
+
+    if (input.metadataSections) {
+        for (const section of input.metadataSections) {
+            if (!section.name.trim() || !section.value.trim()) continue;
+            sections.push({
+                name: section.name.trim(),
+                value: section.value.trim(),
+            });
+        }
     }
 
     const visible = sortCustomFieldsByPosition(
@@ -83,6 +122,49 @@ export function formatTaskCopyHtml(sections: TaskCopySection[]): string {
         .join("");
 }
 
+/** One clipboard line per linked Task, prefixed with the relation label. */
+export function formatTaskCopyRelatedTaskLines(
+    peers: ReadonlyArray<TaskCopyRelatedPeer>,
+    labels: {
+        blockedBy: string;
+        blocks: string;
+        relatesTo: string;
+    }
+): string {
+    return peers
+        .map((peer) => {
+            const relation =
+                peer.kind === "relates_to"
+                    ? labels.relatesTo
+                    : peer.direction === "incoming"
+                      ? labels.blockedBy
+                      : labels.blocks;
+            const key = peer.otherKey.trim();
+            const title = peer.otherTitle.trim();
+            const target = key && title ? `${key} ${title}` : key || title;
+            if (!target) return "";
+            const prefix = relation.trim();
+            return prefix ? `${prefix}: ${target}` : target;
+        })
+        .filter((line) => line.length > 0)
+        .join("\n");
+}
+
+/** One clipboard line per Subtask (`KEY Title`). */
+export function formatTaskCopySubtaskLines(
+    subtasks: ReadonlyArray<{ key: string; title: string }>
+): string {
+    return subtasks
+        .map((subtask) => {
+            const key = subtask.key.trim();
+            const title = subtask.title.trim();
+            if (key && title) return `${key} ${title}`;
+            return key || title;
+        })
+        .filter((line) => line.length > 0)
+        .join("\n");
+}
+
 /** Plain-text clipboard payload for a one-click copy of task fields. */
 export function formatTaskCopyText(sections: TaskCopySection[]): string {
     return sections
@@ -105,6 +187,19 @@ function formatSectionPlainText(section: TaskCopySection): string {
     if (!body) return "";
     if (!name) return body;
     return `${name}\n${body}`;
+}
+
+function formatTaskCopyTitle(input: {
+    includeTaskKey: boolean;
+    taskKey?: string;
+    title: string;
+}): string {
+    const title = input.title.trim();
+    const key = input.taskKey?.trim() ?? "";
+    if (input.includeTaskKey && key) {
+        return title ? `${key} ${title}` : key;
+    }
+    return title;
 }
 
 function sectionHtmlBody(section: TaskCopySection): string {

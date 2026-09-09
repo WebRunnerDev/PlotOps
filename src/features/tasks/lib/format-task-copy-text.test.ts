@@ -5,6 +5,8 @@ import type { ProjectCustomField } from "@/features/custom-fields/model/types";
 import {
     buildTaskCopySections,
     formatTaskCopyHtml,
+    formatTaskCopyRelatedTaskLines,
+    formatTaskCopySubtaskLines,
     formatTaskCopyText,
 } from "@/features/tasks/lib/format-task-copy-text";
 
@@ -45,6 +47,81 @@ describe("buildTaskCopySections", () => {
                 value: "<p>Reset the session cookie.</p>",
             },
             { name: "Steps", value: "Open app" },
+        ]);
+    });
+
+    it("prefixes the task key onto the title when includeTaskKey is on", () => {
+        const sections = buildTaskCopySections({
+            customFields: [],
+            description: "<p>Body</p>",
+            descriptionFallbackLabel: "Description",
+            includeTaskKey: true,
+            taskKey: "BUG-12",
+            taskType: "bug",
+            title: "Fix login",
+            titleLabel: "Title",
+            valueByFieldId: new Map(),
+        });
+
+        expect(sections[0]).toEqual({
+            name: "Title",
+            value: "BUG-12 Fix login",
+        });
+    });
+
+    it("inserts type and metadata after the title when those options are on", () => {
+        const sections = buildTaskCopySections({
+            customFields: [descriptionField],
+            description: "<p>Body</p>",
+            descriptionFallbackLabel: "Description",
+            includeTaskType: true,
+            metadataSections: [
+                { name: "Status", value: "In Progress" },
+                { name: "Assignee", value: "Ada" },
+                { name: "Priority", value: "" },
+            ],
+            taskType: "bug",
+            taskTypeLabel: "Bug",
+            taskTypeSectionName: "Type",
+            title: "Fix login",
+            titleLabel: "Title",
+            valueByFieldId: new Map(),
+        });
+
+        expect(sections).toEqual([
+            { name: "Title", value: "Fix login" },
+            { name: "Type", value: "Bug" },
+            { name: "Status", value: "In Progress" },
+            { name: "Assignee", value: "Ada" },
+            {
+                name: "Description",
+                richText: true,
+                value: "<p>Body</p>",
+            },
+        ]);
+    });
+
+    it("omits type and metadata by default", () => {
+        const sections = buildTaskCopySections({
+            customFields: [descriptionField],
+            description: "<p>Body</p>",
+            descriptionFallbackLabel: "Description",
+            taskKey: "BUG-12",
+            taskType: "bug",
+            taskTypeLabel: "Bug",
+            taskTypeSectionName: "Type",
+            title: "Fix login",
+            titleLabel: "Title",
+            valueByFieldId: new Map(),
+        });
+
+        expect(sections).toEqual([
+            { name: "Title", value: "Fix login" },
+            {
+                name: "Description",
+                richText: true,
+                value: "<p>Body</p>",
+            },
         ]);
     });
 
@@ -133,6 +210,53 @@ describe("formatTaskCopyHtml", () => {
             ])
         ).toBe(
             '<p><strong>Title</strong></p><p>Bug</p><p><strong>Description</strong></p><p>See shot</p><img src="https://cdn.example/a.png" alt="shot">'
+        );
+    });
+});
+
+describe("formatTaskCopySubtaskLines", () => {
+    it("joins subtasks as key-prefixed titles", () => {
+        expect(
+            formatTaskCopySubtaskLines([
+                { key: "TASK-2", title: "Write tests" },
+                { key: "TASK-3", title: "Ship fix" },
+            ])
+        ).toBe("TASK-2 Write tests\nTASK-3 Ship fix");
+    });
+});
+
+describe("formatTaskCopyRelatedTaskLines", () => {
+    it("prefixes each peer with its relation label", () => {
+        expect(
+            formatTaskCopyRelatedTaskLines(
+                [
+                    {
+                        direction: "outgoing",
+                        kind: "blocks",
+                        otherKey: "TASK-9",
+                        otherTitle: "Deploy",
+                    },
+                    {
+                        direction: "incoming",
+                        kind: "blocks",
+                        otherKey: "BUG-1",
+                        otherTitle: "Flaky CI",
+                    },
+                    {
+                        direction: "outgoing",
+                        kind: "relates_to",
+                        otherKey: "FEAT-2",
+                        otherTitle: "Docs",
+                    },
+                ],
+                {
+                    blockedBy: "Blocked by",
+                    blocks: "Blocks",
+                    relatesTo: "Relates to",
+                }
+            )
+        ).toBe(
+            "Blocks: TASK-9 Deploy\nBlocked by: BUG-1 Flaky CI\nRelates to: FEAT-2 Docs"
         );
     });
 });

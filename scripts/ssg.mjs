@@ -2,6 +2,10 @@
 /**
  * Post-build SSG for public routes via react-dom/server (no browser).
  * Paths must stay in sync with PLOTOPS_PUBLIC_PATHS in src/shared/config/site.ts.
+ *
+ * Also writes `spa.html` — the Vite shell (default title, empty #root) used by
+ * Cloudflare `/*` fallbacks so authenticated routes do not inherit login SEO
+ * from prerendered `/`.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -24,13 +28,18 @@ function outputFileForRoute(route) {
 }
 
 async function main() {
-    if (process.env.SKIP_PRERENDER === "true") {
-        console.log("SKIP_PRERENDER=true — skipping static SSG.");
-        return;
-    }
-
     const templatePath = path.join(distDir, "index.html");
     const template = await readFile(templatePath, "utf8");
+
+    // SPA shell before public routes overwrite index.html with login SSG.
+    const spaPath = path.join(distDir, "spa.html");
+    await writeFile(spaPath, template, "utf8");
+    console.log(`  → ${path.relative(root, spaPath)} (SPA fallback shell)`);
+
+    if (process.env.SKIP_PRERENDER === "true") {
+        console.log("SKIP_PRERENDER=true — skipping public-route SSG.");
+        return;
+    }
 
     const ssg = await import(pathToFileURL(ssrEntry).href);
     const {

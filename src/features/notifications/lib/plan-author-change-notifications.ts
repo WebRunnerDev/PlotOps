@@ -11,8 +11,8 @@ type IdName = { id: string; name: string };
 /**
  * Call-site seam: Author transfer diff → always-on + Watcher `author_change`.
  * Clear Author plans nothing. Actor exclusion and always-on/Watcher dedupe
- * happen in `create_task_notifications`. Auto-enroll / auto-Unwatch stay in
- * the task stake trigger (ADR 0012).
+ * happen in `create_task_notifications`. Auto-enroll stays in the task stake
+ * trigger; Watch is sticky on stake loss (ADR 0028).
  */
 export function planAuthorChangeNotifications(
     activityChanges: ActivityChangeLike[]

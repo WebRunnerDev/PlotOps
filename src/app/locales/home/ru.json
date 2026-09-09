@@ -81,6 +81,7 @@
     "collaboratorSuggestDescription": "Выбранные с email получат приглашение. Остальным можно один раз дать открытую ссылку команды — или пропустите.",
     "collaboratorSuggestLoading": "Загрузка коллабораторов из GitHub…",
     "collaboratorSuggestLoadFailed": "Не удалось загрузить коллабораторов. Проект всё равно создан — пригласите из настроек команды.",
+    "collaboratorSuggestEmptyDescription": "Коллабораторы GitHub не найдены. Поделитесь открытой ссылкой команды, чтобы пригласить людей.",
     "collaboratorSuggestNoEmail": "Нет email в GitHub",
     "collaboratorSuggestNoEmailBadge": "Нет email",
     "collaboratorSuggestOpenLinkHint": "У части коллабораторов нет email. Создайте одну открытую ссылку команды для всех них.",

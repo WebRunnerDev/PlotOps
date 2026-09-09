@@ -239,6 +239,7 @@ export function LoginForm() {
 
                 <Button
                     className="w-full"
+                    data-testid="guest-try-demo"
                     disabled={isBusy}
                     onClick={handleGuestLogin}
                     size="lg"

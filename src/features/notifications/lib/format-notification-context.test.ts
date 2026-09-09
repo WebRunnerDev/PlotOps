@@ -9,6 +9,7 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.assigneeChange": "Assignee changed",
         "notifications.kinds.assigneeChangeDetail": `Assignee → ${options?.name ?? ""}`,
         "notifications.kinds.assigneeChangeFromDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
+        "notifications.kinds.assigneeClearedDetail": `Assignee cleared (was ${options?.from ?? ""})`,
         "notifications.kinds.assigneeRemoved": "You are no longer the assignee",
         "notifications.kinds.assignment": "You were assigned",
         "notifications.kinds.assignmentDetail": `Assigned to ${options?.name ?? ""}`,
@@ -18,10 +19,14 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.boardMove": "Moved to another Board",
         "notifications.kinds.boardMoveDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""}`,
         "notifications.kinds.boardMoveStatusDetail": `${options?.fromBoard ?? ""} → ${options?.toBoard ?? ""} (${options?.fromStatus ?? ""} → ${options?.toStatus ?? ""})`,
+        "notifications.kinds.comment": "New Comment",
         "notifications.kinds.deadlineChange": "Deadline changed",
         "notifications.kinds.deadlineChangeClearedDetail": `Deadline cleared (was ${options?.from ?? ""})`,
         "notifications.kinds.deadlineChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.deadlineChangeSetDetail": `Deadline set to ${options?.to ?? ""}`,
+        "notifications.kinds.descriptionChange": "Description changed",
+        "notifications.kinds.estimateChange": "Estimate changed",
+        "notifications.kinds.labelsChange": "Labels changed",
         "notifications.kinds.mention": "You were mentioned",
         "notifications.kinds.mentionComment": "You were mentioned in a Comment",
         "notifications.kinds.mentionCommentDetail": `${options?.name ?? ""} mentioned you in a Comment`,
@@ -30,11 +35,13 @@ const t = ((key: string, options?: Record<string, string>) => {
         "notifications.kinds.mentionDescriptionDetail": `${options?.name ?? ""} mentioned you in the Description`,
         "notifications.kinds.priorityChange": "Priority changed",
         "notifications.kinds.priorityChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
+        "notifications.kinds.sprintChange": "Sprint changed",
         "notifications.kinds.statusChange": "Status changed",
         "notifications.kinds.statusChangeDetail": `${options?.from ?? ""} → ${options?.to ?? ""}`,
         "notifications.kinds.subtaskChange": "Subtask changed",
         "notifications.kinds.subtaskChangeClosedDetail": `Subtask ${options?.key ?? ""} closed`,
         "notifications.kinds.subtaskChangeCreatedDetail": `Subtask ${options?.key ?? ""} created`,
+        "notifications.kinds.titleChange": "Title changed",
         "notifications.priority.high": "High",
         "notifications.priority.medium": "Medium",
         "notifications.priority.none": "No priority",
@@ -116,6 +123,37 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("Assignee → Alex");
+    });
+
+    it("shows Watcher assignee_change clear with previous Assignee name", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: null,
+                        previousAssignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("Assignee cleared (was Alex)");
+    });
+
+    it("shows always-on previous-Assignee clear as You are no longer the assignee", () => {
+        expect(
+            formatNotificationContext(
+                notification({
+                    kind: "assignee_change",
+                    metadata: {
+                        assignee: null,
+                        audience: "previous_assignee",
+                        previousAssignee: { id: "u2", name: "Alex" },
+                    },
+                }),
+                t
+            )
+        ).toBe("You are no longer the assignee");
     });
 
     it("falls back when assignee_change metadata is incomplete", () => {
@@ -403,5 +441,44 @@ describe("formatNotificationContext", () => {
                 t
             )
         ).toBe("You were mentioned");
+    });
+
+    it("shows base copy for widened Jira-like Watcher kinds", () => {
+        expect(
+            formatNotificationContext(
+                notification({ kind: "comment", metadata: {} }),
+                t
+            )
+        ).toBe("New Comment");
+        expect(
+            formatNotificationContext(
+                notification({ kind: "title_change", metadata: {} }),
+                t
+            )
+        ).toBe("Title changed");
+        expect(
+            formatNotificationContext(
+                notification({ kind: "description_change", metadata: {} }),
+                t
+            )
+        ).toBe("Description changed");
+        expect(
+            formatNotificationContext(
+                notification({ kind: "labels_change", metadata: {} }),
+                t
+            )
+        ).toBe("Labels changed");
+        expect(
+            formatNotificationContext(
+                notification({ kind: "estimate_change", metadata: {} }),
+                t
+            )
+        ).toBe("Estimate changed");
+        expect(
+            formatNotificationContext(
+                notification({ kind: "sprint_change", metadata: {} }),
+                t
+            )
+        ).toBe("Sprint changed");
     });
 });

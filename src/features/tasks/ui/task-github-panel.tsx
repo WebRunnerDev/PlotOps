@@ -82,7 +82,7 @@ const MERGE_METHODS: GitMergeMethod[] = ["squash", "merge", "rebase"];
 
 type TaskGithubPanelProperties = {
     allowedHeadPatterns: string[];
-    baseBranch: string;
+    baseBranch: null | string;
     /** Drawer edit gate (`canEditTasks && !archived`) — same Role seam as Board. */
     canEdit: boolean;
     githubToken: null | string;
@@ -195,6 +195,7 @@ export function TaskGithubPanel({
         canWritePr &&
         canFetchGithub &&
         Boolean(branchName) &&
+        Boolean(baseBranch) &&
         !task.pr &&
         !headIsShared;
     const canMergePr =
@@ -316,7 +317,15 @@ export function TaskGithubPanel({
     };
 
     const handleOpenPr = async () => {
-        if (!canOpenPr || !githubToken || !repoFullName || !branchName) return;
+        if (
+            !canOpenPr ||
+            !githubToken ||
+            !repoFullName ||
+            !branchName ||
+            !baseBranch
+        ) {
+            return;
+        }
 
         try {
             const remote = await createPr.mutateAsync({
@@ -778,7 +787,9 @@ export function TaskGithubPanel({
                         {t("github.title")}
                     </p>
                     <p className="text-meta font-mono text-muted-foreground">
-                        {t("github.prTarget", { branch: baseBranch })}
+                        {baseBranch
+                            ? t("github.prTarget", { branch: baseBranch })
+                            : t("github.noBaseBranch")}
                     </p>
                 </div>
 
@@ -1108,7 +1119,9 @@ export function TaskGithubPanel({
                             })}
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t("github.mergePrBody", { base: baseBranch })}
+                            {t("github.mergePrBody", {
+                                base: baseBranch ?? "—",
+                            })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="flex flex-col gap-2 px-4 sm:px-6">

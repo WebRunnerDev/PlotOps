@@ -10,6 +10,45 @@
                 else document.documentElement.classList.add("dark");
             })();
         </script>
+        <!--
+          Hide prerendered LoginForm when a Supabase Auth token is still in
+          localStorage (SPA /* → index.html). Cleared when BootScreen mounts.
+        -->
+        <script>
+            (function () {
+                try {
+                    for (var i = 0; i < localStorage.length; i++) {
+                        var key = localStorage.key(i);
+                        if (
+                            key &&
+                            /^sb-[a-z0-9]+-auth-token$/i.test(key) &&
+                            localStorage.getItem(key)
+                        ) {
+                            document.documentElement.setAttribute(
+                                "data-plotops-auth-session",
+                                ""
+                            );
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            })();
+        </script>
+        <style>
+            #plotops-ssg-auth-mask {
+                display: none;
+                position: fixed;
+                inset: 0;
+                z-index: 99999;
+                background: #08090e;
+            }
+            html:not(.dark) #plotops-ssg-auth-mask {
+                background: #f1f5f9;
+            }
+            html[data-plotops-auth-session] #plotops-ssg-auth-mask {
+                display: block;
+            }
+        </style>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -122,6 +161,7 @@
                 </p>
             </main>
         </noscript>
+        <div aria-hidden="true" id="plotops-ssg-auth-mask"></div>
         <div id="root"></div>
         <script type="module" src="/src/app/main.tsx"></script>
     </body>

@@ -51,6 +51,7 @@ export function NotificationsBell() {
             <Button
                 aria-label={t("nav.notifications")}
                 className="relative size-8 rounded-none transition-colors duration-200 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary"
+                data-testid="notifications-bell"
                 onClick={() => setOpen(true)}
                 size="icon"
                 type="button"

@@ -200,6 +200,7 @@ On every `npm run db:reset`, `[db.seed]` runs:
 
 1. `supabase/seed.sql` — local-only demo auth user + `profiles` row
 2. `supabase/seed-guest-dataset.sql` — Team, Projects, boards/columns, ~15 tasks, sprints, activity, comments, watchers, notifications
+3. `supabase/seed-e2e-auth.sql` — two Auth users + shared Team/Project/Task for multi-user Playwright (see **Auth e2e harness** below)
 
 | Field    | Value                                                      |
 | -------- | ---------------------------------------------------------- |
@@ -220,6 +221,56 @@ On every `npm run db:reset`, `[db.seed]` runs:
 | Extras   | activity_log, comments, watchers, a few inbox notifications       |
 
 There are no `VITE_GUEST_*` product env vars. Local seed credentials are for optional manual password sign-in against Docker only.
+
+### Auth e2e harness (Playwright, local Supabase)
+
+Multi-user Watch e2e (#255+) needs Team Members on one Project (A Owner, B Viewer, C Contributor for Mentionee vs Watcher). Default `npm run test:e2e` (CI) does **not** start Docker or hit Supabase — Auth specs **skip** unless `E2E_AUTH=1`.
+
+| Field       | Value                                                  |
+| ----------- | ------------------------------------------------------ |
+| User A id   | `c0000000-0000-4000-8000-000000000001` (Team Owner)    |
+| User A      | `e2e-a@plotops.app` / `PlotopsE2eA1`                   |
+| User B id   | `c0000000-0000-4000-8000-000000000002` (Viewer)        |
+| User B      | `e2e-b@plotops.app` / `PlotopsE2eB1`                   |
+| User C id   | `c0000000-0000-4000-8000-000000000003` (Contributor)   |
+| User C      | `e2e-c@plotops.app` / `PlotopsE2eC1`                   |
+| Team        | `c0000000-0000-4000-8000-000000000010` (E2E Auth Team) |
+| Project     | `c0000000-0000-4000-8000-000000000020` (`e2e-auth`)    |
+| Shared Task | `TASK-1` (id `c0000000-0000-4000-8000-000000000030`)   |
+
+**Start env + seed**
+
+```bash
+npm run db:start          # if not already running
+npm run db:reset          # migrations + seed.sql + guest dataset + seed-e2e-auth.sql
+```
+
+Point the app at local GoTrue (`.env.local`):
+
+```bash
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=<anon/publishable from npm run db:local-status>
+```
+
+CAPTCHA: either omit `VITE_TURNSTILE_SITE_KEY` and set `[auth.captcha] enabled = false` in `config.toml` (restart stack), **or** use Cloudflare always-pass dummies (see Turnstile section above). Password sign-in in Playwright needs GoTrue and the SPA to agree.
+
+**Run Auth smoke (Chromium)**
+
+```bash
+npm run build             # embeds VITE_* — rebuild after changing .env.local
+npm run test:e2e:auth     # E2E_AUTH=1 → e2e/auth-*.spec.ts (smoke + manage Watchers + Mentionee dedupe)
+# or against Vite: E2E_AUTH=1 E2E_USE_DEV=true npx playwright test e2e/auth-*.spec.ts --project=chromium
+```
+
+Helpers: `e2e/helpers/auth-harness.ts` (`signInAs`, `createAuthBrowserPair`, `openAuthSharedTaskDrawer`, manage-Watchers helpers).
+
+| Situation                                      | Expected                                                   |
+| ---------------------------------------------- | ---------------------------------------------------------- |
+| `E2E_AUTH` unset (default CI / Guest e2e)      | Auth specs **skip**; Guest suite stays green               |
+| `E2E_AUTH=1` but Docker/seed/env wrong         | Spec **fails** (do not skip) — fix local Auth env          |
+| Production PlotOps remote / real OAuth secrets | **Out of scope** for this harness — local email users only |
+
+Do **not** paste `seed-e2e-auth.sql` into the PlotOps remote. CI must never seed Auth e2e users against production.
 
 ### Remote one-time seed (ops / not product)
 

@@ -9,6 +9,7 @@ import {
 
 import {
     createTaskDrawerPreferencesStoreState,
+    DEFAULT_COPY_METADATA_FIELDS,
     mergeTaskDrawerPreferences,
     type TaskDrawerPreferencesState,
 } from "./task-drawer-preferences-store";
@@ -19,6 +20,9 @@ function createTestStore(storage = memoryStorage()) {
             merge: mergeTaskDrawerPreferences,
             name: "plotops:task-drawer-preferences-test",
             partialize: (state) => ({
+                copyIncludeTaskKey: state.copyIncludeTaskKey,
+                copyIncludeTaskType: state.copyIncludeTaskType,
+                copyMetadataFields: state.copyMetadataFields,
                 drawerSide: state.drawerSide,
                 openAfterCreate: state.openAfterCreate,
                 sideDrawerWidthPx: state.sideDrawerWidthPx,
@@ -55,6 +59,11 @@ describe("task drawer preferences store", () => {
         expect(store.getState().sideDrawerWidthPx).toBe(
             DEFAULT_SIDE_DRAWER_WIDTH_PX
         );
+        expect(store.getState().copyIncludeTaskKey).toBe(false);
+        expect(store.getState().copyIncludeTaskType).toBe(false);
+        expect(store.getState().copyMetadataFields).toEqual(
+            DEFAULT_COPY_METADATA_FIELDS
+        );
     });
 
     it("updates open-after-create, drawer side, and side width", () => {
@@ -66,6 +75,20 @@ describe("task drawer preferences store", () => {
         expect(store.getState().openAfterCreate).toBe(false);
         expect(store.getState().drawerSide).toBe("left");
         expect(store.getState().sideDrawerWidthPx).toBe(420);
+    });
+
+    it("updates individual copy metadata field preferences", () => {
+        const store = createTestStore(storage);
+        store.getState().setCopyIncludeTaskKey(true);
+        store.getState().setCopyIncludeTaskType(true);
+        store.getState().setCopyMetadataField("status", true);
+        store.getState().setCopyMetadataField("assignee", true);
+
+        expect(store.getState().copyIncludeTaskKey).toBe(true);
+        expect(store.getState().copyIncludeTaskType).toBe(true);
+        expect(store.getState().copyMetadataFields.status).toBe(true);
+        expect(store.getState().copyMetadataFields.assignee).toBe(true);
+        expect(store.getState().copyMetadataFields.priority).toBe(false);
     });
 
     it("clamps side width when setting", () => {
@@ -81,6 +104,10 @@ describe("task drawer preferences store", () => {
         first.getState().setOpenAfterCreate(false);
         first.getState().setDrawerSide("right");
         first.getState().setSideDrawerWidthPx(700);
+        first.getState().setCopyIncludeTaskKey(true);
+        first.getState().setCopyIncludeTaskType(true);
+        first.getState().setCopyMetadataField("deadline", true);
+        first.getState().setCopyMetadataField("labels", true);
 
         await first.persist.rehydrate();
 
@@ -90,6 +117,42 @@ describe("task drawer preferences store", () => {
         expect(second.getState().openAfterCreate).toBe(false);
         expect(second.getState().drawerSide).toBe("right");
         expect(second.getState().sideDrawerWidthPx).toBe(700);
+        expect(second.getState().copyIncludeTaskKey).toBe(true);
+        expect(second.getState().copyIncludeTaskType).toBe(true);
+        expect(second.getState().copyMetadataFields.deadline).toBe(true);
+        expect(second.getState().copyMetadataFields.labels).toBe(true);
+        expect(second.getState().copyMetadataFields.status).toBe(false);
+    });
+
+    it("migrates legacy copyIncludeTaskMetadata true to all metadata fields", async () => {
+        storage.setItem(
+            "plotops:task-drawer-preferences-test",
+            JSON.stringify({
+                state: {
+                    copyIncludeTaskMetadata: true,
+                    drawerSide: "bottom",
+                    openAfterCreate: true,
+                },
+                version: 0,
+            })
+        );
+
+        const store = createTestStore(storage);
+        await store.persist.rehydrate();
+
+        expect(store.getState().copyMetadataFields).toEqual({
+            assignee: true,
+            author: true,
+            board: true,
+            deadline: true,
+            estimate: true,
+            labels: true,
+            priority: true,
+            relatedTasks: true,
+            sprint: true,
+            status: true,
+            subtasks: true,
+        });
     });
 
     it("ignores corrupt persisted drawer side", async () => {

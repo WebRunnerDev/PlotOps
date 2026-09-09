@@ -1,5 +1,6 @@
 import type {
     BoardColumn,
+    CreateBoardInput,
     ProjectBoardRecord,
 } from "@/features/boards/model/types";
 
@@ -13,7 +14,7 @@ export type BoardsProvider = {
     createBoard(
         projectId: string,
         name: string,
-        baseBranch: string
+        input: CreateBoardInput
     ): Promise<ProjectBoardRecord>;
     createBoardColumn(
         projectId: string,
@@ -47,8 +48,9 @@ export type BoardsProvider = {
         patch: {
             allowed_head_patterns?: string[];
             auto_assign_to_creator?: boolean;
-            base_branch?: string;
+            base_branch?: null | string;
             default_task_type?: ProjectBoardRecord["defaultTaskType"];
+            is_development?: boolean;
             name?: string;
             position?: number;
         }

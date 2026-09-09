@@ -4,13 +4,11 @@ import { redirect } from "@tanstack/react-router";
 
 import type { AuthContextValue } from "@/features/auth/model/types";
 
-import { requireAuthSession } from "@/features/auth";
 import {
     GUEST_DEMO_BOARD_ID,
     GUEST_DEMO_PROJECT_ID,
     isGuest,
 } from "@/features/guest-mode";
-import { supabase } from "@/shared/api/supabase";
 
 type SignInGateContext = {
     auth: Pick<AuthContextValue, "user">;
@@ -23,20 +21,10 @@ export async function signInRouteBeforeLoad({
 }: {
     context: SignInGateContext;
 }) {
+    // Sync redirect when React auth already has a user — avoids awaiting
+    // getUser() while LoginForm can paint (local Vite session restore).
     if (context.auth.user) {
-        const gate = await requireAuthSession({
-            getUser: async () => {
-                const { data, error } = await supabase.auth.getUser();
-                return { error, user: data.user };
-            },
-            isGuest: false,
-            signOutLocal: async () => {
-                await supabase.auth.signOut({ scope: "local" });
-            },
-        });
-        if (gate === "ok") {
-            throw redirect({ to: "/home" });
-        }
+        throw redirect({ to: "/home" });
     }
 
     if (isGuest()) {

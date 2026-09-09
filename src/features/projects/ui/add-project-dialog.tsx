@@ -169,7 +169,7 @@ export function AddProjectDialog({
         >
             <DialogContent
                 className={
-                    suggesting || mode === "github"
+                    mode === "github" && !suggesting
                         ? "flex h-[min(80vh,640px)] max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
                         : "flex max-h-[min(80vh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
                 }

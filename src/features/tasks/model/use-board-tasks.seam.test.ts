@@ -52,4 +52,17 @@ describe("useBoardTasks mutation error + clear seams", () => {
         expect(source).toMatch(/commitTaskDragGesture/);
         expect(source).toMatch(/persist:\s*false|persist\?:\s*boolean/);
     });
+
+    it("Title and Description saves fan out Watcher notifications", () => {
+        const source = readModel("use-board-tasks.ts");
+
+        expect(source).toMatch(
+            /updateTaskDetailsMutation[\s\S]*notifyTitleChangeBestEffort/
+        );
+        expect(source).toMatch(
+            /updateTaskDetailsMutation[\s\S]*notifyDescriptionWatchersBestEffort/
+        );
+        expect(source).toMatch(/planTitleWatcherNotification/);
+        expect(source).toMatch(/notifyDescriptionWatchersBestEffort/);
+    });
 });

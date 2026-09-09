@@ -104,6 +104,10 @@ export type Database = {
         Args: { project_uuid: string }
         Returns: boolean
       }
+      can_manage_task_watcher: {
+        Args: { p_project_id: string; p_target_user_id: string }
+        Returns: boolean
+      }
       can_manage_team_members: { Args: { team_uuid: string }; Returns: boolean }
       can_view_project: { Args: { project_uuid: string }; Returns: boolean }
       cancel_sprint: {
@@ -206,14 +210,20 @@ export type Database = {
         }
       }
       create_board_with_columns: {
-        Args: { p_base_branch: string; p_name: string; p_project_id: string }
+        Args: {
+          p_base_branch: null | string
+          p_is_development?: boolean
+          p_name: string
+          p_project_id: string
+        }
         Returns: {
           allowed_head_patterns: string[]
           auto_assign_to_creator: boolean
-          base_branch: string
+          base_branch: null | string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
+          is_development: boolean
           name: string
           position: number
           project_id: string
@@ -577,10 +587,11 @@ export type Database = {
         Insert: {
           allowed_head_patterns?: string[]
           auto_assign_to_creator?: boolean
-          base_branch?: string
+          base_branch?: null | string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
+          is_development?: boolean
           name: string
           position?: number
           project_id: string
@@ -597,10 +608,11 @@ export type Database = {
         Row: {
           allowed_head_patterns: string[]
           auto_assign_to_creator: boolean
-          base_branch: string
+          base_branch: null | string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
+          is_development: boolean
           name: string
           position: number
           project_id: string
@@ -608,10 +620,11 @@ export type Database = {
         Update: {
           allowed_head_patterns?: string[]
           auto_assign_to_creator?: boolean
-          base_branch?: string
+          base_branch?: null | string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
+          is_development?: boolean
           name?: string
           position?: number
           project_id?: string

@@ -12,6 +12,55 @@ import {
 } from "@/features/notifications/api/notifications-api";
 import { notificationsKeys } from "@/features/notifications/model/query-keys";
 
+/** Add another Member as Watcher (Role-gated; Guest self-only at API). */
+export function useAddTaskWatcher(input: {
+    projectId: string;
+    taskId: string;
+}) {
+    const queryClient = useQueryClient();
+    const watchersKey = notificationsKeys.taskWatchers({
+        projectId: input.projectId,
+        taskId: input.taskId,
+    });
+
+    return useMutation({
+        mutationFn: async (userId: string) => {
+            await addTaskWatch({
+                projectId: input.projectId,
+                taskId: input.taskId,
+                userId,
+            });
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: watchersKey });
+        },
+    });
+}
+
+/** Remove another Member's Watch (Role-gated; Guest self-only at API). */
+export function useRemoveTaskWatcher(input: {
+    projectId: string;
+    taskId: string;
+}) {
+    const queryClient = useQueryClient();
+    const watchersKey = notificationsKeys.taskWatchers({
+        projectId: input.projectId,
+        taskId: input.taskId,
+    });
+
+    return useMutation({
+        mutationFn: async (userId: string) => {
+            await removeTaskWatch({
+                taskId: input.taskId,
+                userId,
+            });
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: watchersKey });
+        },
+    });
+}
+
 export function useTaskWatchers(input: { projectId: string; taskId: string }) {
     const guest = isGuest();
 

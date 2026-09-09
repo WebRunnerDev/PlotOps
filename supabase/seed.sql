@@ -1,6 +1,6 @@
 -- Optional local Docker seed identity for RLS / full-stack experiments.
 -- Applied on `supabase db reset` together with `seed-guest-dataset.sql`
--- (see config.toml [db.seed] sql_paths).
+-- and `seed-e2e-auth.sql` (see config.toml [db.seed] sql_paths).
 --
 -- Credentials (local-only; safe to share in docs — never reuse for remote prod):
 --   email:    demo@plotops.app
@@ -8,7 +8,8 @@
 --
 -- Product "Try demo" does NOT use this account (ADR 0018 / features/guest-mode).
 -- Dataset: supabase/seed-guest-dataset.sql
--- Docs: docs/SUPABASE.md → Guest Mode (product vs local Docker).
+-- Auth e2e two-user harness: supabase/seed-e2e-auth.sql
+-- Docs: docs/SUPABASE.md → Guest Mode / Auth e2e harness.
 
 -- Fixed UUID kept stable for local seed rewrites / FK references below.
 -- Hash via pgcrypto in the extensions schema (local Supabase default).

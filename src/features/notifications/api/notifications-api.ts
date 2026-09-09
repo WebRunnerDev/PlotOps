@@ -49,6 +49,7 @@ type WatcherNotificationKind = Exclude<
 export async function addTaskWatch(input: {
     projectId: string;
     taskId: string;
+    userId?: string;
 }) {
     const userId = await requireUserId();
 
@@ -56,7 +57,7 @@ export async function addTaskWatch(input: {
         {
             project_id: input.projectId,
             task_id: input.taskId,
-            user_id: userId,
+            user_id: input.userId ?? userId,
         },
         { onConflict: "task_id,user_id" }
     );
@@ -166,6 +167,12 @@ export async function createTaskNotifications(input: {
                 metadata: event.metadata,
                 ...(event.recipientId
                     ? { recipient_id: event.recipientId }
+                    : {}),
+                ...(event.excludeRecipientIds &&
+                event.excludeRecipientIds.length > 0
+                    ? {
+                          exclude_recipient_ids: event.excludeRecipientIds,
+                      }
                     : {}),
             }))
         ),
@@ -309,14 +316,17 @@ export async function markNotificationsRead(notificationIds: string[]) {
     if (error) throw error;
 }
 
-export async function removeTaskWatch(input: { taskId: string }) {
+export async function removeTaskWatch(input: {
+    taskId: string;
+    userId?: string;
+}) {
     const userId = await requireUserId();
 
     const { error } = await supabase
         .from("task_watchers")
         .delete()
         .eq("task_id", input.taskId)
-        .eq("user_id", userId);
+        .eq("user_id", input.userId ?? userId);
 
     if (error) throw error;
 }

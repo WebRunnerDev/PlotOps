@@ -102,7 +102,7 @@ describe("planTaskNotificationEvents", () => {
         ]);
     });
 
-    it("emits nothing when Assignee is cleared", () => {
+    it("emits always-on previous assignee_change plus Watcher fan-out when Assignee is cleared", () => {
         expect(
             planTaskNotificationEvents({
                 assignee: {
@@ -110,7 +110,24 @@ describe("planTaskNotificationEvents", () => {
                     to: undefined,
                 },
             })
-        ).toEqual([]);
+        ).toEqual([
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: null,
+                    audience: "previous_assignee",
+                    previousAssignee: { id: "u2", name: "Alex" },
+                },
+                recipientId: "u2",
+            },
+            {
+                kind: "assignee_change",
+                metadata: {
+                    assignee: null,
+                    previousAssignee: { id: "u2", name: "Alex" },
+                },
+            },
+        ]);
     });
 
     it("emits always-on and Watcher author_change when Author is transferred", () => {

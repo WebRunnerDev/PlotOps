@@ -43,6 +43,15 @@ export function NotificationDrawer() {
             : undefined;
     const boardId =
         typeof parameters.boardId === "string" ? parameters.boardId : undefined;
+    /** From a board: filter inbox by that project + enable back-to-board. From home: all projects. */
+    const notificationsPageSearch =
+        projectId && boardId
+            ? {
+                  projectId,
+                  returnBoardId: boardId,
+                  returnProjectId: projectId,
+              }
+            : {};
 
     useNotificationsRealtime();
 
@@ -60,6 +69,7 @@ export function NotificationDrawer() {
             <Button
                 aria-label={t("nav.notifications")}
                 className="relative size-8 rounded-none transition-colors duration-200 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary"
+                data-testid="notifications-bell"
                 onClick={() => setOpen(true)}
                 size="icon"
                 type="button"
@@ -83,7 +93,7 @@ export function NotificationDrawer() {
                 open={open}
                 swipeDirection="right"
             >
-                <DrawerContent>
+                <DrawerContent data-testid="notifications-preview">
                     <DrawerHeader className="border-b border-border p-4 text-left">
                         <DrawerTitle>{t("nav.notifications")}</DrawerTitle>
                         <DrawerDescription>
@@ -93,6 +103,7 @@ export function NotificationDrawer() {
 
                     <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
                         <Button
+                            data-testid="notifications-mark-all-read"
                             disabled={markAll.isPending || unreadCount === 0}
                             onClick={() => {
                                 void markAll.mutateAsync({});
@@ -103,17 +114,11 @@ export function NotificationDrawer() {
                             {t("notifications.markAllRead")}
                         </Button>
                         <Button
+                            data-testid="notifications-view-all"
                             onClick={() => {
                                 setOpen(false);
                                 void navigate({
-                                    search: {
-                                        ...(projectId && boardId
-                                            ? {
-                                                  returnBoardId: boardId,
-                                                  returnProjectId: projectId,
-                                              }
-                                            : {}),
-                                    },
+                                    search: notificationsPageSearch,
                                     to: "/notifications",
                                 });
                             }}
@@ -201,6 +206,7 @@ export function NotificationDrawer() {
                                                         {
                                                             onFallback: () =>
                                                                 navigate({
+                                                                    search: notificationsPageSearch,
                                                                     to: "/notifications",
                                                                 }),
                                                             onNavigate:

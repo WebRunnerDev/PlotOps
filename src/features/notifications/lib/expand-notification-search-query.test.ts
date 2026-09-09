@@ -13,6 +13,11 @@ describe("expandNotificationSearchQuery", () => {
         );
     });
 
+    it("matches cleared Assignee copy to assignee_change", () => {
+        const result = expandNotificationSearchQuery("cleared");
+        expect(result.matchedKinds).toContain("assignee_change");
+    });
+
     it("matches Russian assignment copy", () => {
         const result = expandNotificationSearchQuery("назначен");
         expect(result.matchedKinds).toContain("assignment");

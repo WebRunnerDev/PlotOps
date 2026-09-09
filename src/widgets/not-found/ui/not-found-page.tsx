@@ -51,7 +51,7 @@ export function NotFoundPage() {
         <div className="min-h-dvh">
             <TopBar />
             <CommandPalette />
-            <div className="mx-auto w-full max-w-5xl p-4 [view-transition-name:main-content]">
+            <div className="mx-auto w-full max-w-6xl p-4 [view-transition-name:main-content]">
                 {content}
             </div>
         </div>

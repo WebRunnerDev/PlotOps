@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { BoardSwitcher, useProjectBoards } from "@/features/boards";
 import { buildGithubTreeUrl } from "@/features/projects/model/github-project-links";
+import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { BoardSprintControls } from "@/features/sprints";
@@ -52,6 +53,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
         boards: boards.map((board) => ({
             baseBranch: board.baseBranch,
             id: board.id,
+            isDevelopment: board.isDevelopment,
         })),
         boardsError,
         boardsLoading,
@@ -108,16 +110,19 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     }
 
     const { currentBoard } = presence;
-    const baseBranch =
-        currentBoard.baseBranch || project.github_default_branch || "main";
-    const branchUrl = buildGithubTreeUrl(project.github_html_url, baseBranch);
+    const baseBranch = currentBoard.isDevelopment
+        ? currentBoard.baseBranch
+        : null;
+    const branchUrl = baseBranch
+        ? buildGithubTreeUrl(project.github_html_url, baseBranch)
+        : null;
 
-    const branchLabel = (
+    const branchLabel = baseBranch ? (
         <>
             <GitBranch aria-hidden className="size-3.5" />
             {baseBranch}
         </>
-    );
+    ) : undefined;
 
     return (
         <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
@@ -131,21 +136,26 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                                 project.github_default_branch ?? "main"
                             }
                             projectId={projectId}
+                            showGitBranchSettings={projectHasGithubRepo(
+                                project.github_repo_id
+                            )}
                         />
-                        {branchUrl ? (
-                            <a
-                                className="inline-flex h-8 min-w-0 items-center gap-1.5 border border-transparent px-1.5 text-code text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:border-border hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                                href={branchUrl}
-                                rel="noreferrer noopener"
-                                target="_blank"
-                            >
-                                {branchLabel}
-                            </a>
-                        ) : (
-                            <span className="inline-flex h-8 min-w-0 items-center gap-1.5 px-1.5 text-code text-muted-foreground">
-                                {branchLabel}
-                            </span>
-                        )}
+                        {baseBranch ? (
+                            branchUrl ? (
+                                <a
+                                    className="inline-flex h-8 min-w-0 items-center gap-1.5 border border-transparent px-1.5 text-code text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:border-border hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                                    href={branchUrl}
+                                    rel="noreferrer noopener"
+                                    target="_blank"
+                                >
+                                    {branchLabel}
+                                </a>
+                            ) : (
+                                <span className="inline-flex h-8 min-w-0 items-center gap-1.5 px-1.5 text-code text-muted-foreground">
+                                    {branchLabel}
+                                </span>
+                            )
+                        ) : undefined}
                         <div className="flex min-w-0 flex-wrap items-stretch gap-2">
                             <BoardSprintControls
                                 boardId={boardId}

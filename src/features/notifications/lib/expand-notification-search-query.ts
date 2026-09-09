@@ -8,6 +8,7 @@ const KIND_PHRASE_KEYS = {
         "assigneeChange",
         "assigneeChangeDetail",
         "assigneeChangeFromDetail",
+        "assigneeClearedDetail",
         "assigneeRemoved",
     ],
     assignment: ["assignment", "assignmentDetail"],
@@ -17,12 +18,16 @@ const KIND_PHRASE_KEYS = {
         "authorChangeFromDetail",
     ],
     board_move: ["boardMove", "boardMoveDetail", "boardMoveStatusDetail"],
+    comment: ["comment"],
     deadline_change: [
         "deadlineChange",
         "deadlineChangeClearedDetail",
         "deadlineChangeDetail",
         "deadlineChangeSetDetail",
     ],
+    description_change: ["descriptionChange"],
+    estimate_change: ["estimateChange"],
+    labels_change: ["labelsChange"],
     mention: [
         "mention",
         "mentionComment",
@@ -31,27 +36,35 @@ const KIND_PHRASE_KEYS = {
         "mentionDescriptionDetail",
     ],
     priority_change: ["priorityChange", "priorityChangeDetail"],
+    sprint_change: ["sprintChange"],
     status_change: ["statusChange", "statusChangeDetail"],
     subtask_change: [
         "subtaskChange",
         "subtaskChangeClosedDetail",
         "subtaskChangeCreatedDetail",
     ],
+    title_change: ["titleChange"],
 } as const satisfies Record<NotificationKind, readonly string[]>;
 
 const PRIORITY_VALUES = ["none", "urgent", "high", "medium", "low"] as const;
 
 /** Extra English stems users type that do not appear in raw `kind` (e.g. assigned vs assignment). */
 const KIND_ALIASES: Partial<Record<NotificationKind, readonly string[]>> = {
-    assignee_change: ["assignee", "assigned"],
+    assignee_change: ["assignee", "assigned", "cleared", "снят"],
     assignment: ["assigned", "assignee"],
     author_change: ["author"],
     board_move: ["board", "moved"],
+    comment: ["comment", "комментарий"],
     deadline_change: ["deadline", "due"],
+    description_change: ["description", "описание"],
+    estimate_change: ["estimate", "оценка"],
+    labels_change: ["labels", "метки", "метка"],
     mention: ["mentioned", "mention", "упомянул", "упомянули", "упоминание"],
     priority_change: ["priority"],
+    sprint_change: ["sprint", "спринт"],
     status_change: ["status"],
     subtask_change: ["subtask", "подзадача", "подзадачи"],
+    title_change: ["title", "название", "заголовок"],
 };
 
 export type NotificationSearchExpansion = {

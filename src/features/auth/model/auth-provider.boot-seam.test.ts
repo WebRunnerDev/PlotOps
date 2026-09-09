@@ -23,4 +23,20 @@ describe("AuthProvider boot validate seam", () => {
             /if\s*\(\s*!mounted\s*\|\|\s*abortController\.signal\.aborted\s*\)\s*return/
         );
     });
+
+    it("confirms session via getSession after initialize for non-OAuth boots", () => {
+        const source = fs.readFileSync(
+            path.join(dirname, "auth-provider.tsx"),
+            "utf8"
+        );
+
+        // Must not `if (!isOAuthCallback) return` before getSession — that
+        // left INITIAL_SESSION null finishing boot as logged-out on Vite.
+        expect(source).toMatch(/supabase\.auth\.initialize\(\)/);
+        expect(source).toMatch(/supabase\.auth\.getSession\(\)/);
+        expect(source).not.toMatch(
+            /if\s*\(\s*!isOAuthCallback\s*\)\s*return;\s*\n\s*const\s*\{[\s\S]*?getSession/
+        );
+        expect(source).toMatch(/Finishing as logged-out then paints sign-in/);
+    });
 });

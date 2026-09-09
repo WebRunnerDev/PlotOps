@@ -36,13 +36,13 @@ describe("guest boards provider happy path", () => {
         const provider = resolveBoardsProvider(true);
         expect(provider).toBe(guestBoardsProvider);
 
-        const board = await provider.createBoard(
-            projectId,
-            "Guest Board",
-            "develop"
-        );
+        const board = await provider.createBoard(projectId, "Guest Board", {
+            baseBranch: "develop",
+            isDevelopment: true,
+        });
         expect(board.name).toBe("Guest Board");
         expect(board.baseBranch).toBe("develop");
+        expect(board.isDevelopment).toBe(true);
         expect(board.projectId).toBe(projectId);
 
         const columnsAfterCreate = await provider.fetchBoardColumns(
@@ -102,5 +102,39 @@ describe("guest boards provider happy path", () => {
         const refreshed = await import("@/features/guest-mode");
         const after = refreshed.getGuestSandbox()!;
         expect(after.boards.some((item) => item.id === board.id)).toBe(false);
+    });
+
+    it("create and clear base branch keep null when the Board is not for development", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const projectId = sandbox.projects[0]!.id;
+        const provider = resolveBoardsProvider(true);
+
+        const board = await provider.createBoard(projectId, "Ops Board", {
+            isDevelopment: false,
+        });
+        expect(board.isDevelopment).toBe(false);
+        expect(board.baseBranch).toBeNull();
+        expect(board.allowedHeadPatterns).toEqual([]);
+
+        await provider.updateBoard(board.id, {
+            base_branch: "main",
+            is_development: true,
+        });
+        const asDevelopment = await provider.fetchBoard(board.id);
+        expect(asDevelopment.isDevelopment).toBe(true);
+        expect(asDevelopment.baseBranch).toBe("main");
+
+        await provider.updateBoard(board.id, {
+            allowed_head_patterns: ["feature/*"],
+            is_development: false,
+        });
+        const asOps = await provider.fetchBoard(board.id);
+        expect(asOps.isDevelopment).toBe(false);
+        expect(asOps.baseBranch).toBeNull();
+        expect(asOps.allowedHeadPatterns).toEqual([]);
     });
 });

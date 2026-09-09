@@ -78,17 +78,25 @@ describe("planClosePullRequestSync", () => {
 
     it("skips when already closed (idempotent)", () => {
         expect(
-            planClosePullRequestSync(task({ id: "t1", pr_state: "closed" }), {
-                prHtmlUrl: null,
-                prNumber: 7,
-            })
+            planClosePullRequestSync(
+                task({ id: "t1", pr_number: 7, pr_state: "closed" }),
+                {
+                    prHtmlUrl: null,
+                    prNumber: 7,
+                }
+            )
         ).toEqual({ reason: "already_closed", skip: true });
     });
 
     it("does not downgrade merged to closed", () => {
         expect(
             planClosePullRequestSync(
-                task({ id: "t1", pr_state: "merged", status: "done" }),
+                task({
+                    id: "t1",
+                    pr_number: 7,
+                    pr_state: "merged",
+                    status: "done",
+                }),
                 { prHtmlUrl: null, prNumber: 7 }
             )
         ).toEqual({ reason: "already_merged", skip: true });
@@ -101,5 +109,39 @@ describe("planClosePullRequestSync", () => {
                 prNumber: 7,
             })
         ).toEqual({ reason: "no_task", skip: true });
+    });
+
+    it("does not retarget a task already linked to another PR", () => {
+        expect(
+            planClosePullRequestSync(
+                task({
+                    id: "t1",
+                    pr_number: 42,
+                    pr_state: "open",
+                    task_key: "TASK-1",
+                }),
+                {
+                    prHtmlUrl: "https://github.com/o/r/pull/99",
+                    prNumber: 99,
+                }
+            )
+        ).toEqual({ reason: "pr_mismatch", skip: true });
+    });
+
+    it("does not bind an unbound task from a close event", () => {
+        expect(
+            planClosePullRequestSync(
+                task({
+                    id: "t1",
+                    pr_number: null,
+                    pr_state: null,
+                    task_key: "TASK-1",
+                }),
+                {
+                    prHtmlUrl: "https://github.com/o/r/pull/99",
+                    prNumber: 99,
+                }
+            )
+        ).toEqual({ reason: "pr_mismatch", skip: true });
     });
 });

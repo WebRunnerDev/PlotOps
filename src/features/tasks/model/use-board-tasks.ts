@@ -31,6 +31,7 @@ import {
     createNotificationsForWatchers,
     createTaskNotifications,
 } from "@/features/notifications/api/notifications-api";
+import { notifyDescriptionWatchersBestEffort } from "@/features/notifications/lib/notify-description-watchers";
 import { notifyNewMentionsBestEffort } from "@/features/notifications/lib/notify-new-mentions";
 import { planAssigneeChangeNotifications } from "@/features/notifications/lib/plan-assignee-change-notifications";
 import { planAuthorChangeNotifications } from "@/features/notifications/lib/plan-author-change-notifications";
@@ -38,6 +39,8 @@ import { planBoardMoveWatcherNotification } from "@/features/notifications/lib/p
 import { planDeadlineWatcherNotification } from "@/features/notifications/lib/plan-deadline-watcher-notification";
 import { planPriorityWatcherNotification } from "@/features/notifications/lib/plan-priority-watcher-notification";
 import { planSubtaskChangeNotification } from "@/features/notifications/lib/plan-subtask-change-notification";
+import { planTitleWatcherNotification } from "@/features/notifications/lib/plan-title-watcher-notification";
+import { notificationsKeys } from "@/features/notifications/model/query-keys";
 import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -328,13 +331,27 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
 
             if (details.description !== undefined) {
+                const nextBody = details.description ?? "";
+                const previousBody = previousDescription ?? "";
                 await notifyNewMentionsBestEffort({
-                    nextBody: details.description ?? "",
-                    previousBody: previousDescription ?? "",
+                    nextBody,
+                    previousBody,
                     source: "description",
                     taskId: id,
                 });
+                await notifyDescriptionWatchersBestEffort({
+                    nextBody,
+                    previousBody,
+                    projectId,
+                    taskId: id,
+                });
             }
+
+            await notifyTitleChangeBestEffort({
+                activityChanges,
+                projectId,
+                taskId: id,
+            });
 
             await notifyPriorityChangeBestEffort({
                 activityChanges,
@@ -371,8 +388,21 @@ export function useBoardTasks(projectId: string, boardId: string) {
             }
             toast.error("Failed to update task");
         },
-        onSettled: () => {
+        onSettled: (_data, _error, variables) => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            // Stake enroll (ADR 0028) mutates task_watchers / Guest sandbox —
+            // refresh Watchers UI when Author/Assignee changes.
+            if (
+                variables.details.assignee !== undefined ||
+                variables.details.author !== undefined
+            ) {
+                void queryClient.invalidateQueries({
+                    queryKey: notificationsKeys.taskWatchers({
+                        projectId,
+                        taskId: variables.id,
+                    }),
+                });
+            }
         },
     });
 
@@ -1834,6 +1864,26 @@ async function notifySubtaskChangeBestEffort(input: {
             events: [event],
             projectId: input.projectId,
             taskId: input.parentId,
+        });
+    } catch {
+        // Best-effort: never block the primary task mutation.
+    }
+}
+
+async function notifyTitleChangeBestEffort(input: {
+    activityChanges: TaskActivityChange[];
+    projectId: string;
+    taskId: string;
+}) {
+    const event = planTitleWatcherNotification(input.activityChanges);
+    if (!event) return;
+
+    try {
+        await createNotificationsForWatchers({
+            kind: "title_change",
+            metadata: event.metadata,
+            projectId: input.projectId,
+            taskId: input.taskId,
         });
     } catch {
         // Best-effort: never block the primary task mutation.

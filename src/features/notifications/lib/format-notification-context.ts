@@ -38,6 +38,9 @@ export function formatNotificationContext(
         if (to) {
             return t("notifications.kinds.assigneeChangeDetail", { name: to });
         }
+        if (from) {
+            return t("notifications.kinds.assigneeClearedDetail", { from });
+        }
         return t("notifications.kinds.assigneeChange");
     }
 
@@ -114,6 +117,21 @@ export function formatNotificationContext(
             return t("notifications.kinds.mentionDescription");
         }
         return t("notifications.kinds.mention");
+    }
+
+    const jiraLikeBaseCopy: Partial<
+        Record<Notification["kind"], Parameters<typeof t>[0]>
+    > = {
+        comment: "notifications.kinds.comment",
+        description_change: "notifications.kinds.descriptionChange",
+        estimate_change: "notifications.kinds.estimateChange",
+        labels_change: "notifications.kinds.labelsChange",
+        sprint_change: "notifications.kinds.sprintChange",
+        title_change: "notifications.kinds.titleChange",
+    };
+    const jiraLikeKey = jiraLikeBaseCopy[notification.kind];
+    if (jiraLikeKey) {
+        return t(jiraLikeKey);
     }
 
     if (notification.kind === "subtask_change") {

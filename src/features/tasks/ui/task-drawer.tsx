@@ -46,6 +46,7 @@ import { TaskWatchersList } from "@/features/notifications/ui/task-watchers-list
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { useProject } from "@/features/projects/model/use-projects";
+import { useBoardSprints } from "@/features/sprints/model/use-sprints";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { buildTaskShareUrl } from "@/features/tasks/lib/build-task-share-url";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
@@ -57,7 +58,10 @@ import {
 import {
     buildTaskCopySections,
     formatTaskCopyHtml,
+    formatTaskCopyRelatedTaskLines,
+    formatTaskCopySubtaskLines,
     formatTaskCopyText,
+    type TaskCopySection,
 } from "@/features/tasks/lib/format-task-copy-text";
 import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-for-board";
 import { resolveCachedTaskBoardId } from "@/features/tasks/lib/resolve-cached-task-board-id";
@@ -143,7 +147,8 @@ const PRIORITY_NONE = "__none__";
 const ESTIMATE_NONE = "__none__";
 const FIELD_LABEL_CLASS =
     "text-meta font-medium tracking-[0.06em] text-muted-foreground";
-const FIELD_CONTROL_CLASS = "w-full rounded-none font-mono text-code";
+const FIELD_CONTROL_CLASS =
+    "w-full min-w-0 overflow-hidden rounded-none font-mono text-code";
 const DRAWER_ACTION_CLASS =
     "rounded-none transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary";
 
@@ -168,7 +173,7 @@ export function TaskDrawer({
     repoFullName,
 }: TaskDrawerProperties) {
     useSyncTaskUrl();
-    const { t } = useTranslation("board");
+    const { i18n, t } = useTranslation("board");
     const isGuestSessionActive = isGuest();
     const queryClient = useQueryClient();
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
@@ -181,12 +186,22 @@ export function TaskDrawer({
     const setSideDrawerWidthPx = useTaskDrawerPreferencesStore(
         (state) => state.setSideDrawerWidthPx
     );
+    const copyIncludeTaskKey = useTaskDrawerPreferencesStore(
+        (state) => state.copyIncludeTaskKey
+    );
+    const copyIncludeTaskType = useTaskDrawerPreferencesStore(
+        (state) => state.copyIncludeTaskType
+    );
+    const copyMetadataFields = useTaskDrawerPreferencesStore(
+        (state) => state.copyMetadataFields
+    );
     const drawerPlacement = resolveTaskDrawerPlacement(
         drawerSide,
         sideDrawerWidthPx,
         globalThis.window === undefined ? undefined : window.innerWidth
     );
     const { columns } = useBoardColumns(projectId, boardId);
+    const { data: boardSprints = [] } = useBoardSprints(boardId);
     const { labels } = useProjectLabels(projectId);
     const {
         archiveTask,
@@ -416,11 +431,112 @@ export function TaskDrawer({
     const handleCopyTaskText = async () => {
         if (!task) return;
 
+        const labelNames = (task.labelIds ?? [])
+            .map(
+                (labelId) =>
+                    projectLabels.find((label) => label.id === labelId)?.name
+            )
+            .filter(Boolean);
+        const sprintName = task.sprintId
+            ? boardSprints.find((sprint) => sprint.id === task.sprintId)?.name
+            : undefined;
+
+        const metadataSections: TaskCopySection[] = [];
+        if (copyMetadataFields.status) {
+            metadataSections.push({
+                name: t("fields.status"),
+                value: isArchived
+                    ? t("archive.badge")
+                    : (selectedColumn?.name ?? ""),
+            });
+        }
+        if (copyMetadataFields.board) {
+            metadataSections.push({
+                name: t("fields.board"),
+                value: currentBoard?.name ?? "",
+            });
+        }
+        if (copyMetadataFields.priority) {
+            metadataSections.push({
+                name: t("fields.priority"),
+                value: task.priority
+                    ? t(`priority.${task.priority}`)
+                    : t("priority.none"),
+            });
+        }
+        if (copyMetadataFields.estimate) {
+            metadataSections.push({
+                name: t("fields.estimate"),
+                value:
+                    task.estimate === undefined
+                        ? t("estimate.none")
+                        : t("estimate.points", { count: task.estimate }),
+            });
+        }
+        if (copyMetadataFields.deadline) {
+            metadataSections.push({
+                name: t("fields.deadline"),
+                value: task.deadline
+                    ? formatDeadlineLong(task.deadline, i18n.language)
+                    : "",
+            });
+        }
+        if (copyMetadataFields.author) {
+            metadataSections.push({
+                name: t("fields.author"),
+                value: task.author?.name ?? t("fields.memberNone"),
+            });
+        }
+        if (copyMetadataFields.assignee) {
+            metadataSections.push({
+                name: t("fields.assignee"),
+                value: task.assignee?.name ?? t("fields.memberNone"),
+            });
+        }
+        if (copyMetadataFields.labels) {
+            metadataSections.push({
+                name: t("fields.labels"),
+                value: labelNames.join(", "),
+            });
+        }
+        if (copyMetadataFields.sprint) {
+            metadataSections.push({
+                name: t("fields.sprint"),
+                value: sprintName ?? t("sprints.backlog"),
+            });
+        }
+        if (copyMetadataFields.subtasks) {
+            const childTasks = subtasksOf(
+                task.id,
+                mentionProjectTasks.length > 0 ? mentionProjectTasks : tasks
+            ).filter((child) => child.archivedAt == undefined);
+            metadataSections.push({
+                name: t("fields.subtasks"),
+                value: formatTaskCopySubtaskLines(childTasks),
+            });
+        }
+        if (copyMetadataFields.relatedTasks) {
+            metadataSections.push({
+                name: t("fields.relatedTasks"),
+                value: formatTaskCopyRelatedTaskLines(task.relatedTasks ?? [], {
+                    blockedBy: t("taskLinks.blockedBy"),
+                    blocks: t("taskLinks.blocks"),
+                    relatesTo: t("taskLinks.relatesTo"),
+                }),
+            });
+        }
+
         const sections = buildTaskCopySections({
             customFields,
             description,
             descriptionFallbackLabel: t("fields.description"),
+            includeTaskKey: copyIncludeTaskKey,
+            includeTaskType: copyIncludeTaskType,
+            metadataSections,
+            taskKey: task.key,
             taskType: task.type,
+            taskTypeLabel: t(`taskType.${task.type}`),
+            taskTypeSectionName: t("fields.type"),
             title,
             titleLabel: t("fields.title"),
             valueByFieldId,
@@ -1045,7 +1161,7 @@ export function TaskDrawer({
                                                 </div>
 
                                                 {boards.length > 1 ? (
-                                                    <div className="flex flex-col gap-1.5">
+                                                    <div className="flex min-w-0 flex-col gap-1.5">
                                                         <Label
                                                             className={
                                                                 FIELD_LABEL_CLASS
@@ -1084,7 +1200,7 @@ export function TaskDrawer({
                                                                 }
                                                                 id="task-board"
                                                             >
-                                                                <span>
+                                                                <span className="min-w-0 flex-1 truncate">
                                                                     {currentBoard?.name ??
                                                                         t(
                                                                             "boards.loading"
@@ -1433,8 +1549,10 @@ export function TaskDrawer({
                                                         []
                                                     }
                                                     baseBranch={
-                                                        currentBoard?.baseBranch ??
-                                                        "main"
+                                                        currentBoard?.isDevelopment
+                                                            ? (currentBoard.baseBranch ??
+                                                              null)
+                                                            : null
                                                     }
                                                     canEdit={canEdit}
                                                     githubToken={githubToken}
@@ -1622,9 +1740,12 @@ export function TaskDrawer({
                 }}
                 open={moveTarget !== null}
             >
-                <AlertDialogContent className="sm:max-w-sm" size="sm">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
+                <AlertDialogContent
+                    className="min-w-0 overflow-hidden sm:max-w-sm"
+                    size="sm"
+                >
+                    <AlertDialogHeader className="min-w-0">
+                        <AlertDialogTitle className="max-w-full wrap-anywhere">
                             {t("boards.moveTitle", {
                                 board: moveTarget?.boardName ?? "",
                             })}
@@ -1635,7 +1756,7 @@ export function TaskDrawer({
                     </AlertDialogHeader>
 
                     {movingSubtaskCount > 0 ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="min-w-0 text-sm text-muted-foreground wrap-anywhere">
                             {t("boards.moveWithSubtasks", {
                                 count: movingSubtaskCount,
                             })}
@@ -1643,13 +1764,13 @@ export function TaskDrawer({
                     ) : undefined}
 
                     {task?.sprintId ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="min-w-0 text-sm text-muted-foreground wrap-anywhere">
                             {t("boards.moveClearsSprint")}
                         </p>
                     ) : undefined}
 
                     {moveTarget ? (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex min-w-0 flex-col gap-2">
                             <Label htmlFor="move-task-column">
                                 {t("boards.moveToColumn")}
                             </Label>
@@ -1668,10 +1789,12 @@ export function TaskDrawer({
                                 value={moveTarget.columnId}
                             >
                                 <SelectTrigger
-                                    className="w-full"
+                                    className="w-full min-w-0 overflow-hidden"
                                     id="move-task-column"
                                 >
-                                    <span>{moveToColumnName}</span>
+                                    <span className="min-w-0 flex-1 truncate">
+                                        {moveToColumnName}
+                                    </span>
                                 </SelectTrigger>
                                 <SelectContent alignItemWithTrigger={false}>
                                     {moveTarget.columns.map((column) => (

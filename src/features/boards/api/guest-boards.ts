@@ -5,6 +5,7 @@ import type {
 } from "@/features/boards/model/types";
 import type { GuestBoard } from "@/features/guest-mode";
 
+import { normalizeBoardDevelopmentPatch } from "@/features/boards/lib/normalize-board-development-patch";
 import { DEFAULT_KANBAN_COLUMNS } from "@/features/boards/model/constants";
 import { getGuestSandbox, updateGuestSandbox } from "@/features/guest-mode";
 
@@ -15,6 +16,7 @@ function mapBoard(board: GuestBoard): ProjectBoardRecord {
         baseBranch: board.baseBranch,
         defaultTaskType: board.defaultTaskType ?? "task",
         id: board.id,
+        isDevelopment: board.isDevelopment ?? Boolean(board.baseBranch),
         name: board.name,
         position: board.position,
         projectId: board.projectId,
@@ -47,8 +49,12 @@ export const guestBoardsProvider: BoardsProvider = {
         return sandbox.tasks.some((task) => task.boardId === boardId);
     },
 
-    async createBoard(projectId, name, baseBranch) {
+    async createBoard(projectId, name, input) {
         let created: GuestBoard | undefined;
+        const isDevelopment = input.isDevelopment;
+        const baseBranch = isDevelopment
+            ? input.baseBranch?.trim() || null
+            : null;
 
         updateGuestSandbox((sandbox) => {
             const projectBoards = sandbox.boards.filter(
@@ -64,7 +70,7 @@ export const guestBoardsProvider: BoardsProvider = {
             created = {
                 allowedHeadPatterns: [],
                 autoAssignToCreator: false,
-                baseBranch: baseBranch.trim() || "main",
+                baseBranch,
                 columns: DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
                     id: column.id,
                     isDone: column.isDone,
@@ -73,6 +79,7 @@ export const guestBoardsProvider: BoardsProvider = {
                 })),
                 defaultTaskType: "task",
                 id: crypto.randomUUID(),
+                isDevelopment,
                 name: name.trim() || "Board",
                 position: maxPosition + 1,
                 projectId,
@@ -253,6 +260,7 @@ export const guestBoardsProvider: BoardsProvider = {
 
     async updateBoard(boardId, patch) {
         let updated: GuestBoard | undefined;
+        const normalized = normalizeBoardDevelopmentPatch(patch);
 
         updateGuestSandbox((sandbox) => {
             const board = sandbox.boards.find((item) => item.id === boardId);
@@ -262,11 +270,16 @@ export const guestBoardsProvider: BoardsProvider = {
             if (patch.name !== undefined) {
                 board.name = patch.name;
             }
-            if (patch.base_branch !== undefined) {
-                board.baseBranch = patch.base_branch;
+            if (normalized.is_development !== undefined) {
+                board.isDevelopment = normalized.is_development;
             }
-            if (patch.allowed_head_patterns !== undefined) {
-                board.allowedHeadPatterns = [...patch.allowed_head_patterns];
+            if (normalized.base_branch !== undefined) {
+                board.baseBranch = normalized.base_branch;
+            }
+            if (normalized.allowed_head_patterns !== undefined) {
+                board.allowedHeadPatterns = [
+                    ...normalized.allowed_head_patterns,
+                ];
             }
             if (patch.default_task_type !== undefined) {
                 board.defaultTaskType = patch.default_task_type;

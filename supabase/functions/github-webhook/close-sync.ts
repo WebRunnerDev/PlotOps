@@ -23,6 +23,8 @@ export type ClosePullRequestPlan =
 /**
  * Decide local Task update for a non-merge PR close.
  * Never changes column/status — merge path owns that.
+ * Only updates a task already bound to this PR number (no retarget via
+ * branch / task_key fall-through matches).
  */
 export function planClosePullRequestSync(
     matched: CandidateTask | null,
@@ -30,6 +32,12 @@ export function planClosePullRequestSync(
 ): ClosePullRequestPlan {
     if (!matched) {
         return { reason: "no_task", skip: true };
+    }
+
+    // Binding integrity: close must not rewrite pr_number/url onto a task
+    // matched only by branch or task_key when another PR is (or no PR is) linked.
+    if (matched.pr_number !== input.prNumber) {
+        return { reason: "pr_mismatch", skip: true };
     }
 
     if (matched.pr_state === "closed") {

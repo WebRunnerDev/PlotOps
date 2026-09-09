@@ -1,7 +1,10 @@
 /** Watcher / always-on previous-Assignee metadata. */
-export type AssigneeChangeMetadata = AssignmentMetadata & {
+export type AssigneeChangeMetadata = {
+    assignee?: null | { id: string; name: string };
     /** Always-on row for the previous Assignee (not Watcher fan-out). */
     audience?: "previous_assignee";
+    previousAssignee?: null | { id: string; name: string };
+    source?: "app" | "github_webhook";
 };
 
 export type AssignmentMetadata = {
@@ -22,6 +25,12 @@ export type BoardMoveMetadata = {
     source?: "app" | "github_webhook";
     toBoard: { id: string; name: string };
     toStatus?: null | { id: string; name: string };
+};
+
+/** Watcher Comment create. */
+export type CommentMetadata = {
+    commentId: string;
+    source?: "app" | "github_webhook";
 };
 
 export type DeadlineChangeMetadata = {
@@ -57,17 +66,24 @@ export type NotificationKind =
     | "assignment"
     | "author_change"
     | "board_move"
+    | "comment"
     | "deadline_change"
+    | "description_change"
+    | "estimate_change"
+    | "labels_change"
     | "mention"
     | "priority_change"
+    | "sprint_change"
     | "status_change"
-    | "subtask_change";
+    | "subtask_change"
+    | "title_change";
 
 export type NotificationMetadata =
     | AssigneeChangeMetadata
     | AssignmentMetadata
     | AuthorChangeMetadata
     | BoardMoveMetadata
+    | CommentMetadata
     | DeadlineChangeMetadata
     | MentionMetadata
     | PriorityChangeMetadata

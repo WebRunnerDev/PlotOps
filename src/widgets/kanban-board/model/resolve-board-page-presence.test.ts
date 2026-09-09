@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { resolveBoardPagePresence } from "./resolve-board-page-presence";
 
 const project = { id: "proj-1" };
-const board = { baseBranch: "main", id: "board-1" };
+const board = { baseBranch: "main", id: "board-1", isDevelopment: true };
 
 describe("resolveBoardPagePresence", () => {
     it("stays on project loading before project settles", () => {
