@@ -53,17 +53,20 @@ export function parseOAuthCallbackError(location: {
 }
 
 /**
- * Whether AuthProvider should leave the boot spinner.
- * OAuth callback + null session means exchange is still running.
+ * Whether AuthProvider may settle boot from an `INITIAL_SESSION` event.
+ *
+ * A null session must not finish boot: storage recovery can still be in
+ * flight (local Vite and prod). Finishing early paints sign-in, then a late
+ * session redirects — the flash returning users see. Confirm via
+ * `initialize()` + `getSession()` (or a later SIGNED_IN) instead.
+ *
+ * OAuth callback + null session also means PKCE exchange is still running.
  */
 export function shouldFinishAuthBoot(input: {
     isOAuthCallback: boolean;
     session: null | { user?: unknown };
 }): boolean {
-    if (input.isOAuthCallback && !input.session?.user) {
-        return false;
-    }
-    return true;
+    return Boolean(input.session?.user);
 }
 
 function readOAuthCallbackParameters(location: {

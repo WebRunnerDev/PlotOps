@@ -77,11 +77,22 @@ describe("shouldFinishAuthBoot", () => {
         ).toBe(true);
     });
 
-    it("finishes boot for non-callback loads even when session is null", () => {
+    it("keeps boot open on non-callback loads when session is still null", () => {
+        // Regression: finishing here painted LoginForm before getSession
+        // recovered a live token from localStorage (local Vite + prod).
         expect(
             shouldFinishAuthBoot({
                 isOAuthCallback: false,
                 session: null,
+            })
+        ).toBe(false);
+    });
+
+    it("finishes boot for non-callback loads once a user session exists", () => {
+        expect(
+            shouldFinishAuthBoot({
+                isOAuthCallback: false,
+                session: { user: { id: "u1" } },
             })
         ).toBe(true);
     });
