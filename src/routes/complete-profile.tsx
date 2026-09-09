@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import { AppShellSeo } from "@/features/app-shell/ui/app-shell-seo";
 import {
     CompleteProfileForm,
     isProfileGateRequired,
@@ -71,6 +72,7 @@ function CompleteProfilePage() {
 
     return (
         <AuthPageShell>
+            <AppShellSeo />
             <CompleteProfileForm redirectTo={redirectTo} />
         </AuthPageShell>
     );

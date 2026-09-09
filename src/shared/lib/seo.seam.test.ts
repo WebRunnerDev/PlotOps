@@ -77,4 +77,15 @@ describe("seo seam", () => {
         expect(redirects).toMatch(/\/\*\s+\/spa\.html/);
         expect(script).toMatch(/spa\.html/);
     });
+
+    it("resets document title in the authenticated app shell", () => {
+        const mainLayout = read("src/widgets/main-layout/ui/main-layout.tsx");
+        const pageSeo = read("src/shared/lib/page-seo-config.ts");
+
+        expect(mainLayout).toMatch(/AppShellSeo/);
+        expect(pageSeo).toMatch(/buildAppShellSeo/);
+        expect(pageSeo).toMatch(
+            /\$\{PLOTOPS_SITE_NAME\} — \$\{PLOTOPS_SITE_TAGLINE\}/
+        );
+    });
 });

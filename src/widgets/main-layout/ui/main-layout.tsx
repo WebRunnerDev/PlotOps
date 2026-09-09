@@ -1,5 +1,6 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 
+import { AppShellSeo } from "@/features/app-shell/ui/app-shell-seo";
 import { CommandPalette } from "@/features/command-palette";
 import { cn } from "@/shared/lib/utils";
 import { TopBar } from "@/widgets/top-bar";
@@ -42,6 +43,7 @@ function MainLayoutContent() {
                 layoutMode === "default" && "min-h-dvh"
             )}
         >
+            <AppShellSeo />
             <AuthSessionGuard />
             <TopBar />
             <CommandPalette />

@@ -15,6 +15,21 @@ type AuthPageSeoPath = Extract<
     "/" | "/sign-in" | "/sign-up"
 >;
 
+/**
+ * Default head for authenticated SPA routes.
+ *
+ * Production `/*` used to fall back to prerendered `/` (login title). Even with
+ * a dedicated spa shell, client navigations from auth pages must reset `<title>`.
+ */
+export function buildAppShellSeo(path: string): PageSeo {
+    return {
+        description: `${PLOTOPS_SITE_NAME} — ${PLOTOPS_SITE_TAGLINE}.`,
+        noindex: true,
+        path,
+        title: `${PLOTOPS_SITE_NAME} — ${PLOTOPS_SITE_TAGLINE}`,
+    };
+}
+
 export function buildAuthPageSeo(
     path: AuthPageSeoPath,
     titleKey: "signInTitle" | "signUpTitle",
