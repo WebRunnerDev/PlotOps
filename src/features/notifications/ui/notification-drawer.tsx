@@ -43,6 +43,15 @@ export function NotificationDrawer() {
             : undefined;
     const boardId =
         typeof parameters.boardId === "string" ? parameters.boardId : undefined;
+    /** From a board: filter inbox by that project + enable back-to-board. From home: all projects. */
+    const notificationsPageSearch =
+        projectId && boardId
+            ? {
+                  projectId,
+                  returnBoardId: boardId,
+                  returnProjectId: projectId,
+              }
+            : {};
 
     useNotificationsRealtime();
 
@@ -109,14 +118,7 @@ export function NotificationDrawer() {
                             onClick={() => {
                                 setOpen(false);
                                 void navigate({
-                                    search: {
-                                        ...(projectId && boardId
-                                            ? {
-                                                  returnBoardId: boardId,
-                                                  returnProjectId: projectId,
-                                              }
-                                            : {}),
-                                    },
+                                    search: notificationsPageSearch,
                                     to: "/notifications",
                                 });
                             }}
@@ -204,6 +206,7 @@ export function NotificationDrawer() {
                                                         {
                                                             onFallback: () =>
                                                                 navigate({
+                                                                    search: notificationsPageSearch,
                                                                     to: "/notifications",
                                                                 }),
                                                             onNavigate:
