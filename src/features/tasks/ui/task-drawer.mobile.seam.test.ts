@@ -18,9 +18,14 @@ describe("TaskDrawer mobile seam", () => {
         expect(source).toMatch(
             /swipeDirection=\{drawerPlacement\.swipeDirection\}/
         );
-        expect(source).toMatch(/showSwipeHandle/);
+        expect(source).toMatch(/showSwipeHandle=\{!drawerPlacement\.isSide\}/);
         expect(source).toMatch(/TASK_DRAWER_SNAP_POINTS/);
         expect(source).toMatch(/drawerPlacement\.useSnapPoints/);
+        expect(source).toMatch(/snapPoint=\{/);
+        expect(source).toMatch(/onSnapPointChange/);
+        expect(source).toMatch(/TaskDrawerBottomSnapWheel/);
+        expect(source).toMatch(/drawerHeaderWheelReference/);
+        expect(source).toMatch(/additionalWheelTargets/);
         expect(source).not.toMatch(/defaultSnapPoint/);
         expect(source).toMatch(/@container\/task-drawer/);
         expect(source).toMatch(/min-h-0[\s\S]*flex-1[\s\S]*overflow-y-auto/);
@@ -32,7 +37,6 @@ describe("TaskDrawer mobile seam", () => {
             /md:grid-cols-\[minmax\(0,2fr\)_auto_minmax\(0,1fr\)\]/
         );
         expect(source).toMatch(/TaskDrawerSideEdgeHandle/);
-        expect(source).toMatch(/showSwipeHandle=\{!drawerPlacement\.isSide\}/);
         expect(source).toMatch(/setSideDrawerWidthPx/);
         expect(source).toMatch(/flex-row gap-3/);
         expect(source).toMatch(/drawerSide === "left"/);

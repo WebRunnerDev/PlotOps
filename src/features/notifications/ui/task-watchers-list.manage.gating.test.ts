@@ -38,4 +38,14 @@ describe("Manage Watchers UI Role gating seam", () => {
         expect(list).toMatch(/useToggleTaskWatch/);
         expect(list).toMatch(/watchers\.watch|watchers\.unwatch/);
     });
+
+    it("opens add-Watcher Combobox upward so the list is not clipped", () => {
+        const list = readUi("task-watchers-list.tsx");
+
+        // Nested in manage Popover: bottom placement leaves ~0 available height.
+        expect(list).toMatch(/<ComboboxContent\s+side="top"/);
+        expect(list).toMatch(
+            /PopoverContent[\s\S]*overflow-visible[\s\S]*ManageWatchersPanel/
+        );
+    });
 });

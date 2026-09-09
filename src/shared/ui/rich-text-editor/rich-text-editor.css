@@ -83,6 +83,20 @@
     background-color: color-mix(in oklab, var(--primary) 8%, transparent);
 }
 
+/* Text selection that also covers content outside the table: hide the browser's
+   per-cell text highlight (same idea as image `user-select: none`) so only the
+   `.selectedCell` block overlay shows. Class is set by TableBlockSelection. */
+.rich-text-editor .ProseMirror .table-block-selected,
+.rich-text-editor .ProseMirror .table-block-selected * {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.rich-text-editor .ProseMirror .table-block-selected ::selection,
+.rich-text-editor .ProseMirror .table-block-selected *::selection {
+    background: transparent;
+}
+
 .rich-text-editor .ProseMirror .column-resize-handle {
     position: absolute;
     top: 0;

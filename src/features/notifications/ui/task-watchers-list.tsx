@@ -153,7 +153,7 @@ export function TaskWatchersList(properties: {
                         </PopoverTrigger>
                         <PopoverContent
                             align="end"
-                            className="w-72 rounded-none p-3"
+                            className="w-72 overflow-visible rounded-none p-3"
                         >
                             <ManageWatchersPanel
                                 busy={busy}
@@ -288,7 +288,7 @@ function ManageWatchersPanel({
                         id="add-watcher"
                         placeholder={t("watchers.addPlaceholder")}
                     />
-                    <ComboboxContent>
+                    <ComboboxContent side="top">
                         <ComboboxEmpty>{t("watchers.addEmpty")}</ComboboxEmpty>
                         <ComboboxList>
                             {(person: ProjectPerson) => (

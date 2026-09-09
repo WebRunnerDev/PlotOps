@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+    BOTTOM_DRAWER_WHEEL_STEP_PX,
     clampSideDrawerWidth,
     DEFAULT_SIDE_DRAWER_WIDTH_PX,
     isTaskDrawerSide,
     MAX_SIDE_DRAWER_WIDTH_PX,
     maybeSelectCreatedTask,
     MIN_SIDE_DRAWER_WIDTH_PX,
+    resolveBottomDrawerWheelStep,
     resolveSideDrawerPointerDrag,
+    resolveSideDrawerWheelDelta,
     resolveTaskDrawerPlacement,
     SIDE_DRAWER_CLOSE_SLACK_PX,
 } from "./resolve-task-drawer-placement";
@@ -92,6 +95,89 @@ describe("resolveSideDrawerPointerDrag", () => {
                 startWidthPx: 480,
             }).shouldClose
         ).toBe(true);
+    });
+});
+
+describe("resolveSideDrawerWheelDelta", () => {
+    it("expands when scrolling up", () => {
+        expect(
+            resolveSideDrawerWheelDelta({
+                deltaX: 0,
+                deltaY: -40,
+                side: "right",
+                widthPx: 480,
+            })
+        ).toEqual({ shouldClose: false, widthPx: 520 });
+    });
+
+    it("expands a left drawer when scrolling right dominates", () => {
+        expect(
+            resolveSideDrawerWheelDelta({
+                deltaX: 32,
+                deltaY: 8,
+                side: "left",
+                widthPx: 480,
+            })
+        ).toEqual({ shouldClose: false, widthPx: 512 });
+    });
+
+    it("closes when wheeled past the compact minimum toward the outside", () => {
+        expect(
+            resolveSideDrawerWheelDelta({
+                deltaX: 0,
+                deltaY:
+                    480 -
+                    MIN_SIDE_DRAWER_WIDTH_PX +
+                    SIDE_DRAWER_CLOSE_SLACK_PX +
+                    1,
+                side: "right",
+                widthPx: 480,
+            }).shouldClose
+        ).toBe(true);
+    });
+});
+
+describe("resolveBottomDrawerWheelStep", () => {
+    it("expands to the next snap after enough upward scroll", () => {
+        expect(
+            resolveBottomDrawerWheelStep({
+                accumulatedDelta: BOTTOM_DRAWER_WHEEL_STEP_PX,
+                activeIndex: 0,
+                snapPointCount: 2,
+            })
+        ).toEqual({
+            didStep: true,
+            nextAccumulatedDelta: 0,
+            nextIndex: 1,
+        });
+    });
+
+    it("dismisses when wheeled down past the compact snap", () => {
+        expect(
+            resolveBottomDrawerWheelStep({
+                accumulatedDelta: -BOTTOM_DRAWER_WHEEL_STEP_PX,
+                activeIndex: 0,
+                snapPointCount: 2,
+            })
+        ).toEqual({
+            didStep: true,
+            nextAccumulatedDelta: 0,
+            nextIndex: null,
+        });
+    });
+
+    it("keeps accumulating below the step threshold", () => {
+        expect(
+            resolveBottomDrawerWheelStep({
+                accumulatedDelta: BOTTOM_DRAWER_WHEEL_STEP_PX - 1,
+                activeIndex: 0,
+                snapPointCount: 2,
+            })
+        ).toEqual({
+            didStep: false,
+            nextAccumulatedDelta: BOTTOM_DRAWER_WHEEL_STEP_PX - 1,
+            nextIndex: 0,
+        });
     });
 });
 

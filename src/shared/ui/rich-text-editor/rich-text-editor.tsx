@@ -102,6 +102,7 @@ import {
     filterSlashCommands,
     type SlashCommand,
 } from "@/shared/ui/rich-text-editor/slash-commands";
+import { TableBlockSelection } from "@/shared/ui/rich-text-editor/table-block-selection";
 import { TableToolbar } from "@/shared/ui/rich-text-editor/table-toolbar";
 import "@/shared/ui/rich-text-editor/rich-text-editor.css";
 import {
@@ -410,8 +411,13 @@ export const RichTextEditor = forwardRef<
                     return true;
                 },
                 mousedown: (_view, event) => {
-                    if (menuStateReference.current.commands.length === 0)
-                        return false;
+                    // Selection bubble has no slash rows (`commands: []`) but
+                    // still needs dismiss-on-mousedown like the block menus.
+                    const current = menuStateReference.current;
+                    const menuOpen =
+                        current.commands.length > 0 ||
+                        current.source === "selection";
+                    if (!menuOpen) return false;
                     if (event.button === 2) return false;
 
                     const target = event.target;
@@ -599,6 +605,7 @@ export const RichTextEditor = forwardRef<
                     resizable: true,
                 },
             }),
+            TableBlockSelection,
             FileHandler.configure({
                 // Don't filter by MIME here — Windows drag often has an empty type.
                 // Filtering happens in insertImageFiles / isImageFile.
@@ -614,7 +621,22 @@ export const RichTextEditor = forwardRef<
             }),
         ],
         immediatelyRender: false,
-        onBlur: () => {
+        onBlur: ({ event }) => {
+            // Clicking drawer chrome (or any non-editor surface) clears the
+            // browser highlight without collapsing ProseMirror's TextSelection,
+            // so `onSelectionUpdate` never runs. Drop the floating menu on blur
+            // unless focus moved into the menu itself (toolbar buttons).
+            const related = event.relatedTarget;
+            const focusMovedToMenu =
+                related instanceof Node &&
+                Boolean(menuReference.current?.contains(related));
+            if (
+                !focusMovedToMenu &&
+                menuStateReference.current.source !== null
+            ) {
+                closeMenu();
+            }
+
             const currentEditor = editorReference.current;
             if (
                 currentEditor &&
@@ -926,6 +948,11 @@ export const RichTextEditor = forwardRef<
                       "fixed top-0 left-0 z-70 rounded-lg border border-border bg-popover p-1 shadow-md ring-1 ring-foreground/10",
                       showBlocks ? "w-72" : "w-auto max-w-[calc(100vw-1rem)]"
                   )}
+                  onMouseDown={(event) => {
+                      // Keep editor focus/selection while using the bubble so
+                      // blur does not dismiss the menu mid-click.
+                      event.preventDefault();
+                  }}
                   ref={menuReference}
               >
                   <TooltipProvider delay={400}>
