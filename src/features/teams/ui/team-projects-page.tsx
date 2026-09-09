@@ -100,7 +100,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-8 px-4 py-8">
                 <div className="flex flex-col gap-1">
                     <Skeleton width={220} />
                     <Skeleton width={160} />
@@ -134,14 +134,16 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
 
     if (accessError || teamError || !team || (isSettled && !canView)) {
         return (
-            <Alert variant="destructive">
-                <AlertDescription>{t("teamLoadFailed")}</AlertDescription>
-            </Alert>
+            <div className="px-4 py-8">
+                <Alert variant="destructive">
+                    <AlertDescription>{t("teamLoadFailed")}</AlertDescription>
+                </Alert>
+            </div>
         );
     }
 
     return (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-8 px-4 py-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="flex min-w-0 flex-col gap-1">
                     <h1 className="truncate">{team.name}</h1>

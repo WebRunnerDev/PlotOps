@@ -59,7 +59,7 @@ export function TeamsPage() {
     const itemCount = isTeamsView ? teams.length : allProjectRows.length;
 
     return (
-        <div className="relative flex min-w-0 flex-col gap-10 wrap-break-word sm:gap-12">
+        <div className="relative flex min-w-0 flex-col gap-10 wrap-break-word px-4 py-8 sm:gap-12 sm:py-10">
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 -top-4 h-64 bg-auth-atmosphere opacity-90 sm:-top-6 sm:h-80"

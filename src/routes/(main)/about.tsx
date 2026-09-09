@@ -46,7 +46,7 @@ function AboutPage() {
     const also = FEATURES.filter((feature) => !PILLAR_KEYS.has(feature.key));
 
     return (
-        <div className="relative mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-20 wrap-break-word py-8 sm:gap-24 sm:py-12">
+        <div className="relative flex w-full min-w-0 flex-col gap-20 wrap-break-word px-4 py-8 sm:gap-24 sm:py-12">
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 -top-8 h-80 bg-auth-atmosphere opacity-90 sm:-top-12 sm:h-112"

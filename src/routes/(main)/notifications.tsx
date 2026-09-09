@@ -121,7 +121,7 @@ function NotificationsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 px-4 py-8">
             <header className="flex flex-col gap-2 border-b border-border pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">

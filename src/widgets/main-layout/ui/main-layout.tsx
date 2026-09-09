@@ -13,7 +13,7 @@ export function MainLayoutWidget() {
 
 function MainLayoutContent() {
     // Use settled location — pending navigations update `location` immediately while
-    // home is still painted; flipping layout then strips max-w-5xl for ~1s (board fetch).
+    // home is still painted; flipping layout then strips max-w-6xl for ~1s (board fetch).
     const layoutMode = useRouterState({
         select: (state) => {
             const path =
@@ -56,7 +56,7 @@ function MainLayoutContent() {
                     <Outlet />
                 </div>
             ) : (
-                <div className="mx-auto w-full max-w-5xl p-4 [view-transition-name:main-content]">
+                <div className="mx-auto w-full max-w-6xl [view-transition-name:main-content]">
                     <Outlet />
                 </div>
             )}

@@ -9,7 +9,7 @@ export function CiCdLoading() {
         <div
             aria-busy="true"
             aria-live="polite"
-            className="scrollbar-board relative mx-auto flex h-full w-full min-w-0 max-w-5xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10"
+            className="scrollbar-board relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10"
             role="status"
         >
             <div

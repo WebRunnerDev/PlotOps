@@ -1,16 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
+import { createFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
-export const Route = createFileRoute('/(main)/dashboard')({
-  component: DashboardPage,
-})
+export const Route = createFileRoute("/(main)/dashboard")({
+    component: DashboardPage,
+});
 
 function DashboardPage() {
-  const { t } = useTranslation('dashboard')
+    const { t } = useTranslation("dashboard");
 
-  return (
-    <div>
-      <h1>{t('title')}</h1>
-    </div>
-  )
+    return (
+        <div className="px-4 py-8">
+            <h1>{t("title")}</h1>
+        </div>
+    );
 }
