@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("AppRouter boot screen seam", () => {
-    it("uses BootScreen + AnimatePresence exit morph gated by useBootVisible", () => {
+    it("overlays BootScreen above the router until auth entry is safe", () => {
         const source = fs.readFileSync(
             path.join(dirname, "app-router.tsx"),
             "utf8"
@@ -21,9 +21,12 @@ describe("AppRouter boot screen seam", () => {
         expect(source).toMatch(
             /const\s+showBoot\s*=\s*useBootVisible\(\s*auth\.isLoading\s*,\s*auth\.bootError\s*\)/
         );
-        expect(source).toMatch(/<AnimatePresence\s+mode="wait">/);
-        expect(source).toMatch(/showBoot\s*\?\s*\(/);
+        expect(source).toMatch(/shouldCoverAuthEntry/);
+        expect(source).toMatch(/fixed inset-0/);
         expect(source).toMatch(/<BootScreen/);
+        expect(source).toMatch(/mountApp/);
+        // Must not mode=wait swap Boot off before Router redirects.
+        expect(source).not.toMatch(/AnimatePresence\s+mode="wait"/);
         expect(source).not.toMatch(/animate-spin rounded-full/);
     });
 });

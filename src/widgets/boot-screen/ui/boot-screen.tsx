@@ -1,13 +1,9 @@
-import {
-    AnimatePresence,
-    motion,
-    useReducedMotion,
-    type Variants,
-} from "motion/react";
-import { useEffect, useState } from "react";
+import { motion, useReducedMotion, type Variants } from "motion/react";
+import { useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { EASE_OUT } from "@/shared/lib/ease";
+import { clearSsgAuthSessionMask } from "@/shared/lib/ssg-auth-session-mask";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
 
@@ -23,230 +19,38 @@ type BootScreenProperties = {
     };
 };
 
+/** Opacity + translate only — clip-path / filter on a full-viewport layer janks. */
 const screenVariants: Variants = {
     exit: {
-        clipPath: "inset(0 0 100% 0)",
         opacity: 0,
-        transition: { duration: 0.52, ease: EASE_OUT },
+        transition: { duration: 0.36, ease: EASE_OUT },
+        y: "-6%",
     },
     hidden: {
-        clipPath: "inset(0 0 0% 0)",
         opacity: 0,
+        y: "4%",
     },
     show: {
-        clipPath: "inset(0 0 0% 0)",
         opacity: 1,
-        transition: { duration: 0.4, ease: EASE_OUT },
+        transition: { duration: 0.32, ease: EASE_OUT },
+        y: "0%",
     },
 };
 
-function CropMarks({ reduceMotion }: { reduceMotion: boolean }) {
-    const arm = "absolute bg-primary/40";
-    const len = "h-3 w-px sm:h-4";
-    const wid = "h-px w-3 sm:w-4";
-
-    return (
-        <motion.div
-            animate={reduceMotion ? { opacity: 1 } : { opacity: 1 }}
-            aria-hidden
-            className="pointer-events-none absolute inset-5 sm:inset-8"
-            initial={reduceMotion ? false : { opacity: 0 }}
-            transition={{ delay: 0.15, duration: 0.8, ease: EASE_OUT }}
-        >
-            <span className={cn(arm, len, "top-0 left-0")} />
-            <span className={cn(arm, wid, "top-0 left-0")} />
-            <span className={cn(arm, len, "top-0 right-0")} />
-            <span className={cn(arm, wid, "top-0 right-0")} />
-            <span className={cn(arm, len, "bottom-0 left-0")} />
-            <span className={cn(arm, wid, "bottom-0 left-0")} />
-            <span className={cn(arm, len, "bottom-0 right-0")} />
-            <span className={cn(arm, wid, "bottom-0 right-0")} />
-        </motion.div>
-    );
-}
-
-function BrandMark({ reduceMotion }: { reduceMotion: boolean }) {
-    return (
-        <div className="relative">
-            <motion.div
-                animate={
-                    reduceMotion
-                        ? { opacity: 0.45 }
-                        : {
-                              opacity: [0, 0.75, 0.38],
-                              scale: [0.72, 1.06, 1],
-                          }
-                }
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-1/2 size-[min(28rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl"
-                initial={reduceMotion ? false : { opacity: 0, scale: 0.72 }}
-                transition={{
-                    delay: 0.28,
-                    duration: 1.45,
-                    ease: EASE_OUT,
-                    times: [0, 0.42, 1],
-                }}
-            />
-
-            <p
-                aria-hidden
-                className="relative font-heading text-[clamp(3.25rem,2rem+8vw,7rem)] font-bold leading-[0.9] tracking-tighter text-foreground"
-            >
-                {BRAND.split("").map((char, index) => {
-                    const riseDelay = 0.1 + index * 0.052;
-                    return (
-                        <span
-                            className="inline-block overflow-hidden pb-[0.06em] align-bottom"
-                            // biome-ignore lint/suspicious/noArrayIndexKey: stable brand string
-                            key={`${char}-${index}`}
-                        >
-                            <motion.span
-                                animate={
-                                    reduceMotion
-                                        ? { y: "0%" }
-                                        : {
-                                              textShadow: [
-                                                  "0 0 0 transparent",
-                                                  "0 0 22px color-mix(in oklab, var(--primary) 50%, transparent)",
-                                                  "0 0 0 transparent",
-                                              ],
-                                              y: "0%",
-                                          }
-                                }
-                                className="inline-block will-change-transform"
-                                initial={
-                                    reduceMotion ? false : { y: "110%" }
-                                }
-                                transition={{
-                                    delay: riseDelay,
-                                    duration: 0.88,
-                                    ease: EASE_OUT,
-                                    textShadow: {
-                                        delay: riseDelay + 0.62,
-                                        duration: 0.7,
-                                        ease: EASE_OUT,
-                                    },
-                                }}
-                            >
-                                {char}
-                            </motion.span>
-                        </span>
-                    );
-                })}
-            </p>
-        </div>
-    );
-}
-
-function BootProgress({ reduceMotion }: { reduceMotion: boolean }) {
-    return (
-        <div
-            aria-hidden
-            className="relative h-px w-full max-w-48 overflow-hidden bg-primary/20"
-        >
-            <motion.span
-                animate={
-                    reduceMotion ? { x: "80%" } : { x: ["-100%", "280%"] }
-                }
-                className="absolute inset-y-0 left-0 w-2/5 bg-primary"
-                initial={false}
-                transition={
-                    reduceMotion
-                        ? { duration: 0 }
-                        : {
-                              duration: 1.65,
-                              ease: EASE_OUT,
-                              repeat: Number.POSITIVE_INFINITY,
-                              repeatDelay: 0.12,
-                          }
-                }
-            />
-        </div>
-    );
-}
-
-function BootStatusLine({
-    phases,
-    reduceMotion,
-}: {
-    phases: string[];
-    reduceMotion: boolean;
-}) {
-    const [phaseIndex, setPhaseIndex] = useState(0);
-    const safePhases = phases.length > 0 ? phases : ["…"];
-
-    useEffect(() => {
-        if (reduceMotion || safePhases.length < 2) return;
-
-        const intervalId = window.setInterval(() => {
-            setPhaseIndex((current) => (current + 1) % safePhases.length);
-        }, 1400);
-
-        return () => {
-            window.clearInterval(intervalId);
-        };
-    }, [reduceMotion, safePhases.length]);
-
-    const label = safePhases[phaseIndex] ?? safePhases[0];
-
-    return (
-        <div className="relative min-h-[1.2em] overflow-hidden">
-            <AnimatePresence mode="wait">
-                <motion.p
-                    animate={{ opacity: 1, y: 0 }}
-                    className="font-mono text-meta text-muted-foreground normal-case tracking-[0.08em]"
-                    exit={
-                        reduceMotion
-                            ? { opacity: 0 }
-                            : { opacity: 0, y: -8 }
-                    }
-                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-                    key={label}
-                    transition={{ duration: 0.4, ease: EASE_OUT }}
-                >
-                    {label}
-                    <motion.span
-                        animate={
-                            reduceMotion
-                                ? { opacity: 1 }
-                                : { opacity: [1, 1, 0, 0] }
-                        }
-                        aria-hidden
-                        className="text-primary"
-                        transition={
-                            reduceMotion
-                                ? { duration: 0 }
-                                : {
-                                      duration: 1.05,
-                                      ease: EASE_OUT,
-                                      repeat: Number.POSITIVE_INFINITY,
-                                      times: [0, 0.45, 0.5, 1],
-                                  }
-                        }
-                    >
-                        _
-                    </motion.span>
-                </motion.p>
-            </AnimatePresence>
-        </div>
-    );
-}
-
 /**
- * Full-viewport auth boot — brand-first signature moment while the session
- * restores (or when boot fails). Clip-masked wordmark, bloom, crop marks,
- * and an exit morph into the app shell.
+ * Full-viewport auth boot — brand-first signature while the session restores
+ * (or boot fails). Keep motion on the compositor: opacity + transform only.
  */
 export function BootScreen({ className, error }: BootScreenProperties) {
     const { t } = useTranslation("auth");
     const reduceMotion = useReducedMotion() === true;
 
-    const phases = t("boot.loadingPhases", {
-        returnObjects: true,
-    });
-    const loadingPhases = Array.isArray(phases)
-        ? phases.filter((item): item is string => typeof item === "string")
-        : [t("boot.loading")];
+    // Hand viewport from the static SSG mask to BootScreen in the same frame.
+    useLayoutEffect(() => {
+        clearSsgAuthSessionMask();
+    }, []);
+
+    const statusLabel = error ? null : t("boot.loading");
 
     return (
         <motion.div
@@ -254,12 +58,14 @@ export function BootScreen({ className, error }: BootScreenProperties) {
             aria-busy={!error}
             aria-live="polite"
             className={cn(
-                "relative flex min-h-dvh w-full min-w-0 flex-col items-center justify-center overflow-hidden bg-auth-atmosphere px-6 py-16",
+                // Flat boot surface — grid atmosphere is paint-heavy under motion.
+                "relative flex min-h-dvh w-full min-w-0 flex-col items-center justify-center overflow-hidden bg-background px-6 py-16",
                 className
             )}
             exit="exit"
             initial={reduceMotion ? false : "hidden"}
             role="status"
+            style={{ transform: "translateZ(0)" }}
             variants={screenVariants}
         >
             <span className="sr-only">
@@ -272,10 +78,10 @@ export function BootScreen({ className, error }: BootScreenProperties) {
                 <motion.p
                     animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
                     className="font-mono text-meta text-primary uppercase tracking-[0.16em]"
-                    initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
                     transition={{
                         delay: 0.04,
-                        duration: 0.65,
+                        duration: 0.45,
                         ease: EASE_OUT,
                     }}
                 >
@@ -287,17 +93,13 @@ export function BootScreen({ className, error }: BootScreenProperties) {
                 <motion.div
                     animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
                     className="flex w-full flex-col gap-4"
-                    initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+                    initial={reduceMotion ? false : { opacity: 0, y: 12 }}
                     transition={{
-                        delay: 0.48,
-                        duration: 0.6,
+                        delay: 0.36,
+                        duration: 0.45,
                         ease: EASE_OUT,
                     }}
                 >
-                    {error ? null : (
-                        <BootProgress reduceMotion={reduceMotion} />
-                    )}
-
                     {error ? (
                         <div className="flex max-w-sm flex-col items-start gap-4">
                             <p className="text-ui text-muted-foreground">
@@ -308,13 +110,87 @@ export function BootScreen({ className, error }: BootScreenProperties) {
                             </Button>
                         </div>
                     ) : (
-                        <BootStatusLine
-                            phases={loadingPhases}
-                            reduceMotion={reduceMotion}
-                        />
+                        <p className="font-mono text-meta text-muted-foreground normal-case tracking-[0.08em]">
+                            {statusLabel}
+                            <span
+                                aria-hidden
+                                className="ml-0.5 inline-block text-primary motion-safe:animate-pulse"
+                            >
+                                _
+                            </span>
+                        </p>
                     )}
                 </motion.div>
             </div>
+        </motion.div>
+    );
+}
+
+function BrandMark({ reduceMotion }: { reduceMotion: boolean }) {
+    return (
+        <div className="relative">
+            {/* Soft glow via gradient only — CSS filter blur is a paint trap on boot. */}
+            <motion.div
+                animate={reduceMotion ? { opacity: 0.55 } : { opacity: 0.7 }}
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-1/2 size-[min(22rem,70vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--primary)_35%,transparent)_0%,transparent_70%)]"
+                initial={reduceMotion ? false : { opacity: 0 }}
+                transition={{ delay: 0.2, duration: 0.7, ease: EASE_OUT }}
+            />
+
+            <p
+                aria-hidden
+                className="relative font-heading text-[clamp(3.25rem,2rem+8vw,7rem)] font-bold leading-[0.9] tracking-tighter text-foreground"
+            >
+                {[...BRAND].map((char, index) => {
+                    const riseDelay = 0.08 + index * 0.04;
+                    return (
+                        <span
+                            className="inline-block overflow-hidden pb-[0.06em] align-bottom"
+                            // biome-ignore lint/suspicious/noArrayIndexKey: stable brand string
+                            key={`${char}-${index}`}
+                        >
+                            <motion.span
+                                animate={{ y: "0%" }}
+                                className="inline-block will-change-transform"
+                                initial={reduceMotion ? false : { y: "110%" }}
+                                transition={{
+                                    delay: riseDelay,
+                                    duration: 0.7,
+                                    ease: EASE_OUT,
+                                }}
+                            >
+                                {char}
+                            </motion.span>
+                        </span>
+                    );
+                })}
+            </p>
+        </div>
+    );
+}
+
+function CropMarks({ reduceMotion }: { reduceMotion: boolean }) {
+    const arm = "absolute bg-primary/40";
+    const length_ = "h-3 w-px sm:h-4";
+    const wid = "h-px w-3 sm:w-4";
+
+    return (
+        <motion.div
+            animate={{ opacity: 1 }}
+            aria-hidden
+            className="pointer-events-none absolute inset-5 sm:inset-8"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            transition={{ delay: 0.12, duration: 0.5, ease: EASE_OUT }}
+        >
+            <span className={cn(arm, length_, "top-0 left-0")} />
+            <span className={cn(arm, wid, "top-0 left-0")} />
+            <span className={cn(arm, length_, "top-0 right-0")} />
+            <span className={cn(arm, wid, "top-0 right-0")} />
+            <span className={cn(arm, length_, "bottom-0 left-0")} />
+            <span className={cn(arm, wid, "bottom-0 left-0")} />
+            <span className={cn(arm, length_, "bottom-0 right-0")} />
+            <span className={cn(arm, wid, "bottom-0 right-0")} />
         </motion.div>
     );
 }
