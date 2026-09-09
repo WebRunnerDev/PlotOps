@@ -71,8 +71,10 @@ describe("seo seam", () => {
 
     it("routes prerendered HTML through Cloudflare _redirects", () => {
         const redirects = read("public/_redirects");
+        const script = read("scripts/ssg.mjs");
 
         expect(redirects).toMatch(/\/sign-in\s+\/sign-in\/index\.html/);
-        expect(redirects).toMatch(/\/\*\s+\/index\.html/);
+        expect(redirects).toMatch(/\/\*\s+\/spa\.html/);
+        expect(script).toMatch(/spa\.html/);
     });
 });
