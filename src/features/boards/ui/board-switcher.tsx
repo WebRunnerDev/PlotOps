@@ -12,6 +12,7 @@ import {
 } from "@/features/boards/model/use-project-boards";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -37,6 +38,8 @@ type BoardSwitcherProperties = {
     /** Where selecting/creating a board navigates. Default: kanban board. */
     destination?: "backlog" | "board";
     projectId: string;
+    /** Development Board option — only meaningful with a linked GitHub repo. */
+    showGitBranchSettings?: boolean;
 };
 
 export function BoardSwitcher({
@@ -45,6 +48,7 @@ export function BoardSwitcher({
     defaultBaseBranch,
     destination = "board",
     projectId,
+    showGitBranchSettings = false,
 }: BoardSwitcherProperties) {
     const { t } = useTranslation("board");
     const navigate = useNavigate();
@@ -52,6 +56,7 @@ export function BoardSwitcher({
     const { createBoard, isCreating } = useBoardMutations(projectId);
     const [createOpen, setCreateOpen] = useState(false);
     const [name, setName] = useState("");
+    const [isDevelopment, setIsDevelopment] = useState(showGitBranchSettings);
     const [baseBranch, setBaseBranch] = useState(defaultBaseBranch);
 
     const current = boards.find((board) => board.id === boardId);
@@ -71,12 +76,17 @@ export function BoardSwitcher({
     };
 
     const handleCreate = async () => {
+        const asDevelopment = showGitBranchSettings && isDevelopment;
         const board = await createBoard(
             name.trim() || t("boards.defaultNewName"),
-            baseBranch.trim() || defaultBaseBranch || "main"
+            {
+                baseBranch: asDevelopment ? baseBranch.trim() : undefined,
+                isDevelopment: asDevelopment,
+            }
         );
         setCreateOpen(false);
         setName("");
+        setIsDevelopment(showGitBranchSettings);
         setBaseBranch(defaultBaseBranch);
         goToBoard(board);
     };
@@ -133,6 +143,7 @@ export function BoardSwitcher({
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={() => {
+                                        setIsDevelopment(showGitBranchSettings);
                                         setBaseBranch(defaultBaseBranch);
                                         setCreateOpen(true);
                                     }}
@@ -168,20 +179,52 @@ export function BoardSwitcher({
                                 value={name}
                             />
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="board-base">
-                                {t("boards.baseBranch")}
-                            </Label>
-                            <Input
-                                className="font-mono text-sm"
-                                id="board-base"
-                                onChange={(event) =>
-                                    setBaseBranch(event.target.value)
-                                }
-                                placeholder="main"
-                                value={baseBranch}
-                            />
-                        </div>
+                        {showGitBranchSettings ? (
+                            <>
+                                <div className="flex items-start gap-3">
+                                    <Checkbox
+                                        checked={isDevelopment}
+                                        className="mt-0.5"
+                                        id="board-is-dev"
+                                        onCheckedChange={(checked) => {
+                                            setIsDevelopment(checked === true);
+                                        }}
+                                    />
+                                    <div className="flex min-w-0 flex-col gap-1">
+                                        <Label
+                                            className="cursor-pointer"
+                                            htmlFor="board-is-dev"
+                                        >
+                                            {t("boards.isDevelopment")}
+                                        </Label>
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.isDevelopmentHint")}
+                                        </p>
+                                    </div>
+                                </div>
+                                {isDevelopment ? (
+                                    <div className="flex flex-col gap-1.5">
+                                        <Label htmlFor="board-base">
+                                            {t("boards.baseBranch")}
+                                        </Label>
+                                        <Input
+                                            className="font-mono text-sm"
+                                            id="board-base"
+                                            onChange={(event) =>
+                                                setBaseBranch(
+                                                    event.target.value
+                                                )
+                                            }
+                                            placeholder="main"
+                                            value={baseBranch}
+                                        />
+                                        <p className="text-meta text-muted-foreground">
+                                            {t("boards.baseBranchHint")}
+                                        </p>
+                                    </div>
+                                ) : undefined}
+                            </>
+                        ) : undefined}
                     </div>
                     <DialogFooter>
                         <Button
@@ -191,7 +234,12 @@ export function BoardSwitcher({
                             {t("boards.cancel")}
                         </Button>
                         <Button
-                            disabled={isCreating}
+                            disabled={
+                                isCreating ||
+                                (showGitBranchSettings &&
+                                    isDevelopment &&
+                                    !baseBranch.trim())
+                            }
                             onClick={() => void handleCreate()}
                         >
                             {t("boards.createConfirm")}

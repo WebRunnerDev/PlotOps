@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import type { BoardDefaultTaskType } from "@/features/boards/model/types";
+import type {
+    BoardDefaultTaskType,
+    CreateBoardInput,
+} from "@/features/boards/model/types";
 
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { invalidateProjectBoards } from "@/features/boards/model/invalidate-boards";
@@ -18,12 +21,12 @@ export function useBoardMutations(projectId: string) {
 
     const createMutation = useMutation({
         mutationFn: ({
-            baseBranch,
+            input,
             name,
         }: {
-            baseBranch: string;
+            input: CreateBoardInput;
             name: string;
-        }) => boardsProvider.createBoard(projectId, name, baseBranch),
+        }) => boardsProvider.createBoard(projectId, name, input),
         onError: () => {
             toast.error("Could not create board");
         },
@@ -41,8 +44,9 @@ export function useBoardMutations(projectId: string) {
             patch: {
                 allowed_head_patterns?: string[];
                 auto_assign_to_creator?: boolean;
-                base_branch?: string;
+                base_branch?: null | string;
                 default_task_type?: BoardDefaultTaskType;
+                is_development?: boolean;
                 name?: string;
             };
         }) => boardsProvider.updateBoard(boardId, patch),
@@ -62,8 +66,8 @@ export function useBoardMutations(projectId: string) {
     });
 
     return {
-        createBoard: (name: string, baseBranch: string) =>
-            createMutation.mutateAsync({ baseBranch, name }),
+        createBoard: (name: string, input: CreateBoardInput) =>
+            createMutation.mutateAsync({ input, name }),
         deleteBoard: (boardId: string) => deleteMutation.mutateAsync(boardId),
         isCreating: createMutation.isPending,
         isDeleting: deleteMutation.isPending,
@@ -73,8 +77,9 @@ export function useBoardMutations(projectId: string) {
             patch: {
                 allowed_head_patterns?: string[];
                 auto_assign_to_creator?: boolean;
-                base_branch?: string;
+                base_branch?: null | string;
                 default_task_type?: BoardDefaultTaskType;
+                is_development?: boolean;
                 name?: string;
             }
         ) => updateMutation.mutateAsync({ boardId, patch }),

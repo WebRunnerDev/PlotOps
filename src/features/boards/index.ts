@@ -48,6 +48,7 @@ export { resolvePreferredBoardId } from "./model/resolve-preferred-board-id";
 export type {
     BoardColumn,
     BoardDefaultTaskType,
+    CreateBoardInput,
     ProjectBoardRecord,
 } from "./model/types";
 export { useBoardColumns } from "./model/use-board-columns";

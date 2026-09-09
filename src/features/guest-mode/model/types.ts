@@ -22,10 +22,13 @@ export type GuestActivityEvent = {
 export type GuestBoard = {
     allowedHeadPatterns: string[];
     autoAssignToCreator?: boolean;
-    baseBranch: string;
+    /** PR merge target; required when isDevelopment. */
+    baseBranch: null | string;
     columns: GuestBoardColumn[];
     defaultTaskType: "bug" | "feature" | "task";
     id: string;
+    /** Git branch mapping (Base branch + Allowed head patterns). */
+    isDevelopment?: boolean;
     name: string;
     position: number;
     projectId: string;

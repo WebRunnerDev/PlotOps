@@ -59,6 +59,7 @@ describe("boards feature query seam", () => {
                 baseBranch: "main",
                 defaultTaskType: "task",
                 id: boardId,
+                isDevelopment: true,
                 name: "Main",
                 position: 0,
                 projectId,

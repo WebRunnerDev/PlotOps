@@ -7,8 +7,9 @@ export type BoardPagePresence =
     | { kind: "project-loading" };
 
 export type BoardPagePresenceBoard = {
-    baseBranch: string;
+    baseBranch: null | string;
     id: string;
+    isDevelopment: boolean;
 };
 
 export type ResolveBoardPagePresenceInput = {

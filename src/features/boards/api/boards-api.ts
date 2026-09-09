@@ -1,23 +1,26 @@
 import type {
     BoardDefaultTaskType,
+    CreateBoardInput,
     ProjectBoardRecord,
 } from "@/features/boards/model/types";
 
+import { normalizeBoardDevelopmentPatch } from "@/features/boards/lib/normalize-board-development-patch";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseBoard = {
     allowed_head_patterns: null | string[];
     auto_assign_to_creator: boolean | null;
-    base_branch: string;
+    base_branch: null | string;
     default_task_type: null | string;
     id: string;
+    is_development: boolean;
     name: string;
     position: number;
     project_id: string;
 };
 
 const BOARD_SELECT =
-    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator";
+    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator, is_development";
 
 const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
 
@@ -34,10 +37,14 @@ export async function boardHasTasks(boardId: string): Promise<boolean> {
 export async function createBoard(
     projectId: string,
     name: string,
-    baseBranch: string
+    input: CreateBoardInput
 ) {
+    const isDevelopment = input.isDevelopment;
+    const baseBranch = isDevelopment ? input.baseBranch?.trim() || null : null;
+
     const { data, error } = await supabase.rpc("create_board_with_columns", {
-        p_base_branch: baseBranch || "main",
+        p_base_branch: baseBranch,
+        p_is_development: isDevelopment,
         p_name: name.trim() || "Board",
         p_project_id: projectId,
     });
@@ -86,15 +93,22 @@ export async function updateBoard(
     patch: {
         allowed_head_patterns?: string[];
         auto_assign_to_creator?: boolean;
-        base_branch?: string;
+        base_branch?: null | string;
         default_task_type?: BoardDefaultTaskType;
+        is_development?: boolean;
         name?: string;
         position?: number;
     }
 ) {
+    const normalized = normalizeBoardDevelopmentPatch(patch);
+    const payload = {
+        ...patch,
+        ...normalized,
+    };
+
     const { data, error } = await supabase
         .from("boards")
-        .update(patch)
+        .update(payload)
         .eq("id", boardId)
         .select(BOARD_SELECT)
         .single();
@@ -110,6 +124,7 @@ function mapDatabaseBoard(row: DatabaseBoard): ProjectBoardRecord {
         baseBranch: row.base_branch,
         defaultTaskType: toDefaultTaskType(row.default_task_type),
         id: row.id,
+        isDevelopment: row.is_development,
         name: row.name,
         position: row.position,
         projectId: row.project_id,

@@ -35,6 +35,7 @@ import {
     useProjectBoards,
 } from "@/features/boards";
 import { useProjectLabels } from "@/features/labels";
+import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { useProject } from "@/features/projects/model/use-projects";
@@ -469,6 +470,9 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         }
                         destination="backlog"
                         projectId={projectId}
+                        showGitBranchSettings={projectHasGithubRepo(
+                            project?.github_repo_id
+                        )}
                     />
                 </div>
 
