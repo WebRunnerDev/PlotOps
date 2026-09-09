@@ -90,6 +90,7 @@ import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { GithubTaskMeta } from "@/features/tasks/ui/github-task-meta";
 import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
 import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
+import { TaskDrawerBottomSnapWheel } from "@/features/tasks/ui/task-drawer-bottom-snap-wheel";
 import { TaskDrawerSideEdgeHandle } from "@/features/tasks/ui/task-drawer-side-edge-handle";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
 import { TaskLinksSection } from "@/features/tasks/ui/task-links-section";
@@ -199,6 +200,9 @@ export function TaskDrawer({
         drawerSide,
         sideDrawerWidthPx,
         globalThis.window === undefined ? undefined : window.innerWidth
+    );
+    const [bottomSnapPoint, setBottomSnapPoint] = useState<number | string>(
+        TASK_DRAWER_SNAP_POINTS[0]
     );
     const { columns } = useBoardColumns(projectId, boardId);
     const { data: boardSprints = [] } = useBoardSprints(boardId);
@@ -317,6 +321,7 @@ export function TaskDrawer({
     const [copiedTaskText, setCopiedTaskText] = useState(false);
     const [copiedTaskLink, setCopiedTaskLink] = useState(false);
     const drawerBodyReference = useRef<HTMLDivElement>(null);
+    const drawerHeaderWheelReference = useRef<HTMLDivElement>(null);
     const descriptionEditorReference = useRef<RichTextEditorHandle>(null);
     const taskSwapEpoch = useTasksUiStore((state) => state.taskSwapEpoch);
     const taskSwapFromId = useTasksUiStore((state) => state.taskSwapFromId);
@@ -364,6 +369,7 @@ export function TaskDrawer({
         setActivityOpen(false);
         setCopiedTaskText(false);
         setCopiedTaskLink(false);
+        setBottomSnapPoint(TASK_DRAWER_SNAP_POINTS[0]);
         drawerBodyReference.current?.scrollTo({ top: 0 });
     }, [task?.id]);
 
@@ -734,6 +740,30 @@ export function TaskDrawer({
         }
     };
 
+    const drawerHeader = task ? (
+        <DrawerHeader
+            className={cn(
+                "shrink-0 border-b border-primary/20 p-4 text-left",
+                isArchived &&
+                    "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
+            )}
+        >
+            <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
+                <span aria-hidden className="size-1.5 shrink-0 bg-primary" />
+                <span className="font-mono text-code text-foreground/80">
+                    {task.key}
+                </span>
+                {isArchived ? ` · ${t("archive.badge")}` : undefined}
+            </p>
+            <DrawerTitle className="sr-only">{task.title}</DrawerTitle>
+            <DrawerDescription className="text-code text-muted-foreground">
+                {isArchived
+                    ? t("archive.drawerDescription")
+                    : t("drawerDescription")}
+            </DrawerDescription>
+        </DrawerHeader>
+    ) : null;
+
     return (
         <>
             <Drawer
@@ -750,8 +780,14 @@ export function TaskDrawer({
                         })();
                     }
                 }}
+                onSnapPointChange={(point) => {
+                    if (point != undefined) setBottomSnapPoint(point);
+                }}
                 open={Boolean(task)}
                 showSwipeHandle={!drawerPlacement.isSide}
+                snapPoint={
+                    drawerPlacement.useSnapPoints ? bottomSnapPoint : undefined
+                }
                 snapPoints={
                     drawerPlacement.useSnapPoints
                         ? [...TASK_DRAWER_SNAP_POINTS]
@@ -782,6 +818,9 @@ export function TaskDrawer({
                             {drawerPlacement.isSide &&
                             drawerSide === "right" ? (
                                 <TaskDrawerSideEdgeHandle
+                                    additionalWheelTargets={[
+                                        drawerHeaderWheelReference,
+                                    ]}
                                     onClose={clearSelectedTask}
                                     onWidthChange={setSideDrawerWidthPx}
                                     side={drawerSide}
@@ -789,34 +828,20 @@ export function TaskDrawer({
                                 />
                             ) : null}
                             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                                <DrawerHeader
-                                    className={cn(
-                                        "shrink-0 border-b border-primary/20 p-4 text-left",
-                                        isArchived &&
-                                            "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
-                                    )}
-                                >
-                                    <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
-                                        <span
-                                            aria-hidden
-                                            className="size-1.5 shrink-0 bg-primary"
-                                        />
-                                        <span className="font-mono text-code text-foreground/80">
-                                            {task.key}
-                                        </span>
-                                        {isArchived
-                                            ? ` · ${t("archive.badge")}`
-                                            : undefined}
-                                    </p>
-                                    <DrawerTitle className="sr-only">
-                                        {task.title}
-                                    </DrawerTitle>
-                                    <DrawerDescription className="text-code text-muted-foreground">
-                                        {isArchived
-                                            ? t("archive.drawerDescription")
-                                            : t("drawerDescription")}
-                                    </DrawerDescription>
-                                </DrawerHeader>
+                                {drawerPlacement.useSnapPoints ? (
+                                    <TaskDrawerBottomSnapWheel
+                                        activeSnapPoint={bottomSnapPoint}
+                                        onClose={clearSelectedTask}
+                                        onSnapPointChange={setBottomSnapPoint}
+                                        snapPoints={TASK_DRAWER_SNAP_POINTS}
+                                    >
+                                        {drawerHeader}
+                                    </TaskDrawerBottomSnapWheel>
+                                ) : (
+                                    <div ref={drawerHeaderWheelReference}>
+                                        {drawerHeader}
+                                    </div>
+                                )}
 
                                 <div
                                     className="@container/task-drawer scrollbar-board min-h-0 w-full min-w-0 flex-1 overflow-y-auto px-4 pt-4 pb-8"
@@ -1200,7 +1225,7 @@ export function TaskDrawer({
                                                                 }
                                                                 id="task-board"
                                                             >
-                                                                <span className="min-w-0 flex-1 truncate">
+                                                                <span className="min-w-0 flex-1 truncate text-left">
                                                                     {currentBoard?.name ??
                                                                         t(
                                                                             "boards.loading"
@@ -1687,6 +1712,9 @@ export function TaskDrawer({
                             </div>
                             {drawerPlacement.isSide && drawerSide === "left" ? (
                                 <TaskDrawerSideEdgeHandle
+                                    additionalWheelTargets={[
+                                        drawerHeaderWheelReference,
+                                    ]}
                                     onClose={clearSelectedTask}
                                     onWidthChange={setSideDrawerWidthPx}
                                     side={drawerSide}

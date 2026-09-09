@@ -16,7 +16,7 @@ describe("TaskDrawer board select overflow seam", () => {
             /FIELD_CONTROL_CLASS\s*=\s*"[^"]*min-w-0[^"]*overflow-hidden[^"]*"/
         );
         expect(source).toMatch(
-            /className="flex min-w-0 flex-col gap-1\.5"[\s\S]*?htmlFor="task-board"[\s\S]*?id="task-board"[\s\S]*?<span className="min-w-0 flex-1 truncate">/
+            /className="flex min-w-0 flex-col gap-1\.5"[\s\S]*?htmlFor="task-board"[\s\S]*?id="task-board"[\s\S]*?<span className="min-w-0 flex-1 truncate text-left">/
         );
     });
 });

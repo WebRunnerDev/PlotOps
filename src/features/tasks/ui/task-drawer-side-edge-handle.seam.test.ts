@@ -13,6 +13,8 @@ describe("TaskDrawerSideEdgeHandle seam", () => {
         );
 
         expect(source).toMatch(/resolveSideDrawerPointerDrag/);
+        expect(source).toMatch(/resolveSideDrawerWheelDelta/);
+        expect(source).toMatch(/useCapturedWheelSession/);
         expect(source).toMatch(/onClose/);
         expect(source).toMatch(/shouldClose/);
         expect(source).toMatch(/stopPropagation/);
@@ -20,6 +22,11 @@ describe("TaskDrawerSideEdgeHandle seam", () => {
         expect(source).toMatch(/active:cursor-grabbing/);
         expect(source).toMatch(/uiSettings\.dragDrawer/);
         expect(source).toMatch(/role="slider"/);
+        expect(source).toMatch(/setPointerCapture/);
+        expect(source).toMatch(/h-64 w-1/);
+        expect(source).toMatch(/w-5 shrink-0/);
+        expect(source).toMatch(/additionalWheelTargets/);
+        expect(source).toMatch(/additionalTargets: additionalWheelTargets/);
         expect(source).not.toMatch(/cursor-ew-resize/);
         expect(source).not.toMatch(/role="separator"/);
         expect(source).not.toMatch(/absolute inset-y-0/);
