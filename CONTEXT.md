@@ -41,15 +41,19 @@ A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, an
 _Avoid_: Team, Workspace, repository (the GitHub repo is linked to the Project, not the same concept)
 
 **Board**:
-A kanban workflow inside a Project: its own columns and Tasks. A Project may have several Boards (e.g. Core, Frontend). Git branch mapping for that workflow belongs to the Board. Every Project has at least one Board. A Board may be deleted only when it has no Tasks and is not the Project's last Board.
+A kanban workflow inside a Project: its own columns and Tasks. A Project may have several Boards (e.g. Core, Frontend). A Board may be a **Development Board** (`is_development`) — then it owns Git branch mapping (Base branch + Allowed head patterns) — or a regular Board without that mapping. Every Project has at least one Board. A Board may be deleted only when it has no Tasks and is not the Project's last Board.
 _Avoid_: Kanban, workspace board, Team board (Boards are Project-scoped, not Team-scoped)
 
+**Development Board**:
+A Board with Git branch mapping enabled: required Base branch (PR merge target / Done sync) and optional Allowed head patterns. Turned off for non-dev Boards, which clear Base branch and Allowed head patterns. The Development settings UI is shown only when the Project has a linked GitHub repository.
+_Avoid_: git board, engineering board (prefer Development Board)
+
 **Base branch**:
-The single Git branch a Board treats as the default PR target (merge destination). Owned by the Board; seeded from the Project's repo default branch when the Board is created, then editable per Board. A Task is considered merge-complete (e.g. auto-DONE) when its PR merges into that Task's Board Base branch — not into an arbitrary project default.
+The single Git branch a Development Board treats as the default PR target (merge destination). Owned by the Board; seeded from the Project's repo default branch when a Development Board is created, then editable per Board. A Task is considered merge-complete (e.g. auto-DONE) when its PR merges into that Task's Board Base branch — not into an arbitrary project default. Absent on regular (non-development) Boards.
 _Avoid_: default branch (that term is the repo/GitHub default on the Project), main (a common value, not the concept)
 
 **Allowed head pattern**:
-A glob-like rule on a Board that describes which task head-branch names fit that Board's workflow (e.g. `feature/*`, `fix/CORE-*`). An empty list means any branch is allowed. When patterns exist and a linked/generated name does not match, the product warns and may ask for confirmation — it does not hard-block.
+A glob-like rule on a Development Board that describes which task head-branch names fit that Board's workflow (e.g. `feature/*`, `fix/CORE-*`). An empty list means any branch is allowed. When patterns exist and a linked/generated name does not match, the product warns and may ask for confirmation — it does not hard-block. Cleared when the Board is not a Development Board.
 _Avoid_: branch filter, branch whitelist (implies hard deny)
 
 **Auto-assign to creator**:
