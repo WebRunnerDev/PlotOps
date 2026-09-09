@@ -3,9 +3,11 @@
  * Post-build SSG for public routes via react-dom/server (no browser).
  * Paths must stay in sync with PLOTOPS_PUBLIC_PATHS in src/shared/config/site.ts.
  *
- * Also writes `spa.html` — the Vite shell (default title, empty #root) used by
- * Cloudflare `/*` fallbacks so authenticated routes do not inherit login SEO
- * from prerendered `/`.
+ * Also writes `404.html` — the Vite shell (default title, empty #root) used as
+ * the Cloudflare Pages not-found document so authenticated SPA routes do not
+ * inherit login SEO from prerendered `/`. Do not add `/* /404.html 200` (or
+ * `/* /spa.html 200`) to `_redirects`: Pages pretty-URLs strip `.html` and that
+ * catch-all becomes an infinite 308 loop.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -32,9 +34,13 @@ async function main() {
     const template = await readFile(templatePath, "utf8");
 
     // SPA shell before public routes overwrite index.html with login SSG.
-    const spaPath = path.join(distDir, "spa.html");
-    await writeFile(spaPath, template, "utf8");
-    console.log(`  → ${path.relative(root, spaPath)} (SPA fallback shell)`);
+    // Top-level 404.html disables Pages' default "serve /" SPA mode and is
+    // returned for unknown paths (app routes) without a _redirects catch-all.
+    const notFoundPath = path.join(distDir, "404.html");
+    await writeFile(notFoundPath, template, "utf8");
+    console.log(
+        `  → ${path.relative(root, notFoundPath)} (SPA not-found shell)`
+    );
 
     if (process.env.SKIP_PRERENDER === "true") {
         console.log("SKIP_PRERENDER=true — skipping public-route SSG.");
