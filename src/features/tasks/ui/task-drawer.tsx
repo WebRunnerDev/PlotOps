@@ -143,7 +143,8 @@ const PRIORITY_NONE = "__none__";
 const ESTIMATE_NONE = "__none__";
 const FIELD_LABEL_CLASS =
     "text-meta font-medium tracking-[0.06em] text-muted-foreground";
-const FIELD_CONTROL_CLASS = "w-full rounded-none font-mono text-code";
+const FIELD_CONTROL_CLASS =
+    "w-full min-w-0 overflow-hidden rounded-none font-mono text-code";
 const DRAWER_ACTION_CLASS =
     "rounded-none transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary";
 
@@ -1045,7 +1046,7 @@ export function TaskDrawer({
                                                 </div>
 
                                                 {boards.length > 1 ? (
-                                                    <div className="flex flex-col gap-1.5">
+                                                    <div className="flex min-w-0 flex-col gap-1.5">
                                                         <Label
                                                             className={
                                                                 FIELD_LABEL_CLASS
@@ -1084,7 +1085,7 @@ export function TaskDrawer({
                                                                 }
                                                                 id="task-board"
                                                             >
-                                                                <span>
+                                                                <span className="min-w-0 flex-1 truncate">
                                                                     {currentBoard?.name ??
                                                                         t(
                                                                             "boards.loading"
@@ -1622,9 +1623,12 @@ export function TaskDrawer({
                 }}
                 open={moveTarget !== null}
             >
-                <AlertDialogContent className="sm:max-w-sm" size="sm">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
+                <AlertDialogContent
+                    className="min-w-0 overflow-hidden sm:max-w-sm"
+                    size="sm"
+                >
+                    <AlertDialogHeader className="min-w-0">
+                        <AlertDialogTitle className="max-w-full wrap-anywhere">
                             {t("boards.moveTitle", {
                                 board: moveTarget?.boardName ?? "",
                             })}
@@ -1635,7 +1639,7 @@ export function TaskDrawer({
                     </AlertDialogHeader>
 
                     {movingSubtaskCount > 0 ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="min-w-0 text-sm text-muted-foreground wrap-anywhere">
                             {t("boards.moveWithSubtasks", {
                                 count: movingSubtaskCount,
                             })}
@@ -1643,13 +1647,13 @@ export function TaskDrawer({
                     ) : undefined}
 
                     {task?.sprintId ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="min-w-0 text-sm text-muted-foreground wrap-anywhere">
                             {t("boards.moveClearsSprint")}
                         </p>
                     ) : undefined}
 
                     {moveTarget ? (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex min-w-0 flex-col gap-2">
                             <Label htmlFor="move-task-column">
                                 {t("boards.moveToColumn")}
                             </Label>
@@ -1668,10 +1672,12 @@ export function TaskDrawer({
                                 value={moveTarget.columnId}
                             >
                                 <SelectTrigger
-                                    className="w-full"
+                                    className="w-full min-w-0 overflow-hidden"
                                     id="move-task-column"
                                 >
-                                    <span>{moveToColumnName}</span>
+                                    <span className="min-w-0 flex-1 truncate">
+                                        {moveToColumnName}
+                                    </span>
                                 </SelectTrigger>
                                 <SelectContent alignItemWithTrigger={false}>
                                     {moveTarget.columns.map((column) => (
