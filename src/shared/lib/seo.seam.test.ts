@@ -74,8 +74,9 @@ describe("seo seam", () => {
         const script = read("scripts/ssg.mjs");
 
         expect(redirects).toMatch(/\/sign-in\s+\/sign-in\/index\.html/);
-        expect(redirects).toMatch(/\/\*\s+\/spa\.html/);
-        expect(script).toMatch(/spa\.html/);
+        // Catch-all to *.html 200 loops with Pages pretty-URLs (308 /spa…).
+        expect(redirects).not.toMatch(/\/\*\s+\/(?:spa|404|index)\.html/);
+        expect(script).toMatch(/404\.html/);
     });
 
     it("resets document title in the authenticated app shell", () => {

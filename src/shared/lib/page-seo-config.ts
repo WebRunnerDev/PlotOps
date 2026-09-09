@@ -18,8 +18,8 @@ type AuthPageSeoPath = Extract<
 /**
  * Default head for authenticated SPA routes.
  *
- * Production `/*` used to fall back to prerendered `/` (login title). Even with
- * a dedicated spa shell, client navigations from auth pages must reset `<title>`.
+ * Production unknown paths fall back to `404.html` (SPA shell). Even with that
+ * shell, client navigations from auth pages must reset `<title>`.
  */
 export function buildAppShellSeo(path: string): PageSeo {
     return {

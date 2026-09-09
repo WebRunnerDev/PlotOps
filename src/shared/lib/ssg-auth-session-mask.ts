@@ -4,7 +4,7 @@
  * Cloudflare serves prerendered `/` (LoginForm) for the landing route. With a
  * live Supabase token in localStorage, that HTML paints before Auth boot —
  * users briefly see sign-in, then BootScreen, then the app. Authenticated SPA
- * paths fall back to `spa.html` (empty `#root`, default title). An early head
+ * paths fall back to `404.html` (empty `#root`, default title). An early head
  * script in `index.html` sets `data-plotops-auth-session` when a default
  * Supabase Auth storage key is present; BootScreen clears it on mount.
  */
