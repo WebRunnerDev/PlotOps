@@ -31,7 +31,9 @@ export function useCapturedWheelSession(
     const shouldIgnoreReference = useRef(shouldIgnore);
     const additionalTargetsReference = useRef(additionalTargets);
     const sessionActiveReference = useRef(false);
-    const idleTimerReference = useRef<null | number>(null);
+    const idleTimerReference = useRef<null | ReturnType<typeof setTimeout>>(
+        null
+    );
 
     onWheelReference.current = onWheel;
     shouldIgnoreReference.current = shouldIgnore;
