@@ -15,9 +15,50 @@ import {
     safeSetItem,
 } from "@/shared/lib/safe-storage";
 
+export const TASK_COPY_METADATA_FIELDS = [
+    "status",
+    "board",
+    "priority",
+    "estimate",
+    "deadline",
+    "author",
+    "assignee",
+    "labels",
+    "sprint",
+    "subtasks",
+    "relatedTasks",
+] as const;
+
+export type TaskCopyMetadataField = (typeof TASK_COPY_METADATA_FIELDS)[number];
+
+export type TaskCopyMetadataFields = Record<TaskCopyMetadataField, boolean>;
+
+export const DEFAULT_COPY_METADATA_FIELDS: TaskCopyMetadataFields = {
+    assignee: false,
+    author: false,
+    board: false,
+    deadline: false,
+    estimate: false,
+    labels: false,
+    priority: false,
+    relatedTasks: false,
+    sprint: false,
+    status: false,
+    subtasks: false,
+};
+
 export type TaskDrawerPreferencesState = {
+    copyIncludeTaskKey: boolean;
+    copyIncludeTaskType: boolean;
+    copyMetadataFields: TaskCopyMetadataFields;
     drawerSide: TaskDrawerSide;
     openAfterCreate: boolean;
+    setCopyIncludeTaskKey: (include: boolean) => void;
+    setCopyIncludeTaskType: (include: boolean) => void;
+    setCopyMetadataField: (
+        field: TaskCopyMetadataField,
+        include: boolean
+    ) => void;
     setDrawerSide: (side: TaskDrawerSide) => void;
     setOpenAfterCreate: (open: boolean) => void;
     setSideDrawerWidthPx: (widthPx: number) => void;
@@ -30,8 +71,20 @@ export const createTaskDrawerPreferencesStoreState: StateCreator<
     [],
     TaskDrawerPreferencesState
 > = (set) => ({
+    copyIncludeTaskKey: false,
+    copyIncludeTaskType: false,
+    copyMetadataFields: { ...DEFAULT_COPY_METADATA_FIELDS },
     drawerSide: "bottom",
     openAfterCreate: true,
+    setCopyIncludeTaskKey: (include) => set({ copyIncludeTaskKey: include }),
+    setCopyIncludeTaskType: (include) => set({ copyIncludeTaskType: include }),
+    setCopyMetadataField: (field, include) =>
+        set((state) => ({
+            copyMetadataFields: {
+                ...state.copyMetadataFields,
+                [field]: include,
+            },
+        })),
     setDrawerSide: (side) => set({ drawerSide: side }),
     setOpenAfterCreate: (open) => set({ openAfterCreate: open }),
     setSideDrawerWidthPx: (widthPx) =>
@@ -49,16 +102,54 @@ const safeLocalStorage = {
     },
 };
 
+function mergeCopyMetadataFields(
+    persisted: unknown,
+    legacyIncludeAll: unknown
+): TaskCopyMetadataFields {
+    if (persisted && typeof persisted === "object") {
+        const raw = persisted as Partial<Record<string, unknown>>;
+        const next = { ...DEFAULT_COPY_METADATA_FIELDS };
+        for (const field of TASK_COPY_METADATA_FIELDS) {
+            if (typeof raw[field] === "boolean") {
+                next[field] = raw[field];
+            }
+        }
+        return next;
+    }
+
+    if (legacyIncludeAll === true) {
+        return Object.fromEntries(
+            TASK_COPY_METADATA_FIELDS.map((field) => [field, true])
+        ) as TaskCopyMetadataFields;
+    }
+
+    return { ...DEFAULT_COPY_METADATA_FIELDS };
+}
+
 function mergeTaskDrawerPreferences(
     persisted: unknown,
     current: TaskDrawerPreferencesState
 ): TaskDrawerPreferencesState {
     const raw =
         persisted && typeof persisted === "object"
-            ? (persisted as Partial<TaskDrawerPreferencesState>)
+            ? (persisted as Partial<TaskDrawerPreferencesState> & {
+                  copyIncludeTaskMetadata?: unknown;
+              })
             : {};
     return {
         ...current,
+        copyIncludeTaskKey:
+            typeof raw.copyIncludeTaskKey === "boolean"
+                ? raw.copyIncludeTaskKey
+                : current.copyIncludeTaskKey,
+        copyIncludeTaskType:
+            typeof raw.copyIncludeTaskType === "boolean"
+                ? raw.copyIncludeTaskType
+                : current.copyIncludeTaskType,
+        copyMetadataFields: mergeCopyMetadataFields(
+            raw.copyMetadataFields,
+            raw.copyIncludeTaskMetadata
+        ),
         drawerSide: isTaskDrawerSide(raw.drawerSide)
             ? raw.drawerSide
             : current.drawerSide,
@@ -79,6 +170,9 @@ export const useTaskDrawerPreferencesStore =
             merge: mergeTaskDrawerPreferences,
             name: "plotops:task-drawer-preferences",
             partialize: (state) => ({
+                copyIncludeTaskKey: state.copyIncludeTaskKey,
+                copyIncludeTaskType: state.copyIncludeTaskType,
+                copyMetadataFields: state.copyMetadataFields,
                 drawerSide: state.drawerSide,
                 openAfterCreate: state.openAfterCreate,
                 sideDrawerWidthPx: state.sideDrawerWidthPx,
@@ -87,4 +181,4 @@ export const useTaskDrawerPreferencesStore =
         })
     );
 
-export { mergeTaskDrawerPreferences };
+export { mergeCopyMetadataFields, mergeTaskDrawerPreferences };

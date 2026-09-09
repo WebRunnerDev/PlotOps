@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("TaskDrawerSettings seam", () => {
-    it("exposes open-after-create and drawer-side controls", () => {
+    it("exposes open-after-create, drawer-side, and copy-field controls", () => {
         const source = readFileSync(
             path.join(dirname, "task-drawer-settings.tsx"),
             "utf8"
@@ -15,9 +15,17 @@ describe("TaskDrawerSettings seam", () => {
         expect(source).toMatch(/useTaskDrawerPreferencesStore/);
         expect(source).toMatch(/setOpenAfterCreate/);
         expect(source).toMatch(/setDrawerSide/);
+        expect(source).toMatch(/setCopyIncludeTaskKey/);
+        expect(source).toMatch(/setCopyIncludeTaskType/);
+        expect(source).toMatch(/setCopyMetadataField/);
+        expect(source).toMatch(/TASK_COPY_METADATA_FIELDS/);
         expect(source).toMatch(/TASK_DRAWER_SIDES/);
         expect(source).toMatch(/uiSettings\.openAfterCreate/);
         expect(source).toMatch(/uiSettings\.drawerSide/);
+        expect(source).toMatch(/uiSettings\.copyFields/);
+        expect(source).toMatch(/uiSettings\.copyTaskKey/);
+        expect(source).toMatch(/uiSettings\.copyTaskType/);
+        expect(source).toMatch(/uiSettings\.copyTaskMetadata/);
     });
 });
 

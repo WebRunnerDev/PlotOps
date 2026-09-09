@@ -46,6 +46,7 @@ import { TaskWatchersList } from "@/features/notifications/ui/task-watchers-list
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { useProject } from "@/features/projects/model/use-projects";
+import { useBoardSprints } from "@/features/sprints/model/use-sprints";
 import { uploadTaskMedia } from "@/features/tasks/api/upload-task-media";
 import { buildTaskShareUrl } from "@/features/tasks/lib/build-task-share-url";
 import { isSharedBranch } from "@/features/tasks/lib/format-branch";
@@ -57,7 +58,10 @@ import {
 import {
     buildTaskCopySections,
     formatTaskCopyHtml,
+    formatTaskCopyRelatedTaskLines,
+    formatTaskCopySubtaskLines,
     formatTaskCopyText,
+    type TaskCopySection,
 } from "@/features/tasks/lib/format-task-copy-text";
 import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-for-board";
 import { resolveCachedTaskBoardId } from "@/features/tasks/lib/resolve-cached-task-board-id";
@@ -169,7 +173,7 @@ export function TaskDrawer({
     repoFullName,
 }: TaskDrawerProperties) {
     useSyncTaskUrl();
-    const { t } = useTranslation("board");
+    const { i18n, t } = useTranslation("board");
     const isGuestSessionActive = isGuest();
     const queryClient = useQueryClient();
     const selectedTaskId = useTasksUiStore((state) => state.selectedTaskId);
@@ -182,12 +186,22 @@ export function TaskDrawer({
     const setSideDrawerWidthPx = useTaskDrawerPreferencesStore(
         (state) => state.setSideDrawerWidthPx
     );
+    const copyIncludeTaskKey = useTaskDrawerPreferencesStore(
+        (state) => state.copyIncludeTaskKey
+    );
+    const copyIncludeTaskType = useTaskDrawerPreferencesStore(
+        (state) => state.copyIncludeTaskType
+    );
+    const copyMetadataFields = useTaskDrawerPreferencesStore(
+        (state) => state.copyMetadataFields
+    );
     const drawerPlacement = resolveTaskDrawerPlacement(
         drawerSide,
         sideDrawerWidthPx,
         globalThis.window === undefined ? undefined : window.innerWidth
     );
     const { columns } = useBoardColumns(projectId, boardId);
+    const { data: boardSprints = [] } = useBoardSprints(boardId);
     const { labels } = useProjectLabels(projectId);
     const {
         archiveTask,
@@ -417,11 +431,112 @@ export function TaskDrawer({
     const handleCopyTaskText = async () => {
         if (!task) return;
 
+        const labelNames = (task.labelIds ?? [])
+            .map(
+                (labelId) =>
+                    projectLabels.find((label) => label.id === labelId)?.name
+            )
+            .filter(Boolean);
+        const sprintName = task.sprintId
+            ? boardSprints.find((sprint) => sprint.id === task.sprintId)?.name
+            : undefined;
+
+        const metadataSections: TaskCopySection[] = [];
+        if (copyMetadataFields.status) {
+            metadataSections.push({
+                name: t("fields.status"),
+                value: isArchived
+                    ? t("archive.badge")
+                    : (selectedColumn?.name ?? ""),
+            });
+        }
+        if (copyMetadataFields.board) {
+            metadataSections.push({
+                name: t("fields.board"),
+                value: currentBoard?.name ?? "",
+            });
+        }
+        if (copyMetadataFields.priority) {
+            metadataSections.push({
+                name: t("fields.priority"),
+                value: task.priority
+                    ? t(`priority.${task.priority}`)
+                    : t("priority.none"),
+            });
+        }
+        if (copyMetadataFields.estimate) {
+            metadataSections.push({
+                name: t("fields.estimate"),
+                value:
+                    task.estimate === undefined
+                        ? t("estimate.none")
+                        : t("estimate.points", { count: task.estimate }),
+            });
+        }
+        if (copyMetadataFields.deadline) {
+            metadataSections.push({
+                name: t("fields.deadline"),
+                value: task.deadline
+                    ? formatDeadlineLong(task.deadline, i18n.language)
+                    : "",
+            });
+        }
+        if (copyMetadataFields.author) {
+            metadataSections.push({
+                name: t("fields.author"),
+                value: task.author?.name ?? t("fields.memberNone"),
+            });
+        }
+        if (copyMetadataFields.assignee) {
+            metadataSections.push({
+                name: t("fields.assignee"),
+                value: task.assignee?.name ?? t("fields.memberNone"),
+            });
+        }
+        if (copyMetadataFields.labels) {
+            metadataSections.push({
+                name: t("fields.labels"),
+                value: labelNames.join(", "),
+            });
+        }
+        if (copyMetadataFields.sprint) {
+            metadataSections.push({
+                name: t("fields.sprint"),
+                value: sprintName ?? t("sprints.backlog"),
+            });
+        }
+        if (copyMetadataFields.subtasks) {
+            const childTasks = subtasksOf(
+                task.id,
+                mentionProjectTasks.length > 0 ? mentionProjectTasks : tasks
+            ).filter((child) => child.archivedAt == undefined);
+            metadataSections.push({
+                name: t("fields.subtasks"),
+                value: formatTaskCopySubtaskLines(childTasks),
+            });
+        }
+        if (copyMetadataFields.relatedTasks) {
+            metadataSections.push({
+                name: t("fields.relatedTasks"),
+                value: formatTaskCopyRelatedTaskLines(task.relatedTasks ?? [], {
+                    blockedBy: t("taskLinks.blockedBy"),
+                    blocks: t("taskLinks.blocks"),
+                    relatesTo: t("taskLinks.relatesTo"),
+                }),
+            });
+        }
+
         const sections = buildTaskCopySections({
             customFields,
             description,
             descriptionFallbackLabel: t("fields.description"),
+            includeTaskKey: copyIncludeTaskKey,
+            includeTaskType: copyIncludeTaskType,
+            metadataSections,
+            taskKey: task.key,
             taskType: task.type,
+            taskTypeLabel: t(`taskType.${task.type}`),
+            taskTypeSectionName: t("fields.type"),
             title,
             titleLabel: t("fields.title"),
             valueByFieldId,
@@ -1434,8 +1549,10 @@ export function TaskDrawer({
                                                         []
                                                     }
                                                     baseBranch={
-                                                        currentBoard?.baseBranch ??
-                                                        "main"
+                                                        currentBoard?.isDevelopment
+                                                            ? (currentBoard.baseBranch ??
+                                                              null)
+                                                            : null
                                                     }
                                                     canEdit={canEdit}
                                                     githubToken={githubToken}

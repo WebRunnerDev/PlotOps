@@ -114,6 +114,13 @@
     "themeDark": "Switch to dark theme",
     "themeLight": "Switch to light theme",
     "uiSettings": {
+        "copyFields": "Copy all fields",
+        "copyFieldsHint": "Choose what “Copy all” puts on the clipboard. Title, description, and custom fields are always included.",
+        "copyTaskKey": "Task number (ID)",
+        "copyTaskKeyHint": "Prefixes the task key onto the title (e.g. BUG-12 Fix login).",
+        "copyTaskMetadata": "Other metadata",
+        "copyTaskMetadataHint": "Pick which sidebar fields to include with Copy all.",
+        "copyTaskType": "Task type",
         "description": "How the task drawer behaves on boards and backlog.",
         "drawerSide": "Drawer position",
         "drawerSideBottom": "Bottom",
