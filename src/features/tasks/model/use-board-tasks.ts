@@ -1050,13 +1050,16 @@ export function useBoardTasks(projectId: string, boardId: string) {
          */
         commitTaskDragGesture: () => {
             const previousCache = dragGestureCacheReference.current;
+            // Always clear: Done-refusal during dragOver sets this flag but
+            // returns before dragGestureCacheReference is set, so a no-op
+            // commit must still unlock toasts for the next gesture.
+            dragDoneRefusalToasted.current = false;
             if (!previousCache) return;
 
             const current = queryClient.getQueryData<BoardTasksCache>(
                 taskKeys.board(projectId, boardId)
             );
             dragGestureCacheReference.current = null;
-            dragDoneRefusalToasted.current = false;
             if (!current) return;
 
             const updates = diffTaskMoveUpdates(previousCache, current);

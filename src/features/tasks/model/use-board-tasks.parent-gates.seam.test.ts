@@ -22,6 +22,11 @@ describe("useBoardTasks Parent Task Done/archive/delete gates", () => {
             /const moveTasksToColumn = \([\s\S]*taskDoneRefusal[\s\S]*toastTaskDoneRefusal[\s\S]*return;[\s\S]*setTasksCache/
         );
         expect(source).toMatch(/dragDoneRefusalToasted/);
+        // Empty-gesture commit (Done refusal never staged a preview) must
+        // still clear the per-gesture toast latch for the next drag.
+        expect(source).toMatch(
+            /commitTaskDragGesture: \(\) => \{[\s\S]*dragDoneRefusalToasted\.current = false;[\s\S]*if \(!previousCache\) return;/
+        );
         expect(source).toMatch(/persistTaskMoves/);
         expect(domain).toMatch(/subtasks\.doneRefused/);
         expect(domain).toMatch(/taskLinks\.blockedDoneRefused/);
