@@ -158,6 +158,8 @@ type MoveBoardTarget = {
     boardName: string;
     columnId: TaskStatus;
     columns: BoardColumn[];
+    /** Draft/Active Sprint on the target Board; null → Backlog. */
+    sprintId: null | string;
 };
 
 type TaskDrawerProperties = {
@@ -285,6 +287,7 @@ export function TaskDrawer({
     const canSetEstimate = isSettled && canEditEstimate && !isArchived;
     const canDelete = isSettled && canDeleteTasks;
     const allowCreateLabels = isSettled && canManageBoard;
+    const canChooseMoveSprint = isSettled && canManageBoard;
     const canAddSubtask = canEdit && task?.parentId == undefined;
     const movingSubtaskCount =
         task && task.parentId == undefined
@@ -320,6 +323,17 @@ export function TaskDrawer({
     const [moveTarget, setMoveTarget] = useState<MoveBoardTarget | null>(null);
     const [isMoving, setIsMoving] = useState(false);
     const [isLoadingMoveColumns, setIsLoadingMoveColumns] = useState(false);
+    const { data: moveTargetSprints = [] } = useBoardSprints(
+        moveTarget?.boardId ?? ""
+    );
+    const movePlanningSprints = useMemo(
+        () =>
+            moveTargetSprints.filter(
+                (sprint) =>
+                    sprint.state === "draft" || sprint.state === "active"
+            ),
+        [moveTargetSprints]
+    );
     const [activityOpen, setActivityOpen] = useState(false);
     const [copiedTaskText, setCopiedTaskText] = useState(false);
     const [copiedTaskLink, setCopiedTaskLink] = useState(false);
@@ -349,6 +363,12 @@ export function TaskDrawer({
     const moveToColumnName =
         moveTarget?.columns.find((column) => column.id === moveTarget.columnId)
             ?.name ?? "";
+    const moveToSprintName =
+        moveTarget?.sprintId == undefined
+            ? t("sprints.backlog")
+            : (movePlanningSprints.find(
+                  (sprint) => sprint.id === moveTarget.sprintId
+              )?.name ?? t("sprints.backlog"));
 
     useEffect(() => {
         if (!task) return;
@@ -697,6 +717,7 @@ export function TaskDrawer({
                     isDone: column.isDone,
                     name: column.name,
                 })),
+                sprintId: null,
             });
         } catch {
             toast.error(t("boards.taskMoveFailed"));
@@ -714,7 +735,8 @@ export function TaskDrawer({
                 task.id,
                 moveTarget.boardId,
                 moveTarget.columnId,
-                moveToColumnName
+                moveToColumnName,
+                canChooseMoveSprint ? moveTarget.sprintId : null
             );
             setMoveTarget(null);
             clearSelectedTask();
@@ -1797,7 +1819,9 @@ export function TaskDrawer({
                         </p>
                     ) : undefined}
 
-                    {task?.sprintId ? (
+                    {task?.sprintId &&
+                    (!canChooseMoveSprint ||
+                        moveTarget?.sprintId == undefined) ? (
                         <p className="min-w-0 text-sm text-muted-foreground wrap-anywhere">
                             {t("boards.moveClearsSprint")}
                         </p>
@@ -1837,6 +1861,53 @@ export function TaskDrawer({
                                             value={column.id}
                                         >
                                             {column.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    ) : undefined}
+
+                    {moveTarget && canChooseMoveSprint ? (
+                        <div className="flex min-w-0 flex-col gap-2">
+                            <Label htmlFor="move-task-sprint">
+                                {t("boards.moveToSprint")}
+                            </Label>
+                            <Select
+                                onValueChange={(value) => {
+                                    if (typeof value !== "string") return;
+                                    setMoveTarget((current) =>
+                                        current
+                                            ? {
+                                                  ...current,
+                                                  sprintId:
+                                                      value === "backlog"
+                                                          ? null
+                                                          : value,
+                                              }
+                                            : current
+                                    );
+                                }}
+                                value={moveTarget.sprintId ?? "backlog"}
+                            >
+                                <SelectTrigger
+                                    className="w-full min-w-0 overflow-hidden"
+                                    id="move-task-sprint"
+                                >
+                                    <span className="min-w-0 flex-1 truncate">
+                                        {moveToSprintName}
+                                    </span>
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                    <SelectItem value="backlog">
+                                        {t("sprints.backlog")}
+                                    </SelectItem>
+                                    {movePlanningSprints.map((sprint) => (
+                                        <SelectItem
+                                            key={sprint.id}
+                                            value={sprint.id}
+                                        >
+                                            {sprint.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

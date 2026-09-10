@@ -26,5 +26,9 @@ describe("TaskDrawer move-to-board dialog overflow seam", () => {
         expect(moveDialog).toMatch(
             /id="move-task-column"[\s\S]*?<span className="min-w-0 flex-1 truncate">/
         );
+        expect(moveDialog).toMatch(
+            /id="move-task-sprint"[\s\S]*?<span className="min-w-0 flex-1 truncate">/
+        );
+        expect(moveDialog).toMatch(/boards\.moveToSprint/);
     });
 });
