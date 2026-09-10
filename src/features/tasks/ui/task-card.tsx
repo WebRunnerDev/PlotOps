@@ -56,6 +56,7 @@ const TASK_TYPE_ICON: Record<TaskType, LucideIcon> = {
 type TaskCardProperties = {
     labels: ProjectLabel[];
     selection?: TaskCardSelection;
+    sprintBadge?: string;
     subtaskProgress?: SubtaskProgress;
     task: Task;
 };
@@ -71,6 +72,7 @@ type TaskCardSelection = {
 export function TaskCard({
     labels,
     selection,
+    sprintBadge,
     subtaskProgress,
     task,
 }: TaskCardProperties) {
@@ -255,6 +257,15 @@ export function TaskCard({
 
                 {labels.length > 0 ? (
                     <TaskLabelChips labels={labels} />
+                ) : undefined}
+
+                {sprintBadge ? (
+                    <Badge
+                        className="max-w-full truncate rounded-sm font-mono text-[0.625rem]"
+                        variant="outline"
+                    >
+                        {sprintBadge}
+                    </Badge>
                 ) : undefined}
             </CardHeader>
 

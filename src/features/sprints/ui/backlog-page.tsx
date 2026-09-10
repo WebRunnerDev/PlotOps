@@ -217,7 +217,8 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         [labels, projectId]
     );
 
-    const active = sprints.find((sprint) => sprint.state === "active");
+    const actives = sprints.filter((sprint) => sprint.state === "active");
+    const active = actives[0];
     const drafts = sprints.filter((sprint) => sprint.state === "draft");
     const activeTimeline = useMemo(() => {
         if (!active) return null;
@@ -238,7 +239,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             return rightAt.localeCompare(leftAt);
         });
     }, [sprints]);
-    const planningSprints = [...(active ? [active] : []), ...drafts];
+    const planningSprints = [...actives, ...drafts];
 
     const filtersActive =
         isBoardFiltersActive(filters) ||
@@ -507,22 +508,20 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     style={{ animationDelay: "320ms" }}
                 >
                     <PlanningPulseStat
-                        emphasize={Boolean(active)}
+                        emphasize={actives.length > 0}
                         label={
-                            active &&
+                            actives.length === 1 &&
                             activeTimeline &&
                             activeTimeline.daysRemaining !== null
                                 ? t("sprints.pulseDaysLeft")
                                 : t("sprints.pulseActive")
                         }
                         value={
-                            active &&
+                            actives.length === 1 &&
                             activeTimeline &&
                             activeTimeline.daysRemaining !== null
                                 ? activeTimeline.daysRemaining
-                                : active
-                                  ? 1
-                                  : 0
+                                : actives.length
                         }
                     />
                     <PlanningPulseStat
@@ -708,7 +707,6 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         }}
                                     >
                                         <SprintSection
-                                            activeSprint={active}
                                             allTasks={tasks}
                                             boardId={boardId}
                                             canManage={canManage}
@@ -1397,7 +1395,6 @@ function SprintReportPanel({
 }
 
 function SprintSection({
-    activeSprint,
     allTasks,
     boardId,
     canManage,
@@ -1414,7 +1411,6 @@ function SprintSection({
     sprint,
     tasks,
 }: {
-    activeSprint?: Sprint;
     allTasks: Task[];
     boardId: string;
     canManage: boolean;
@@ -1493,26 +1489,16 @@ function SprintSection({
                             className="inline-flex"
                             transition={SPRING_PRESS}
                             whileHover={
-                                reduceMotion || activeSprint
-                                    ? undefined
-                                    : { x: 3, y: -1 }
+                                reduceMotion ? undefined : { x: 3, y: -1 }
                             }
                             whileTap={
-                                reduceMotion || activeSprint
-                                    ? undefined
-                                    : { scale: 0.97 }
+                                reduceMotion ? undefined : { scale: 0.97 }
                             }
                         >
                             <Button
                                 className="rounded-none shadow-[2px_2px_0_0_color-mix(in_oklab,var(--primary)_45%,transparent)]"
-                                disabled={Boolean(activeSprint)}
                                 onClick={() => setStartOpen(true)}
                                 size="sm"
-                                title={
-                                    activeSprint
-                                        ? t("sprints.startBlockedActive")
-                                        : undefined
-                                }
                                 type="button"
                             >
                                 <Play data-icon="inline-start" />

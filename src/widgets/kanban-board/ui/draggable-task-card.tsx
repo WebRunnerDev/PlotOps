@@ -30,6 +30,7 @@ type DraggableTaskCardProperties = {
     columnTaskIds: readonly string[];
     labels: ProjectLabel[];
     selectionEnabled: boolean;
+    sprintBadge?: string;
     subtaskProgress?: SubtaskProgress;
     task: Task;
 };
@@ -40,6 +41,7 @@ export function DraggableTaskCard({
     columnTaskIds,
     labels,
     selectionEnabled,
+    sprintBadge,
     subtaskProgress,
     task,
 }: DraggableTaskCardProperties) {
@@ -230,6 +232,7 @@ export function DraggableTaskCard({
                           }
                         : undefined
                 }
+                sprintBadge={sprintBadge}
                 subtaskProgress={subtaskProgress}
                 task={task}
             />

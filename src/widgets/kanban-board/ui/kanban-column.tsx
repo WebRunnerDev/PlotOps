@@ -54,10 +54,13 @@ const staticTaskSortingStrategy: SortingStrategy = () => null;
 
 type KanbanColumnProperties = {
     boardId: string;
+    createSprintChoices?: ReadonlyArray<{ id: string; name: string }>;
     createSprintId?: string;
     labelsByTaskId: Map<string, ProjectLabel[]>;
     name: string;
     projectId: string;
+    showSprintBadge?: boolean;
+    sprintNameById?: ReadonlyMap<string, string>;
     startAddingTask?: boolean;
     startEditing?: boolean;
     status: TaskStatus;
@@ -68,10 +71,13 @@ type KanbanColumnProperties = {
 
 export function KanbanColumn({
     boardId,
+    createSprintChoices,
     createSprintId,
     labelsByTaskId,
     name,
     projectId,
+    showSprintBadge = false,
+    sprintNameById,
     startAddingTask = false,
     startEditing = false,
     status,
@@ -379,6 +385,11 @@ export function KanbanColumn({
                                     key={task.id}
                                     labels={labelsByTaskId.get(task.id) ?? []}
                                     selectionEnabled={canSelectForArchive}
+                                    sprintBadge={
+                                        showSprintBadge && task.sprintId
+                                            ? sprintNameById?.get(task.sprintId)
+                                            : undefined
+                                    }
                                     subtaskProgress={subtaskProgressByTaskId?.get(
                                         task.id
                                     )}
@@ -401,6 +412,7 @@ export function KanbanColumn({
                 <div className="border-t border-border px-1 py-1">
                     <KanbanAddTask
                         boardId={boardId}
+                        createSprintChoices={createSprintChoices}
                         createSprintId={createSprintId}
                         projectId={projectId}
                         startOpen={startAddingTask}

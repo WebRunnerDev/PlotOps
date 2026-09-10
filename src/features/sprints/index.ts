@@ -21,7 +21,14 @@ export { supabaseSprintsProvider } from "./api/supabase-sprints-provider";
 export { filterLiveBoardTasks } from "./model/filter-live-board-tasks";
 export { invalidateSprintBoardCaches } from "./model/invalidate-sprint-board";
 export { sprintKeys } from "./model/query-keys";
-export { resolveCreateTaskSprintId } from "./model/resolve-create-task-sprint-id";
+export {
+    resolveActiveSprintFilterIds,
+    toggleActiveSprintFilterId,
+} from "./model/resolve-active-sprint-filter";
+export {
+    type CreateTaskSprintResolution,
+    resolveCreateTaskSprint,
+} from "./model/resolve-create-task-sprint-id";
 export { resolveEffectiveBoardSprintScope } from "./model/resolve-effective-board-sprint-scope";
 export type {
     BoardSprintScope,
