@@ -223,15 +223,6 @@ export const guestSprintsProvider: SprintsProvider = {
                     "Active sprint requires valid start and end dates"
                 );
             }
-            if (
-                sandbox.sprints.some(
-                    (item) =>
-                        item.boardId === sprint.boardId &&
-                        item.state === "active"
-                )
-            ) {
-                throw new Error("Board already has an active sprint");
-            }
 
             const committed = sandbox.tasks
                 .filter((task) => task.sprintId === sprintId)

@@ -55,7 +55,7 @@ export function BoardSprintControls({
         hasActiveSprint: active !== undefined,
     });
 
-    const showStart = canManage && !active && Boolean(startCandidate);
+    const showStart = canManage && Boolean(startCandidate);
 
     if (sprintsError) {
         return (

@@ -71,7 +71,7 @@ describe("guestSprintsProvider happy path", () => {
         expect(after.notifications.length).toBe(notificationsBefore);
     });
 
-    it("creates a draft and starts it when the board has no other active sprint", async () => {
+    it("starts a draft while another Active Sprint already runs on the Board", async () => {
         const { getGuestSandbox, startGuestSession, writeGuestSandbox } =
             await import("@/features/guest-mode");
         const { guestSprintsProvider } =
@@ -82,13 +82,10 @@ describe("guestSprintsProvider happy path", () => {
         const boardId = sandbox.boards[0]!.id;
         const projectId = sandbox.projects[0]!.id;
 
-        // Seed has an active sprint — close path prep: cancel active first so
-        // Draft→Active happy path can start a new draft.
-        const active = sandbox.sprints.find(
+        const existingActive = sandbox.sprints.find(
             (sprint) => sprint.boardId === boardId && sprint.state === "active"
         );
-        expect(active).toBeTruthy();
-        await guestSprintsProvider.cancelSprint(active!.id);
+        expect(existingActive).toBeTruthy();
 
         const draft = await guestSprintsProvider.createDraftSprint(
             boardId,
@@ -99,7 +96,8 @@ describe("guestSprintsProvider happy path", () => {
         expect(draft.state).toBe("draft");
 
         const task = getGuestSandbox()!.tasks.find(
-            (item) => item.boardId === boardId
+            (item) =>
+                item.boardId === boardId && item.sprintId !== existingActive!.id
         )!;
         await guestSprintsProvider.assignTaskToSprint(task.id, draft.id, 0);
 
@@ -113,6 +111,13 @@ describe("guestSprintsProvider happy path", () => {
         expect(started.startsOn).toBe("2026-08-05");
         expect(started.endsOn).toBe("2026-08-18");
         expect(started.committedTaskIds).toContain(task.id);
+
+        const actives = getGuestSandbox()!.sprints.filter(
+            (sprint) => sprint.boardId === boardId && sprint.state === "active"
+        );
+        expect(actives.map((sprint) => sprint.id).toSorted()).toEqual(
+            [existingActive!.id, draft.id].toSorted()
+        );
 
         const persisted = getGuestSandbox()!.sprints.find(
             (sprint) => sprint.id === draft.id
