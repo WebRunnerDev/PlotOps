@@ -114,6 +114,8 @@
     "themeDark": "Switch to dark theme",
     "themeLight": "Switch to light theme",
     "uiSettings": {
+        "collapseLongDescription": "Collapse long descriptions",
+        "collapseLongDescriptionHint": "When on, tall task descriptions start collapsed with Show more. Click or focus expands; Show less appears when you’re done editing.",
         "copyFields": "Copy all fields",
         "copyFieldsHint": "Choose what “Copy all” puts on the clipboard. Title, description, and custom fields are always included.",
         "copyTaskKey": "Task number (ID)",
@@ -122,6 +124,8 @@
         "copyTaskMetadataHint": "Pick which sidebar fields to include with Copy all.",
         "copyTaskType": "Task type",
         "description": "How the task drawer behaves on boards and backlog.",
+        "descriptionShowLess": "Show less",
+        "descriptionShowMore": "Show more",
         "drawerSide": "Drawer position",
         "drawerSideBottom": "Bottom",
         "drawerSideHint": "Bottom uses a sheet with snap points. Left or right opens a side panel.",

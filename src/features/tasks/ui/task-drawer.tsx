@@ -196,6 +196,9 @@ export function TaskDrawer({
     const copyMetadataFields = useTaskDrawerPreferencesStore(
         (state) => state.copyMetadataFields
     );
+    const collapseLongDescription = useTaskDrawerPreferencesStore(
+        (state) => state.collapseLongDescription
+    );
     const drawerPlacement = resolveTaskDrawerPlacement(
         drawerSide,
         sideDrawerWidthPx,
@@ -960,6 +963,9 @@ export function TaskDrawer({
                                             <TaskCustomFieldsSection
                                                 canEdit={canEdit}
                                                 description={{
+                                                    collapseEnabled:
+                                                        collapseLongDescription,
+                                                    dirty: descriptionDirty,
                                                     editorReference:
                                                         descriptionEditorReference,
                                                     maxLength:

@@ -14,6 +14,7 @@ describe("TaskDrawerSettings seam", () => {
 
         expect(source).toMatch(/useTaskDrawerPreferencesStore/);
         expect(source).toMatch(/setOpenAfterCreate/);
+        expect(source).toMatch(/setCollapseLongDescription/);
         expect(source).toMatch(/setDrawerSide/);
         expect(source).toMatch(/setCopyIncludeTaskKey/);
         expect(source).toMatch(/setCopyIncludeTaskType/);
@@ -21,6 +22,7 @@ describe("TaskDrawerSettings seam", () => {
         expect(source).toMatch(/TASK_COPY_METADATA_FIELDS/);
         expect(source).toMatch(/TASK_DRAWER_SIDES/);
         expect(source).toMatch(/uiSettings\.openAfterCreate/);
+        expect(source).toMatch(/uiSettings\.collapseLongDescription/);
         expect(source).toMatch(/uiSettings\.drawerSide/);
         expect(source).toMatch(/uiSettings\.copyFields/);
         expect(source).toMatch(/uiSettings\.copyTaskKey/);
