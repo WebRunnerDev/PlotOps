@@ -46,6 +46,7 @@ type CancelSprintDialogProperties = {
 };
 
 type CloseSprintDialogProperties = {
+    activeSprints?: Sprint[];
     boardId: string;
     columns: Array<{ id: string; isDone: boolean }>;
     draftSprints: Sprint[];
@@ -119,6 +120,7 @@ export function CancelSprintDialog({
 }
 
 export function CloseSprintDialog({
+    activeSprints = [],
     boardId,
     columns,
     draftSprints,
@@ -260,6 +262,13 @@ export function CloseSprintDialog({
     const renderCarryoverOptions = () => (
         <>
             <option value="backlog">{t("sprints.carryoverBacklog")}</option>
+            {activeSprints
+                .filter((item) => item.id !== sprint.id)
+                .map((item) => (
+                    <option key={item.id} value={item.id}>
+                        {t("sprints.carryoverActiveNamed", { name: item.name })}
+                    </option>
+                ))}
             {draftSprints.map((draft) => (
                 <option key={draft.id} value={draft.id}>
                     {draft.name}

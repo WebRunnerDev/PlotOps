@@ -18,6 +18,7 @@ describe("Backlog skin seam (ADR 0007 craft)", () => {
         expect(page).toMatch(/planningEyebrow/);
         expect(page).toMatch(/PlanningPulseStat/);
         expect(page).toMatch(/ActiveSprintLiveStrip/);
+        expect(page).toMatch(/actives\.map/);
         expect(page).toMatch(/border-primary\/25/);
         expect(page).toMatch(/motion-reveal/);
         expect(page).toMatch(/rounded-none/);

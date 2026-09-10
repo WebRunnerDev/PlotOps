@@ -587,14 +587,19 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 </div>
             </header>
 
-            {!showBodySpinner && active ? (
-                <ActiveSprintLiveStrip
-                    sizeLabel={formatSprintSizeLabel(
-                        t,
-                        tasksBySprint.get(active.id) ?? []
-                    )}
-                    sprint={active}
-                />
+            {!showBodySpinner && actives.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                    {actives.map((sprint) => (
+                        <ActiveSprintLiveStrip
+                            key={sprint.id}
+                            sizeLabel={formatSprintSizeLabel(
+                                t,
+                                tasksBySprint.get(sprint.id) ?? []
+                            )}
+                            sprint={sprint}
+                        />
+                    ))}
+                </div>
             ) : null}
 
             {showBodySpinner ? (
@@ -707,6 +712,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         }}
                                     >
                                         <SprintSection
+                                            actives={actives}
                                             allTasks={tasks}
                                             boardId={boardId}
                                             canManage={canManage}
@@ -1395,6 +1401,7 @@ function SprintReportPanel({
 }
 
 function SprintSection({
+    actives,
     allTasks,
     boardId,
     canManage,
@@ -1411,6 +1418,7 @@ function SprintSection({
     sprint,
     tasks,
 }: {
+    actives: Sprint[];
     allTasks: Task[];
     boardId: string;
     canManage: boolean;
@@ -1615,6 +1623,7 @@ function SprintSection({
                 taskCount={tasks.length}
             />
             <CloseSprintDialog
+                activeSprints={actives}
                 boardId={boardId}
                 columns={columns}
                 draftSprints={drafts}

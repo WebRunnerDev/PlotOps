@@ -979,6 +979,7 @@
         "carryoverMoveAll": "Move incomplete issues to",
         "carryoverLabel": "Incomplete tasks — carryover target",
         "carryoverNew": "Create new Draft",
+        "carryoverActiveNamed": "Active: {{name}}",
         "carryoverTaskLabel": "Carryover target for {{key}}",
         "clearFilters": "Clear filters",
         "clearSelection": "Clear selection",

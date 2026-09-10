@@ -985,6 +985,7 @@
         "carryoverMoveAll": "Куда перенести незавершённые",
         "carryoverLabel": "Незавершённые — куда перенести",
         "carryoverNew": "Создать новый Draft",
+        "carryoverActiveNamed": "Active: {{name}}",
         "carryoverTaskLabel": "Куда перенести {{key}}",
         "clearFilters": "Сбросить фильтры",
         "clearSelection": "Снять выбор",
