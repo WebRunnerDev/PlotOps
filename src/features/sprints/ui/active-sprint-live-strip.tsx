@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import NumberFlow from "@number-flow/react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -13,11 +15,15 @@ import { EASE_OUT } from "@/shared/lib/ease";
 import { cn } from "@/shared/lib/utils";
 
 type ActiveSprintLiveStripProperties = {
+    actions?: ReactNode;
+    headingId: string;
     sizeLabel: string;
     sprint: Sprint;
 };
 
 export function ActiveSprintLiveStrip({
+    actions,
+    headingId,
     sizeLabel,
     sprint,
 }: ActiveSprintLiveStripProperties) {
@@ -30,10 +36,9 @@ export function ActiveSprintLiveStrip({
     });
 
     return (
-        <motion.aside
+        <motion.div
             animate={{ opacity: 1, y: 0 }}
-            aria-label={t("sprints.activeLiveEyebrow")}
-            className="relative overflow-hidden rounded-none border border-primary/40 bg-card/60 shadow-[inset_3px_0_0_0_var(--color-primary)]"
+            className="relative overflow-hidden"
             initial={reduceMotion ? false : { opacity: 0, y: 18 }}
             transition={{ delay: 0.08, duration: 0.7, ease: EASE_OUT }}
         >
@@ -46,7 +51,11 @@ export function ActiveSprintLiveStrip({
                     <p className="font-mono text-meta text-primary uppercase tracking-[0.16em]">
                         {t("sprints.activeLiveEyebrow")}
                     </p>
-                    <h2 className="min-w-0 truncate font-heading text-[clamp(1.5rem,1rem+1.8vw,2.25rem)] font-bold leading-[1.05] tracking-[-0.04em]">
+                    <h2
+                        className="min-w-0 truncate font-heading text-[clamp(1.5rem,1rem+1.8vw,2.25rem)] font-bold leading-[1.05] tracking-[-0.04em] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        id={headingId}
+                        tabIndex={-1}
+                    >
                         {sprint.name}
                     </h2>
                     {sprint.goal ? (
@@ -67,8 +76,14 @@ export function ActiveSprintLiveStrip({
                 <ActiveCountdown timeline={timeline} />
             </div>
 
+            {actions ? (
+                <div className="relative flex flex-wrap items-center gap-2 border-t border-primary/20 px-4 py-2.5 sm:px-5">
+                    {actions}
+                </div>
+            ) : null}
+
             <ActiveProgressRail timeline={timeline} />
-        </motion.aside>
+        </motion.div>
     );
 }
 

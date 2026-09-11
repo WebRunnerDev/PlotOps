@@ -55,5 +55,7 @@ export {
     type BacklogTaskDragData,
     parseDropTarget,
     sprintDropId,
+    sprintHeadingId,
+    sprintSectionId,
     SprintTaskTable,
 } from "./ui/sprint-task-table";

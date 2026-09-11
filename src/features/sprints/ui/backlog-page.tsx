@@ -20,8 +20,10 @@ import {
     type ReactNode,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -48,6 +50,11 @@ import {
     BACKLOG_LIST_PAGE_SIZE,
     windowListItems,
 } from "@/features/sprints/model/list-window";
+import {
+    closestScrollRoot,
+    offsetToBringSectionToTop,
+    scrollPortMetrics,
+} from "@/features/sprints/model/scroll-sprint-section";
 import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
 import { useListWindow } from "@/features/sprints/model/use-list-window";
 import {
@@ -55,6 +62,7 @@ import {
     useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
+import { useVisibleSprintId } from "@/features/sprints/model/use-visible-sprint-id";
 import { ActiveSprintLiveStrip } from "@/features/sprints/ui/active-sprint-live-strip";
 import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
 import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
@@ -70,6 +78,8 @@ import {
     type BacklogTaskDragData,
     parseDropTarget,
     sprintDropId,
+    sprintHeadingId,
+    sprintSectionId,
     SprintTaskTable,
 } from "@/features/sprints/ui/sprint-task-table";
 import { WindowedSprintTaskTable } from "@/features/sprints/ui/windowed-sprint-task-table";
@@ -587,21 +597,6 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 </div>
             </header>
 
-            {!showBodySpinner && actives.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                    {actives.map((sprint) => (
-                        <ActiveSprintLiveStrip
-                            key={sprint.id}
-                            sizeLabel={formatSprintSizeLabel(
-                                t,
-                                tasksBySprint.get(sprint.id) ?? []
-                            )}
-                            sprint={sprint}
-                        />
-                    ))}
-                </div>
-            ) : null}
-
             {showBodySpinner ? (
                 <div className="relative flex h-48 items-center justify-center motion-reveal [animation-delay:120ms]">
                     <Spinner className="size-8 text-primary" />
@@ -703,6 +698,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             sensors={sensors}
                         >
                             <div className="relative flex flex-col gap-5 sm:gap-6">
+                                {actives.length > 1 ? (
+                                    <ActiveSprintJumpNav
+                                        reduceMotion={Boolean(reduceMotion)}
+                                        sprints={actives}
+                                    />
+                                ) : null}
                                 {planningSprints.map((sprint, index) => (
                                     <div
                                         className="motion-reveal"
@@ -919,9 +920,146 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     );
 }
 
+function ActiveSprintJumpNav({
+    reduceMotion,
+    sprints,
+}: {
+    reduceMotion: boolean;
+    sprints: Sprint[];
+}) {
+    const { t } = useTranslation("board");
+    const navReference = useRef<HTMLElement>(null);
+    const sentinelReference = useRef<HTMLDivElement>(null);
+    const [pinned, setPinned] = useState(false);
+    const [pinTop, setPinTop] = useState(48);
+    const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+    const sprintIds = useMemo(
+        () => sprints.map((sprint) => sprint.id),
+        [sprints]
+    );
+    const { currentId, selectId } = useVisibleSprintId({
+        enabled: true,
+        scrollRoot,
+        sprintIds,
+    });
+
+    useEffect(() => {
+        const sentinel = sentinelReference.current;
+        if (!sentinel) return;
+        setScrollRoot(closestScrollRoot(sentinel));
+
+        let observer: IntersectionObserver | undefined;
+        const bind = () => {
+            observer?.disconnect();
+            const chromeHeight =
+                document.querySelector("header.sticky")?.getBoundingClientRect()
+                    .height ?? 48;
+            setPinTop(chromeHeight);
+            observer = new IntersectionObserver(
+                ([entry]) => {
+                    setPinned(!(entry?.isIntersecting ?? true));
+                },
+                {
+                    root: null,
+                    rootMargin: `-${chromeHeight}px 0px 0px 0px`,
+                    threshold: 0,
+                }
+            );
+            observer.observe(sentinel);
+        };
+        bind();
+        window.addEventListener("resize", bind);
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener("resize", bind);
+        };
+    }, []);
+
+    const jumpToSprint = (sprintId: string) => {
+        selectId(sprintId);
+        const section = document.querySelector<HTMLElement>(
+            `#${CSS.escape(sprintSectionId(sprintId))}`
+        );
+        const root = scrollRoot ?? closestScrollRoot(navReference.current);
+        if (section && root) {
+            const { rootTop, scrollTop } = scrollPortMetrics(root);
+            const sectionBox = section.getBoundingClientRect();
+            const chromeHeight =
+                document.querySelector("header.sticky")?.getBoundingClientRect()
+                    .height ?? pinTop;
+            const navHeight =
+                navReference.current?.getBoundingClientRect().height ?? 40;
+            root.scrollTo({
+                behavior: reduceMotion ? "auto" : "smooth",
+                top: offsetToBringSectionToTop({
+                    rootTop,
+                    scrollTop,
+                    sectionTop: sectionBox.top,
+                    stickyOffset: chromeHeight + navHeight,
+                }),
+            });
+        }
+        document
+            .querySelector<HTMLElement>(
+                `#${CSS.escape(sprintHeadingId(sprintId))}`
+            )
+            ?.focus({ preventScroll: true });
+    };
+
+    const nav = (
+        <nav
+            aria-labelledby="active-sprint-jump-label"
+            className={cn(
+                "flex min-w-0 flex-wrap items-center gap-2 border-b border-primary/15 bg-background/95 py-2 backdrop-blur-md",
+                pinned
+                    ? "fixed inset-x-0 z-30 px-4 shadow-[0_8px_24px_-16px_oklch(0_0_0/0.55)] sm:px-6"
+                    : "-mx-4 px-4 sm:-mx-6 sm:px-6"
+            )}
+            id="active-sprint-jump-nav"
+            ref={navReference}
+            style={pinned ? { top: pinTop } : undefined}
+        >
+            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-wrap items-center gap-2">
+                <p
+                    className="text-meta text-muted-foreground"
+                    id="active-sprint-jump-label"
+                >
+                    {t("sprints.activeJumpNav")}
+                </p>
+                {sprints.map((sprint) => {
+                    const isCurrent = sprint.id === currentId;
+                    return (
+                        <Button
+                            aria-current={isCurrent ? "true" : undefined}
+                            className="max-w-48 min-w-0 truncate rounded-none"
+                            key={sprint.id}
+                            onClick={() => {
+                                jumpToSprint(sprint.id);
+                            }}
+                            size="xs"
+                            type="button"
+                            variant={isCurrent ? "default" : "outline"}
+                        >
+                            {sprint.name}
+                        </Button>
+                    );
+                })}
+            </div>
+        </nav>
+    );
+
+    return (
+        <>
+            <div aria-hidden className="h-px w-full" ref={sentinelReference} />
+            {pinned ? <div aria-hidden className="h-10" /> : null}
+            {pinned ? createPortal(nav, document.body) : nav}
+        </>
+    );
+}
+
 function BacklogPageFrame({ children }: { children: ReactNode }) {
     return (
-        <div className="relative mx-auto flex h-full w-full min-w-0 max-w-6xl scroll-smooth flex-col gap-8 overflow-y-auto px-4 py-6 scrollbar-board sm:gap-10 sm:px-6 sm:py-8">
+        <div className="relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 -top-8 h-72 bg-auth-atmosphere opacity-85 sm:-top-10 sm:h-80"
@@ -938,16 +1076,21 @@ function BacklogSectionShell({
     children,
     className,
     header,
+    id,
+    labelledBy,
     style,
 }: {
     accent: BacklogSectionAccent;
     children: ReactNode;
     className?: string;
     header: ReactNode;
+    id?: string;
+    labelledBy?: string;
     style?: CSSProperties;
 }) {
     return (
         <section
+            aria-labelledby={labelledBy}
             className={cn(
                 "overflow-hidden rounded-none border bg-card/50",
                 accent === "active" &&
@@ -957,8 +1100,10 @@ function BacklogSectionShell({
                 accent === "pool" &&
                     "border-border shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--border)_100%,transparent)]",
                 accent === "history" && "border-border/80 bg-card/30",
+                id && "scroll-mt-16",
                 className
             )}
+            id={id}
             style={style}
         >
             {header}
@@ -1443,143 +1588,141 @@ function SprintSection({
     const [cancelOpen, setCancelOpen] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
 
+    const isActive = sprint.state === "active";
+    const sprintActions = (
+        <>
+            {isActive ? (
+                <Button
+                    className="rounded-none"
+                    onClick={() => setReportOpen((value) => !value)}
+                    size="xs"
+                    type="button"
+                    variant="outline"
+                >
+                    {reportOpen
+                        ? t("sprints.hideReport")
+                        : t("sprints.showReport")}
+                </Button>
+            ) : null}
+            {canManage && sprint.state === "draft" ? (
+                <motion.div
+                    className="inline-flex"
+                    transition={SPRING_PRESS}
+                    whileHover={reduceMotion ? undefined : { x: 3, y: -1 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                >
+                    <Button
+                        className="rounded-none shadow-[2px_2px_0_0_color-mix(in_oklab,var(--primary)_45%,transparent)]"
+                        onClick={() => setStartOpen(true)}
+                        size="sm"
+                        type="button"
+                    >
+                        <Play data-icon="inline-start" />
+                        {t("sprints.start")}
+                    </Button>
+                </motion.div>
+            ) : null}
+            {canManage && isActive ? (
+                <Button
+                    className="rounded-none"
+                    onClick={() => setCloseOpen(true)}
+                    size="xs"
+                    type="button"
+                >
+                    {t("sprints.close")}
+                </Button>
+            ) : null}
+            {canManage ? (
+                <DropdownMenu>
+                    <DropdownMenuTrigger
+                        render={
+                            <Button
+                                aria-label={t("sprints.sprintActions")}
+                                size="icon-xs"
+                                type="button"
+                                variant="ghost"
+                            />
+                        }
+                    >
+                        <MoreHorizontal className="size-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {sprint.state === "draft" && tasks.length === 0 ? (
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    void removeDraft
+                                        .mutateAsync(sprint.id)
+                                        .then(() =>
+                                            toast.success(
+                                                t("sprints.draftDeleted")
+                                            )
+                                        )
+                                        .catch(() =>
+                                            toast.error(
+                                                t("sprints.draftDeleteFailed")
+                                            )
+                                        );
+                                }}
+                                variant="destructive"
+                            >
+                                {t("sprints.deleteDraft")}
+                            </DropdownMenuItem>
+                        ) : null}
+                        {isActive ||
+                        (sprint.state === "draft" && tasks.length > 0) ? (
+                            <DropdownMenuItem
+                                onClick={() => setCancelOpen(true)}
+                                variant="destructive"
+                            >
+                                {t("sprints.cancel")}
+                            </DropdownMenuItem>
+                        ) : null}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            ) : null}
+        </>
+    );
+
     return (
         <BacklogSectionShell
-            accent={sprint.state === "active" ? "active" : "draft"}
+            accent={isActive ? "active" : "draft"}
             header={
-                <header className="flex min-w-0 flex-col gap-2 border-b border-border/80 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
-                    <div className="min-w-0 flex-1">
-                        {sprint.state === "active" ? (
+                isActive ? (
+                    <header>
+                        <ActiveSprintLiveStrip
+                            actions={sprintActions}
+                            headingId={sprintHeadingId(sprint.id)}
+                            sizeLabel={formatSprintSizeLabel(t, tasks)}
+                            sprint={sprint}
+                        />
+                    </header>
+                ) : (
+                    <header className="flex min-w-0 flex-col gap-2 border-b border-border/80 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
+                        <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
+                                <h2 className="text-h3">{sprint.name}</h2>
                                 <SprintStateBadge state={sprint.state} />
                                 <span className="text-meta text-muted-foreground">
                                     {formatSprintSizeLabel(t, tasks)}
                                 </span>
-                                <span className="sr-only">{sprint.name}</span>
                             </div>
-                        ) : (
-                            <>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h2 className="text-h3">{sprint.name}</h2>
-                                    <SprintStateBadge state={sprint.state} />
-                                    <span className="text-meta text-muted-foreground">
-                                        {formatSprintSizeLabel(t, tasks)}
-                                    </span>
-                                </div>
-                                {sprint.goal ? (
-                                    <p className="mt-1 max-w-2xl text-ui text-muted-foreground">
-                                        {sprint.goal}
-                                    </p>
-                                ) : null}
-                                {sprint.startsOn && sprint.endsOn ? (
-                                    <p className="text-code text-muted-foreground">
-                                        {sprint.startsOn} → {sprint.endsOn}
-                                    </p>
-                                ) : null}
-                            </>
-                        )}
-                    </div>
-                    {sprint.state === "active" ? (
-                        <Button
-                            className="rounded-none"
-                            onClick={() => setReportOpen((value) => !value)}
-                            size="xs"
-                            type="button"
-                            variant="outline"
-                        >
-                            {reportOpen
-                                ? t("sprints.hideReport")
-                                : t("sprints.showReport")}
-                        </Button>
-                    ) : null}
-                    {canManage && sprint.state === "draft" ? (
-                        <motion.div
-                            className="inline-flex"
-                            transition={SPRING_PRESS}
-                            whileHover={
-                                reduceMotion ? undefined : { x: 3, y: -1 }
-                            }
-                            whileTap={
-                                reduceMotion ? undefined : { scale: 0.97 }
-                            }
-                        >
-                            <Button
-                                className="rounded-none shadow-[2px_2px_0_0_color-mix(in_oklab,var(--primary)_45%,transparent)]"
-                                onClick={() => setStartOpen(true)}
-                                size="sm"
-                                type="button"
-                            >
-                                <Play data-icon="inline-start" />
-                                {t("sprints.start")}
-                            </Button>
-                        </motion.div>
-                    ) : null}
-                    {canManage && sprint.state === "active" ? (
-                        <Button
-                            className="rounded-none"
-                            onClick={() => setCloseOpen(true)}
-                            size="xs"
-                            type="button"
-                        >
-                            {t("sprints.close")}
-                        </Button>
-                    ) : null}
-                    {canManage ? (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
-                                render={
-                                    <Button
-                                        aria-label={t("sprints.sprintActions")}
-                                        size="icon-xs"
-                                        type="button"
-                                        variant="ghost"
-                                    />
-                                }
-                            >
-                                <MoreHorizontal className="size-3.5" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                {sprint.state === "draft" &&
-                                tasks.length === 0 ? (
-                                    <DropdownMenuItem
-                                        onClick={() => {
-                                            void removeDraft
-                                                .mutateAsync(sprint.id)
-                                                .then(() =>
-                                                    toast.success(
-                                                        t(
-                                                            "sprints.draftDeleted"
-                                                        )
-                                                    )
-                                                )
-                                                .catch(() =>
-                                                    toast.error(
-                                                        t(
-                                                            "sprints.draftDeleteFailed"
-                                                        )
-                                                    )
-                                                );
-                                        }}
-                                        variant="destructive"
-                                    >
-                                        {t("sprints.deleteDraft")}
-                                    </DropdownMenuItem>
-                                ) : null}
-                                {sprint.state === "active" ||
-                                (sprint.state === "draft" &&
-                                    tasks.length > 0) ? (
-                                    <DropdownMenuItem
-                                        onClick={() => setCancelOpen(true)}
-                                        variant="destructive"
-                                    >
-                                        {t("sprints.cancel")}
-                                    </DropdownMenuItem>
-                                ) : null}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    ) : null}
-                </header>
+                            {sprint.goal ? (
+                                <p className="mt-1 max-w-2xl text-ui text-muted-foreground">
+                                    {sprint.goal}
+                                </p>
+                            ) : null}
+                            {sprint.startsOn && sprint.endsOn ? (
+                                <p className="text-code text-muted-foreground">
+                                    {sprint.startsOn} → {sprint.endsOn}
+                                </p>
+                            ) : null}
+                        </div>
+                        {sprintActions}
+                    </header>
+                )
             }
+            id={isActive ? sprintSectionId(sprint.id) : undefined}
+            labelledBy={isActive ? sprintHeadingId(sprint.id) : undefined}
         >
             {reportOpen && sprint.state === "active" ? (
                 <SprintReportPanel

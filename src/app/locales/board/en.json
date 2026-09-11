@@ -1141,6 +1141,7 @@
         "activeLiveEyebrow": "Live sprint",
         "activeLiveOverdue": "overdue",
         "activeLiveUndated": "Set start and end dates to track the window.",
-        "activeLiveUpcoming": "days to go"
+        "activeLiveUpcoming": "days to go",
+        "activeJumpNav": "Jump to sprint"
     }
 }

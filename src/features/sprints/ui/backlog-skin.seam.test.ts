@@ -18,11 +18,12 @@ describe("Backlog skin seam (ADR 0007 craft)", () => {
         expect(page).toMatch(/planningEyebrow/);
         expect(page).toMatch(/PlanningPulseStat/);
         expect(page).toMatch(/ActiveSprintLiveStrip/);
-        expect(page).toMatch(/actives\.map/);
+        expect(page).toMatch(/ActiveSprintJumpNav/);
+        expect(page).toMatch(/sprintSectionId/);
         expect(page).toMatch(/border-primary\/25/);
         expect(page).toMatch(/motion-reveal/);
         expect(page).toMatch(/rounded-none/);
-        expect(page).toMatch(/scroll-smooth/);
+        expect(page).toMatch(/ActiveSprintJumpNav/);
     });
 
     it("skins sprint sections with state rails, badges, and magnetic Start", () => {
@@ -36,14 +37,32 @@ describe("Backlog skin seam (ADR 0007 craft)", () => {
         expect(page).toMatch(/inset_3px_0_0_0/);
         expect(page).toMatch(/whileHover/);
         expect(page).toMatch(/SPRING_PRESS/);
-        expect(page).toMatch(
-            /accent=\{sprint\.state === "active" \? "active" : "draft"\}/
-        );
+        expect(page).toMatch(/accent=\{isActive \? "active" : "draft"\}/);
         expect(insights).toMatch(/rounded-none/);
         expect(insights).toMatch(/inset_3px_0_0_0/);
         expect(live).toMatch(/computeSprintTimeline/);
         expect(live).toMatch(/NumberFlow/);
         expect(table).toMatch(/ease-\(--ease-out-expo\)/);
         expect(table).toMatch(/dropHint/);
+    });
+
+    it("pairs each Active Sprint strip with a named task section", () => {
+        const page = readUi("backlog-page.tsx");
+        const live = readUi("active-sprint-live-strip.tsx");
+
+        expect(page).not.toMatch(/sr-only">\{sprint\.name\}/);
+        expect(page).toMatch(/headingId=\{sprintHeadingId\(sprint\.id\)\}/);
+        expect(page).toMatch(/id=\{isActive \? sprintSectionId\(sprint\.id\)/);
+        expect(page).toMatch(/closestScrollRoot/);
+        expect(page).toMatch(/preventScroll: true/);
+        expect(page).toMatch(/setPinned/);
+        expect(page).toMatch(/createPortal/);
+        expect(page).toMatch(/root: null/);
+        expect(page).toMatch(/fixed inset-x-0/);
+        expect(page).toMatch(/aria-current=\{isCurrent \? "true"/);
+        expect(page).toMatch(/variant=\{isCurrent \? "default" : "outline"\}/);
+        expect(live).toMatch(/\{sprint\.name\}/);
+        expect(live).toMatch(/id=\{headingId\}/);
+        expect(live).toMatch(/tabIndex=\{-1\}/);
     });
 });
