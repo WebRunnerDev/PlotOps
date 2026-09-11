@@ -82,7 +82,7 @@ describe("ssg auth session mask", () => {
 
     /**
      * Regression: prerendered LoginForm in `#root` on `/` painted sign-in for
-     * returning sessions before Auth boot redirected. SPA `/*` uses spa.html.
+     * returning sessions before Auth boot redirected. App routes use 404.html.
      */
     it("ships an early head mask in index.html for persisted Auth sessions", () => {
         const html = readFileSync(path.join(root, "index.html"), "utf8");
