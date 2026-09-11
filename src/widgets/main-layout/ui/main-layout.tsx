@@ -32,14 +32,13 @@ function MainLayoutContent() {
     return (
         <div
             className={cn(
-                // overflow-x-hidden on all modes prevents horizontal bleed from
-                // children that temporarily exceed viewport width (e.g. wide tables,
-                // kanban columns on mobile). Child scroll regions opt back in with
-                // overflow-x-auto on their own containers.
-                "w-full overflow-x-hidden",
+                // overflow-x-clip clips horizontal bleed without a scroll
+                // container, so TopBar `sticky top-0` still sticks to the viewport.
+                // `hidden` would compute a sticky containing block and unstick the bar.
+                "w-full overflow-x-clip",
                 layoutMode === "kanban" &&
                     "flex h-dvh flex-col overflow-hidden",
-                layoutMode === "project" && "min-h-dvh overflow-y-auto",
+                layoutMode === "project" && "min-h-dvh",
                 layoutMode === "default" && "min-h-dvh"
             )}
         >
