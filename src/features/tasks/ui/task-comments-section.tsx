@@ -42,7 +42,9 @@ import {
 import {
     isRichTextWithinLimit,
     normalizeEditorContent,
+    richTextToPlainText,
 } from "@/shared/ui/rich-text-editor/content";
+import { copyRichTextToClipboard } from "@/shared/ui/rich-text-editor/copy-rich-text";
 
 const COMMENT_HIGHLIGHT_MS = 2400;
 
@@ -680,8 +682,20 @@ function TaskCommentItem({
         }
     };
 
-    const showActions =
-        !isEditing && (canEdit || canDelete || (canComment && onReply));
+    const handleCopy = async () => {
+        const html = comment.body;
+        const copied = await copyRichTextToClipboard(
+            html,
+            richTextToPlainText(html)
+        );
+        if (!copied) {
+            toast.error(t("copyFailed"));
+            return;
+        }
+        toast.success(t("comments.copied"));
+    };
+
+    const showActions = !isEditing;
 
     return (
         <article
@@ -799,6 +813,17 @@ function TaskCommentItem({
                                 {t("comments.reply")}
                             </Button>
                         ) : undefined}
+                        <Button
+                            className="h-7 px-2 text-meta text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                                void handleCopy();
+                            }}
+                            size="sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            {t("comments.copy")}
+                        </Button>
                         {canEdit ? (
                             <Button
                                 className="h-7 px-2 text-meta text-muted-foreground hover:text-foreground"

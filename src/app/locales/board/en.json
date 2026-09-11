@@ -167,6 +167,8 @@
         "delete": "Delete",
         "deleted": "Comment deleted",
         "deleteFailed": "Could not delete comment",
+        "copy": "Copy",
+        "copied": "Comment copied",
         "edited": "edited",
         "reply": "Reply",
         "replyPlaceholder": "Write a reply…",
