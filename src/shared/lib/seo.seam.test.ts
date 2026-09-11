@@ -82,11 +82,15 @@ describe("seo seam", () => {
     it("resets document title in the authenticated app shell", () => {
         const mainLayout = read("src/widgets/main-layout/ui/main-layout.tsx");
         const pageSeo = read("src/shared/lib/page-seo-config.ts");
+        const appShellSeo = read("src/features/app-shell/ui/app-shell-seo.tsx");
+        const appShellPage = read("src/shared/lib/app-shell-page.ts");
 
         expect(mainLayout).toMatch(/AppShellSeo/);
         expect(pageSeo).toMatch(/buildAppShellSeo/);
-        expect(pageSeo).toMatch(
+        expect(appShellPage).toMatch(
             /\$\{PLOTOPS_SITE_NAME\} — \$\{PLOTOPS_SITE_TAGLINE\}/
         );
+        expect(appShellSeo).toMatch(/parseAppShellPath/);
+        expect(appShellSeo).toMatch(/boardName/);
     });
 });

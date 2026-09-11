@@ -107,6 +107,12 @@
     },
     "platformSettings": "Настройки платформы",
     "ru": "Русский",
+    "seo": {
+        "about": "О проекте",
+        "completeProfile": "Заполните профиль",
+        "dashboard": "Панель управления",
+        "invite": "Приглашение в Команду"
+    },
     "settingsDescription": "Профиль, способы входа и поведение PlotOps для вас.",
     "settingsEyebrow": "Аккаунт",
     "settingsPlaceholder": "Здесь появятся тема, язык и другие параметры.",

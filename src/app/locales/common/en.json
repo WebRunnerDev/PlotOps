@@ -107,6 +107,12 @@
     },
     "platformSettings": "Platform settings",
     "ru": "Russian",
+    "seo": {
+        "about": "About",
+        "completeProfile": "Complete your profile",
+        "dashboard": "Dashboard",
+        "invite": "Team invite"
+    },
     "settingsDescription": "Your profile, sign-in methods, and how PlotOps behaves for you.",
     "settingsEyebrow": "Account",
     "settingsPlaceholder": "Theme, language, and other preferences will live here.",

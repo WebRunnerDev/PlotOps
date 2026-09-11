@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
+import { AppShellSeo } from "@/features/app-shell/ui/app-shell-seo";
 import { useAuth } from "@/features/auth";
 import { CommandPalette } from "@/features/command-palette";
 import { hasMainAppAccess } from "@/features/guest-mode";
@@ -42,6 +43,7 @@ export function NotFoundPage() {
     if (!inApp) {
         return (
             <div className="flex min-h-[70vh] items-center justify-center [view-transition-name:main-content]">
+                <AppShellSeo notFound />
                 {content}
             </div>
         );
@@ -49,6 +51,7 @@ export function NotFoundPage() {
 
     return (
         <div className="min-h-dvh">
+            <AppShellSeo notFound />
             <TopBar />
             <CommandPalette />
             <div className="mx-auto w-full max-w-6xl p-4 [view-transition-name:main-content]">
