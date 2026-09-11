@@ -97,6 +97,7 @@ import {
     isMentionHotkey,
 } from "@/shared/ui/rich-text-editor/mention-hotkey";
 import { ResizableImage } from "@/shared/ui/rich-text-editor/resizable-image";
+import { shouldShowSelectionBubble } from "@/shared/ui/rich-text-editor/selection-bubble";
 import {
     deleteSlashQuery,
     filterSlashCommands,
@@ -351,7 +352,13 @@ export const RichTextEditor = forwardRef<
                 },
                 contextmenu: (_view, event) => {
                     const currentEditor = editorReference.current;
-                    if (!currentEditor || currentEditor.state.selection.empty) {
+                    if (
+                        !currentEditor ||
+                        !shouldShowSelectionBubble({
+                            editable: !readOnlyReference.current,
+                            hasTextSelection: hasTextSelection(currentEditor),
+                        })
+                    ) {
                         return false;
                     }
 
@@ -363,11 +370,6 @@ export const RichTextEditor = forwardRef<
                         target.closest(
                             ".rich-text-image-view, img.rich-text-image"
                         )
-                    ) {
-                        return false;
-                    }
-                    if (
-                        currentEditor.state.selection instanceof NodeSelection
                     ) {
                         return false;
                     }
@@ -672,8 +674,14 @@ export const RichTextEditor = forwardRef<
             }
 
             // Auto-show a compact formatting bubble whenever text is selected so
-            // the controls are discoverable without right-clicking.
-            if (hasTextSelection(currentEditor)) {
+            // the controls are discoverable without right-clicking. Skip
+            // read-only surfaces (viewed comments, archived descriptions).
+            if (
+                shouldShowSelectionBubble({
+                    editable: !readOnlyReference.current,
+                    hasTextSelection: hasTextSelection(currentEditor),
+                })
+            ) {
                 const rect = getSelectionRect(currentEditor);
                 if (rect) {
                     setMenu(buildSelectionMenu(rect));
@@ -743,6 +751,10 @@ export const RichTextEditor = forwardRef<
         if (!editor) return;
         editor.setEditable(!readOnly);
     }, [editor, readOnly]);
+
+    useEffect(() => {
+        if (readOnly) closeMenu();
+    }, [closeMenu, readOnly]);
 
     useEffect(() => {
         editorReference.current = editor;
@@ -939,7 +951,9 @@ export const RichTextEditor = forwardRef<
 
     const showBlocks = menu.commands.length > 0;
     const menuVisible =
-        Boolean(menu.reference) && (showBlocks || menu.source === "selection");
+        !readOnly &&
+        Boolean(menu.reference) &&
+        (showBlocks || menu.source === "selection");
 
     const floatingMenu = menuVisible
         ? createPortal(

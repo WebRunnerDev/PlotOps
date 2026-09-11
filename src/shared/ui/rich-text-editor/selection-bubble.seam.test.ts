@@ -25,4 +25,23 @@ describe("selection bubble dismiss seams", () => {
             /onMouseDown=\{\(event\)\s*=>\s*\{[\s\S]*?event\.preventDefault\(\)/
         );
     });
+
+    it("does not open formatting menus while the editor is read-only", () => {
+        const source = readFileSync(
+            path.join(root, "rich-text-editor.tsx"),
+            "utf8"
+        );
+
+        // Bug: viewed comments use <RichTextEditor readOnly />; selecting
+        // text still auto-opened the edit-only formatting bubble.
+        expect(source).toMatch(
+            /from\s+"@\/shared\/ui\/rich-text-editor\/selection-bubble"/
+        );
+        expect(source).toMatch(
+            /onSelectionUpdate:[\s\S]*?shouldShowSelectionBubble\(/
+        );
+        expect(source).toMatch(
+            /contextmenu:[\s\S]*?shouldShowSelectionBubble\(/
+        );
+    });
 });
