@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
     type FocusEvent,
     type ReactNode,
@@ -125,33 +126,37 @@ export function CollapsibleClamp({
                 {view.isClamped && view.showExpandControl ? (
                     <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-background to-transparent"
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-background from-35% to-transparent"
                     />
                 ) : null}
             </div>
             {view.showExpandControl ? (
                 <Button
-                    className="self-start"
+                    className="relative z-10 -mt-8 self-center border-border bg-background font-medium shadow-sm"
+                    data-icon="inline-start"
                     onClick={() => {
                         setExpanded(true);
                     }}
                     size="sm"
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                 >
+                    <ChevronDown aria-hidden />
                     {expandLabel}
                 </Button>
             ) : null}
             {view.showCollapseControl ? (
                 <Button
-                    className="self-start"
+                    className="self-center font-medium"
+                    data-icon="inline-start"
                     onClick={() => {
                         setExpanded(false);
                     }}
                     size="sm"
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                 >
+                    <ChevronUp aria-hidden />
                     {collapseLabel}
                 </Button>
             ) : null}
