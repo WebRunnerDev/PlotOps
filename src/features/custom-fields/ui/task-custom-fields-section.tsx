@@ -22,6 +22,7 @@ import { useDeferredMount } from "@/shared/lib/use-deferred-mount";
 import { cn } from "@/shared/lib/utils";
 import { Label } from "@/shared/shadcn/ui/label";
 import { Textarea } from "@/shared/shadcn/ui/textarea";
+import { CollapsibleClamp } from "@/shared/ui/collapsible-clamp";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 
 const FIELD_LABEL_CLASS =
@@ -29,6 +30,8 @@ const FIELD_LABEL_CLASS =
 const FIELD_CONTROL_CLASS = "w-full min-h-16 font-mono text-code";
 
 type DescriptionFieldProperties = {
+    collapseEnabled?: boolean;
+    dirty?: boolean;
     editorReference: RefObject<null | RichTextEditorHandle>;
     maxLength: number;
     mentionCandidates?: MentionCandidate[];
@@ -234,7 +237,10 @@ function DescriptionEditor({
     label: string;
     taskId: string;
 }) {
+    const { t } = useTranslation("common");
     const editorReady = useDeferredMount(true, taskId);
+    const collapseEnabled = description.collapseEnabled === true;
+    const dirty = description.dirty === true;
 
     return (
         <div className="flex min-w-0 flex-col gap-2">
@@ -246,20 +252,31 @@ function DescriptionEditor({
                 {label}
             </Label>
             {editorReady ? (
-                <RichTextEditor
-                    id="task-description"
-                    maxLength={description.maxLength}
-                    mentionCandidates={description.mentionCandidates}
-                    onBlur={description.onBlur}
-                    onChange={description.onChange}
-                    onTaskMentionClick={description.onTaskMentionClick}
-                    onUploadImage={description.onUploadImage}
-                    placeholder={description.placeholder}
-                    readOnly={description.readOnly}
-                    ref={description.editorReference}
-                    taskMentionCandidates={description.taskMentionCandidates}
-                    value={description.value}
-                />
+                <CollapsibleClamp
+                    collapseLabel={t("uiSettings.descriptionShowLess")}
+                    contentKey={description.value}
+                    dirty={dirty}
+                    enabled={collapseEnabled}
+                    expandLabel={t("uiSettings.descriptionShowMore")}
+                    resetKey={taskId}
+                >
+                    <RichTextEditor
+                        id="task-description"
+                        maxLength={description.maxLength}
+                        mentionCandidates={description.mentionCandidates}
+                        onBlur={description.onBlur}
+                        onChange={description.onChange}
+                        onTaskMentionClick={description.onTaskMentionClick}
+                        onUploadImage={description.onUploadImage}
+                        placeholder={description.placeholder}
+                        readOnly={description.readOnly}
+                        ref={description.editorReference}
+                        taskMentionCandidates={
+                            description.taskMentionCandidates
+                        }
+                        value={description.value}
+                    />
+                </CollapsibleClamp>
             ) : (
                 <Skeleton
                     aria-busy="true"

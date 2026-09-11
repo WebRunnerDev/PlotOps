@@ -71,7 +71,7 @@ describe("guestSprintsProvider happy path", () => {
         expect(after.notifications.length).toBe(notificationsBefore);
     });
 
-    it("creates a draft and starts it when the board has no other active sprint", async () => {
+    it("starts a draft while another Active Sprint already runs on the Board", async () => {
         const { getGuestSandbox, startGuestSession, writeGuestSandbox } =
             await import("@/features/guest-mode");
         const { guestSprintsProvider } =
@@ -82,13 +82,10 @@ describe("guestSprintsProvider happy path", () => {
         const boardId = sandbox.boards[0]!.id;
         const projectId = sandbox.projects[0]!.id;
 
-        // Seed has an active sprint — close path prep: cancel active first so
-        // Draft→Active happy path can start a new draft.
-        const active = sandbox.sprints.find(
+        const existingActive = sandbox.sprints.find(
             (sprint) => sprint.boardId === boardId && sprint.state === "active"
         );
-        expect(active).toBeTruthy();
-        await guestSprintsProvider.cancelSprint(active!.id);
+        expect(existingActive).toBeTruthy();
 
         const draft = await guestSprintsProvider.createDraftSprint(
             boardId,
@@ -99,7 +96,8 @@ describe("guestSprintsProvider happy path", () => {
         expect(draft.state).toBe("draft");
 
         const task = getGuestSandbox()!.tasks.find(
-            (item) => item.boardId === boardId
+            (item) =>
+                item.boardId === boardId && item.sprintId !== existingActive!.id
         )!;
         await guestSprintsProvider.assignTaskToSprint(task.id, draft.id, 0);
 
@@ -114,6 +112,13 @@ describe("guestSprintsProvider happy path", () => {
         expect(started.endsOn).toBe("2026-08-18");
         expect(started.committedTaskIds).toContain(task.id);
 
+        const actives = getGuestSandbox()!.sprints.filter(
+            (sprint) => sprint.boardId === boardId && sprint.state === "active"
+        );
+        expect(actives.map((sprint) => sprint.id).toSorted()).toEqual(
+            [existingActive!.id, draft.id].toSorted()
+        );
+
         const persisted = getGuestSandbox()!.sprints.find(
             (sprint) => sprint.id === draft.id
         );
@@ -126,6 +131,55 @@ describe("guestSprintsProvider happy path", () => {
         expect(reread.find((sprint) => sprint.id === draft.id)?.state).toBe(
             "active"
         );
+    });
+
+    it("closes an active sprint with carryover into another Active Sprint", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+        const { guestSprintsProvider } =
+            await import("@/features/sprints/api/guest-sprints-provider");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const boardId = sandbox.boards[0]!.id;
+        const projectId = sandbox.projects[0]!.id;
+
+        const source = sandbox.sprints.find(
+            (sprint) => sprint.boardId === boardId && sprint.state === "active"
+        );
+        expect(source).toBeTruthy();
+
+        const draft = await guestSprintsProvider.createDraftSprint(
+            boardId,
+            projectId,
+            "Parallel Track"
+        );
+        const target = await guestSprintsProvider.startSprint(
+            draft.id,
+            "2026-08-05",
+            "2026-08-18"
+        );
+
+        const members = getGuestSandbox()!.tasks.filter(
+            (task) => task.sprintId === source!.id
+        );
+        expect(members.length).toBeGreaterThanOrEqual(1);
+        const [task] = members;
+
+        await guestSprintsProvider.closeSprint(source!.id, [], {
+            [task!.id]: target.id,
+        });
+
+        const after = getGuestSandbox()!;
+        expect(
+            after.sprints.find((sprint) => sprint.id === source!.id)?.state
+        ).toBe("closed");
+        expect(after.tasks.find((item) => item.id === task!.id)?.sprintId).toBe(
+            target.id
+        );
+        expect(
+            after.sprints.find((sprint) => sprint.id === target.id)?.state
+        ).toBe("active");
     });
 
     it("closes an active sprint with different carryover Drafts per incomplete task", async () => {

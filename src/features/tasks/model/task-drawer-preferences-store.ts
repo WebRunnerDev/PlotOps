@@ -48,11 +48,13 @@ export const DEFAULT_COPY_METADATA_FIELDS: TaskCopyMetadataFields = {
 };
 
 export type TaskDrawerPreferencesState = {
+    collapseLongDescription: boolean;
     copyIncludeTaskKey: boolean;
     copyIncludeTaskType: boolean;
     copyMetadataFields: TaskCopyMetadataFields;
     drawerSide: TaskDrawerSide;
     openAfterCreate: boolean;
+    setCollapseLongDescription: (collapse: boolean) => void;
     setCopyIncludeTaskKey: (include: boolean) => void;
     setCopyIncludeTaskType: (include: boolean) => void;
     setCopyMetadataField: (
@@ -71,11 +73,14 @@ export const createTaskDrawerPreferencesStoreState: StateCreator<
     [],
     TaskDrawerPreferencesState
 > = (set) => ({
+    collapseLongDescription: true,
     copyIncludeTaskKey: false,
     copyIncludeTaskType: false,
     copyMetadataFields: { ...DEFAULT_COPY_METADATA_FIELDS },
     drawerSide: "bottom",
     openAfterCreate: true,
+    setCollapseLongDescription: (collapse) =>
+        set({ collapseLongDescription: collapse }),
     setCopyIncludeTaskKey: (include) => set({ copyIncludeTaskKey: include }),
     setCopyIncludeTaskType: (include) => set({ copyIncludeTaskType: include }),
     setCopyMetadataField: (field, include) =>
@@ -138,6 +143,10 @@ function mergeTaskDrawerPreferences(
             : {};
     return {
         ...current,
+        collapseLongDescription:
+            typeof raw.collapseLongDescription === "boolean"
+                ? raw.collapseLongDescription
+                : current.collapseLongDescription,
         copyIncludeTaskKey:
             typeof raw.copyIncludeTaskKey === "boolean"
                 ? raw.copyIncludeTaskKey
@@ -170,6 +179,7 @@ export const useTaskDrawerPreferencesStore =
             merge: mergeTaskDrawerPreferences,
             name: "plotops:task-drawer-preferences",
             partialize: (state) => ({
+                collapseLongDescription: state.collapseLongDescription,
                 copyIncludeTaskKey: state.copyIncludeTaskKey,
                 copyIncludeTaskType: state.copyIncludeTaskType,
                 copyMetadataFields: state.copyMetadataFields,

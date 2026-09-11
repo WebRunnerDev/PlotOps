@@ -90,8 +90,15 @@ export const guestSprintsProvider: SprintsProvider = {
                         "Carryover sprint must be on the same board"
                     );
                 }
-                if (carry.state !== "draft") {
-                    throw new Error("Carryover target must be a draft sprint");
+                if (carry.id === sprintId) {
+                    throw new Error(
+                        "Carryover target cannot be the sprint being closed"
+                    );
+                }
+                if (carry.state !== "draft" && carry.state !== "active") {
+                    throw new Error(
+                        "Carryover target must be a draft or active sprint"
+                    );
                 }
 
                 let nextPos = -1;
@@ -222,15 +229,6 @@ export const guestSprintsProvider: SprintsProvider = {
                 throw new Error(
                     "Active sprint requires valid start and end dates"
                 );
-            }
-            if (
-                sandbox.sprints.some(
-                    (item) =>
-                        item.boardId === sprint.boardId &&
-                        item.state === "active"
-                )
-            ) {
-                throw new Error("Board already has an active sprint");
             }
 
             const committed = sandbox.tasks

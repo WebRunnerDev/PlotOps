@@ -37,10 +37,12 @@ describe("Command palette create-task columnsReady seam", () => {
 });
 
 describe("Command palette active sprint create seam", () => {
-    it("passes resolveCreateTaskSprintId into createTask", () => {
+    it("resolves create Sprint via resolveCreateTaskSprint and blocks pick mode", () => {
         const source = readUi("command-palette.tsx");
 
-        expect(source).toMatch(/resolveCreateTaskSprintId/);
+        expect(source).toMatch(/resolveCreateTaskSprint/);
+        expect(source).toMatch(/resolveActiveSprintFilterIds/);
+        expect(source).toMatch(/createTaskSprint\.mode\s*===\s*"pick"/);
         expect(source).toMatch(/sprintId:\s*createSprintId/);
     });
 });

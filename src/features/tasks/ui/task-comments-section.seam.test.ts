@@ -31,4 +31,11 @@ describe("task comments section seam", () => {
         // Anti-shrink: no recursive ml-/pl- on reply items beyond CommentReplies.
         expect(source).not.toMatch(/isReply[\s\S]{0,200}pl-\d/);
     });
+
+    it("copies a viewed comment as rich text even without edit permission", () => {
+        expect(source).toMatch(/comments\.copy/);
+        expect(source).toMatch(/copyRichTextToClipboard/);
+        expect(source).toMatch(/richTextToPlainText/);
+        expect(source).toMatch(/const showActions = !isEditing/);
+    });
 });

@@ -27,6 +27,9 @@ export function TaskDrawerSettings() {
     const openAfterCreate = useTaskDrawerPreferencesStore(
         (state) => state.openAfterCreate
     );
+    const collapseLongDescription = useTaskDrawerPreferencesStore(
+        (state) => state.collapseLongDescription
+    );
     const drawerSide = useTaskDrawerPreferencesStore(
         (state) => state.drawerSide
     );
@@ -41,6 +44,9 @@ export function TaskDrawerSettings() {
     );
     const setOpenAfterCreate = useTaskDrawerPreferencesStore(
         (state) => state.setOpenAfterCreate
+    );
+    const setCollapseLongDescription = useTaskDrawerPreferencesStore(
+        (state) => state.setCollapseLongDescription
     );
     const setDrawerSide = useTaskDrawerPreferencesStore(
         (state) => state.setDrawerSide
@@ -88,6 +94,28 @@ export function TaskDrawerSettings() {
                         </Label>
                         <p className="text-meta text-muted-foreground normal-case tracking-normal">
                             {t("uiSettings.openAfterCreateHint")}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        checked={collapseLongDescription}
+                        className="mt-0.5"
+                        id="settings-collapse-long-description"
+                        onCheckedChange={(checked) => {
+                            setCollapseLongDescription(checked === true);
+                        }}
+                    />
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <Label
+                            className="cursor-pointer leading-snug"
+                            htmlFor="settings-collapse-long-description"
+                        >
+                            {t("uiSettings.collapseLongDescription")}
+                        </Label>
+                        <p className="text-meta text-muted-foreground normal-case tracking-normal">
+                            {t("uiSettings.collapseLongDescriptionHint")}
                         </p>
                     </div>
                 </div>

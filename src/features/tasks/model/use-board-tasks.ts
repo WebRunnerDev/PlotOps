@@ -41,6 +41,9 @@ import { planPriorityWatcherNotification } from "@/features/notifications/lib/pl
 import { planSubtaskChangeNotification } from "@/features/notifications/lib/plan-subtask-change-notification";
 import { planTitleWatcherNotification } from "@/features/notifications/lib/plan-title-watcher-notification";
 import { notificationsKeys } from "@/features/notifications/model/query-keys";
+import { resolveSprintsProvider } from "@/features/sprints/api/resolve-sprints-provider";
+import { invalidateSprintBoardCaches } from "@/features/sprints/model/invalidate-sprint-board";
+import { planSprintMembershipMove } from "@/features/sprints/model/plan-sprint-membership-move";
 import { resolveTasksProvider } from "@/features/tasks/api/resolve-tasks-provider";
 import { insertTaskActivityEvent } from "@/features/tasks/api/task-activity-api";
 import {
@@ -483,6 +486,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             sourceBoardId,
             subtaskMoves = [],
             targetBoardId,
+            targetSprintId,
             targetStatus,
             taskId,
         }: {
@@ -490,6 +494,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             sourceBoardId: string;
             subtaskMoves?: Array<{ targetStatus: TaskStatus; taskId: string }>;
             targetBoardId: string;
+            /** Draft/Active Sprint on the target Board; omit/null → Backlog. */
+            targetSprintId?: null | string;
             targetStatus: TaskStatus;
             taskId: string;
         }) => {
@@ -505,6 +511,37 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     targetBoardId,
                     subtask.targetStatus
                 );
+            }
+
+            if (targetSprintId) {
+                const sprintsProvider = resolveSprintsProvider(guest);
+                const targetSprints =
+                    await sprintsProvider.fetchBoardSprints(targetBoardId);
+                const targetSprint = targetSprints.find(
+                    (sprint) => sprint.id === targetSprintId
+                );
+                if (
+                    !targetSprint ||
+                    (targetSprint.state !== "draft" &&
+                        targetSprint.state !== "active")
+                ) {
+                    throw new Error(
+                        "Target sprint must be a draft or active sprint on the destination board"
+                    );
+                }
+
+                const movedIds = [
+                    taskId,
+                    ...subtaskMoves.map((subtask) => subtask.taskId),
+                ];
+                const targetCache =
+                    await tasksProvider.fetchBoardTasks(targetBoardId);
+                const membershipUpdates = planSprintMembershipMove({
+                    targetSprintId,
+                    taskIds: movedIds,
+                    tasks: targetCache.tasks,
+                });
+                await sprintsProvider.assignTasksToSprint(membershipUpdates);
             }
 
             if (guest) {
@@ -578,6 +615,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             void queryClient.invalidateQueries({
                 queryKey: boardKeys.list(projectId),
             });
+            if (variables.targetSprintId) {
+                invalidateSprintBoardCaches(
+                    queryClient,
+                    projectId,
+                    variables.targetBoardId
+                );
+            }
         },
     });
 
@@ -1050,13 +1094,16 @@ export function useBoardTasks(projectId: string, boardId: string) {
          */
         commitTaskDragGesture: () => {
             const previousCache = dragGestureCacheReference.current;
+            // Always clear: Done-refusal during dragOver sets this flag but
+            // returns before dragGestureCacheReference is set, so a no-op
+            // commit must still unlock toasts for the next gesture.
+            dragDoneRefusalToasted.current = false;
             if (!previousCache) return;
 
             const current = queryClient.getQueryData<BoardTasksCache>(
                 taskKeys.board(projectId, boardId)
             );
             dragGestureCacheReference.current = null;
-            dragDoneRefusalToasted.current = false;
             if (!current) return;
 
             const updates = diffTaskMoveUpdates(previousCache, current);
@@ -1169,7 +1216,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             taskId: string,
             targetBoardId: string,
             targetStatus: TaskStatus,
-            targetStatusName?: string
+            targetStatusName?: string,
+            targetSprintId?: null | string
         ) => {
             const snapshot = getBoardSnapshot(queryClient, projectId, boardId);
             const task =
@@ -1284,6 +1332,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 sourceBoardId,
                 subtaskMoves,
                 targetBoardId,
+                targetSprintId: targetSprintId ?? null,
                 targetStatus,
                 taskId,
             });

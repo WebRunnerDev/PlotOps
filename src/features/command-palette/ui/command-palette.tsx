@@ -46,7 +46,8 @@ import { useCommandPaletteStore } from "@/features/command-palette/model/use-com
 import { isGuest } from "@/features/guest-mode";
 import { useProject, useProjectAccess, useProjects } from "@/features/projects";
 import {
-    resolveCreateTaskSprintId,
+    resolveActiveSprintFilterIds,
+    resolveCreateTaskSprint,
     useBoardSprints,
     useSprintsUiStore,
 } from "@/features/sprints";
@@ -114,10 +115,24 @@ export function CommandPalette() {
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );
-    const createSprintId = resolveCreateTaskSprintId({
-        activeSprintId: sprints.find((sprint) => sprint.state === "active")?.id,
-        boardSprintScope,
+    const selectedActiveSprintIds = useSprintsUiStore(
+        (state) => state.selectedActiveSprintIds
+    );
+    const activeSprintIds = sprints
+        .filter((sprint) => sprint.state === "active")
+        .map((sprint) => sprint.id);
+    const filteredActiveSprintIds = resolveActiveSprintFilterIds({
+        activeSprintIds,
+        selectedIds: selectedActiveSprintIds,
     });
+    const createTaskSprint = resolveCreateTaskSprint({
+        boardSprintScope,
+        selectedActiveSprintIds: filteredActiveSprintIds,
+    });
+    const createSprintId =
+        createTaskSprint.mode === "sprint"
+            ? createTaskSprint.sprintId
+            : undefined;
     const [includeArchived, setIncludeArchived] = useState(false);
     const { data: projectTasks = [] } = useProjectTasks(
         projectId ?? "",
@@ -275,6 +290,11 @@ export function CommandPalette() {
         }
         if (createColumnGate === "empty") {
             toast.error(t("command:createTaskFailed"));
+            return;
+        }
+
+        if (createTaskSprint.mode === "pick") {
+            toast.error(t("board:sprints.createPickRequired"));
             return;
         }
 

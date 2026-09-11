@@ -3,6 +3,10 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
+import {
+    resolveActiveSprintFilterIds,
+    toggleActiveSprintFilterId,
+} from "@/features/sprints/model/resolve-active-sprint-filter";
 import { resolveEffectiveBoardSprintScope } from "@/features/sprints/model/resolve-effective-board-sprint-scope";
 import { useBoardSprints } from "@/features/sprints/model/use-sprints";
 import { useSprintsUiStore } from "@/features/sprints/model/use-sprints-ui-store";
@@ -38,9 +42,30 @@ export function BoardSprintControls({
     const setBoardSprintScope = useSprintsUiStore(
         (state) => state.setBoardSprintScope
     );
+    const selectedActiveSprintIds = useSprintsUiStore(
+        (state) => state.selectedActiveSprintIds
+    );
+    const setSelectedActiveSprintIds = useSprintsUiStore(
+        (state) => state.setSelectedActiveSprintIds
+    );
     const [startOpen, setStartOpen] = useState(false);
 
-    const active = sprints.find((sprint) => sprint.state === "active");
+    const actives = useMemo(
+        () => sprints.filter((sprint) => sprint.state === "active"),
+        [sprints]
+    );
+    const activeIds = useMemo(
+        () => actives.map((sprint) => sprint.id),
+        [actives]
+    );
+    const filterIds = useMemo(
+        () =>
+            resolveActiveSprintFilterIds({
+                activeSprintIds: activeIds,
+                selectedIds: selectedActiveSprintIds,
+            }),
+        [activeIds, selectedActiveSprintIds]
+    );
     const drafts = useMemo(
         () => sprints.filter((sprint) => sprint.state === "draft"),
         [sprints]
@@ -52,10 +77,18 @@ export function BoardSprintControls({
 
     const effectiveScope = resolveEffectiveBoardSprintScope({
         boardSprintScope,
-        hasActiveSprint: active !== undefined,
+        hasActiveSprint: actives.length > 0,
     });
 
-    const showStart = canManage && !active && Boolean(startCandidate);
+    const showStart = canManage && Boolean(startCandidate);
+    const showActiveFilter = effectiveScope === "active" && actives.length > 1;
+
+    const activeScopeLabel =
+        actives.length === 0
+            ? null
+            : actives.length === 1
+              ? actives[0]!.name
+              : t("sprints.scopeActiveCount", { count: actives.length });
 
     if (sprintsError) {
         return (
@@ -92,16 +125,16 @@ export function BoardSprintControls({
                 <Button
                     aria-pressed={effectiveScope === "active"}
                     className="aria-pressed:bg-secondary aria-pressed:text-secondary-foreground"
-                    disabled={!active}
+                    disabled={actives.length === 0}
                     onClick={() => setBoardSprintScope("active")}
                     size="xs"
                     type="button"
                     variant="outline"
                 >
                     {t("sprints.scopeActive")}
-                    {active ? (
+                    {activeScopeLabel ? (
                         <span className="text-meta text-muted-foreground">
-                            {active.name}
+                            {activeScopeLabel}
                         </span>
                     ) : null}
                 </Button>
@@ -116,6 +149,37 @@ export function BoardSprintControls({
                     {t("sprints.scopeEntire")}
                 </Button>
             </ButtonGroup>
+
+            {showActiveFilter ? (
+                <ButtonGroup
+                    aria-label={t("sprints.activeFilterLabel")}
+                    className="h-6"
+                >
+                    {actives.map((sprint) => {
+                        const pressed = filterIds.includes(sprint.id);
+                        return (
+                            <Button
+                                aria-pressed={pressed}
+                                className="max-w-40 aria-pressed:bg-secondary aria-pressed:text-secondary-foreground"
+                                key={sprint.id}
+                                onClick={() => {
+                                    setSelectedActiveSprintIds(
+                                        toggleActiveSprintFilterId({
+                                            selectedIds: filterIds,
+                                            toggleId: sprint.id,
+                                        })
+                                    );
+                                }}
+                                size="xs"
+                                type="button"
+                                variant="outline"
+                            >
+                                <span className="truncate">{sprint.name}</span>
+                            </Button>
+                        );
+                    })}
+                </ButtonGroup>
+            ) : null}
 
             {startCandidate ? (
                 <StartSprintDialog

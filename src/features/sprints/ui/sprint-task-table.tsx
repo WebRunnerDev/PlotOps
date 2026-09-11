@@ -72,6 +72,11 @@ export function sprintDropId(sprintId: string) {
     return `drop:sprint:${sprintId}`;
 }
 
+export {
+    sprintHeadingId,
+    sprintSectionId,
+} from "@/features/sprints/model/sprint-dom-ids";
+
 export function SprintTaskTable({
     canManage,
     containerId,

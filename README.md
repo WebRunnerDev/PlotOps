@@ -88,18 +88,18 @@ Most trackers treat Git as an afterthought: you jump out to GitHub for the branc
 
 ## Domain (MVP)
 
-| Term              | Meaning                                                                                 |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| **Project**       | Unit of ownership and collaboration (members, boards, tasks, linked GitHub repo)        |
-| **Board**         | Kanban workflow inside a Project; owns columns, base branch, and allowed head patterns  |
-| **Task**          | Unit of work on exactly one Board; may link a Git branch and/or PR; optional Sprint     |
-| **Sprint**        | Board-scoped timebox (`draft` → `active` → `closed` \| `canceled`); ≤1 Active per Board |
-| **Backlog**       | Tasks on a Board with no Sprint assignment                                              |
-| **Member / Role** | Project membership with Admin, Manager, Contributor, or Viewer                          |
-| **Owner**         | `projects.owner_id` — full control; not a `project_members` row                         |
-| **Invite**        | Email-addressed join offer; copy-link delivery (no SMTP in MVP)                         |
-| **Watch**         | Personal subscription to curated structural Task events                                 |
-| **Mention**       | Structured `@` reference in Description/Comment → always-on Notification                |
+| Term              | Meaning                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Project**       | Unit of ownership and collaboration (members, boards, tasks, linked GitHub repo)                              |
+| **Board**         | Kanban workflow inside a Project; owns columns, base branch, and allowed head patterns                        |
+| **Task**          | Unit of work on exactly one Board; may link a Git branch and/or PR; optional Sprint                           |
+| **Sprint**        | Board-scoped timebox (`draft` → `active` → `closed` \| `canceled`); any number of Active per Board (ADR 0030) |
+| **Backlog**       | Tasks on a Board with no Sprint assignment                                                                    |
+| **Member / Role** | Project membership with Admin, Manager, Contributor, or Viewer                                                |
+| **Owner**         | `projects.owner_id` — full control; not a `project_members` row                                               |
+| **Invite**        | Email-addressed join offer; copy-link delivery (no SMTP in MVP)                                               |
+| **Watch**         | Personal subscription to curated structural Task events                                                       |
+| **Mention**       | Structured `@` reference in Description/Comment → always-on Notification                                      |
 
 See [`CONTEXT.md`](CONTEXT.md) for full glossary and role capabilities.
 

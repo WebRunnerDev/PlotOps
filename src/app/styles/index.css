@@ -629,8 +629,9 @@ html:active-view-transition-type(fade) {
 }
 
 /* ─── Mobile scroll convention (M-0 foundation) ────────────────────────────
- * • html/body: overflow-x hidden — no horizontal bleed at the document level.
- * • Layout root (.main-layout): overflow-x-hidden (via MainLayoutWidget).
+ * • html/body: overflow-x clip — no horizontal bleed at the document level.
+ *   `hidden` would compute overflow-y to auto and unstick TopBar.
+ * • Layout root: overflow-x-clip (via MainLayoutWidget).
  *   Kanban mode keeps its own overflow-hidden for the full-height scroll trick.
  * • Scrollable regions (e.g. ProjectSectionNav, kanban board columns) must add
  *   overflow-x-auto and [scrollbar-width:none] / [&::-webkit-scrollbar]:hidden
@@ -641,7 +642,7 @@ html:active-view-transition-type(fade) {
 
 html,
 body {
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .react-loading-skeleton {

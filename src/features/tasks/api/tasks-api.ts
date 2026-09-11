@@ -500,6 +500,10 @@ export async function moveTaskToBoard(
         .update({
             board_id: targetBoardId,
             position,
+            // Explicit null so board-move clears membership in the UPDATE
+            // target list (scope events + tasks_sprint_guard).
+            sprint_id: null,
+            sprint_position: null,
             status: targetStatus,
         })
         .eq("id", taskId);

@@ -36,11 +36,20 @@ import { TaskQuickAddChips } from "@/features/tasks/ui/task-quick-add-chips";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/shared/shadcn/ui/select";
 import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
 
 type KanbanAddTaskProperties = {
     boardId: string;
-    /** Sprint to join on create when board is scoped to Active Sprint. */
+    /** When Active filter has several Sprints, require picking one before create. */
+    createSprintChoices?: ReadonlyArray<{ id: string; name: string }>;
+    /** Sprint to join on create when board is scoped to a single Active Sprint. */
     createSprintId?: string;
     projectId: string;
     /** Open the inline composer (e.g. board chrome + New Task). */
@@ -50,6 +59,7 @@ type KanbanAddTaskProperties = {
 
 export function KanbanAddTask({
     boardId,
+    createSprintChoices,
     createSprintId,
     projectId,
     startOpen = false,
@@ -100,6 +110,7 @@ export function KanbanAddTask({
     const [open, setOpen] = useState(startOpen);
     const [title, setTitle] = useState("");
     const [fields, setFields] = useState<QuickAddFields>(defaults);
+    const [pickedSprintId, setPickedSprintId] = useState<string | undefined>();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [chipMenuOpen, setChipMenuOpen] = useState(false);
     const [draftTitle, setDraftTitle] = useState<null | string>(() => {
@@ -141,6 +152,19 @@ export function KanbanAddTask({
         inputReference.current?.focus();
     }, [chipMenuOpen, open]);
 
+    useEffect(() => {
+        setPickedSprintId(undefined);
+    }, [createSprintChoices, createSprintId]);
+
+    const resolvedSprintId =
+        createSprintId ??
+        (createSprintChoices && createSprintChoices.length > 0
+            ? pickedSprintId
+            : undefined);
+    const needsSprintPick = Boolean(
+        createSprintChoices && createSprintChoices.length > 0
+    );
+
     const persistDraft = (nextTitle: string, nextFields: QuickAddFields) => {
         const trimmed = nextTitle.trim();
         if (trimmed) {
@@ -162,6 +186,7 @@ export function KanbanAddTask({
         setOpen(false);
         setTitle("");
         setFields(defaults);
+        setPickedSprintId(undefined);
     };
 
     const submit = async () => {
@@ -175,6 +200,10 @@ export function KanbanAddTask({
             return;
         }
         if (isSubmitting) return;
+        if (needsSprintPick && !resolvedSprintId) {
+            toast.error(t("sprints.createPickRequired"));
+            return;
+        }
 
         setIsSubmitting(true);
         try {
@@ -182,7 +211,7 @@ export function KanbanAddTask({
                 assigneeId: fields.assigneeId,
                 labelIds: fields.labelIds,
                 priority: fields.priority,
-                sprintId: createSprintId,
+                sprintId: resolvedSprintId,
                 taskType: fields.type,
             });
             clearCreateTaskDraft(boardId, status);
@@ -194,6 +223,7 @@ export function KanbanAddTask({
             setOpen(false);
             setTitle("");
             setFields(defaults);
+            setPickedSprintId(undefined);
         } catch {
             toast.error(t("tasks.createFailed"));
         } finally {
@@ -275,6 +305,32 @@ export function KanbanAddTask({
                 ref={inputReference}
                 value={title}
             />
+            {needsSprintPick && createSprintChoices ? (
+                <Select
+                    disabled={isSubmitting}
+                    onValueChange={(value) => {
+                        if (value != undefined) setPickedSprintId(value);
+                    }}
+                    value={pickedSprintId}
+                >
+                    <SelectTrigger
+                        aria-label={t("sprints.createPickLabel")}
+                        className="h-8 w-full rounded-none"
+                        size="sm"
+                    >
+                        <SelectValue
+                            placeholder={t("sprints.createPickPlaceholder")}
+                        />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {createSprintChoices.map((sprint) => (
+                            <SelectItem key={sprint.id} value={sprint.id}>
+                                {sprint.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            ) : null}
             <TaskQuickAddChips
                 disabled={isSubmitting}
                 fields={fields}

@@ -23,7 +23,8 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import {
     filterLiveBoardTasks,
-    resolveCreateTaskSprintId,
+    resolveActiveSprintFilterIds,
+    resolveCreateTaskSprint,
     resolveEffectiveBoardSprintScope,
     useBoardSprints,
     useSprintsUiStore,
@@ -108,6 +109,9 @@ export function KanbanBoard({
     const boardSprintScope = useSprintsUiStore(
         (state) => state.boardSprintScope
     );
+    const selectedActiveSprintIds = useSprintsUiStore(
+        (state) => state.selectedActiveSprintIds
+    );
     const boardSort = useBoardSortStore(
         (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
     );
@@ -131,15 +135,50 @@ export function KanbanBoard({
     const clearBoardSelection = useBoardTaskSelectionStore(
         (state) => state.clearSelection
     );
-    const activeSprint = sprints.find((sprint) => sprint.state === "active");
+    const activeSprints = useMemo(
+        () => sprints.filter((sprint) => sprint.state === "active"),
+        [sprints]
+    );
+    const activeSprintIds = useMemo(
+        () => activeSprints.map((sprint) => sprint.id),
+        [activeSprints]
+    );
+    const filteredActiveSprintIds = useMemo(
+        () =>
+            resolveActiveSprintFilterIds({
+                activeSprintIds,
+                selectedIds: selectedActiveSprintIds,
+            }),
+        [activeSprintIds, selectedActiveSprintIds]
+    );
     const effectiveBoardSprintScope = resolveEffectiveBoardSprintScope({
         boardSprintScope,
-        hasActiveSprint: activeSprint !== undefined,
+        hasActiveSprint: activeSprints.length > 0,
     });
-    const createSprintId = resolveCreateTaskSprintId({
-        activeSprintId: activeSprint?.id,
+    const createTaskSprint = resolveCreateTaskSprint({
         boardSprintScope: effectiveBoardSprintScope,
+        selectedActiveSprintIds: filteredActiveSprintIds,
     });
+    const createSprintId =
+        createTaskSprint.mode === "sprint"
+            ? createTaskSprint.sprintId
+            : undefined;
+    const createSprintChoices =
+        createTaskSprint.mode === "pick"
+            ? activeSprints
+                  .filter((sprint) =>
+                      createTaskSprint.sprintIds.includes(sprint.id)
+                  )
+                  .map((sprint) => ({ id: sprint.id, name: sprint.name }))
+            : undefined;
+    const sprintNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const sprint of sprints) {
+            map.set(sprint.id, sprint.name);
+        }
+        return map;
+    }, [sprints]);
+    const showSprintBadge = activeSprints.length > 1;
     const selectedIds = useBoardTaskSelectionStore(
         (state) => state.selectedIds
     );
@@ -223,7 +262,7 @@ export function KanbanBoard({
 
     const filteredTasks = useMemo(() => {
         const scoped = filterLiveBoardTasks({
-            activeSprintId: activeSprint?.id,
+            activeSprintIds: filteredActiveSprintIds,
             scope: effectiveBoardSprintScope,
             sprints,
             tasks,
@@ -237,9 +276,9 @@ export function KanbanBoard({
         );
         return filterTasksBySearchQuery(withoutCompleted, searchQuery);
     }, [
-        activeSprint?.id,
         doneColumnIds,
         effectiveBoardSprintScope,
+        filteredActiveSprintIds,
         filters,
         hideCompleted,
         hideSubtasks,
@@ -555,11 +594,14 @@ export function KanbanBoard({
                         {columns.map((column) => (
                             <KanbanColumn
                                 boardId={boardId}
+                                createSprintChoices={createSprintChoices}
                                 createSprintId={createSprintId}
                                 key={column.id}
                                 labelsByTaskId={labelsByTaskId}
                                 name={column.name}
                                 projectId={projectId}
+                                showSprintBadge={showSprintBadge}
+                                sprintNameById={sprintNameById}
                                 startAddingTask={
                                     focusAddTaskColumnId === column.id
                                 }
@@ -598,6 +640,13 @@ export function KanbanBoard({
                         <div className="relative rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
                             <TaskCard
                                 labels={labelsByTaskId.get(activeTask.id) ?? []}
+                                sprintBadge={
+                                    showSprintBadge && activeTask.sprintId
+                                        ? sprintNameById.get(
+                                              activeTask.sprintId
+                                          )
+                                        : undefined
+                                }
                                 subtaskProgress={subtaskProgressByTaskId.get(
                                     activeTask.id
                                 )}

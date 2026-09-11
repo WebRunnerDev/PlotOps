@@ -20,6 +20,7 @@ function createTestStore(storage = memoryStorage()) {
             merge: mergeTaskDrawerPreferences,
             name: "plotops:task-drawer-preferences-test",
             partialize: (state) => ({
+                collapseLongDescription: state.collapseLongDescription,
                 copyIncludeTaskKey: state.copyIncludeTaskKey,
                 copyIncludeTaskType: state.copyIncludeTaskType,
                 copyMetadataFields: state.copyMetadataFields,
@@ -52,9 +53,10 @@ describe("task drawer preferences store", () => {
         storage = memoryStorage();
     });
 
-    it("defaults to opening the drawer after create and bottom placement", () => {
+    it("defaults to opening the drawer after create, bottom placement, and collapsed long descriptions", () => {
         const store = createTestStore(storage);
         expect(store.getState().openAfterCreate).toBe(true);
+        expect(store.getState().collapseLongDescription).toBe(true);
         expect(store.getState().drawerSide).toBe("bottom");
         expect(store.getState().sideDrawerWidthPx).toBe(
             DEFAULT_SIDE_DRAWER_WIDTH_PX
@@ -66,13 +68,15 @@ describe("task drawer preferences store", () => {
         );
     });
 
-    it("updates open-after-create, drawer side, and side width", () => {
+    it("updates open-after-create, collapse preference, drawer side, and side width", () => {
         const store = createTestStore(storage);
         store.getState().setOpenAfterCreate(false);
+        store.getState().setCollapseLongDescription(false);
         store.getState().setDrawerSide("left");
         store.getState().setSideDrawerWidthPx(420);
 
         expect(store.getState().openAfterCreate).toBe(false);
+        expect(store.getState().collapseLongDescription).toBe(false);
         expect(store.getState().drawerSide).toBe("left");
         expect(store.getState().sideDrawerWidthPx).toBe(420);
     });
@@ -102,6 +106,7 @@ describe("task drawer preferences store", () => {
     it("persists preferences across reload", async () => {
         const first = createTestStore(storage);
         first.getState().setOpenAfterCreate(false);
+        first.getState().setCollapseLongDescription(false);
         first.getState().setDrawerSide("right");
         first.getState().setSideDrawerWidthPx(700);
         first.getState().setCopyIncludeTaskKey(true);
@@ -115,6 +120,7 @@ describe("task drawer preferences store", () => {
         await second.persist.rehydrate();
 
         expect(second.getState().openAfterCreate).toBe(false);
+        expect(second.getState().collapseLongDescription).toBe(false);
         expect(second.getState().drawerSide).toBe("right");
         expect(second.getState().sideDrawerWidthPx).toBe(700);
         expect(second.getState().copyIncludeTaskKey).toBe(true);
