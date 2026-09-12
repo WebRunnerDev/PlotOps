@@ -8,6 +8,8 @@ import { useCapturedWheelSession } from "@/features/tasks/lib/use-captured-wheel
 
 type TaskDrawerBottomSnapWheelProperties = {
     activeSnapPoint: number | string;
+    /** Also snap on Alt+wheel over these (the whole drawer surface). */
+    additionalWheelTargets?: ReadonlyArray<{ current: HTMLElement | null }>;
     children: ReactNode;
     className?: string;
     onClose: () => void;
@@ -16,11 +18,12 @@ type TaskDrawerBottomSnapWheelProperties = {
 };
 
 /**
- * Wraps the bottom-sheet chrome (header) so wheel expands/collapses snap
+ * Wraps the bottom-sheet chrome (header) so Alt+wheel expands/collapses snap
  * points. Drag-to-resize stays on the native Drawer swipe handle.
  */
 export function TaskDrawerBottomSnapWheel({
     activeSnapPoint,
+    additionalWheelTargets,
     children,
     className,
     onClose,
@@ -39,33 +42,39 @@ export function TaskDrawerBottomSnapWheel({
     onSnapPointChangeReference.current = onSnapPointChange;
     snapPointsReference.current = snapPoints;
 
-    const rootReference = useCapturedWheelSession(({ deltaX, deltaY }) => {
-        const points = snapPointsReference.current;
-        const activeIndex = Math.max(
-            0,
-            points.indexOf(activeSnapReference.current)
-        );
-        accumulatedReference.current += bottomDrawerWheelIntent(deltaX, deltaY);
-        const step = resolveBottomDrawerWheelStep({
-            accumulatedDelta: accumulatedReference.current,
-            activeIndex,
-            snapPointCount: points.length,
-        });
-        accumulatedReference.current = step.nextAccumulatedDelta;
-        if (!step.didStep) return;
-        if (step.nextIndex === null) {
-            if (!closedReference.current) {
-                closedReference.current = true;
-                onCloseReference.current();
+    const rootReference = useCapturedWheelSession(
+        ({ deltaX, deltaY }) => {
+            const points = snapPointsReference.current;
+            const activeIndex = Math.max(
+                0,
+                points.indexOf(activeSnapReference.current)
+            );
+            accumulatedReference.current += bottomDrawerWheelIntent(
+                deltaX,
+                deltaY
+            );
+            const step = resolveBottomDrawerWheelStep({
+                accumulatedDelta: accumulatedReference.current,
+                activeIndex,
+                snapPointCount: points.length,
+            });
+            accumulatedReference.current = step.nextAccumulatedDelta;
+            if (!step.didStep) return;
+            if (step.nextIndex === null) {
+                if (!closedReference.current) {
+                    closedReference.current = true;
+                    onCloseReference.current();
+                }
+                return;
             }
-            return;
-        }
-        closedReference.current = false;
-        const next = points[step.nextIndex];
-        if (next !== undefined) {
-            onSnapPointChangeReference.current(next);
-        }
-    });
+            closedReference.current = false;
+            const next = points[step.nextIndex];
+            if (next !== undefined) {
+                onSnapPointChangeReference.current(next);
+            }
+        },
+        { additionalTargets: additionalWheelTargets }
+    );
 
     return (
         <div className={className} ref={rootReference}>

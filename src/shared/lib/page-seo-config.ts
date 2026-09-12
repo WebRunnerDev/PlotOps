@@ -10,23 +10,32 @@ import {
 
 import type { PageSeo } from "./seo";
 
+import {
+    type BuildAppShellTitleOptions,
+    resolveAppShellDocumentTitle,
+} from "./app-shell-page";
+
 type AuthPageSeoPath = Extract<
     PlotOpsPublicPath,
     "/" | "/sign-in" | "/sign-up"
 >;
 
 /**
- * Default head for authenticated SPA routes.
+ * Head for authenticated SPA routes.
  *
  * Production unknown paths fall back to `404.html` (SPA shell). Even with that
- * shell, client navigations from auth pages must reset `<title>`.
+ * shell, client navigations from auth pages must reset `<title>`. Pass `labels`
+ * (and entity names when known) so the tab shows the current page.
  */
-export function buildAppShellSeo(path: string): PageSeo {
+export function buildAppShellSeo(
+    path: string,
+    options: BuildAppShellTitleOptions = {}
+): PageSeo {
     return {
         description: `${PLOTOPS_SITE_NAME} — ${PLOTOPS_SITE_TAGLINE}.`,
         noindex: true,
         path,
-        title: `${PLOTOPS_SITE_NAME} — ${PLOTOPS_SITE_TAGLINE}`,
+        title: resolveAppShellDocumentTitle(path, options),
     };
 }
 
