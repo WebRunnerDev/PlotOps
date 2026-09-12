@@ -134,12 +134,12 @@
         "descriptionShowMore": "Показать ещё",
         "drawerSide": "Положение drawer",
         "drawerSideBottom": "Снизу",
-        "drawerSideHint": "Снизу — лист со snap points. Слева или справа — боковая панель.",
+        "drawerSideHint": "Снизу — лист со snap points. Слева или справа — боковая панель. Alt + прокрутка в любом месте drawer меняет его размер.",
         "drawerSideLeft": "Слева",
         "drawerSideRight": "Справа",
         "openAfterCreate": "Открывать drawer после создания задачи",
         "openAfterCreateHint": "Если выключено, новая задача остаётся на доске, пока вы её не откроете.",
-        "dragDrawer": "Потяните, чтобы изменить ширину или закрыть drawer задачи",
+        "dragDrawer": "Потяните или зажмите Alt и прокрутите, чтобы изменить ширину или закрыть drawer задачи",
         "title": "Drawer задачи"
     }
 }

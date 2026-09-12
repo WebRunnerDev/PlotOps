@@ -338,7 +338,7 @@ export function TaskDrawer({
     const [copiedTaskText, setCopiedTaskText] = useState(false);
     const [copiedTaskLink, setCopiedTaskLink] = useState(false);
     const drawerBodyReference = useRef<HTMLDivElement>(null);
-    const drawerHeaderWheelReference = useRef<HTMLDivElement>(null);
+    const drawerSurfaceWheelReference = useRef<HTMLDivElement>(null);
     const descriptionEditorReference = useRef<RichTextEditorHandle>(null);
     const taskSwapEpoch = useTasksUiStore((state) => state.taskSwapEpoch);
     const taskSwapFromId = useTasksUiStore((state) => state.taskSwapFromId);
@@ -839,12 +839,13 @@ export function TaskDrawer({
                                         : "slide-in-from-right-4")
                             )}
                             key={`${task.id}-${taskSwapEpoch}`}
+                            ref={drawerSurfaceWheelReference}
                         >
                             {drawerPlacement.isSide &&
                             drawerSide === "right" ? (
                                 <TaskDrawerSideEdgeHandle
                                     additionalWheelTargets={[
-                                        drawerHeaderWheelReference,
+                                        drawerSurfaceWheelReference,
                                     ]}
                                     onClose={clearSelectedTask}
                                     onWidthChange={setSideDrawerWidthPx}
@@ -856,6 +857,9 @@ export function TaskDrawer({
                                 {drawerPlacement.useSnapPoints ? (
                                     <TaskDrawerBottomSnapWheel
                                         activeSnapPoint={bottomSnapPoint}
+                                        additionalWheelTargets={[
+                                            drawerSurfaceWheelReference,
+                                        ]}
                                         onClose={clearSelectedTask}
                                         onSnapPointChange={setBottomSnapPoint}
                                         snapPoints={TASK_DRAWER_SNAP_POINTS}
@@ -863,9 +867,7 @@ export function TaskDrawer({
                                         {drawerHeader}
                                     </TaskDrawerBottomSnapWheel>
                                 ) : (
-                                    <div ref={drawerHeaderWheelReference}>
-                                        {drawerHeader}
-                                    </div>
+                                    drawerHeader
                                 )}
 
                                 <div
@@ -1741,7 +1743,7 @@ export function TaskDrawer({
                             {drawerPlacement.isSide && drawerSide === "left" ? (
                                 <TaskDrawerSideEdgeHandle
                                     additionalWheelTargets={[
-                                        drawerHeaderWheelReference,
+                                        drawerSurfaceWheelReference,
                                     ]}
                                     onClose={clearSelectedTask}
                                     onWidthChange={setSideDrawerWidthPx}

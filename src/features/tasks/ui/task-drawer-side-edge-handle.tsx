@@ -10,7 +10,7 @@ import {
 import { useCapturedWheelSession } from "@/features/tasks/lib/use-captured-wheel-session";
 
 type TaskDrawerSideEdgeHandleProperties = {
-    /** Also start wheel-resize when hovering these (drawer header). */
+    /** Also wheel-resize from inside these (the whole drawer surface). */
     additionalWheelTargets?: ReadonlyArray<{ current: HTMLElement | null }>;
     onClose: () => void;
     onWidthChange: (widthPx: number) => void;
@@ -20,9 +20,9 @@ type TaskDrawerSideEdgeHandleProperties = {
 
 /**
  * Free-edge drag control for side Task drawers (same grab affordance as the
- * bottom swipe handle): drag or wheel to change width, pull past compact min
- * to dismiss. Wheel uses a captured session so resizing continues when the
- * handle moves out from under the cursor.
+ * bottom swipe handle): drag or Alt+wheel to change width, pull past compact
+ * min to dismiss. Alt+wheel works anywhere inside the drawer and uses a
+ * captured session so resizing continues when the cursor falls outside.
  */
 export function TaskDrawerSideEdgeHandle({
     additionalWheelTargets,

@@ -61,6 +61,18 @@ export function clampSideDrawerWidth(
     );
 }
 
+/**
+ * Wheel resize/snap engages only while Alt (Option) is held. Ctrl and Cmd are
+ * browser zoom and Shift is horizontal scroll, so they stay with the browser.
+ */
+export function hasDrawerWheelModifier(event: {
+    altKey: boolean;
+    ctrlKey: boolean;
+    metaKey: boolean;
+}): boolean {
+    return event.altKey && !event.ctrlKey && !event.metaKey;
+}
+
 export function isTaskDrawerSide(value: unknown): value is TaskDrawerSide {
     return value === "bottom" || value === "left" || value === "right";
 }

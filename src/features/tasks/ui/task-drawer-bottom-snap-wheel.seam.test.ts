@@ -13,6 +13,7 @@ describe("TaskDrawerBottomSnapWheel seam", () => {
         );
 
         expect(source).toMatch(/useCapturedWheelSession/);
+        expect(source).toMatch(/additionalTargets: additionalWheelTargets/);
         expect(source).toMatch(/resolveBottomDrawerWheelStep/);
         expect(source).toMatch(/bottomDrawerWheelIntent/);
         expect(source).toMatch(/onSnapPointChange/);

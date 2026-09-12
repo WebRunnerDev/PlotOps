@@ -4,6 +4,7 @@ import {
     BOTTOM_DRAWER_WHEEL_STEP_PX,
     clampSideDrawerWidth,
     DEFAULT_SIDE_DRAWER_WIDTH_PX,
+    hasDrawerWheelModifier,
     isTaskDrawerSide,
     MAX_SIDE_DRAWER_WIDTH_PX,
     maybeSelectCreatedTask,
@@ -178,6 +179,49 @@ describe("resolveBottomDrawerWheelStep", () => {
             nextAccumulatedDelta: BOTTOM_DRAWER_WHEEL_STEP_PX - 1,
             nextIndex: 0,
         });
+    });
+});
+
+describe("hasDrawerWheelModifier", () => {
+    it("engages on Alt alone", () => {
+        expect(
+            hasDrawerWheelModifier({
+                altKey: true,
+                ctrlKey: false,
+                metaKey: false,
+            })
+        ).toBe(true);
+    });
+
+    it("leaves plain wheel and browser zoom combos to the page", () => {
+        expect(
+            hasDrawerWheelModifier({
+                altKey: false,
+                ctrlKey: false,
+                metaKey: false,
+            })
+        ).toBe(false);
+        expect(
+            hasDrawerWheelModifier({
+                altKey: false,
+                ctrlKey: true,
+                metaKey: false,
+            })
+        ).toBe(false);
+        expect(
+            hasDrawerWheelModifier({
+                altKey: true,
+                ctrlKey: true,
+                metaKey: false,
+            })
+        ).toBe(false);
+        expect(
+            hasDrawerWheelModifier({
+                altKey: true,
+                ctrlKey: false,
+                metaKey: true,
+            })
+        ).toBe(false);
     });
 });
 

@@ -24,8 +24,10 @@ describe("TaskDrawer mobile seam", () => {
         expect(source).toMatch(/snapPoint=\{/);
         expect(source).toMatch(/onSnapPointChange/);
         expect(source).toMatch(/TaskDrawerBottomSnapWheel/);
-        expect(source).toMatch(/drawerHeaderWheelReference/);
-        expect(source).toMatch(/additionalWheelTargets/);
+        expect(source).toMatch(/ref=\{drawerSurfaceWheelReference\}/);
+        expect(source).toMatch(
+            /additionalWheelTargets=\{\[\s*drawerSurfaceWheelReference,\s*\]\}/
+        );
         expect(source).not.toMatch(/defaultSnapPoint/);
         expect(source).toMatch(/@container\/task-drawer/);
         expect(source).toMatch(/min-h-0[\s\S]*flex-1[\s\S]*overflow-y-auto/);

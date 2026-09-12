@@ -1,10 +1,12 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+
+import { hasDrawerWheelModifier } from "@/features/tasks/lib/resolve-task-drawer-placement";
 
 /** Keep capturing wheel after the handle moves out from under the cursor. */
 export const WHEEL_GESTURE_IDLE_MS = 320;
 
 type UseCapturedWheelSessionOptions = {
-    /** Extra hover targets (e.g. drawer header) that also start the gesture. */
+    /** Extra hit areas (e.g. the whole drawer surface) that own the gesture. */
     additionalTargets?: ReadonlyArray<{ current: HTMLElement | null }>;
     enabled?: boolean;
     /** Skip handling (e.g. while a pointer drag is active). */
@@ -17,9 +19,10 @@ type WheelDelta = {
 };
 
 /**
- * Wheel over `rootRef` (or `additionalTargets`) starts a short-lived session
- * that continues on `window` so the control still receives deltas when layout
- * moves the hit target.
+ * Alt + wheel anywhere inside `rootRef` or `additionalTargets` starts a
+ * short-lived session that keeps receiving deltas even once the cursor leaves
+ * those elements, so resizing survives the layout moving under the pointer.
+ * Unmodified wheel is left to the page so normal scrolling keeps working.
  */
 export function useCapturedWheelSession(
     onWheel: (delta: WheelDelta) => void,
@@ -39,16 +42,8 @@ export function useCapturedWheelSession(
     shouldIgnoreReference.current = shouldIgnore;
     additionalTargetsReference.current = additionalTargets;
 
-    // Layout: bind after sibling header refs are committed in the same paint.
-    useLayoutEffect(() => {
+    useEffect(() => {
         if (!enabled) return;
-
-        const targets: HTMLElement[] = [];
-        if (rootReference.current) targets.push(rootReference.current);
-        for (const target of additionalTargetsReference.current ?? []) {
-            if (target.current) targets.push(target.current);
-        }
-        if (targets.length === 0) return;
 
         const endSession = () => {
             sessionActiveReference.current = false;
@@ -69,8 +64,29 @@ export function useCapturedWheelSession(
             );
         };
 
-        const apply = (event: WheelEvent) => {
+        // Refs are read per event so remounted / late-committed nodes still count.
+        const isInsideTargets = (node: EventTarget | null) => {
+            if (!(node instanceof Node)) return false;
+            if (rootReference.current?.contains(node)) return true;
+            for (const target of additionalTargetsReference.current ?? []) {
+                if (target.current?.contains(node)) return true;
+            }
+            return false;
+        };
+
+        const onWindowWheel = (event: WheelEvent) => {
+            if (!hasDrawerWheelModifier(event)) {
+                // Releasing the modifier hands scrolling back to the page.
+                endSession();
+                return;
+            }
             if (shouldIgnoreReference.current?.()) return;
+            if (
+                !sessionActiveReference.current &&
+                !isInsideTargets(event.target)
+            ) {
+                return;
+            }
             event.preventDefault();
             event.stopPropagation();
             bumpSession();
@@ -80,18 +96,6 @@ export function useCapturedWheelSession(
             });
         };
 
-        const onTargetWheel = (event: WheelEvent) => {
-            apply(event);
-        };
-
-        const onWindowWheel = (event: WheelEvent) => {
-            if (!sessionActiveReference.current) return;
-            apply(event);
-        };
-
-        for (const target of targets) {
-            target.addEventListener("wheel", onTargetWheel, { passive: false });
-        }
         window.addEventListener("wheel", onWindowWheel, {
             capture: true,
             passive: false,
@@ -99,9 +103,6 @@ export function useCapturedWheelSession(
 
         return () => {
             endSession();
-            for (const target of targets) {
-                target.removeEventListener("wheel", onTargetWheel);
-            }
             window.removeEventListener("wheel", onWindowWheel, {
                 capture: true,
             });
