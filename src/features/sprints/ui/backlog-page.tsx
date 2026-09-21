@@ -1389,6 +1389,38 @@ function SprintReportPanel({
         [sprint.completedTaskIds, sprint.id, tasks]
     );
 
+    const returnCompletedToSprint = (
+        taskId: string,
+        sprintPosition: null | number
+    ) => {
+        void moveTasks
+            .mutateAsync([{ sprintId: sprint.id, sprintPosition, taskId }])
+            .catch(() => {
+                toast.error(t("sprints.reportMoveToBacklogUndoFailed"));
+            });
+    };
+
+    const moveCompletedToBacklog = (taskId: string) => {
+        const previousPosition =
+            tasks.find((task) => task.id === taskId)?.sprintPosition ?? null;
+
+        void moveTasks
+            .mutateAsync([{ sprintId: null, sprintPosition: null, taskId }])
+            .then(() => {
+                toast.success(t("sprints.reportMoveToBacklogDone"), {
+                    action: {
+                        label: t("sprints.reportMoveToBacklogUndo"),
+                        onClick: () => {
+                            returnCompletedToSprint(taskId, previousPosition);
+                        },
+                    },
+                });
+            })
+            .catch(() => {
+                toast.error(t("sprints.reportMoveToBacklogFailed"));
+            });
+    };
+
     return (
         <div className="space-y-3 border-t border-border px-3 py-3">
             {isCanceled ? (
@@ -1447,7 +1479,11 @@ function SprintReportPanel({
                                                         : ""}
                                                     {row.stillMember
                                                         ? ""
-                                                        : ` · ${t("sprints.reportCompletedMoved")}`}
+                                                        : ` · ${t(
+                                                              row.inBacklog
+                                                                  ? "sprints.reportCompletedInBacklog"
+                                                                  : "sprints.reportCompletedMoved"
+                                                          )}`}
                                                 </>
                                             ) : (
                                                 <span className="text-muted-foreground">
@@ -1468,29 +1504,9 @@ function SprintReportPanel({
                                                 className="min-h-9 shrink-0"
                                                 disabled={moveTasks.isPending}
                                                 onClick={() => {
-                                                    void moveTasks
-                                                        .mutateAsync([
-                                                            {
-                                                                sprintId: null,
-                                                                sprintPosition:
-                                                                    null,
-                                                                taskId: row.id,
-                                                            },
-                                                        ])
-                                                        .then(() => {
-                                                            toast.success(
-                                                                t(
-                                                                    "sprints.reportMoveToBacklogDone"
-                                                                )
-                                                            );
-                                                        })
-                                                        .catch(() => {
-                                                            toast.error(
-                                                                t(
-                                                                    "sprints.reportMoveToBacklogFailed"
-                                                                )
-                                                            );
-                                                        });
+                                                    moveCompletedToBacklog(
+                                                        row.id
+                                                    );
                                                 }}
                                                 size="sm"
                                                 type="button"
@@ -1498,6 +1514,25 @@ function SprintReportPanel({
                                             >
                                                 {t(
                                                     "sprints.reportMoveToBacklog"
+                                                )}
+                                            </Button>
+                                        ) : null}
+                                        {canManage && row.inBacklog ? (
+                                            <Button
+                                                className="min-h-9 shrink-0"
+                                                disabled={moveTasks.isPending}
+                                                onClick={() => {
+                                                    returnCompletedToSprint(
+                                                        row.id,
+                                                        null
+                                                    );
+                                                }}
+                                                size="sm"
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                {t(
+                                                    "sprints.reportReturnToSprint"
                                                 )}
                                             </Button>
                                         ) : null}
