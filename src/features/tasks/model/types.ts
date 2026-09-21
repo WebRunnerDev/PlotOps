@@ -1,5 +1,35 @@
 import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 
+/** Epic badge palette (mirrors `tasks_epic_color_known`). */
+export type EpicColor =
+    | "blue"
+    | "gray"
+    | "green"
+    | "orange"
+    | "pink"
+    | "purple"
+    | "red"
+    | "teal"
+    | "yellow";
+
+/** An Epic with rollup progress over its (non-archived) Tasks — see `project_epics`. */
+export type ProjectEpic = {
+    archivedAt?: string;
+    boardId: string;
+    color?: EpicColor;
+    doneCount: number;
+    id: string;
+    /** Epic itself sits in its Board's Done column. */
+    isDone: boolean;
+    key: string;
+    pointsDone: number;
+    pointsTotal: number;
+    status: TaskStatus;
+    taskCount: number;
+    title: string;
+    unestimatedCount: number;
+};
+
 export type Task = {
     archivedAt?: string;
     archivedBy?: TaskAssignee;
@@ -12,6 +42,13 @@ export type Task = {
     /** ISO calendar date `YYYY-MM-DD`. */
     deadline?: string;
     description?: string;
+    /** Badge colour; set only on Epics. */
+    epicColor?: EpicColor;
+    /**
+     * Epic this root Task belongs to (same Project, any Board).
+     * Never set on Epics or Subtasks — Subtasks inherit via {@link parentEpicId}.
+     */
+    epicId?: string;
     /**
      * Optional Fibonacci story points (1,2,3,5,8,13,21).
      * Absent / undefined = unestimated.
@@ -20,11 +57,13 @@ export type Task = {
     /** True when an open `blocks` Task Link targets this Task. */
     hasOpenBlocker?: boolean;
     id: string;
-    /** Human-readable key, e.g. TASK-1, BUG-5, FEAT-12. Set by DB trigger on insert. */
+    /** Human-readable key, e.g. TASK-1, BUG-5, STORY-12, EPIC-3. Set by DB trigger on insert. */
     key: string;
     labelIds?: string[];
     /** Manually linked commit SHA (optional; smart commits also match by message). */
     linkedCommitSha?: string;
+    /** Parent Task's Epic (read-only); set on Subtasks whose Parent is in an Epic. */
+    parentEpicId?: string;
     /** Present when this Task is a Subtask of a Parent Task in the same Project. */
     parentId?: string;
     /** Parent Task key for card/drawer badge; set when parentId is set. */
@@ -64,6 +103,7 @@ export type TaskActivityField =
     | "board"
     | "branch"
     | "deadline"
+    | "epic"
     | "estimate"
     | "labels"
     | "parent"
@@ -121,4 +161,8 @@ export type TaskPullRequest = {
 
 export type TaskStatus = string;
 
-export type TaskType = "bug" | "feature" | "task";
+/**
+ * Jira-like hierarchy: `epic` (level 1) groups `story` / `task` / `bug` (level 0);
+ * Subtasks are any level-0 type with a Parent Task.
+ */
+export type TaskType = "bug" | "epic" | "story" | "task";

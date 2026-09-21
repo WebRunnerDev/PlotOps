@@ -61,12 +61,20 @@ A Board setting that assigns new Tasks (and Subtasks) on that Board to the perso
 _Avoid_: auto-assign to me (UI copy only; persistence is creator-relative)
 
 **Task**:
-A unit of work that always belongs to exactly one Board (and thus to that Board's Project). Has a Task type (`task`, `bug`, or `feature`). May optionally be a Subtask of one Parent Task in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared unless a Manager+ chooses a Draft or Active Sprint on the destination Board (otherwise Backlog). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
+A unit of work that always belongs to exactly one Board (and thus to that Board's Project). Has a Task type (`epic`, `story`, `task`, or `bug`). May optionally be a Subtask of one Parent Task in the same Project. A root non-Epic Task may belong to one Epic in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared unless a Manager+ chooses a Draft or Active Sprint on the destination Board (otherwise Backlog). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
 
 **Task type**:
-A fixed classification on a Task: `task`, `bug`, or `feature`. Chosen on create (Board may set a default); editable later. Drives branch-name prefix conventions and which Custom fields appear in the drawer. Not a user-defined issue-type catalog.
-_Avoid_: issue type (Jira), kind (ambiguous with Task Link kinds)
+A fixed classification on a Task, Jira-like: `epic` (level 1) or `story` / `task` / `bug` (level 0). Chosen on create (Board may set a level-0 default — never Epic); editable later, but converting to or from `epic` is Manager+ and subject to Epic rules. Drives the task key prefix (`EPIC-`, `STORY-`, `TASK-`, `BUG-`; legacy `FEAT-` keys remain), branch-name prefix conventions, and which Custom fields appear in the drawer. Not a user-defined issue-type catalog. `feature` was renamed to `story` (ADR 0031).
+_Avoid_: issue type (Jira), kind (ambiguous with Task Link kinds), feature (legacy name of Story)
+
+**Epic**:
+A Task of type `epic` that groups root Stories, Tasks, and Bugs of the same Project (any Board) toward a larger goal via their `epic_id`. Lives on one Board and uses its columns for status. Has no Parent Task, Subtasks, Sprint, Estimate, or branch/PR; its size and progress are the rollup of its members (count, Done, points). Subtasks count toward their Parent Task's Epic. Hidden from Kanban columns and Backlog lists — shown in the Backlog Epics panel, as a chip on member cards, and as a Board/Backlog filter. May be closed while members are open. Carries an Epic colour for its chip. Created by Manager+ (ADR 0031).
+_Avoid_: initiative, theme (higher Jira levels — not modelled), Parent Task (hierarchy of Subtasks is separate)
+
+**Story**:
+A level-0 Task type for user-facing value (formerly `feature`). Behaves like any Task; may belong to an Epic and have Subtasks.
+_Avoid_: feature (legacy), user story (UI copy only)
 
 **Priority**:
 How urgently a Task should be handled relative to others: urgent, high, medium, or low. Default on create is medium. Distinct from Board column status.
@@ -92,10 +100,10 @@ _Avoid_: Board custom field, property (Notion), custom attribute (generic)
 
 **Parent Task**:
 A root Task (no `parent_id`) that has one or more Subtasks. At most one hierarchy level — a Parent Task cannot itself be a Subtask. A Parent Task cannot be moved to the Board's Done column, archived, or hard-deleted while any of its Subtasks are not Done or still exist, respectively. Distinct from a Task Link — hierarchy is parent/child, not peer blocking.
-_Avoid_: Epic (no separate Epic type in MVP), issue (Jira term)
+_Avoid_: Epic (Epic membership is `epic_id`, not Parent/Subtask — see Epic), issue (Jira term)
 
 **Subtask**:
-A full Task that belongs to exactly one Parent Task within the same Project. Created on the Parent's Board by default; may later be moved to another Board in the Project like any Task. Has its own column status, Assignee, Sprint membership, Estimate, and Git branch/PR. Appears on the Kanban as a normal card with a Parent reference badge; viewers may hide Subtasks via a per-viewer Board preference (default: visible). Cannot have its own Subtasks.
+A full Task that belongs to exactly one Parent Task within the same Project. Counts toward its Parent Task's Epic; never carries its own Epic. Created on the Parent's Board by default; may later be moved to another Board in the Project like any Task. Has its own column status, Assignee, Sprint membership, Estimate, and Git branch/PR. Appears on the Kanban as a normal card with a Parent reference badge; viewers may hide Subtasks via a per-viewer Board preference (default: visible). Cannot have its own Subtasks.
 _Avoid_: checklist item, sub-issue (UI-only), child issue (prefer Subtask)
 
 **Subtask visibility**:

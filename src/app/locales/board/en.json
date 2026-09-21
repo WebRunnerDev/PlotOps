@@ -219,6 +219,63 @@
         "showToggle": "Show Subtasks",
         "progressBadge": "{{done}}/{{total}} Done"
     },
+    "epics": {
+        "title": "Epics",
+        "field": "Epic",
+        "none": "No epic",
+        "color": "Epic colour",
+        "cardBadge": "Epic {{key}} · {{title}}",
+        "panelHint": "Click an epic to filter the backlog.",
+        "panelHintManage": "Click to filter · drop tasks on an epic to add them.",
+        "empty": "No epics in this project yet.",
+        "emptyManage": "No epics yet. Group related stories, tasks, and bugs under an epic to track a bigger goal across sprints and boards.",
+        "createPlaceholder": "New epic title…",
+        "create": "Create epic",
+        "created": "Epic {{key}} created",
+        "createFailed": "Could not create epic",
+        "filterByEpic": "Filter backlog by “{{title}}”",
+        "open": "Open epic {{key}}",
+        "progress": "{{done}}/{{total}} done",
+        "points": "{{done}}/{{total}} pts",
+        "addedToEpic_one": "Added {{count}} task to “{{title}}”",
+        "addedToEpic_other": "Added {{count}} tasks to “{{title}}”",
+        "subtasksFollowParent": "Subtasks follow their parent task's epic — move the parent instead.",
+        "inheritedFromParent": "Inherited from the parent task.",
+        "estimateRollupHint": "Epic size is the sum of its tasks' estimates.",
+        "members": "Tasks in this epic",
+        "membersEmpty": "No tasks in this epic yet.",
+        "addExisting": "Add existing",
+        "taskPlaceholder": "New story title…",
+        "taskCreated": "{{key}} created in this epic",
+        "taskCreateFailed": "Could not create the task",
+        "removeFromEpic": "Remove {{key}} from this epic",
+        "colors": {
+            "purple": "Purple",
+            "blue": "Blue",
+            "teal": "Teal",
+            "green": "Green",
+            "yellow": "Yellow",
+            "orange": "Orange",
+            "red": "Red",
+            "pink": "Pink",
+            "gray": "Grey"
+        },
+        "errors": {
+            "archivedEpic": "Archived epics cannot receive tasks.",
+            "archivedTask": "Archived tasks cannot be changed.",
+            "differentProject": "An epic and its tasks must be in the same project.",
+            "epicHasMembers": "Remove all tasks from this epic before changing its type.",
+            "epicInEpic": "An epic cannot belong to another epic.",
+            "epicInSprint": "Remove the task from its sprint before turning it into an epic.",
+            "epicIsSubtask": "A subtask cannot become an epic.",
+            "epicMissing": "Epic not found.",
+            "epicSubtasks": "Epics cannot have subtasks — add tasks to the epic instead.",
+            "managerOnly": "Only managers can create or convert epics.",
+            "notAnEpic": "The selected task is not an epic.",
+            "parentBecomesEpic": "A task with subtasks cannot become an epic.",
+            "subtaskEpic": "Subtasks follow their parent task's epic."
+        }
+    },
     "taskLinks": {
         "title": "Linked tasks",
         "relatesTo": "Relates to",
@@ -275,6 +332,7 @@
             "status": "Status",
             "priority": "Priority",
             "deadline": "Deadline",
+            "epic": "Epic",
             "estimate": "Estimate",
             "assignee": "Assignee",
             "labels": "Labels",
@@ -288,6 +346,8 @@
         }
     },
     "taskType": {
+        "epic": "Epic",
+        "story": "Story",
         "task": "Task",
         "bug": "Bug",
         "feature": "Feature"
@@ -679,9 +739,10 @@
         "appliesTo": "Applies to Task types",
         "systemBadge": "Built-in",
         "types": {
+            "epic": "epic",
+            "story": "story",
             "task": "task",
-            "bug": "bug",
-            "feature": "feature"
+            "bug": "bug"
         },
         "searchPlaceholder": "Search fields…",
         "noSearchMatches": "No fields match this search.",

@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import {
     ArchiveIcon,
     BanIcon,
+    BookmarkIcon,
     BugIcon,
     CornerUpLeftIcon,
     FolderIcon,
@@ -10,11 +11,11 @@ import {
     MoonIcon,
     PlusIcon,
     SettingsIcon,
-    SparklesIcon,
     SquareCheckBigIcon,
     SunIcon,
     UsersIcon,
     WorkflowIcon,
+    ZapIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -84,7 +85,12 @@ const NAVIGATE_SECTIONS: CommandPaletteNavigateSection[] = [
     "settings",
 ];
 
-const CREATE_TASK_TYPES: CommandPaletteTaskType[] = ["task", "bug", "feature"];
+const CREATE_TASK_TYPES: CommandPaletteTaskType[] = [
+    "task",
+    "story",
+    "bug",
+    "epic",
+];
 
 export function CommandPalette() {
     const { t } = useTranslation(["command", "common"]);
@@ -293,7 +299,9 @@ export function CommandPalette() {
             return;
         }
 
-        if (createTaskSprint.mode === "pick") {
+        // Epics never join a Sprint — skip the Active Sprint scope for them.
+        const isEpic = intent.taskType === "epic";
+        if (!isEpic && createTaskSprint.mode === "pick") {
             toast.error(t("board:sprints.createPickRequired"));
             return;
         }
@@ -306,7 +314,7 @@ export function CommandPalette() {
 
         setIsCreating(true);
         void createTask(firstColumn.id, intent.title, {
-            sprintId: createSprintId,
+            sprintId: isEpic ? undefined : createSprintId,
             taskType: intent.taskType,
         })
             .then((task) => {
@@ -661,16 +669,19 @@ function createTaskLabelKey(
     taskType: CommandPaletteTaskType
 ):
     | "command:createBugWithTitle"
-    | "command:createFeatureWithTitle"
+    | "command:createEpicWithTitle"
+    | "command:createStoryWithTitle"
     | "command:createTaskWithTitle" {
     if (taskType === "bug") return "command:createBugWithTitle";
-    if (taskType === "feature") return "command:createFeatureWithTitle";
+    if (taskType === "story") return "command:createStoryWithTitle";
+    if (taskType === "epic") return "command:createEpicWithTitle";
     return "command:createTaskWithTitle";
 }
 
 function createTaskTypeIcon(taskType: CommandPaletteTaskType) {
     if (taskType === "bug") return <BugIcon />;
-    if (taskType === "feature") return <SparklesIcon />;
+    if (taskType === "story") return <BookmarkIcon />;
+    if (taskType === "epic") return <ZapIcon />;
     return <PlusIcon />;
 }
 

@@ -81,6 +81,10 @@ export function invalidateBoardWorkspaceSlice(
             void queryClient.invalidateQueries({
                 queryKey: [...taskKeys.all, "project", projectId],
             });
+            // Epic progress rolls up Task status / membership / Estimates.
+            void queryClient.invalidateQueries({
+                queryKey: taskKeys.epics(projectId),
+            });
         }
     }
 }

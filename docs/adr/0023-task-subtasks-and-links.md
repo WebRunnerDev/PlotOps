@@ -4,7 +4,7 @@ PlotOps needs Jira-like breakdown and blocking without inventing a second work t
 
 ## Decision
 
-- **Hierarchy, not a checklist.** Subtask has its own column, Assignee, Sprint, Estimate, and Git branch/PR. Created on the Parent Task’s Board; later Board moves follow existing Task-move rules. No Epic type; no nested Subtasks.
+- **Hierarchy, not a checklist.** Subtask has its own column, Assignee, Sprint, Estimate, and Git branch/PR. Created on the Parent Task’s Board; later Board moves follow existing Task-move rules. No Epic type; no nested Subtasks. _(Epic type superseded by ADR 0031 — Epics use `epic_id`, not a second Subtask level.)_
 - **Task Links are a separate table**, directed, inverse label derived in UI. Self-links, Parent↔Subtask links, and cyclic **blocks** chains are rejected at write time.
 - **Done is gated on the server** (`persist_task_moves` and equivalents): a Task cannot enter the Done column while it has open **blocks** blockers or (if it is a Parent Task) while any Subtask is not Done. Client mirrors the rule for toast/UX. Archive and hard-delete of a Parent Task are refused while Subtasks exist.
 - **Contributor exception:** Contributors still cannot create root Tasks, but they may create Subtasks and create/remove Task Links (including **blocks**). Delete/archive of Tasks stays Manager+.

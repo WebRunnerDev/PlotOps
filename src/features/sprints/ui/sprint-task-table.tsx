@@ -13,13 +13,16 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
-import type { Task } from "@/features/tasks";
+import type { ProjectEpic, Task } from "@/features/tasks";
 
 import { TaskLabelChips } from "@/features/labels";
 import {
+    EpicBadge,
     formatDeadline,
     isDeadlineOverdue,
     PRIORITY_DOT_CLASS,
+    resolveCardEpic,
+    TaskTypeIcon,
 } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
@@ -47,12 +50,21 @@ type SprintTaskTableProperties = {
     canManage: boolean;
     containerId: string;
     draggingTaskIds: string[];
+    /** Project Epics — rows show the Task's (or its Parent's) Epic chip. */
+    epicsById?: ReadonlyMap<string, ProjectEpic>;
     labels: ProjectLabel[];
     onOpenTask?: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
     rowSelection: RowSelectionState;
     tasks: Task[];
 };
+
+const EPIC_DROP_PREFIX = "drop:epic:";
+
+/** Droppable id for an Epic row in the Backlog Epics panel. */
+export function epicDropId(epicId: string) {
+    return `${EPIC_DROP_PREFIX}${epicId}`;
+}
 
 export function parseDropTarget(
     overId: null | number | string | undefined
@@ -68,6 +80,17 @@ export function parseDropTarget(
     return undefined;
 }
 
+/** Epic id when the drop landed on an Epic row, else undefined. */
+export function parseEpicDropTarget(
+    overId: null | number | string | undefined
+): string | undefined {
+    if (overId === undefined || overId === null) return undefined;
+    const id = String(overId);
+    return id.startsWith(EPIC_DROP_PREFIX)
+        ? id.slice(EPIC_DROP_PREFIX.length)
+        : undefined;
+}
+
 export function sprintDropId(sprintId: string) {
     return `drop:sprint:${sprintId}`;
 }
@@ -81,6 +104,7 @@ export function SprintTaskTable({
     canManage,
     containerId,
     draggingTaskIds,
+    epicsById,
     labels,
     onOpenTask,
     onRowSelectionChange,
@@ -144,6 +168,10 @@ export function SprintTaskTable({
                 accessorKey: "key",
                 cell: ({ row }) => (
                     <span className="inline-flex min-w-0 items-center gap-1.5">
+                        <TaskTypeIcon
+                            label={t(`taskType.${row.original.type}`)}
+                            type={row.original.type}
+                        />
                         {row.original.priority ? (
                             <span
                                 aria-hidden
@@ -163,11 +191,29 @@ export function SprintTaskTable({
             },
             {
                 accessorKey: "title",
-                cell: ({ row }) => (
-                    <span className="block max-w-md text-ui sm:truncate">
-                        {row.original.title}
-                    </span>
-                ),
+                cell: ({ row }) => {
+                    const epic = epicsById
+                        ? resolveCardEpic(row.original, epicsById)
+                        : undefined;
+                    return (
+                        <span className="flex min-w-0 max-w-md items-center gap-2">
+                            <span className="min-w-0 text-ui sm:truncate">
+                                {row.original.title}
+                            </span>
+                            {epic ? (
+                                <EpicBadge
+                                    className="max-w-40 shrink-0"
+                                    color={epic.color}
+                                    title={epic.title}
+                                    tooltip={t("epics.cardBadge", {
+                                        key: epic.key,
+                                        title: epic.title,
+                                    })}
+                                />
+                            ) : null}
+                        </span>
+                    );
+                },
                 header: t("sprints.columnTitle"),
             },
             {
@@ -260,7 +306,7 @@ export function SprintTaskTable({
                 size: 100,
             },
         ],
-        [canManage, i18n.language, labelsById, t]
+        [canManage, epicsById, i18n.language, labelsById, t]
     );
 
     const table = useReactTable({

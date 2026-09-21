@@ -1,9 +1,13 @@
 import type { Task, TaskPriority } from "../model/types";
 
+import { effectiveEpicId } from "./epic-rules";
 import { isDeadlineOverdue } from "./format-deadline";
 
 /** Sentinel in `assigneeIds` for tasks with no assignee. */
 export const UNASSIGNED_ASSIGNEE_FILTER = "none";
+
+/** Sentinel in `epicIds` for Tasks outside any Epic. */
+export const NO_EPIC_FILTER = "none";
 
 export type BoardTaskFilters = {
     /** Profile ids and/or {@link UNASSIGNED_ASSIGNEE_FILTER}. */
@@ -11,6 +15,11 @@ export type BoardTaskFilters = {
     /** Board ids. Empty = no Board restriction (kanban/backlog omit this). */
     boardIds: string[];
     deadlines: DeadlineFilterValue[];
+    /**
+     * Epic ids and/or {@link NO_EPIC_FILTER}. Subtasks match their Parent's Epic.
+     * Optional so older persisted / literal filter objects stay valid.
+     */
+    epicIds?: string[];
     labelIds: string[];
     priorities: PriorityFilterValue[];
 };
@@ -24,6 +33,7 @@ export const EMPTY_BOARD_FILTERS: BoardTaskFilters = {
     assigneeIds: [],
     boardIds: [],
     deadlines: [],
+    epicIds: [],
     labelIds: [],
     priorities: [],
 };
@@ -51,6 +61,7 @@ export function isBoardFiltersActive(filters: BoardTaskFilters): boolean {
         filters.assigneeIds.length > 0 ||
         filters.boardIds.length > 0 ||
         filters.deadlines.length > 0 ||
+        (filters.epicIds?.length ?? 0) > 0 ||
         filters.labelIds.length > 0 ||
         filters.priorities.length > 0
     );
@@ -87,6 +98,14 @@ export function matchesTaskFilters(
     }
 
     if (filters.boardIds.length > 0 && !matchesBoards(task, filters.boardIds)) {
+        return false;
+    }
+
+    if (
+        filters.epicIds &&
+        filters.epicIds.length > 0 &&
+        !matchesEpics(task, filters.epicIds)
+    ) {
         return false;
     }
 
@@ -163,6 +182,11 @@ function matchesDeadlineFilter(
             return isDeadlineToday(task.deadline, now);
         }
     }
+}
+
+function matchesEpics(task: Task, epicIds: string[]): boolean {
+    const epicId = effectiveEpicId(task);
+    return epicIds.includes(epicId ?? NO_EPIC_FILTER);
 }
 
 function matchesLabels(task: Task, labelIds: string[]): boolean {

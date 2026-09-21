@@ -1,20 +1,10 @@
-import type { LucideIcon } from "lucide-react";
-
-import {
-    Ban,
-    Bug,
-    Calendar,
-    CheckSquare,
-    Flag,
-    GitBranch,
-    Sparkles,
-    User,
-} from "lucide-react";
+import { Ban, Calendar, Flag, GitBranch, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
+import type { TaskCardEpic } from "@/features/tasks/lib/board-epics";
 import type { SubtaskProgress } from "@/features/tasks/lib/board-subtask-visibility";
-import type { Task, TaskType } from "@/features/tasks/model/types";
+import type { Task } from "@/features/tasks/model/types";
 
 import { TaskLabelChips } from "@/features/labels";
 import {
@@ -30,6 +20,8 @@ import {
     PRIORITY_RAIL_CLASS,
     TASK_TYPE_ICON_CLASS,
 } from "@/features/tasks/model/constants";
+import { EpicBadge } from "@/features/tasks/ui/epic-badge";
+import { TASK_TYPE_ICON } from "@/features/tasks/ui/task-type-icon";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Badge } from "@/shared/shadcn/ui/badge";
@@ -47,13 +39,8 @@ import {
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
 
-const TASK_TYPE_ICON: Record<TaskType, LucideIcon> = {
-    bug: Bug,
-    feature: Sparkles,
-    task: CheckSquare,
-};
-
 type TaskCardProperties = {
+    epic?: TaskCardEpic;
     labels: ProjectLabel[];
     selection?: TaskCardSelection;
     sprintBadge?: string;
@@ -70,6 +57,7 @@ type TaskCardSelection = {
 };
 
 export function TaskCard({
+    epic,
     labels,
     selection,
     sprintBadge,
@@ -253,6 +241,18 @@ export function TaskCard({
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
+                ) : undefined}
+
+                {epic ? (
+                    <EpicBadge
+                        className="self-start"
+                        color={epic.color}
+                        title={epic.title}
+                        tooltip={t("epics.cardBadge", {
+                            key: epic.key,
+                            title: epic.title,
+                        })}
+                    />
                 ) : undefined}
 
                 {labels.length > 0 ? (

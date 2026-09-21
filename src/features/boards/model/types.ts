@@ -5,8 +5,11 @@ export type BoardColumn = {
     name: string;
 };
 
-/** Mirrors tasks.TaskType — kept local so `boards` stays a leaf module. */
-export type BoardDefaultTaskType = "bug" | "feature" | "task";
+/**
+ * Level-0 slice of tasks.TaskType (Epic excluded by `boards_default_task_type_not_epic`).
+ * Kept local so `boards` stays a leaf module.
+ */
+export type BoardDefaultTaskType = "bug" | "story" | "task";
 
 export type CreateBoardInput = {
     baseBranch?: string;

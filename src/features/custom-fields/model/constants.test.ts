@@ -11,7 +11,7 @@ import {
 
 const fields: ProjectCustomField[] = [
     {
-        appliesTo: ["task", "bug", "feature"],
+        appliesTo: ["task", "bug", "story"],
         id: "desc",
         name: "Description",
         position: 0,
@@ -26,14 +26,14 @@ const fields: ProjectCustomField[] = [
         projectId: "p1",
     },
     {
-        appliesTo: ["task", "feature"],
+        appliesTo: ["task", "story"],
         id: "notes",
         name: "Notes",
         position: 1,
         projectId: "p1",
     },
     {
-        appliesTo: ["bug", "feature", "task"],
+        appliesTo: ["bug", "story", "task"],
         id: "impact",
         name: "Impact",
         position: 3,

@@ -53,6 +53,8 @@ const T18 = "b0000000-0000-4000-8000-000000000118";
 const T19 = "b0000000-0000-4000-8000-000000000119";
 const T20 = "b0000000-0000-4000-8000-000000000120";
 const T21 = "b0000000-0000-4000-8000-000000000121";
+const EPIC_GUEST = "b0000000-0000-4000-8000-000000000122";
+const EPIC_GIT = "b0000000-0000-4000-8000-000000000123";
 const LABEL_CONTENT = "b0000000-0000-4000-8000-000000000035";
 
 const DEFAULT_COLUMNS = [
@@ -340,7 +342,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
     ],
     customFieldDefinitions: [
         {
-            appliesTo: ["task", "bug", "feature"],
+            appliesTo: ["epic", "story", "task", "bug"],
             id: FIELD_DESC_GIT,
             name: "Description",
             position: 0,
@@ -355,7 +357,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_GIT_ID,
         },
         {
-            appliesTo: ["task", "bug", "feature"],
+            appliesTo: ["epic", "story", "task", "bug"],
             id: FIELD_DESC_PLAIN,
             name: "Description",
             position: 0,
@@ -628,6 +630,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-07",
             description:
                 "<p>Primary secondary button on sign-in that starts a Guest Session.</p>",
+            epicId: EPIC_GUEST,
             estimate: 5,
             id: T01,
             key: "FEAT-1",
@@ -644,7 +647,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             sprintPosition: 0,
             status: "in_progress",
             title: "Wire guest sign-in CTA",
-            type: "feature",
+            type: "story",
         },
         {
             assignee: ACTOR,
@@ -655,6 +658,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-06",
             description:
                 "<p>Route guest sessions through the canned builds provider — no GitHub token.</p>",
+            epicId: EPIC_GUEST,
             estimate: 8,
             id: T02,
             key: "FEAT-2",
@@ -671,7 +675,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             sprintPosition: 1,
             status: "in_progress",
             title: "Mock CI builds for guest session",
-            type: "feature",
+            type: "story",
         },
         {
             assignee: ACTOR,
@@ -709,6 +713,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-01",
             description:
                 "<p>Guest detection is a Guest Session client flag — not a demo email/UUID.</p>",
+            epicId: EPIC_GUEST,
             id: T04,
             key: "FEAT-4",
             labelIds: [LABEL_FRONTEND],
@@ -724,7 +729,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             sprintPosition: 3,
             status: "done",
             title: "Guest Session detection",
-            type: "feature",
+            type: "story",
         },
         {
             assignee: ACTOR,
@@ -815,6 +820,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-12",
             description:
                 "<p>Git tab should return canned commits/PRs when Guest has no provider token.</p>",
+            epicId: EPIC_GIT,
             id: T09,
             key: "FEAT-9",
             labelIds: [LABEL_FRONTEND],
@@ -823,7 +829,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_GIT_ID,
             status: "todo",
             title: "Fixture commits and PR diffs",
-            type: "feature",
+            type: "story",
         },
         {
             author: ACTOR,
@@ -839,7 +845,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_GIT_ID,
             status: "todo",
             title: "Streaming fake build logs",
-            type: "feature",
+            type: "story",
         },
         {
             assignee: ACTOR,
@@ -850,6 +856,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             deadline: "2026-08-08",
             description:
                 "<p>Reproduce drop under slow 3G and harden the subscription bounce.</p>",
+            epicId: EPIC_GIT,
             id: T11,
             key: "BUG-11",
             labelIds: [LABEL_BACKEND],
@@ -954,7 +961,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             projectId: PROJ_PLAIN_ID,
             status: "in_progress",
             title: "Product story wireframes",
-            type: "feature",
+            type: "story",
         },
         {
             assignee: ACTOR,
@@ -1039,6 +1046,38 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             status: "done",
             title: "Demo chip tooltip copy",
             type: "task",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-18T09:00:00.000Z",
+            description:
+                "<p>Everything a visitor needs to try PlotOps without an account.</p>",
+            epicColor: "purple",
+            id: EPIC_GUEST,
+            key: "EPIC-22",
+            position: 100,
+            priority: "high",
+            projectId: PROJ_GIT_ID,
+            status: "in_progress",
+            title: "Guest Mode demo",
+            type: "epic",
+        },
+        {
+            author: ACTOR,
+            boardId: BOARD_GIT_ID,
+            createdAt: "2026-07-18T10:00:00.000Z",
+            description:
+                "<p>Branches, pull requests, and CI fixtures for the demo repo.</p>",
+            epicColor: "teal",
+            id: EPIC_GIT,
+            key: "EPIC-23",
+            position: 101,
+            priority: "medium",
+            projectId: PROJ_GIT_ID,
+            status: "todo",
+            title: "Git integration fixtures",
+            type: "epic",
         },
     ],
     taskWatchers: [],

@@ -12,6 +12,7 @@ import {
     type SubtaskProgress,
     type Task,
     TaskCard,
+    type TaskCardEpic,
     useBoardTaskSelectionStore,
     useTasksUiStore,
 } from "@/features/tasks";
@@ -28,6 +29,7 @@ type DraggableTaskCardProperties = {
     boardId: string;
     canDrag: boolean;
     columnTaskIds: readonly string[];
+    epic?: TaskCardEpic;
     labels: ProjectLabel[];
     selectionEnabled: boolean;
     sprintBadge?: string;
@@ -39,6 +41,7 @@ export function DraggableTaskCard({
     boardId,
     canDrag,
     columnTaskIds,
+    epic,
     labels,
     selectionEnabled,
     sprintBadge,
@@ -217,6 +220,7 @@ export function DraggableTaskCard({
             tabIndex={0}
         >
             <TaskCard
+                epic={epic}
                 labels={labels}
                 selection={
                     selectionEnabled

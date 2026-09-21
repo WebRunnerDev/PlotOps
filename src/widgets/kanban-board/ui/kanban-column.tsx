@@ -21,6 +21,7 @@ import {
     columnAccentClass,
     type SubtaskProgress,
     type Task,
+    type TaskCardEpic,
     taskKeys,
     type TaskStatus,
 } from "@/features/tasks";
@@ -56,6 +57,7 @@ type KanbanColumnProperties = {
     boardId: string;
     createSprintChoices?: ReadonlyArray<{ id: string; name: string }>;
     createSprintId?: string;
+    epicByTaskId?: ReadonlyMap<string, TaskCardEpic>;
     labelsByTaskId: Map<string, ProjectLabel[]>;
     name: string;
     projectId: string;
@@ -73,6 +75,7 @@ export function KanbanColumn({
     boardId,
     createSprintChoices,
     createSprintId,
+    epicByTaskId,
     labelsByTaskId,
     name,
     projectId,
@@ -382,6 +385,7 @@ export function KanbanColumn({
                                     boardId={boardId}
                                     canDrag={canEdit}
                                     columnTaskIds={columnTaskIds}
+                                    epic={epicByTaskId?.get(task.id)}
                                     key={task.id}
                                     labels={labelsByTaskId.get(task.id) ?? []}
                                     selectionEnabled={canSelectForArchive}

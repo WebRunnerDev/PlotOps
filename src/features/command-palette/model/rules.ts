@@ -74,7 +74,7 @@ export type CommandPaletteTask = {
     title: string;
 };
 
-export type CommandPaletteTaskType = "bug" | "feature" | "task";
+export type CommandPaletteTaskType = "bug" | "epic" | "story" | "task";
 
 export type CommandPaletteVisibility = {
     createTask: boolean;
