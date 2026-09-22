@@ -35,7 +35,6 @@ import {
 import { TaskQuickAddChips } from "@/features/tasks/ui/task-quick-add-chips";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
-import { Input } from "@/shared/shadcn/ui/input";
 import {
     Select,
     SelectContent,
@@ -43,6 +42,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/shared/shadcn/ui/select";
+import { Textarea } from "@/shared/shadcn/ui/textarea";
 import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
 
 type KanbanAddTaskProperties = {
@@ -116,7 +116,7 @@ export function KanbanAddTask({
     const [draftTitle, setDraftTitle] = useState<null | string>(() => {
         return getCreateTaskDraft(boardId, status)?.title ?? null;
     });
-    const inputReference = useRef<HTMLInputElement>(null);
+    const inputReference = useRef<HTMLTextAreaElement>(null);
     const skipBlurSubmit = useRef(false);
     const defaultsReference = useRef(defaults);
     defaultsReference.current = defaults;
@@ -271,9 +271,9 @@ export function KanbanAddTask({
                     </Badge>
                 </div>
             ) : null}
-            <Input
+            <Textarea
                 aria-label={t("tasks.addPlaceholder")}
-                className="h-8 rounded-none border-primary/25 bg-background text-ui shadow-none"
+                className="min-h-8 resize-none rounded-none border-primary/25 bg-background py-1 text-ui shadow-none wrap-anywhere md:text-ui"
                 disabled={isSubmitting}
                 maxLength={TASK_TITLE_MAX_LENGTH}
                 onBlur={() => {
@@ -285,7 +285,7 @@ export function KanbanAddTask({
                     closeComposer();
                 }}
                 onChange={(event) => {
-                    const next = event.target.value;
+                    const next = event.target.value.replaceAll("\n", " ");
                     setTitle(next);
                     persistDraft(next, fields);
                 }}
@@ -303,6 +303,7 @@ export function KanbanAddTask({
                 }}
                 placeholder={t("tasks.addPlaceholder")}
                 ref={inputReference}
+                rows={1}
                 value={title}
             />
             {needsSprintPick && createSprintChoices ? (

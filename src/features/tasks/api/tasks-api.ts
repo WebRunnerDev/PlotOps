@@ -2,6 +2,8 @@ import type { BoardColumn } from "@/features/boards";
 import type { ProjectLabel } from "@/features/labels";
 import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
+    EpicColor,
+    ProjectEpic,
     Task,
     TaskLinkKind,
     TaskPriority,
@@ -25,7 +27,9 @@ import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 import {
+    type DatabaseProjectEpic,
     type DatabaseTask,
+    mapDatabaseProjectEpic,
     mapDatabaseTask,
     parentIdsMissingFromRows,
     sortTasksByPosition,
@@ -79,11 +83,15 @@ async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
 
 async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
     const missing = parentIdsMissingFromRows(rows);
-    let extraParents: Array<{ id: string; task_key: string }> = [];
+    let extraParents: Array<{
+        epic_id: null | string;
+        id: string;
+        task_key: string;
+    }> = [];
     if (missing.length > 0) {
         const { data, error } = await supabase
             .from("tasks")
-            .select("id, task_key")
+            .select("id, task_key, epic_id")
             .in("id", missing);
         if (error) throw error;
         extraParents = data ?? [];
@@ -130,6 +138,8 @@ const TASK_SELECT = `
   linked_commit_sha,
   task_key,
   task_type,
+  epic_id,
+  epic_color,
   created_at,
   assignee:profiles!tasks_assignee_id_fkey (
     id,
@@ -186,6 +196,10 @@ const TASK_SELECT = `
 export type CreateTaskRecordExtras = {
     /** Pass `null` to force Unassigned (skips board auto-assign). */
     assigneeId?: null | string;
+    /** Epic colour when creating an Epic. */
+    epicColor?: EpicColor;
+    /** Create straight into an Epic (root Stories / Tasks / Bugs only). */
+    epicId?: string;
     /** Pass `null` for priority None. */
     priority?: null | TaskPriority;
 };
@@ -197,6 +211,10 @@ export type TaskRecordPatch = {
     branch_name?: null | string;
     deadline?: null | string;
     description?: null | string;
+    /** Epics only; `null` falls back to the default colour in UI. */
+    epic_color?: EpicColor | null;
+    /** Root non-Epic Tasks only; `null` removes the Task from its Epic. */
+    epic_id?: null | string;
     /** Pass `null` to clear estimate (unestimated). Manager+ only. */
     estimate?: null | TaskEstimate;
     linked_commit_sha?: null | string;
@@ -316,7 +334,7 @@ export async function createTaskRecord(
     let resolvedType: TaskType = taskType ?? "task";
     if (taskType === undefined) {
         const raw = boardRow?.default_task_type;
-        if (raw === "bug" || raw === "feature" || raw === "task") {
+        if (raw === "bug" || raw === "story" || raw === "task") {
             resolvedType = raw;
         }
     }
@@ -389,6 +407,9 @@ export async function createTaskRecord(
             status,
             task_type: resolvedType,
             title: normalizeTaskTitle(title),
+            ...(resolvedType === "epic"
+                ? { epic_color: extras?.epicColor ?? null }
+                : { epic_id: extras?.epicId ?? null }),
         } as Database["public"]["Tables"]["tasks"]["Insert"])
         .select(TASK_SELECT)
         .single();
@@ -444,6 +465,19 @@ export async function fetchBoardTasks(
         taskPositions,
         tasks: sortTasksByPosition(tasks, taskPositions),
     };
+}
+
+/** Every Epic in a Project (all Boards, archived included) with rollup progress. */
+export async function fetchProjectEpics(
+    projectId: string
+): Promise<ProjectEpic[]> {
+    const { data, error } = await supabase.rpc("project_epics", {
+        p_project_id: projectId,
+    });
+    if (error) throw error;
+    return ((data ?? []) as DatabaseProjectEpic[]).map((row) =>
+        mapDatabaseProjectEpic(row)
+    );
 }
 
 /** Tasks for a Project (all Boards) — palette search and similar.

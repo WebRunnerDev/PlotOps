@@ -523,11 +523,11 @@ describe("Command Palette rules seam — intents", () => {
         {
             expected: {
                 boardId: "board-1",
-                taskType: "feature" as const,
+                taskType: "story" as const,
                 title: "Dark mode",
                 type: "create-task" as const,
             },
-            taskType: "feature" as const,
+            taskType: "story" as const,
             title: "Dark mode",
         },
     ])(
@@ -598,11 +598,11 @@ describe("Command Palette rules seam — intents", () => {
         {
             expected: {
                 boardId: "board-1",
-                taskType: "feature" as const,
+                taskType: "story" as const,
                 title: "Crash on save",
                 type: "create-task" as const,
             },
-            taskType: "feature" as const,
+            taskType: "story" as const,
         },
     ])(
         "resolveCreateTaskIntent threads taskType $taskType through create gate",

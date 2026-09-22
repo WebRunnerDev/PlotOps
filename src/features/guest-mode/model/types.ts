@@ -25,7 +25,7 @@ export type GuestBoard = {
     /** PR merge target; required when isDevelopment. */
     baseBranch: null | string;
     columns: GuestBoardColumn[];
-    defaultTaskType: "bug" | "feature" | "task";
+    defaultTaskType: "bug" | "story" | "task";
     id: string;
     /** Git branch mapping (Base branch + Allowed head patterns). */
     isDevelopment?: boolean;
@@ -55,7 +55,7 @@ export type GuestComment = {
 
 /** Project-scoped custom text field definition (Guest sandbox). */
 export type GuestCustomFieldDefinition = {
-    appliesTo: Array<"bug" | "feature" | "task">;
+    appliesTo: Array<"bug" | "epic" | "story" | "task">;
     id: string;
     name: string;
     position: number;
@@ -164,6 +164,19 @@ export type GuestTask = {
     /** ISO calendar date `YYYY-MM-DD`. */
     deadline?: string;
     description?: string;
+    /** Badge colour; Epics only. */
+    epicColor?:
+        | "blue"
+        | "gray"
+        | "green"
+        | "orange"
+        | "pink"
+        | "purple"
+        | "red"
+        | "teal"
+        | "yellow";
+    /** Epic this root Task belongs to (never on Epics or Subtasks). */
+    epicId?: string;
     /** Fibonacci story points; absent = unestimated. */
     estimate?: 1 | 2 | 3 | 5 | 8 | 13 | 21;
     id: string;
@@ -180,7 +193,7 @@ export type GuestTask = {
     sprintPosition?: number;
     status: string;
     title: string;
-    type: "bug" | "feature" | "task";
+    type: "bug" | "epic" | "story" | "task";
 };
 
 export type GuestTaskLink = {

@@ -63,6 +63,7 @@ export function getGuestSandbox(): GuestSandbox | null {
         sandbox.taskWatchers = [];
     }
     ensureGuestDescriptionFields(sandbox);
+    migrateGuestTaskTypes(sandbox);
     return sandbox;
 }
 
@@ -171,7 +172,7 @@ function ensureGuestDescriptionFields(sandbox: GuestSandbox): void {
         }
 
         sandbox.customFieldDefinitions.push({
-            appliesTo: ["task", "bug", "feature"],
+            appliesTo: ["epic", "story", "task", "bug"],
             id: crypto.randomUUID(),
             name,
             position: 0,
@@ -216,6 +217,10 @@ function isGuestSandbox(value: unknown): value is GuestSandbox {
     );
 }
 
+function isLegacyFeatureType(value: string): boolean {
+    return value === "feature";
+}
+
 function isStoredGuestSession(value: unknown): value is StoredGuestSession {
     if (!value || typeof value !== "object") {
         return false;
@@ -234,6 +239,31 @@ function isStoredGuestSession(value: unknown): value is StoredGuestSession {
         return false;
     }
     return isGuestSandbox(record.sandbox);
+}
+
+/**
+ * Sessions saved before Task types v2 (ADR 0031) still say `feature`:
+ * rename to `story`, and let the system Description apply to Epics.
+ */
+function migrateGuestTaskTypes(sandbox: GuestSandbox): void {
+    for (const task of sandbox.tasks) {
+        if (isLegacyFeatureType(task.type)) task.type = "story";
+    }
+    for (const board of sandbox.boards) {
+        if (isLegacyFeatureType(board.defaultTaskType))
+            board.defaultTaskType = "story";
+    }
+    for (const field of sandbox.customFieldDefinitions) {
+        field.appliesTo = field.appliesTo.map((type) =>
+            isLegacyFeatureType(type) ? "story" : type
+        );
+        if (
+            field.systemKey === "description" &&
+            !field.appliesTo.includes("epic")
+        ) {
+            field.appliesTo = ["epic", ...field.appliesTo];
+        }
+    }
 }
 
 function notifyGuestSessionListeners(): void {

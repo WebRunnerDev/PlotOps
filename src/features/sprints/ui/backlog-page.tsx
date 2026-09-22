@@ -28,7 +28,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { Sprint } from "@/features/sprints/model/types";
-import type { BoardTaskFilters, Task } from "@/features/tasks";
+import type { BoardTaskFilters, EpicColor, Task } from "@/features/tasks";
 
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
@@ -65,6 +65,7 @@ import {
 import { useVisibleSprintId } from "@/features/sprints/model/use-visible-sprint-id";
 import { ActiveSprintLiveStrip } from "@/features/sprints/ui/active-sprint-live-strip";
 import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
+import { BacklogEpicsPanel } from "@/features/sprints/ui/backlog-epics-panel";
 import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
 import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
 import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
@@ -77,6 +78,7 @@ import {
     BACKLOG_DROP_ID,
     type BacklogTaskDragData,
     parseDropTarget,
+    parseEpicDropTarget,
     sprintDropId,
     sprintHeadingId,
     sprintSectionId,
@@ -94,10 +96,13 @@ import {
     isBoardFiltersActive,
     sortTasksByBoardSort,
     TaskDrawer,
+    toggleFilterValue,
     useBoardCompletedVisibilityStore,
     useBoardSortStore,
     useBoardTasks,
+    useProjectEpics,
     useTasksUiStore,
+    withoutEpics,
 } from "@/features/tasks";
 import { EASE_OUT, SPRING_PRESS } from "@/shared/lib/ease";
 import { cn } from "@/shared/lib/utils";
@@ -167,7 +172,22 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const columnsApi = useBoardColumns(projectId, boardId);
     const tasksApi = useBoardTasks(projectId, boardId);
     const { columns } = columnsApi;
-    const { tasks } = tasksApi;
+    const { createTask, tasks: allBoardTasks, updateTaskDetails } = tasksApi;
+    // Epics are listed in the Epics panel — never as Sprint / Backlog rows.
+    const tasks = useMemo(() => withoutEpics(allBoardTasks), [allBoardTasks]);
+    const { epics, epicsById } = useProjectEpics(projectId);
+    const epicFilterOptions = useMemo(
+        () =>
+            epics
+                .filter((epic) => epic.archivedAt === undefined)
+                .map((epic) => ({
+                    color: epic.color,
+                    id: epic.id,
+                    key: epic.key,
+                    title: epic.title,
+                })),
+        [epics]
+    );
     const boardSort = useBoardSortStore(
         (state) => state.byBoardId[boardId] ?? DEFAULT_BOARD_SORT
     );
@@ -362,6 +382,53 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
         }
     };
 
+    const handleCreateEpic = async (title: string, color: EpicColor) => {
+        if (!firstColumnId) return;
+        try {
+            const epic = await createTask(firstColumnId, title, {
+                epicColor: color,
+                taskType: "epic",
+            });
+            toast.success(t("epics.created", { key: epic.key }));
+        } catch {
+            toast.error(t("epics.createFailed"));
+        }
+    };
+
+    const handleToggleEpicFilter = (epicId: string) => {
+        setFilters((current) => ({
+            ...current,
+            epicIds: toggleFilterValue(current.epicIds ?? [], epicId),
+        }));
+    };
+
+    const handleAddToEpic = (taskIds: string[], epicId: string) => {
+        const epic = epicsById.get(epicId);
+        if (!epic) return;
+        let added = 0;
+        let skippedSubtasks = 0;
+        for (const id of taskIds) {
+            const task = tasks.find((item) => item.id === id);
+            if (!task || task.epicId === epicId) continue;
+            // Subtasks follow their Parent Task's Epic (ADR 0031).
+            if (task.parentId !== undefined) {
+                skippedSubtasks += 1;
+                continue;
+            }
+            updateTaskDetails(id, { epicId });
+            added += 1;
+        }
+        if (added > 0) {
+            toast.success(
+                t("epics.addedToEpic", { count: added, title: epic.title })
+            );
+            setRowSelection({});
+        }
+        if (skippedSubtasks > 0) {
+            toast.message(t("epics.subtasksFollowParent"));
+        }
+    };
+
     const handleDragStart = (event: DragStartEvent) => {
         const data = event.active.data.current as
             BacklogTaskDragData | undefined;
@@ -379,6 +446,12 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             BacklogTaskDragData | undefined;
         setDraggingTasks([]);
         if (data?.type !== "backlog-task") return;
+
+        const epicTargetId = parseEpicDropTarget(event.over?.id);
+        if (epicTargetId) {
+            handleAddToEpic(data.taskIds, epicTargetId);
+            return;
+        }
 
         const target = parseDropTarget(event.over?.id);
         if (!target) return;
@@ -579,6 +652,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     style={{ animationDelay: "440ms" }}
                 >
                     <BoardTaskToolbar
+                        epics={epicFilterOptions}
                         filters={filters}
                         hideCompleted={hideCompleted}
                         labels={projectLabels}
@@ -689,220 +763,239 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         </div>
                     ) : null}
 
-                    {filtersActive && visibleTasks.length === 0 ? null : (
-                        <DndContext
-                            collisionDetection={backlogCollisionDetection}
-                            onDragCancel={handleDragCancel}
-                            onDragEnd={handleDragEnd}
-                            onDragStart={handleDragStart}
-                            sensors={sensors}
-                        >
-                            <div className="relative flex flex-col gap-5 sm:gap-6">
-                                {actives.length > 1 ? (
-                                    <ActiveSprintJumpNav
-                                        reduceMotion={Boolean(reduceMotion)}
-                                        sprints={actives}
-                                    />
-                                ) : null}
-                                {planningSprints.map((sprint, index) => (
-                                    <div
+                    <DndContext
+                        collisionDetection={backlogCollisionDetection}
+                        onDragCancel={handleDragCancel}
+                        onDragEnd={handleDragEnd}
+                        onDragStart={handleDragStart}
+                        sensors={sensors}
+                    >
+                        <div className="relative flex flex-col gap-5 sm:gap-6">
+                            <div className="motion-reveal [animation-delay:100ms]">
+                                <BacklogEpicsPanel
+                                    canCreate={Boolean(firstColumnId)}
+                                    canManage={canManage}
+                                    epics={epics}
+                                    onCreateEpic={handleCreateEpic}
+                                    onOpenEpic={selectTask}
+                                    onToggleEpicFilter={handleToggleEpicFilter}
+                                    selectedEpicIds={filters.epicIds ?? []}
+                                />
+                            </div>
+                            {filtersActive &&
+                            visibleTasks.length === 0 ? null : (
+                                <>
+                                    {actives.length > 1 ? (
+                                        <ActiveSprintJumpNav
+                                            reduceMotion={Boolean(reduceMotion)}
+                                            sprints={actives}
+                                        />
+                                    ) : null}
+                                    {planningSprints.map((sprint, index) => (
+                                        <div
+                                            className="motion-reveal"
+                                            key={sprint.id}
+                                            style={{
+                                                animationDelay: `${120 + index * 80}ms`,
+                                            }}
+                                        >
+                                            <SprintSection
+                                                actives={actives}
+                                                allTasks={tasks}
+                                                boardId={boardId}
+                                                canManage={canManage}
+                                                columns={columns}
+                                                drafts={drafts}
+                                                draggingTaskIds={draggingTasks.map(
+                                                    (task) => task.id
+                                                )}
+                                                firstColumnId={firstColumnId}
+                                                labels={projectLabels}
+                                                onOpenTask={selectTask}
+                                                onRowSelectionChange={
+                                                    setRowSelection
+                                                }
+                                                projectId={projectId}
+                                                resetKey={listWindowResetKey}
+                                                rowSelection={rowSelection}
+                                                sprint={sprint}
+                                                tasks={
+                                                    tasksBySprint.get(
+                                                        sprint.id
+                                                    ) ?? []
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <BacklogSectionShell
+                                        accent="pool"
                                         className="motion-reveal"
-                                        key={sprint.id}
+                                        header={
+                                            <header className="flex min-w-0 flex-col gap-1 border-b border-border/80 px-3 py-3 sm:px-4">
+                                                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                                    <h2 className="text-h3">
+                                                        {t("sprints.backlog")}
+                                                    </h2>
+                                                    <p className="text-meta text-muted-foreground">
+                                                        {formatSprintSizeLabel(
+                                                            t,
+                                                            backlogTasks
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                <p className="text-ui text-muted-foreground">
+                                                    {t(
+                                                        "sprints.backlogPoolDescription"
+                                                    )}
+                                                </p>
+                                            </header>
+                                        }
                                         style={{
-                                            animationDelay: `${120 + index * 80}ms`,
+                                            animationDelay: `${120 + planningSprints.length * 80}ms`,
                                         }}
                                     >
-                                        <SprintSection
-                                            actives={actives}
-                                            allTasks={tasks}
-                                            boardId={boardId}
+                                        <WindowedSprintTaskTable
                                             canManage={canManage}
-                                            columns={columns}
-                                            drafts={drafts}
+                                            containerId={BACKLOG_DROP_ID}
                                             draggingTaskIds={draggingTasks.map(
                                                 (task) => task.id
                                             )}
-                                            firstColumnId={firstColumnId}
+                                            epicsById={epicsById}
                                             labels={projectLabels}
                                             onOpenTask={selectTask}
                                             onRowSelectionChange={
                                                 setRowSelection
                                             }
-                                            projectId={projectId}
                                             resetKey={listWindowResetKey}
                                             rowSelection={rowSelection}
-                                            sprint={sprint}
-                                            tasks={
-                                                tasksBySprint.get(sprint.id) ??
-                                                []
-                                            }
+                                            tasks={backlogTasks}
                                         />
-                                    </div>
-                                ))}
-
-                                <BacklogSectionShell
-                                    accent="pool"
-                                    className="motion-reveal"
-                                    header={
-                                        <header className="flex min-w-0 flex-col gap-1 border-b border-border/80 px-3 py-3 sm:px-4">
-                                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                                <h2 className="text-h3">
-                                                    {t("sprints.backlog")}
-                                                </h2>
-                                                <p className="text-meta text-muted-foreground">
-                                                    {formatSprintSizeLabel(
-                                                        t,
-                                                        backlogTasks
-                                                    )}
-                                                </p>
-                                            </div>
-                                            <p className="text-ui text-muted-foreground">
-                                                {t(
-                                                    "sprints.backlogPoolDescription"
-                                                )}
-                                            </p>
-                                        </header>
-                                    }
-                                    style={{
-                                        animationDelay: `${120 + planningSprints.length * 80}ms`,
-                                    }}
-                                >
-                                    <WindowedSprintTaskTable
-                                        canManage={canManage}
-                                        containerId={BACKLOG_DROP_ID}
-                                        draggingTaskIds={draggingTasks.map(
-                                            (task) => task.id
-                                        )}
-                                        labels={projectLabels}
-                                        onOpenTask={selectTask}
-                                        onRowSelectionChange={setRowSelection}
-                                        resetKey={listWindowResetKey}
-                                        rowSelection={rowSelection}
-                                        tasks={backlogTasks}
-                                    />
-                                    {firstColumnId ? (
-                                        <div className="border-t border-border/80 px-1">
-                                            <BacklogAddTask
-                                                boardId={boardId}
-                                                projectId={projectId}
-                                                sprintId={null}
-                                                status={firstColumnId}
-                                            />
-                                        </div>
-                                    ) : null}
-                                </BacklogSectionShell>
-
-                                {pastSprints.length > 0 ? (
-                                    <section
-                                        className="space-y-3 motion-reveal"
-                                        style={{
-                                            animationDelay: `${200 + planningSprints.length * 80}ms`,
-                                        }}
-                                    >
-                                        <button
-                                            className="group flex min-w-0 items-center gap-2 text-left transition-colors duration-300 ease-(--ease-out-expo) hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                                            onClick={() =>
-                                                setHistoryOpen(
-                                                    (value) => !value
-                                                )
-                                            }
-                                            type="button"
-                                        >
-                                            <ChevronDown
-                                                aria-hidden
-                                                className={cn(
-                                                    "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-expo) group-hover:text-primary",
-                                                    historyOpen
-                                                        ? ""
-                                                        : "-rotate-90"
-                                                )}
-                                            />
-                                            <span className="text-h3">
-                                                {t("sprints.historyList")}
-                                            </span>
-                                            <span className="text-meta text-muted-foreground">
-                                                ({pastSprints.length})
-                                            </span>
-                                        </button>
-                                        {historyOpen ? (
-                                            <>
-                                                {windowedPastSprints.visible.map(
-                                                    (sprint) => (
-                                                        <PastSprintSection
-                                                            boardId={boardId}
-                                                            canManage={
-                                                                canManage
-                                                            }
-                                                            columns={columns}
-                                                            key={sprint.id}
-                                                            projectId={
-                                                                projectId
-                                                            }
-                                                            sprint={sprint}
-                                                            tasks={tasks}
-                                                        />
-                                                    )
-                                                )}
-                                                <ListWindowControls
-                                                    bordered={false}
-                                                    hasMore={
-                                                        windowedPastSprints.hasMore
-                                                    }
-                                                    nextCount={Math.min(
-                                                        BACKLOG_LIST_PAGE_SIZE,
-                                                        windowedPastSprints.remaining
-                                                    )}
-                                                    onLoadMore={() => {
-                                                        historyWindow.loadMore(
-                                                            pastSprints.length
-                                                        );
-                                                    }}
-                                                    onShowAll={() => {
-                                                        historyWindow.showAll(
-                                                            pastSprints.length
-                                                        );
-                                                    }}
+                                        {firstColumnId ? (
+                                            <div className="border-t border-border/80 px-1">
+                                                <BacklogAddTask
+                                                    boardId={boardId}
+                                                    projectId={projectId}
+                                                    sprintId={null}
+                                                    status={firstColumnId}
                                                 />
-                                            </>
+                                            </div>
                                         ) : null}
-                                    </section>
-                                ) : null}
-                            </div>
+                                    </BacklogSectionShell>
 
-                            <DragOverlay dropAnimation={null}>
-                                {draggingTasks.length > 0 ? (
-                                    <div className="flex w-72 max-w-[min(18rem,calc(100vw-2rem))] cursor-grabbing flex-col gap-1 rounded-none border border-primary/40 bg-background px-3 py-2.5 shadow-lg ring-1 ring-primary/20">
-                                        {draggingTasks.length === 1 ? (
-                                            <>
-                                                <p className="text-code text-muted-foreground">
-                                                    {draggingTasks[0]?.key}
-                                                </p>
-                                                <p className="truncate text-ui">
-                                                    {draggingTasks[0]?.title}
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <p className="whitespace-nowrap text-ui">
-                                                    {t(
-                                                        "sprints.draggingCount",
-                                                        {
-                                                            count: draggingTasks.length,
-                                                        }
+                                    {pastSprints.length > 0 ? (
+                                        <section
+                                            className="space-y-3 motion-reveal"
+                                            style={{
+                                                animationDelay: `${200 + planningSprints.length * 80}ms`,
+                                            }}
+                                        >
+                                            <button
+                                                className="group flex min-w-0 items-center gap-2 text-left transition-colors duration-300 ease-(--ease-out-expo) hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                                                onClick={() =>
+                                                    setHistoryOpen(
+                                                        (value) => !value
+                                                    )
+                                                }
+                                                type="button"
+                                            >
+                                                <ChevronDown
+                                                    aria-hidden
+                                                    className={cn(
+                                                        "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-expo) group-hover:text-primary",
+                                                        historyOpen
+                                                            ? ""
+                                                            : "-rotate-90"
                                                     )}
-                                                </p>
-                                                <p className="truncate text-meta text-muted-foreground">
-                                                    {draggingTasks[0]?.key}
-                                                    {" · "}
-                                                    {draggingTasks[0]?.title}
-                                                </p>
-                                            </>
-                                        )}
-                                    </div>
-                                ) : null}
-                            </DragOverlay>
-                        </DndContext>
-                    )}
+                                                />
+                                                <span className="text-h3">
+                                                    {t("sprints.historyList")}
+                                                </span>
+                                                <span className="text-meta text-muted-foreground">
+                                                    ({pastSprints.length})
+                                                </span>
+                                            </button>
+                                            {historyOpen ? (
+                                                <>
+                                                    {windowedPastSprints.visible.map(
+                                                        (sprint) => (
+                                                            <PastSprintSection
+                                                                boardId={
+                                                                    boardId
+                                                                }
+                                                                canManage={
+                                                                    canManage
+                                                                }
+                                                                columns={
+                                                                    columns
+                                                                }
+                                                                key={sprint.id}
+                                                                projectId={
+                                                                    projectId
+                                                                }
+                                                                sprint={sprint}
+                                                                tasks={tasks}
+                                                            />
+                                                        )
+                                                    )}
+                                                    <ListWindowControls
+                                                        bordered={false}
+                                                        hasMore={
+                                                            windowedPastSprints.hasMore
+                                                        }
+                                                        nextCount={Math.min(
+                                                            BACKLOG_LIST_PAGE_SIZE,
+                                                            windowedPastSprints.remaining
+                                                        )}
+                                                        onLoadMore={() => {
+                                                            historyWindow.loadMore(
+                                                                pastSprints.length
+                                                            );
+                                                        }}
+                                                        onShowAll={() => {
+                                                            historyWindow.showAll(
+                                                                pastSprints.length
+                                                            );
+                                                        }}
+                                                    />
+                                                </>
+                                            ) : null}
+                                        </section>
+                                    ) : null}
+                                </>
+                            )}
+                        </div>
+
+                        <DragOverlay dropAnimation={null}>
+                            {draggingTasks.length > 0 ? (
+                                <div className="flex w-72 max-w-[min(18rem,calc(100vw-2rem))] cursor-grabbing flex-col gap-1 rounded-none border border-primary/40 bg-background px-3 py-2.5 shadow-lg ring-1 ring-primary/20">
+                                    {draggingTasks.length === 1 ? (
+                                        <>
+                                            <p className="text-code text-muted-foreground">
+                                                {draggingTasks[0]?.key}
+                                            </p>
+                                            <p className="truncate text-ui">
+                                                {draggingTasks[0]?.title}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="whitespace-nowrap text-ui">
+                                                {t("sprints.draggingCount", {
+                                                    count: draggingTasks.length,
+                                                })}
+                                            </p>
+                                            <p className="truncate text-meta text-muted-foreground">
+                                                {draggingTasks[0]?.key}
+                                                {" · "}
+                                                {draggingTasks[0]?.title}
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
 
                     <div className="relative motion-reveal [animation-delay:360ms]">
                         <SprintInsightsPanel sprints={sprints} tasks={tasks} />
@@ -1389,6 +1482,38 @@ function SprintReportPanel({
         [sprint.completedTaskIds, sprint.id, tasks]
     );
 
+    const returnCompletedToSprint = (
+        taskId: string,
+        sprintPosition: null | number
+    ) => {
+        void moveTasks
+            .mutateAsync([{ sprintId: sprint.id, sprintPosition, taskId }])
+            .catch(() => {
+                toast.error(t("sprints.reportMoveToBacklogUndoFailed"));
+            });
+    };
+
+    const moveCompletedToBacklog = (taskId: string) => {
+        const previousPosition =
+            tasks.find((task) => task.id === taskId)?.sprintPosition ?? null;
+
+        void moveTasks
+            .mutateAsync([{ sprintId: null, sprintPosition: null, taskId }])
+            .then(() => {
+                toast.success(t("sprints.reportMoveToBacklogDone"), {
+                    action: {
+                        label: t("sprints.reportMoveToBacklogUndo"),
+                        onClick: () => {
+                            returnCompletedToSprint(taskId, previousPosition);
+                        },
+                    },
+                });
+            })
+            .catch(() => {
+                toast.error(t("sprints.reportMoveToBacklogFailed"));
+            });
+    };
+
     return (
         <div className="space-y-3 border-t border-border px-3 py-3">
             {isCanceled ? (
@@ -1447,7 +1572,11 @@ function SprintReportPanel({
                                                         : ""}
                                                     {row.stillMember
                                                         ? ""
-                                                        : ` · ${t("sprints.reportCompletedMoved")}`}
+                                                        : ` · ${t(
+                                                              row.inBacklog
+                                                                  ? "sprints.reportCompletedInBacklog"
+                                                                  : "sprints.reportCompletedMoved"
+                                                          )}`}
                                                 </>
                                             ) : (
                                                 <span className="text-muted-foreground">
@@ -1468,29 +1597,9 @@ function SprintReportPanel({
                                                 className="min-h-9 shrink-0"
                                                 disabled={moveTasks.isPending}
                                                 onClick={() => {
-                                                    void moveTasks
-                                                        .mutateAsync([
-                                                            {
-                                                                sprintId: null,
-                                                                sprintPosition:
-                                                                    null,
-                                                                taskId: row.id,
-                                                            },
-                                                        ])
-                                                        .then(() => {
-                                                            toast.success(
-                                                                t(
-                                                                    "sprints.reportMoveToBacklogDone"
-                                                                )
-                                                            );
-                                                        })
-                                                        .catch(() => {
-                                                            toast.error(
-                                                                t(
-                                                                    "sprints.reportMoveToBacklogFailed"
-                                                                )
-                                                            );
-                                                        });
+                                                    moveCompletedToBacklog(
+                                                        row.id
+                                                    );
                                                 }}
                                                 size="sm"
                                                 type="button"
@@ -1498,6 +1607,25 @@ function SprintReportPanel({
                                             >
                                                 {t(
                                                     "sprints.reportMoveToBacklog"
+                                                )}
+                                            </Button>
+                                        ) : null}
+                                        {canManage && row.inBacklog ? (
+                                            <Button
+                                                className="min-h-9 shrink-0"
+                                                disabled={moveTasks.isPending}
+                                                onClick={() => {
+                                                    returnCompletedToSprint(
+                                                        row.id,
+                                                        null
+                                                    );
+                                                }}
+                                                size="sm"
+                                                type="button"
+                                                variant="outline"
+                                            >
+                                                {t(
+                                                    "sprints.reportReturnToSprint"
                                                 )}
                                             </Button>
                                         ) : null}
@@ -1583,6 +1711,7 @@ function SprintSection({
     const { t } = useTranslation("board");
     const reduceMotion = useReducedMotion();
     const { removeDraft } = useSprintMutations(projectId, boardId);
+    const { epicsById } = useProjectEpics(projectId);
     const [startOpen, setStartOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
@@ -1739,6 +1868,7 @@ function SprintSection({
                 canManage={canManage}
                 containerId={sprintDropId(sprint.id)}
                 draggingTaskIds={draggingTaskIds}
+                epicsById={epicsById}
                 labels={labels}
                 onOpenTask={onOpenTask}
                 onRowSelectionChange={onRowSelectionChange}

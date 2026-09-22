@@ -30,6 +30,7 @@ import {
     useSprintsUiStore,
 } from "@/features/sprints";
 import {
+    type BoardFilterEpic,
     type BoardTaskFilters,
     BoardTaskSelectionBar,
     BoardTaskToolbar,
@@ -41,17 +42,21 @@ import {
     hideCompletedBoardTasks,
     isWithinColumnDragEnabled,
     parentSubtaskProgress,
+    resolveCardEpic,
     sortTasksByBoardSort,
     type SubtaskProgress,
     type Task,
     TaskCard,
+    type TaskCardEpic,
     TaskDrawer,
     useBoardCompletedVisibilityStore,
     useBoardSortStore,
     useBoardSubtaskVisibilityStore,
     useBoardTasks,
     useBoardTaskSelectionStore,
+    useProjectEpics,
     visibleBoardTasks,
+    withoutEpics,
 } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -103,6 +108,7 @@ export function KanbanBoard({
     const labelsApi = useProjectLabels(projectId);
     const people = useProjectPeople(projectId);
     const tasksApi = useBoardTasks(projectId, boardId);
+    const { epics, epicsById } = useProjectEpics(projectId);
     const { canEditTasks, canManageBoard, isSettled } =
         useProjectAccess(projectId);
     const { data: sprints = [] } = useBoardSprints(boardId);
@@ -227,8 +233,22 @@ export function KanbanBoard({
         moveTasksToColumn,
         reorderTaskWithin,
         rollbackTaskDragGesture,
-        tasks,
+        tasks: allBoardTasks,
     } = tasksApi;
+    // Epics live in the Backlog Epics panel, never as Kanban cards.
+    const tasks = useMemo(() => withoutEpics(allBoardTasks), [allBoardTasks]);
+    const epicFilterOptions = useMemo<BoardFilterEpic[]>(
+        () =>
+            epics
+                .filter((epic) => epic.archivedAt === undefined)
+                .map((epic) => ({
+                    color: epic.color,
+                    id: epic.id,
+                    key: epic.key,
+                    title: epic.title,
+                })),
+        [epics]
+    );
     const columnIds = columns.map((column) => column.id);
     const canEdit = isSettled && canEditTasks;
     const canManage = isSettled && canManageBoard;
@@ -318,6 +338,15 @@ export function KanbanBoard({
         () => new Set(displayedTasks.map((task) => task.id)),
         [displayedTasks]
     );
+
+    const epicByTaskId = useMemo(() => {
+        const map = new Map<string, TaskCardEpic>();
+        for (const task of displayedTasks) {
+            const epic = resolveCardEpic(task, epicsById);
+            if (epic) map.set(task.id, epic);
+        }
+        return map;
+    }, [displayedTasks, epicsById]);
 
     const labelsByTaskId = useMemo(() => {
         const map = new Map<string, ProjectLabel[]>();
@@ -556,6 +585,7 @@ export function KanbanBoard({
         <div className="flex h-full min-h-0 flex-col gap-3">
             <div className="sticky left-0 z-5 w-[calc(100cqw-1.5rem)] shrink-0 sm:w-[calc(100cqw-6rem)]">
                 <BoardTaskToolbar
+                    epics={epicFilterOptions}
                     filters={filters}
                     hideCompleted={hideCompleted}
                     hideSubtasks={hideSubtasks}
@@ -596,6 +626,7 @@ export function KanbanBoard({
                                 boardId={boardId}
                                 createSprintChoices={createSprintChoices}
                                 createSprintId={createSprintId}
+                                epicByTaskId={epicByTaskId}
                                 key={column.id}
                                 labelsByTaskId={labelsByTaskId}
                                 name={column.name}
@@ -639,6 +670,7 @@ export function KanbanBoard({
                     {activeTask ? (
                         <div className="relative rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
                             <TaskCard
+                                epic={epicByTaskId.get(activeTask.id)}
                                 labels={labelsByTaskId.get(activeTask.id) ?? []}
                                 sprintBadge={
                                     showSprintBadge && activeTask.sprintId

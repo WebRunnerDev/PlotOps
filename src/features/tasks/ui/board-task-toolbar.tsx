@@ -12,6 +12,7 @@ import { BoardSortControl } from "@/features/tasks/ui/board-sort-control";
 import { BoardSubtaskVisibilityControl } from "@/features/tasks/ui/board-subtask-visibility-control";
 import {
     type BoardFilterBoard,
+    type BoardFilterEpic,
     type BoardFilterPerson,
     BoardTaskFiltersBar,
 } from "@/features/tasks/ui/board-task-filters";
@@ -21,6 +22,7 @@ import { Input } from "@/shared/shadcn/ui/input";
 type BoardTaskToolbarProperties = {
     boards?: BoardFilterBoard[];
     className?: string;
+    epics?: BoardFilterEpic[];
     filters: BoardTaskFilters;
     hideCompleted?: boolean;
     hideSubtasks?: boolean;
@@ -40,6 +42,7 @@ type BoardTaskToolbarProperties = {
 export function BoardTaskToolbar({
     boards,
     className,
+    epics,
     filters,
     hideCompleted = false,
     hideSubtasks = false,
@@ -80,6 +83,7 @@ export function BoardTaskToolbar({
                 <ToolbarSection>
                     <BoardTaskFiltersBar
                         boards={boards}
+                        epics={epics}
                         filters={filters}
                         labels={labels}
                         onChange={onChange}

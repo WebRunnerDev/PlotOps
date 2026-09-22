@@ -4,6 +4,7 @@ import type {
     TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
 import type {
+    ProjectEpic,
     Task,
     TaskLinkKind,
     TaskStatus,
@@ -42,6 +43,7 @@ export type TasksProvider = {
     deleteTaskRecord(taskId: string): Promise<void>;
     fetchArchivedTasks(boardId: string): Promise<Task[]>;
     fetchBoardTasks(boardId: string): Promise<BoardTasksCache>;
+    fetchProjectEpics(projectId: string): Promise<ProjectEpic[]>;
     fetchProjectTasks(
         projectId: string,
         options?: { includeArchived?: boolean }
