@@ -3,8 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type { QuickAddFields } from "@/features/tasks/lib/resolve-quick-add-defaults";
-
 import { useAuth } from "@/features/auth";
 import { countTeamPeople, useProjectBoards } from "@/features/boards";
 import { GUEST_SEED_ACTOR_ID, isGuest } from "@/features/guest-mode";
@@ -15,24 +13,21 @@ import {
 } from "@/features/projects/model/use-project-members";
 import { useProject } from "@/features/projects/model/use-projects";
 import {
+    clearCreateTaskDraft,
+    getCreateTaskDraft,
+    maybeSelectCreatedTask,
+    type QuickAddFields,
+    quickAddFieldsFromDraft,
+    resolveQuickAddDefaults,
+    setCreateTaskDraft,
     TASK_TITLE_MAX_LENGTH,
+    TaskQuickAddChips,
     type TaskStatus,
+    toQuickAddDraftMeta,
     useBoardTasks,
     useTaskDrawerPreferencesStore,
     useTasksUiStore,
 } from "@/features/tasks";
-import {
-    quickAddFieldsFromDraft,
-    resolveQuickAddDefaults,
-    toQuickAddDraftMeta,
-} from "@/features/tasks/lib/resolve-quick-add-defaults";
-import { maybeSelectCreatedTask } from "@/features/tasks/lib/resolve-task-drawer-placement";
-import {
-    clearCreateTaskDraft,
-    getCreateTaskDraft,
-    setCreateTaskDraft,
-} from "@/features/tasks/lib/task-drafts";
-import { TaskQuickAddChips } from "@/features/tasks/ui/task-quick-add-chips";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import {

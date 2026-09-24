@@ -9,6 +9,8 @@ import { useTranslation } from "react-i18next";
 import type { ProjectLabel } from "@/features/labels";
 
 import {
+    isBoardMultiSelectModifier,
+    shouldPreventBoardTaskTextSelection,
     type SubtaskProgress,
     type Task,
     TaskCard,
@@ -16,10 +18,6 @@ import {
     useBoardTaskSelectionStore,
     useTasksUiStore,
 } from "@/features/tasks";
-import {
-    isBoardMultiSelectModifier,
-    shouldPreventBoardTaskTextSelection,
-} from "@/features/tasks/lib/board-task-selection";
 import { cn } from "@/shared/lib/utils";
 import { gateDragListeners } from "@/widgets/kanban-board/model/gate-drag-pointer-down";
 import { shouldOpenTaskFromKeyboard } from "@/widgets/kanban-board/model/should-open-task-from-keyboard";
