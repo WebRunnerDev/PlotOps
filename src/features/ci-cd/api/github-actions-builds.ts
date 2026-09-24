@@ -4,6 +4,8 @@ import type {
     BuildJob,
     BuildLogLine,
     BuildsForProject,
+    BuildsStats,
+    GetBuildsStatsOptions,
     ListBuildsOptions,
     ListBuildsPage,
     ProjectBuild,
@@ -17,6 +19,7 @@ import {
     BUILDS_PAGE_SIZE,
     hasMoreBuilds,
 } from "@/features/ci-cd/model/builds-page";
+import { deriveBuildsStats } from "@/features/ci-cd/model/builds-stats";
 import { mapActionsStatus } from "@/features/ci-cd/model/map-actions-status";
 import { fetchProject } from "@/features/projects/api/projects-api";
 
@@ -205,6 +208,34 @@ async function fetchJobLogText(
     return new TextDecoder().decode(buffer);
 }
 
+async function fetchLatestBranchRun(
+    repoFullName: string,
+    token: string,
+    branch: string
+): Promise<ProjectBuild | undefined> {
+    const raw = await githubJson<RawWorkflowRunsResponse>(
+        `/repos/${repoFullName}/actions/runs`,
+        token,
+        { branch, per_page: "1" }
+    );
+    const run = raw.workflow_runs[0];
+    return run ? mapWorkflowRunToBuild(run) : undefined;
+}
+
+/** `total_count` for one run bucket — `per_page=1` keeps the payload tiny. */
+async function fetchRunCount(
+    repoFullName: string,
+    token: string,
+    status?: string
+): Promise<number> {
+    const raw = await githubJson<RawWorkflowRunsResponse>(
+        `/repos/${repoFullName}/actions/runs`,
+        token,
+        status ? { per_page: "1", status } : { per_page: "1" }
+    );
+    return raw.total_count;
+}
+
 async function fetchRunJobs(
     repoFullName: string,
     runId: string,
@@ -283,6 +314,29 @@ function throwIfUnauthorized(status: number): void {
 }
 
 export const githubActionsBuilds: BuildsForProject = {
+    async getBuildsStats(
+        projectId: string,
+        options?: GetBuildsStatsOptions
+    ): Promise<BuildsStats> {
+        const { repoFullName, token } = await resolveRepoContext(projectId);
+        const defaultBranch = options?.defaultBranch;
+
+        const [total, completed, success, defaultBranchBuild] =
+            await Promise.all([
+                fetchRunCount(repoFullName, token),
+                fetchRunCount(repoFullName, token, "completed"),
+                fetchRunCount(repoFullName, token, "success"),
+                defaultBranch
+                    ? fetchLatestBranchRun(repoFullName, token, defaultBranch)
+                    : undefined,
+            ]);
+
+        return {
+            ...deriveBuildsStats({ completed, success, total }),
+            defaultBranchBuild,
+        };
+    },
+
     async listBuildJobs(
         projectId: string,
         buildId: string
