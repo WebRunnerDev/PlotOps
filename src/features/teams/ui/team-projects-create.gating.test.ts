@@ -21,10 +21,17 @@ describe("Team projects create affordance seam", () => {
         expect(page).toMatch(/teamId=\{teamId\}/);
         expect(page).toMatch(/addProject/);
         expect(page).toMatch(
-            /user\s*&&\s*canCreateProject\s*\?\s*\(\s*<AddProjectDialog/
+            /user\s*&&\s*canCreateProject\s*&&\s*!isProjectCapReached\s*\?\s*\(\s*<AddProjectDialog/
         );
         expect(page).not.toMatch(
             /user\s*&&\s*githubAccessToken\s*&&\s*canCreateProject/
         );
+    });
+
+    it("closes the create affordance once the Team is at the Project cap", () => {
+        const page = read("src/features/teams/ui/team-projects-page.tsx");
+        expect(page).toMatch(/canAddProjectToTeam\(projects\.length\)/);
+        expect(page).toMatch(/disabled=\{isProjectCapReached\}/);
+        expect(page).toMatch(/addProjectCapReached/);
     });
 });

@@ -5,6 +5,7 @@ export type {
     ProjectCapabilities,
     ProjectMemberRole,
 } from "./model/access";
+export { canAddProjectToTeam, TEAM_PROJECTS_CAP } from "./model/limits";
 export type { ProjectAccessState } from "./model/resolve-project-access";
 export type { Project } from "./model/types";
 export { useProjectAccess } from "./model/use-project-access";
