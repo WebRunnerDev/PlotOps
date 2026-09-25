@@ -4,6 +4,7 @@ export {
     doneColumnIdSet,
     hideCompletedBoardTasks,
 } from "./lib/board-completed-visibility";
+export { columnTaskDropId } from "./lib/board-drop-target-id";
 export { resolveCardEpic, withoutEpics } from "./lib/board-epics";
 export type { TaskCardEpic } from "./lib/board-epics";
 export {
@@ -11,6 +12,10 @@ export {
     visibleBoardTasks,
 } from "./lib/board-subtask-visibility";
 export type { SubtaskProgress } from "./lib/board-subtask-visibility";
+export {
+    isBoardMultiSelectModifier,
+    shouldPreventBoardTaskTextSelection,
+} from "./lib/board-task-selection";
 export {
     convertToEpicRefusal,
     effectiveEpicId,
@@ -43,6 +48,13 @@ export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
 export { isWithinColumnDragEnabled } from "./lib/is-within-column-drag-enabled";
 export { resolveCachedTaskBoardId } from "./lib/resolve-cached-task-board-id";
 export {
+    quickAddFieldsFromDraft,
+    resolveQuickAddDefaults,
+    toQuickAddDraftMeta,
+} from "./lib/resolve-quick-add-defaults";
+export type { QuickAddFields } from "./lib/resolve-quick-add-defaults";
+export { maybeSelectCreatedTask } from "./lib/resolve-task-drawer-placement";
+export {
     filterTasksBySearchQuery,
     matchesTaskSearchQuery,
 } from "./lib/search-tasks";
@@ -55,6 +67,11 @@ export type {
     BoardSortField,
     BoardSortPreference,
 } from "./lib/sort-tasks-by-board-sort";
+export {
+    clearCreateTaskDraft,
+    getCreateTaskDraft,
+    setCreateTaskDraft,
+} from "./lib/task-drafts";
 export { isTaskEstimate, TASK_ESTIMATE_VALUES } from "./lib/task-estimate";
 export type { TaskEstimate } from "./lib/task-estimate";
 export {
@@ -115,6 +132,8 @@ export {
     WORK_ITEM_TASK_TYPES,
 } from "./model/constants";
 export { taskKeys } from "./model/query-keys";
+export { parseTaskBoardSearch } from "./model/task-board-search";
+export type { TaskBoardSearch } from "./model/task-board-search";
 export { useTaskDrawerPreferencesStore } from "./model/task-drawer-preferences-store";
 export type {
     EpicColor,
@@ -147,5 +166,6 @@ export { TaskCard } from "./ui/task-card";
 export { TaskDrawer } from "./ui/task-drawer";
 export { TaskDrawerSettings } from "./ui/task-drawer-settings";
 export { TaskGithubPanel } from "./ui/task-github-panel";
+export { TaskQuickAddChips } from "./ui/task-quick-add-chips";
 export { TaskSearchPicker } from "./ui/task-search-picker";
 export { TASK_TYPE_ICON, TaskTypeIcon } from "./ui/task-type-icon";

@@ -4,4 +4,6 @@ export const ciKeys = {
         [...ciKeys.all, "builds", projectId] as const,
     jobs: (projectId: string, buildId: string) =>
         [...ciKeys.all, "jobs", projectId, buildId] as const,
+    stats: (projectId: string, defaultBranch: string) =>
+        [...ciKeys.all, "stats", projectId, defaultBranch] as const,
 };

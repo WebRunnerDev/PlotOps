@@ -670,6 +670,7 @@
         "accept": "Accept invite",
         "acceptSuccess": "You joined the Team",
         "acceptFailed": "Could not accept invite",
+        "membershipCapReached": "You have joined {{cap}} Teams — the maximum. Leave one to accept this invite.",
         "emailMismatch": "Your account email does not match the invite. Claim it so an owner or admin can confirm you.",
         "claim": "Claim with this account",
         "claimSuccess": "Claimed — ask an owner or admin to confirm in Team settings.",

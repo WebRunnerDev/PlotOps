@@ -19,13 +19,13 @@ import { resolveColumnDeleteMoveTarget } from "@/features/boards/model/resolve-c
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import {
     columnAccentClass,
+    columnTaskDropId,
     type SubtaskProgress,
     type Task,
     type TaskCardEpic,
     taskKeys,
     type TaskStatus,
 } from "@/features/tasks";
-import { columnTaskDropId } from "@/features/tasks/lib/board-drop-target-id";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,

@@ -1,6 +1,8 @@
 import type {
     BuildLogLine,
     BuildsForProject,
+    BuildsStats,
+    GetBuildsStatsOptions,
     ListBuildsOptions,
     ListBuildsPage,
     ProjectBuild,
@@ -10,6 +12,7 @@ import {
     BUILDS_PAGE_SIZE,
     hasMoreBuilds,
 } from "@/features/ci-cd/model/builds-page";
+import { deriveBuildsStats } from "@/features/ci-cd/model/builds-stats";
 
 /**
  * Deterministic mock builds for unit tests and Guest Mode.
@@ -137,6 +140,31 @@ function streamMockLogLines(
 }
 
 export const mockBuildsForProject: BuildsForProject = {
+    async getBuildsStats(
+        projectId: string,
+        options?: GetBuildsStatsOptions
+    ): Promise<BuildsStats> {
+        void projectId;
+        const defaultBranch = options?.defaultBranch;
+        const completed = MOCK_BUILDS.filter(
+            (build) => build.status === "failure" || build.status === "success"
+        ).length;
+        const success = MOCK_BUILDS.filter(
+            (build) => build.status === "success"
+        ).length;
+
+        return {
+            ...deriveBuildsStats({
+                completed,
+                success,
+                total: MOCK_BUILDS.length,
+            }),
+            defaultBranchBuild: defaultBranch
+                ? MOCK_BUILDS.find((build) => build.branch === defaultBranch)
+                : undefined,
+        };
+    },
+
     async listBuildJobs(projectId, buildId) {
         void projectId;
         const build = MOCK_BUILDS.find((item) => item.id === buildId);

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
     CircleCheck,
     CircleX,
@@ -6,7 +7,15 @@ import {
     LoaderCircle,
     Timer,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import {
+    type ReactNode,
+    type RefObject,
+    useCallback,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import type { BuildStatus, ProjectBuild } from "@/features/ci-cd/model/types";
@@ -18,6 +27,7 @@ import {
 } from "@/features/ci-cd/api/github-actions-builds";
 import { canFetchProjectBuilds } from "@/features/ci-cd/lib/can-fetch-project-builds";
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
+import { useBuildsStats } from "@/features/ci-cd/model/use-builds-stats";
 import { useProjectBuilds } from "@/features/ci-cd/model/use-project-builds";
 import { BuildLogDialog } from "@/features/ci-cd/ui/build-log-dialog";
 import { BuildsLoadMoreSentinel } from "@/features/ci-cd/ui/builds-load-more-sentinel";
@@ -47,6 +57,14 @@ const STATUS_BORDER: Record<BuildStatus, string> = {
     running: "border-l-amber-400",
     success: "border-l-emerald-500",
 };
+
+/** Rows that play the reveal animation before virtualization takes over. */
+const REVEAL_ROWS = 8;
+
+/** Collapsed BuildRow height — refined by `measureElement` once mounted. */
+const ROW_ESTIMATE_PX = 112;
+
+const ROW_OVERSCAN = 6;
 
 const STATUS_WORD: Record<BuildStatus, string> = {
     failure: "text-red-400",
@@ -81,28 +99,36 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         isFetchingNextPage,
         isLoading: buildsLoading,
     } = useProjectBuilds(projectId, project?.github_repo_id);
+    const defaultBranch = project?.github_default_branch ?? "main";
+    const { stats } = useBuildsStats(
+        projectId,
+        project?.github_repo_id,
+        defaultBranch
+    );
+    const scrollReference = useRef<HTMLDivElement>(null);
     const [selectedBuild, setSelectedBuild] = useState<
         ProjectBuild | undefined
     >();
     const [filter, setFilter] = useState<RunFilter>("all");
 
+    // Repo-wide when `stats` has landed; the loaded pages are only a first
+    // paint so the cells are not blank on the very first render.
     const summary = useMemo(() => {
-        const defaultBranch = project?.github_default_branch ?? "main";
-        const onDefault = builds.find(
-            (build) => build.branch === defaultBranch
-        );
-        const failed = builds.filter(
-            (build) => build.status === "failure"
-        ).length;
-        const running = builds.filter((build) =>
-            isInFlight(build.status)
-        ).length;
+        const onDefault =
+            stats?.defaultBranchBuild ??
+            builds.find((build) => build.branch === defaultBranch);
+        const failed =
+            stats?.failure ??
+            builds.filter((build) => build.status === "failure").length;
+        const running =
+            stats?.running ??
+            builds.filter((build) => isInFlight(build.status)).length;
         return { defaultBranch, failed, onDefault, running };
-    }, [builds, project?.github_default_branch]);
+    }, [builds, defaultBranch, stats]);
 
     const signalBuild = useMemo(
-        () => pickSignalBuild(builds, summary.defaultBranch),
-        [builds, summary.defaultBranch]
+        () => pickSignalBuild(builds, defaultBranch),
+        [builds, defaultBranch]
     );
 
     const filteredBuilds = useMemo(() => {
@@ -130,12 +156,15 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
 
     const filterCounts = useMemo(
         () => ({
-            all: builds.length,
-            failure: builds.filter((build) => build.status === "failure")
-                .length,
-            running: builds.filter((build) => isInFlight(build.status)).length,
+            all: stats?.total ?? builds.length,
+            failure:
+                stats?.failure ??
+                builds.filter((build) => build.status === "failure").length,
+            running:
+                stats?.running ??
+                builds.filter((build) => isInFlight(build.status)).length,
         }),
-        [builds]
+        [builds, stats]
     );
 
     const isBootstrapping = projectLoading || accessLoading;
@@ -163,7 +192,10 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
             buildsError instanceof CiCdUnauthorizedError);
 
     return (
-        <div className="scrollbar-board relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10">
+        <div
+            className="scrollbar-board relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10"
+            ref={scrollReference}
+        >
             <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 -top-8 h-80 bg-auth-atmosphere opacity-90 sm:-top-10 sm:h-112"
@@ -411,6 +443,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                             openLogsLabel={(branch) =>
                                                 t("cicd.openLogs", { branch })
                                             }
+                                            scrollReference={scrollReference}
                                             startDelayMs={200}
                                             statusLabel={(status) =>
                                                 t(`cicd.status.${status}`)
@@ -427,6 +460,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                             openLogsLabel={(branch) =>
                                                 t("cicd.openLogs", { branch })
                                             }
+                                            scrollReference={scrollReference}
                                             startDelayMs={
                                                 liveBuilds.length > 0
                                                     ? 280
@@ -766,6 +800,7 @@ function RunSection({
     locale,
     onSelect,
     openLogsLabel,
+    scrollReference,
     startDelayMs,
     statusLabel,
     title,
@@ -774,10 +809,23 @@ function RunSection({
     locale: string;
     onSelect: (build: ProjectBuild) => void;
     openLogsLabel: (branch: string) => string;
+    scrollReference: RefObject<HTMLDivElement | null>;
     startDelayMs: number;
     statusLabel: (status: BuildStatus) => string;
     title: string;
 }) {
+    const listReference = useRef<HTMLUListElement>(null);
+    const scrollMargin = useScrollMargin(scrollReference, listReference);
+
+    const virtualizer = useVirtualizer({
+        count: builds.length,
+        estimateSize: () => ROW_ESTIMATE_PX,
+        getItemKey: (index) => builds[index]?.id ?? index,
+        getScrollElement: () => scrollReference.current,
+        overscan: ROW_OVERSCAN,
+        scrollMargin,
+    });
+
     return (
         <section className="relative flex min-w-0 flex-col gap-3">
             <div className="motion-reveal flex min-w-0 items-baseline justify-between gap-3">
@@ -788,26 +836,53 @@ function RunSection({
                     {String(builds.length).padStart(2, "0")}
                 </span>
             </div>
-            <ul className="divide-y divide-border border border-border">
-                {builds.map((build, index) => (
-                    <li
-                        className="motion-reveal"
-                        key={build.id}
-                        style={{
-                            animationDelay: `${startDelayMs + Math.min(index, 8) * 40}ms`,
-                        }}
-                    >
-                        <BuildRow
-                            build={build}
-                            locale={locale}
-                            onSelect={() => {
-                                onSelect(build);
+            <ul
+                className="relative border border-border"
+                ref={listReference}
+                style={{ height: virtualizer.getTotalSize() }}
+            >
+                {virtualizer.getVirtualItems().map((row) => {
+                    const build = builds[row.index];
+                    if (!build) return;
+                    // Only the first screenful animates in — rows that mount
+                    // while scrolling should not replay the reveal.
+                    const revealed = row.index < REVEAL_ROWS;
+                    return (
+                        <li
+                            className={cn(
+                                "absolute inset-x-0 top-0",
+                                row.index > 0 && "border-t border-border"
+                            )}
+                            data-index={row.index}
+                            key={row.key}
+                            ref={virtualizer.measureElement}
+                            style={{
+                                // The reveal animation owns `transform` on the
+                                // inner wrapper, so row placement stays here.
+                                transform: `translateY(${row.start - scrollMargin}px)`,
                             }}
-                            openLabel={openLogsLabel(build.branch)}
-                            statusLabel={statusLabel(build.status)}
-                        />
-                    </li>
-                ))}
+                        >
+                            <div
+                                className={cn(revealed && "motion-reveal")}
+                                style={{
+                                    animationDelay: revealed
+                                        ? `${startDelayMs + row.index * 40}ms`
+                                        : undefined,
+                                }}
+                            >
+                                <BuildRow
+                                    build={build}
+                                    locale={locale}
+                                    onSelect={() => {
+                                        onSelect(build);
+                                    }}
+                                    openLabel={openLogsLabel(build.branch)}
+                                    statusLabel={statusLabel(build.status)}
+                                />
+                            </div>
+                        </li>
+                    );
+                })}
             </ul>
         </section>
     );
@@ -869,4 +944,49 @@ function SummaryCell({
             {children}
         </div>
     );
+}
+
+/**
+ * Distance from the top of the scroll container's content to the top of the
+ * list. The page owns the scrollbar, so the virtualizer needs this offset to
+ * line its window up with the rows that sit below the header and summary.
+ */
+function useScrollMargin(
+    scrollReference: RefObject<HTMLDivElement | null>,
+    listReference: RefObject<HTMLUListElement | null>
+): number {
+    const [scrollMargin, setScrollMargin] = useState(0);
+
+    const measure = useCallback(() => {
+        const scroller = scrollReference.current;
+        const list = listReference.current;
+        if (!scroller || !list) return;
+        const next =
+            list.getBoundingClientRect().top -
+            scroller.getBoundingClientRect().top +
+            scroller.scrollTop;
+        // Only a real shift re-renders — otherwise this effect would loop.
+        setScrollMargin((current) =>
+            Math.abs(current - next) < 1 ? current : next
+        );
+    }, [listReference, scrollReference]);
+
+    // Every render: anything above the list (alerts, summary, the live
+    // section) can change height and move the list without resizing anything
+    // a ResizeObserver watches.
+    useLayoutEffect(measure);
+
+    useLayoutEffect(() => {
+        const scroller = scrollReference.current;
+        if (!scroller || globalThis.ResizeObserver === undefined) return;
+        const observer = new ResizeObserver(() => {
+            measure();
+        });
+        observer.observe(scroller);
+        return () => {
+            observer.disconnect();
+        };
+    }, [measure, scrollReference]);
+
+    return scrollMargin;
 }

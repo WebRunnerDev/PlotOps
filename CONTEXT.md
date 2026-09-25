@@ -40,6 +40,14 @@ _Avoid_: Workspace, Organization, Project (when meaning the access boundary)
 A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, and optionally a linked GitHub repository. Does not own Members or Roles — those live on the Team. May be created by connecting a GitHub repository or as a name-only Project without a repo (Git/CI surfaces gated until a repo is attached).
 _Avoid_: Team, Workspace, repository (the GitHub repo is linked to the Project, not the same concept)
 
+**Team cap**:
+The flat per-user ceiling on Teams (ADR 0032): a user may **own** at most 3 Teams (`teams.owner_id`) and **join** at most 10 more as a Member. The two counters are separate — the Owner is never a `team_members` row — so the maximum reach is 13 Teams. Enforced by `BEFORE INSERT` triggers in Postgres so the security-definer invite RPCs are covered, and re-checked when ownership transfers; the Owner demoted to Admin by a transfer is exempt, since their total does not grow. Mirrored in the app to disable the affordance, never as the only check. Does not apply in Guest Mode.
+_Avoid_: quota, plan limit, tier (there is no billing), seat
+
+**Project cap**:
+The ceiling of 10 Projects per Team (ADR 0032). Scoped to the Team, not the user, because Projects have no membership of their own — access is inherited from Team membership, so there is no join to cap and a per-user count would block invites for reasons the invitee cannot act on. Enforced by a `BEFORE INSERT` trigger on `projects`. Does not apply in Guest Mode.
+_Avoid_: repo limit, per-user project limit, quota
+
 **Board**:
 A kanban workflow inside a Project: its own columns and Tasks. A Project may have several Boards (e.g. Core, Frontend). A Board may be a **Development Board** (`is_development`) — then it owns Git branch mapping (Base branch + Allowed head patterns) — or a regular Board without that mapping. Every Project has at least one Board. A Board may be deleted only when it has no Tasks and is not the Project's last Board.
 _Avoid_: Kanban, workspace board, Team board (Boards are Project-scoped, not Team-scoped)

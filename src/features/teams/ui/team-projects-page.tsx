@@ -10,6 +10,10 @@ import type { Project } from "@/features/projects/model/types";
 import { signInWithGitHub, useAuth } from "@/features/auth";
 import { isGuest } from "@/features/guest-mode";
 import {
+    canAddProjectToTeam,
+    TEAM_PROJECTS_CAP,
+} from "@/features/projects/model/limits";
+import {
     useDeleteProject,
     useProjectsByTeam,
 } from "@/features/projects/model/use-projects";
@@ -85,8 +89,11 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
         accessLoading ||
         projectsLoading ||
         (!isSettled && !accessError && !teamError);
+    const isProjectCapReached = !canAddProjectToTeam(projects.length);
     const canAddProject = Boolean(!guest && canCreateProject && user);
-    const showGitHubReconnect = Boolean(canAddProject && !githubAccessToken);
+    const showGitHubReconnect = Boolean(
+        canAddProject && !isProjectCapReached && !githubAccessToken
+    );
 
     const handleConfirmRemove = async () => {
         if (!projectToRemove) return;
@@ -152,6 +159,16 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                     </p>
                 </div>
                 <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                    {canAddProject && isProjectCapReached ? (
+                        <Alert className="max-w-md">
+                            <FolderGit2 />
+                            <AlertDescription>
+                                {t("addProjectCapReached", {
+                                    cap: TEAM_PROJECTS_CAP,
+                                })}
+                            </AlertDescription>
+                        </Alert>
+                    ) : null}
                     {showGitHubReconnect ? (
                         <Alert className="max-w-md">
                             <FolderGit2 />
@@ -163,6 +180,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         {canAddProject ? (
                             <Button
+                                disabled={isProjectCapReached}
                                 onClick={() => setIsAddOpen(true)}
                                 type="button"
                             >
@@ -284,7 +302,7 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {user && canCreateProject ? (
+            {user && canCreateProject && !isProjectCapReached ? (
                 <AddProjectDialog
                     accessToken={githubAccessToken}
                     connectedProjects={projects}
