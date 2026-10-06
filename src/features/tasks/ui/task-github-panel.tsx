@@ -35,6 +35,7 @@ import {
     useClosePullRequest,
     useCreatePullRequest,
     useMergePullRequest,
+    useReopenPullRequest,
 } from "@/features/git-integration/model/use-github-pr-writes";
 import { PrChecksSummary } from "@/features/git-integration/ui/pr-checks-summary";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
@@ -113,6 +114,7 @@ export function TaskGithubPanel({
     const createPr = useCreatePullRequest();
     const mergePr = useMergePullRequest();
     const closePr = useClosePullRequest();
+    const reopenPr = useReopenPullRequest();
     const approvePr = useApprovePullRequest();
 
     const [copied, setCopied] = useState(false);
@@ -190,6 +192,7 @@ export function TaskGithubPanel({
         createPr.isPending ||
         mergePr.isPending ||
         closePr.isPending ||
+        reopenPr.isPending ||
         approvePr.isPending;
     const canOpenPr =
         canWritePr &&
@@ -207,6 +210,12 @@ export function TaskGithubPanel({
         canWritePr &&
         canFetchGithub &&
         task.pr?.state === "open" &&
+        !writeActionPending;
+    // Merged PRs are never reopenable — only `closed` (unmerged) qualifies.
+    const canReopenPr =
+        canWritePr &&
+        canFetchGithub &&
+        task.pr?.state === "closed" &&
         !writeActionPending;
     const canApprovePr =
         canReviewPr &&
@@ -388,6 +397,28 @@ export function TaskGithubPanel({
             toast.success(t("github.closePrToast", { number: task.pr.number }));
         } catch (error) {
             toastWriteFailure(error, "github.closePrFailed");
+        }
+    };
+
+    const handleReopenPr = async () => {
+        if (!canReopenPr || !githubToken || !repoFullName || !task.pr) return;
+
+        try {
+            await reopenPr.mutateAsync({
+                headBranchName: branchName ?? undefined,
+                prNumber: task.pr.number,
+                repoFullName,
+                token: githubToken,
+            });
+            onPrChange({
+                ...task.pr,
+                state: "open",
+            });
+            toast.success(
+                t("github.reopenPrToast", { number: task.pr.number })
+            );
+        } catch (error) {
+            toastWriteFailure(error, "github.reopenPrFailed");
         }
     };
 
@@ -633,7 +664,7 @@ export function TaskGithubPanel({
                 prNumber={task.pr.number}
                 repoFullName={repoFullName}
             />
-            {canApprovePr || canMergePr || canClosePr ? (
+            {canApprovePr || canMergePr || canClosePr || canReopenPr ? (
                 <div className="flex flex-wrap items-center gap-2">
                     {canApprovePr ? (
                         <Button
@@ -677,6 +708,22 @@ export function TaskGithubPanel({
                                 <Spinner className="size-3.5" />
                             ) : undefined}
                             {t("github.closePr")}
+                        </Button>
+                    ) : undefined}
+                    {canReopenPr ? (
+                        <Button
+                            disabled={writeActionPending}
+                            onClick={() => {
+                                void handleReopenPr();
+                            }}
+                            size="xs"
+                            type="button"
+                            variant="outline"
+                        >
+                            {reopenPr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.reopenPr")}
                         </Button>
                     ) : undefined}
                 </div>

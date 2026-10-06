@@ -10,7 +10,7 @@ function read(relativePath: string) {
     return readFileSync(path.join(root, relativePath), "utf8");
 }
 
-describe("TaskGithubPanel Open/Merge/Close/Approve seam", () => {
+describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
     it("gates writes with canWriteGithubPr and review with canReviewGithubPr", () => {
         const panel = read("src/features/tasks/ui/task-github-panel.tsx");
 
@@ -20,15 +20,41 @@ describe("TaskGithubPanel Open/Merge/Close/Approve seam", () => {
         expect(panel).toMatch(/useCreatePullRequest/);
         expect(panel).toMatch(/useMergePullRequest/);
         expect(panel).toMatch(/useClosePullRequest/);
+        expect(panel).toMatch(/useReopenPullRequest/);
         expect(panel).toMatch(/useApprovePullRequest/);
         expect(panel).toMatch(/github\.openPr/);
         expect(panel).toMatch(/github\.mergePr/);
         expect(panel).toMatch(/github\.closePr/);
+        expect(panel).toMatch(/github\.reopenPr/);
         expect(panel).toMatch(/github\.approvePr/);
         expect(panel).toMatch(/defaultPullRequestTitle/);
         expect(panel).toMatch(/mergeMethod/);
         expect(panel).toMatch(/gitHubWriteErrorKind/);
         expect(panel).toMatch(/handleApprovePr/);
+    });
+
+    it("offers Reopen only for closed (never merged) PRs behind the write gate", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+        const gate = panel.match(/const canReopenPr =[\s\S]*?;/)?.[0];
+
+        expect(gate).toBeDefined();
+        expect(gate).toMatch(/canWritePr/);
+        expect(gate).toMatch(/canFetchGithub/);
+        expect(gate).toMatch(/task\.pr\?\.state === "closed"/);
+        expect(gate).not.toMatch(/merged/);
+    });
+
+    it("Reopen success sets local pr state to open", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+        const reopenHandler = panel.match(
+            /const handleReopenPr = async \(\) => \{[\s\S]*?\n {4}\};/
+        )?.[0];
+
+        expect(reopenHandler).toBeDefined();
+        expect(reopenHandler).toMatch(/canReopenPr/);
+        expect(reopenHandler).toMatch(/state: "open"/);
+        expect(reopenHandler).toMatch(/reopenPrToast/);
+        expect(reopenHandler).toMatch(/toastWriteFailure/);
     });
 
     it("Approve success does not call onPrChange", () => {
@@ -61,6 +87,9 @@ describe("TaskGithubPanel Open/Merge/Close/Approve seam", () => {
             expect(source).toMatch(/"closePr"/);
             expect(source).toMatch(/"closePrTitle"/);
             expect(source).toMatch(/"closePrConfirm"/);
+            expect(source).toMatch(/"reopenPr"/);
+            expect(source).toMatch(/"reopenPrToast"/);
+            expect(source).toMatch(/"reopenPrFailed"/);
             expect(source).toMatch(/"approvePr"/);
             expect(source).toMatch(/"approvePrToast"/);
             expect(source).toMatch(/"approvePrFailed"/);

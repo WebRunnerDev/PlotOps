@@ -155,6 +155,12 @@ export type PullRequestFilesResult = {
     truncated: boolean;
 };
 
+export type ReopenPullRequestInput = {
+    prNumber: number;
+    repoFullName: string;
+    token: string;
+};
+
 type GithubFetchOptions = {
     body?: unknown;
     method?: string;
@@ -541,6 +547,22 @@ export async function mergePullRequest(
             method: "PUT",
         }
     );
+}
+
+/** Reopen a closed, unmerged PR (GitHub rejects merged PRs / deleted heads). */
+export async function reopenPullRequest(
+    input: ReopenPullRequestInput
+): Promise<GitPullRequest> {
+    const pr = await githubFetch<RawPrPayload>(
+        `/repos/${input.repoFullName}/pulls/${input.prNumber}`,
+        input.token,
+        {
+            body: { state: "open" },
+            method: "PATCH",
+        }
+    );
+
+    return mapPullRequest(pr);
 }
 
 /**

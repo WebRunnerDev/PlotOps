@@ -22,7 +22,21 @@ describe("github-webhook close routing seam", () => {
         expect(sync).toMatch(/plan\.update/);
         expect(sync).toMatch(/closed_pr_synced/);
         expect(sync).not.toMatch(
-            /syncClosedInProject[\s\S]{0,800}status:\s*lastColumnId/
+            /syncPrStateOnlyInProject[\s\S]{0,800}status:\s*lastColumnId/
         );
+    });
+
+    it("dispatches reopened after the non-merge close path skips", () => {
+        const index = read("index.ts");
+        const sync = read("sync.ts");
+
+        expect(index).toMatch(/syncReopenedPullRequest/);
+        expect(index).toMatch(/not_closed_unmerged_pr/);
+        expect(index.indexOf("syncMergedPullRequest(")).toBeLessThan(
+            index.indexOf("syncReopenedPullRequest(")
+        );
+        expect(sync).toMatch(/planReopenPullRequestSync/);
+        expect(sync).toMatch(/shouldHandleReopenedPr/);
+        expect(sync).toMatch(/reopened_pr_synced/);
     });
 });

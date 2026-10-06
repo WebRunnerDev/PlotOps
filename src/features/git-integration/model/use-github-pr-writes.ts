@@ -7,6 +7,7 @@ import {
     createPullRequest,
     type GitMergeMethod,
     mergePullRequest,
+    reopenPullRequest,
 } from "@/features/git-integration/api/github-git-api";
 import {
     gitAuthFingerprint,
@@ -31,6 +32,13 @@ export type MergePullRequestVariables = {
     commitTitle?: string;
     headBranchName?: string;
     mergeMethod: GitMergeMethod;
+    prNumber: number;
+    repoFullName: string;
+    token: string;
+};
+
+export type ReopenPullRequestVariables = {
+    headBranchName?: string;
     prNumber: number;
     repoFullName: string;
     token: string;
@@ -103,6 +111,32 @@ export function useMergePullRequest() {
             mergePullRequest({
                 commitTitle: variables.commitTitle,
                 mergeMethod: variables.mergeMethod,
+                prNumber: variables.prNumber,
+                repoFullName: variables.repoFullName,
+                token: variables.token,
+            }),
+        onSuccess: (_data, variables) => {
+            if (variables.headBranchName) {
+                void queryClient.invalidateQueries({
+                    queryKey: gitKeys.pullRequests(
+                        authFingerprint,
+                        variables.repoFullName,
+                        variables.headBranchName
+                    ),
+                });
+            }
+        },
+    });
+}
+
+export function useReopenPullRequest() {
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useMutation({
+        mutationFn: (variables: ReopenPullRequestVariables) =>
+            reopenPullRequest({
                 prNumber: variables.prNumber,
                 repoFullName: variables.repoFullName,
                 token: variables.token,

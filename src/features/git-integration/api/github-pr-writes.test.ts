@@ -7,6 +7,7 @@ import {
     GitHubApiError,
     gitHubWriteErrorKind,
     mergePullRequest,
+    reopenPullRequest,
 } from "@/features/git-integration/api/github-git-api";
 
 afterEach(() => {
@@ -171,6 +172,57 @@ describe("closePullRequest", () => {
         expect(url).toBe("https://api.github.com/repos/o/r/pulls/7");
         expect(init.method).toBe("PATCH");
         expect(JSON.parse(String(init.body))).toEqual({ state: "closed" });
+    });
+});
+
+describe("reopenPullRequest", () => {
+    it("PATCHes pull with state open", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                body: null,
+                created_at: "2026-08-11T00:00:00Z",
+                draft: false,
+                head: { ref: "feature/TASK-1" },
+                html_url: "https://github.com/o/r/pull/7",
+                mergeable: null,
+                merged_at: null,
+                number: 7,
+                state: "open",
+                title: "TASK-1: Login",
+                updated_at: "2026-08-11T02:00:00Z",
+            }),
+            ok: true,
+            status: 200,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const pr = await reopenPullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        });
+
+        expect(pr.number).toBe(7);
+        expect(pr.state).toBe("open");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7");
+        expect(init.method).toBe("PATCH");
+        expect(JSON.parse(String(init.body))).toEqual({ state: "open" });
+    });
+
+    it("throws GitHubApiError on failure (e.g. deleted head 422)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({ ok: false, status: 422 })
+        );
+
+        await expect(
+            reopenPullRequest({
+                prNumber: 7,
+                repoFullName: "o/r",
+                token: "tok",
+            })
+        ).rejects.toMatchObject({ status: 422 });
     });
 });
 
