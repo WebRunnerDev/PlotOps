@@ -934,6 +934,51 @@ export const guestTasksProvider: TasksProvider = {
             .map((task) => mapGuestTask(task, sandbox));
     },
 
+    async fetchTeamTasks(teamId) {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            throw new Error("No Guest Session");
+        }
+        const projects = new Map(
+            sandbox.projects
+                .filter((project) => project.teamId === teamId)
+                .map((project) => [project.id, project] as const)
+        );
+        const boards = new Map(
+            sandbox.boards.map((board) => [board.id, board] as const)
+        );
+        return sandbox.tasks
+            .filter(
+                (task) =>
+                    projects.has(task.projectId) &&
+                    task.type !== "epic" &&
+                    isActiveTask(task)
+            )
+            .map((task) => {
+                const board = boards.get(task.boardId);
+                const column = board?.columns.find(
+                    (item) => item.id === task.status
+                );
+                return {
+                    assignee: task.assignee,
+                    boardId: task.boardId,
+                    boardName: board?.name ?? "",
+                    createdAt: task.createdAt,
+                    deadline: task.deadline,
+                    id: task.id,
+                    isDone: column?.isDone === true,
+                    key: task.key,
+                    priority: task.priority,
+                    projectId: task.projectId,
+                    projectName: projects.get(task.projectId)?.name ?? "",
+                    status: task.status,
+                    statusName: column?.name ?? task.status,
+                    title: task.title,
+                    type: task.type,
+                };
+            });
+    },
+
     async moveTaskToBoard(taskId, targetBoardId, targetStatus) {
         updateGuestSandbox((sandbox) => {
             const board = sandbox.boards.find(

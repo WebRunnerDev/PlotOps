@@ -166,3 +166,29 @@ export type TaskStatus = string;
  * Subtasks are any level-0 type with a Parent Task.
  */
 export type TaskType = "bug" | "epic" | "story" | "task";
+
+/**
+ * Lean Task row for Team Tasks — the cross-Project list of one Team.
+ * Carries its Project / Board / column names so the list needs no per-Board reads.
+ */
+export type TeamTask = {
+    assignee?: TaskAssignee;
+    boardId: string;
+    boardName: string;
+    /** ISO timestamp when the Task was created. */
+    createdAt: string;
+    /** ISO calendar date `YYYY-MM-DD`. */
+    deadline?: string;
+    id: string;
+    /** The Task sits in its Board's Done column (`board_columns.is_done`). */
+    isDone: boolean;
+    key: string;
+    priority?: TaskPriority;
+    projectId: string;
+    projectName: string;
+    status: TaskStatus;
+    /** Name of the Task's column on its own Board. */
+    statusName: string;
+    title: string;
+    type: TaskType;
+};

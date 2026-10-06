@@ -13,6 +13,8 @@ export const taskKeys = {
      */
     project: (projectId: string, includeArchived = false) =>
         [...taskKeys.all, "project", projectId, includeArchived] as const,
+    /** Team Tasks — active non-Epic Tasks across every Project of a Team. */
+    team: (teamId: string) => [...taskKeys.all, "team", teamId] as const,
 };
 
 /** Local drag/status move mutations — used to gate Realtime task invalidation. */

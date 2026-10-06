@@ -44,7 +44,11 @@ export {
     isSharedBranch,
     normalizeBranchName,
 } from "./lib/format-branch";
-export { formatDeadline, isDeadlineOverdue } from "./lib/format-deadline";
+export {
+    formatDeadline,
+    isDeadlineOverdue,
+    toIsoDate,
+} from "./lib/format-deadline";
 export { isWithinColumnDragEnabled } from "./lib/is-within-column-drag-enabled";
 export { resolveCachedTaskBoardId } from "./lib/resolve-cached-task-board-id";
 export {
@@ -63,6 +67,7 @@ export {
     sortTasksByBoardSort,
 } from "./lib/sort-tasks-by-board-sort";
 export type {
+    BoardSortableTask,
     BoardSortDirection,
     BoardSortField,
     BoardSortPreference,
@@ -143,13 +148,16 @@ export type {
     TaskPriority,
     TaskStatus,
     TaskType,
+    TeamTask,
 } from "./model/types";
 export { useBoardTaskSelectionStore } from "./model/use-board-task-selection-store";
 export { useBoardTasks } from "./model/use-board-tasks";
 export { useProjectEpics } from "./model/use-project-epics";
 export { useProjectTasks } from "./model/use-project-tasks";
 export { useTasksUiStore } from "./model/use-tasks-ui-store";
+export { useTeamTasks } from "./model/use-team-tasks";
 export { BoardArchiveDialog } from "./ui/board-archive-dialog";
+export { BoardHideCompletedControl } from "./ui/board-hide-completed-control";
 export { BoardSortControl } from "./ui/board-sort-control";
 export { BoardSubtaskVisibilityControl } from "./ui/board-subtask-visibility-control";
 export { BoardTaskFiltersBar } from "./ui/board-task-filters";
