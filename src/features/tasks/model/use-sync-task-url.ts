@@ -88,6 +88,7 @@ export function useSyncTaskUrl() {
                 void navigate({
                     params: { boardId, projectId },
                     replace: true,
+                    resetScroll: false,
                     search: { task: action.taskRef },
                     to: boardRoute,
                     viewTransition: false,
@@ -103,6 +104,7 @@ export function useSyncTaskUrl() {
                 void navigate({
                     params: { boardId, projectId },
                     replace: true,
+                    resetScroll: false,
                     search: {},
                     to: boardRoute,
                     viewTransition: false,

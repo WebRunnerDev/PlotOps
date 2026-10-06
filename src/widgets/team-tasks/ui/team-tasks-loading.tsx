@@ -43,10 +43,13 @@ export function TeamTasksLoading({
 
 function RowsSkeleton() {
     return (
-        <ul aria-hidden className="flex flex-col">
+        <ul
+            aria-hidden
+            className="flex flex-col border-x border-t border-border bg-card"
+        >
             {Array.from({ length: ROW_COUNT }, (_, index) => (
                 <li
-                    className="flex items-center gap-3 border-b border-border/70 px-3 py-2.5"
+                    className="flex items-center gap-3 border-b border-border px-3 py-2.5"
                     key={index}
                 >
                     <Skeleton width={72} />

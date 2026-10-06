@@ -26,7 +26,7 @@ type TeamTasksListProperties = {
 /** One-line desktop row; stacked rows on small screens are measured on mount. */
 const ROW_ESTIMATE_PX = 44;
 
-const GROUP_ESTIMATE_PX = 40;
+const GROUP_ESTIMATE_PX = 37;
 
 const ROW_OVERSCAN = 12;
 
@@ -72,12 +72,15 @@ export function TeamTasksList({ groups }: TeamTasksListProperties) {
     });
 
     return (
-        <div className="flex min-w-0 flex-col">
+        // Own surface: rows on the bare page background blend into it. No
+        // bottom border — the last row draws it.
+        <div className="flex min-w-0 flex-col border-x border-t border-border bg-card">
             <div
                 aria-hidden
                 // Template string, not cn(): tailwind-merge would drop
                 // `text-meta` as a colour conflicting with the muted text.
-                className={`hidden border-b border-border px-3 pb-2 text-meta text-muted-foreground ${TEAM_TASK_GRID_CLASS}`}
+                // Sticks under the TopBar (`sm:h-12`) so columns stay labelled.
+                className={`hidden border-b border-border bg-muted px-3 py-2 text-meta text-muted-foreground lg:sticky lg:top-12 lg:z-10 ${TEAM_TASK_GRID_CLASS}`}
             >
                 <span>{t("teamTasks.columns.task")}</span>
                 <span>{t("fields.title")}</span>
@@ -101,8 +104,7 @@ export function TeamTasksList({ groups }: TeamTasksListProperties) {
                         <li
                             className={cn(
                                 "absolute inset-x-0 top-0",
-                                item.kind === "task" &&
-                                    "border-b border-border/70"
+                                item.kind === "task" && "border-b border-border"
                             )}
                             data-index={row.index}
                             key={row.key}
@@ -128,11 +130,11 @@ function GroupHeader({ group }: { group: TeamTasksGroup }) {
     const { t } = useTranslation("board");
 
     return (
-        <div className="flex min-w-0 items-baseline gap-2 border-b border-primary/25 px-3 pt-5 pb-2">
-            <h2 className="min-w-0 truncate font-mono text-meta text-primary uppercase tracking-[0.14em]">
+        <div className="flex min-w-0 items-baseline gap-2 border-b border-border bg-muted/60 px-3 py-2 shadow-[inset_3px_0_0_0_var(--primary)]">
+            <h2 className="min-w-0 truncate text-ui text-foreground">
                 {groupLabel(group, t)}
             </h2>
-            <span className="shrink-0 font-mono text-meta text-muted-foreground tabular-nums">
+            <span className="shrink-0 font-mono text-code text-muted-foreground tabular-nums">
                 {group.tasks.length}
             </span>
         </div>

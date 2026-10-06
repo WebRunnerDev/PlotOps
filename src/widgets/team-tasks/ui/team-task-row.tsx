@@ -38,7 +38,7 @@ export function TeamTaskRow({ task }: TeamTaskRowProperties) {
                 title: task.title,
             })}
             className={cn(
-                "flex flex-col gap-1.5 px-3 py-2.5 outline-none hover:bg-muted/50 focus-visible:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset lg:py-2",
+                "flex flex-col gap-1.5 px-3 py-2.5 outline-none hover:bg-primary/8 focus-visible:bg-primary/8 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset lg:py-2",
                 TEAM_TASK_GRID_CLASS
             )}
             params={{ boardId: task.boardId, projectId: task.projectId }}
@@ -62,17 +62,26 @@ export function TeamTaskRow({ task }: TeamTaskRowProperties) {
                 </span>
             </span>
 
-            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground lg:contents">
-                <span className="min-w-0 truncate">{task.projectName}</span>
-                <span className="min-w-0 truncate">{task.boardName}</span>
-                <span className="min-w-0 truncate text-foreground/80">
-                    {task.statusName}
+            {/* `text-ui`, not `text-meta`: names and dates are read, not
+                scanned as labels — the mono caps made them illegible. */}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-ui text-foreground/85 lg:contents">
+                <span className="min-w-0 truncate text-muted-foreground">
+                    {task.projectName}
+                </span>
+                <span className="min-w-0 truncate text-muted-foreground">
+                    {task.boardName}
+                </span>
+                <span className="min-w-0">
+                    <span className="inline-block max-w-full truncate border border-border bg-muted px-1.5 py-0.5 align-middle text-foreground">
+                        {task.statusName}
+                    </span>
                 </span>
 
                 <span
                     className={cn(
                         "inline-flex min-w-0 items-center gap-1.5",
-                        !task.assignee && "hidden lg:inline-flex"
+                        !task.assignee &&
+                            "hidden text-muted-foreground lg:inline-flex"
                     )}
                 >
                     <Avatar size="sm">
@@ -103,7 +112,7 @@ export function TeamTaskRow({ task }: TeamTaskRowProperties) {
                             <span
                                 aria-hidden
                                 className={cn(
-                                    "size-1.5 shrink-0 rounded-full",
+                                    "size-2 shrink-0 rounded-full",
                                     PRIORITY_DOT_CLASS[task.priority]
                                 )}
                             />
@@ -112,20 +121,25 @@ export function TeamTaskRow({ task }: TeamTaskRowProperties) {
                             </span>
                         </>
                     ) : (
-                        <span aria-hidden>—</span>
+                        <span aria-hidden className="text-muted-foreground">
+                            —
+                        </span>
                     )}
                 </span>
 
                 <span
                     className={cn(
                         "inline-flex min-w-0 items-center gap-1 tabular-nums",
-                        overdue && "text-red-500",
+                        overdue && "text-destructive",
                         !task.deadline && "hidden lg:inline-flex"
                     )}
                 >
                     {task.deadline ? (
                         <>
-                            <Calendar aria-hidden className="size-3 shrink-0" />
+                            <Calendar
+                                aria-hidden
+                                className="size-3.5 shrink-0"
+                            />
                             <span className="truncate">
                                 {formatDeadline(task.deadline, i18n.language)}
                             </span>
@@ -136,7 +150,9 @@ export function TeamTaskRow({ task }: TeamTaskRowProperties) {
                             ) : undefined}
                         </>
                     ) : (
-                        <span aria-hidden>—</span>
+                        <span aria-hidden className="text-muted-foreground">
+                            —
+                        </span>
                     )}
                 </span>
             </span>

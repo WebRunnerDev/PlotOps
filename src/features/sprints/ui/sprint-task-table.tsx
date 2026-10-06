@@ -48,6 +48,8 @@ export type BacklogTaskDragData = {
 
 type SprintTaskTableProperties = {
     canManage: boolean;
+    /** Board columns — rows show the name of the Task's column as its status. */
+    columns: ReadonlyArray<{ id: string; name: string }>;
     containerId: string;
     draggingTaskIds: string[];
     /** Project Epics — rows show the Task's (or its Parent's) Epic chip. */
@@ -102,6 +104,7 @@ export {
 
 export function SprintTaskTable({
     canManage,
+    columns: boardColumns,
     containerId,
     draggingTaskIds,
     epicsById,
@@ -124,6 +127,14 @@ export function SprintTaskTable({
         }
         return map;
     }, [labels]);
+
+    const statusNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const column of boardColumns) {
+            map.set(column.id, column.name);
+        }
+        return map;
+    }, [boardColumns]);
 
     const columns = useMemo<ColumnDef<Task>[]>(
         () => [
@@ -217,6 +228,17 @@ export function SprintTaskTable({
                 header: t("sprints.columnTitle"),
             },
             {
+                cell: ({ row }) => (
+                    <span className="inline-block max-w-32 truncate border border-border bg-muted px-1.5 py-0.5 align-middle text-xs font-medium text-foreground">
+                        {statusNameById.get(row.original.status) ??
+                            row.original.status}
+                    </span>
+                ),
+                header: t("sprints.columnStatus"),
+                id: "status",
+                size: 144,
+            },
+            {
                 cell: ({ row }) =>
                     row.original.estimate === undefined ? (
                         <span className="text-meta text-muted-foreground">
@@ -306,7 +328,7 @@ export function SprintTaskTable({
                 size: 100,
             },
         ],
-        [canManage, epicsById, i18n.language, labelsById, t]
+        [canManage, epicsById, i18n.language, labelsById, statusNameById, t]
     );
 
     const table = useReactTable({

@@ -1071,6 +1071,7 @@
         "columnKey": "Ключ",
         "columnLabels": "Метки",
         "columnEstimate": "Pts",
+        "columnStatus": "Статус",
         "columnTitle": "Название",
         "completedHint": "Завершённые задачи",
         "createDraft": "Новый draft-спринт",
