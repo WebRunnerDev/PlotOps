@@ -25,6 +25,7 @@ import {
     gitHubWriteErrorKind,
     type GitMergeMethod,
     isGitHubApiError,
+    requestReviewErrorKind,
 } from "@/features/git-integration/api/github-git-api";
 import { canFetchPullRequestFiles } from "@/features/git-integration/lib/can-fetch-git-data";
 import { canReviewGithubPr } from "@/features/git-integration/lib/can-review-github-pr";
@@ -36,9 +37,11 @@ import {
     useCreatePullRequest,
     useMergePullRequest,
     useReopenPullRequest,
+    useRequestPullRequestReviewers,
 } from "@/features/git-integration/model/use-github-pr-writes";
 import { PrChecksSummary } from "@/features/git-integration/ui/pr-checks-summary";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
+import { RequestReviewDialog } from "@/features/git-integration/ui/request-review-dialog";
 import { isGuest } from "@/features/guest-mode";
 import {
     githubPanelNeedsRepo,
@@ -116,6 +119,7 @@ export function TaskGithubPanel({
     const closePr = useClosePullRequest();
     const reopenPr = useReopenPullRequest();
     const approvePr = useApprovePullRequest();
+    const requestReview = useRequestPullRequestReviewers();
 
     const [copied, setCopied] = useState(false);
     const [linkingBranch, setLinkingBranch] = useState(false);
@@ -130,6 +134,7 @@ export function TaskGithubPanel({
     const [pendingBranch, setPendingBranch] = useState<null | string>(null);
     const [mergeOpen, setMergeOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
+    const [requestReviewOpen, setRequestReviewOpen] = useState(false);
     const [mergeMethod, setMergeMethod] = useState<GitMergeMethod>("squash");
     const prLinkAbort = useRef<AbortController | undefined>(undefined);
     const commitLinkAbort = useRef<AbortController | undefined>(undefined);
@@ -173,6 +178,7 @@ export function TaskGithubPanel({
         setPendingBranch(null);
         setMergeOpen(false);
         setCloseOpen(false);
+        setRequestReviewOpen(false);
         setMergeMethod("squash");
     }, [task.id]);
 
@@ -193,7 +199,8 @@ export function TaskGithubPanel({
         mergePr.isPending ||
         closePr.isPending ||
         reopenPr.isPending ||
-        approvePr.isPending;
+        approvePr.isPending ||
+        requestReview.isPending;
     const canOpenPr =
         canWritePr &&
         canFetchGithub &&
@@ -222,6 +229,10 @@ export function TaskGithubPanel({
         canFetchGithub &&
         task.pr?.state === "open" &&
         !writeActionPending;
+    // Same review gate as Approve; stays true while its own request is in flight
+    // so the picker dialog is not torn down mid-submit.
+    const canRequestReview =
+        canReviewPr && canFetchGithub && task.pr?.state === "open";
 
     if (githubPanelNeedsRepo(repoFullName)) {
         return (
@@ -436,6 +447,46 @@ export function TaskGithubPanel({
             );
         } catch (error) {
             toastWriteFailure(error, "github.approvePrFailed");
+        }
+    };
+
+    const handleRequestReview = async (reviewers: string[]) => {
+        if (
+            !canRequestReview ||
+            writeActionPending ||
+            !githubToken ||
+            !repoFullName ||
+            !task.pr ||
+            reviewers.length === 0
+        ) {
+            return;
+        }
+
+        try {
+            await requestReview.mutateAsync({
+                prNumber: task.pr.number,
+                repoFullName,
+                reviewers,
+                token: githubToken,
+            });
+            setRequestReviewOpen(false);
+            toast.success(
+                t("github.requestReviewToast", {
+                    number: task.pr.number,
+                    reviewers: reviewers.join(", "),
+                })
+            );
+        } catch (error) {
+            const kind = requestReviewErrorKind(error);
+            if (kind === "author" || kind === "invalid_reviewer") {
+                toast.error(t(`github.requestReviewError.${kind}`));
+                return;
+            }
+            if (kind === "rate_limit") {
+                toast.error(t("github.writeError.rate_limit"));
+                return;
+            }
+            toastWriteFailure(error, "github.requestReviewFailed");
         }
     };
 
@@ -664,7 +715,11 @@ export function TaskGithubPanel({
                 prNumber={task.pr.number}
                 repoFullName={repoFullName}
             />
-            {canApprovePr || canMergePr || canClosePr || canReopenPr ? (
+            {canApprovePr ||
+            canRequestReview ||
+            canMergePr ||
+            canClosePr ||
+            canReopenPr ? (
                 <div className="flex flex-wrap items-center gap-2">
                     {canApprovePr ? (
                         <Button
@@ -680,6 +735,20 @@ export function TaskGithubPanel({
                                 <Spinner className="size-3.5" />
                             ) : undefined}
                             {t("github.approvePr")}
+                        </Button>
+                    ) : undefined}
+                    {canRequestReview ? (
+                        <Button
+                            disabled={writeActionPending}
+                            onClick={() => setRequestReviewOpen(true)}
+                            size="xs"
+                            type="button"
+                            variant="outline"
+                        >
+                            {requestReview.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.requestReview")}
                         </Button>
                     ) : undefined}
                     {canMergePr ? (
@@ -1103,6 +1172,23 @@ export function TaskGithubPanel({
                             number: task.pr.number,
                             state: t(`prState.${task.pr.state}`),
                         })}
+                        repoFullName={repoFullName}
+                        token={githubToken}
+                    />
+                ) : undefined}
+
+                {requestReviewOpen &&
+                task.pr &&
+                canRequestReview &&
+                repoFullName ? (
+                    <RequestReviewDialog
+                        onClose={() => setRequestReviewOpen(false)}
+                        onSubmit={(reviewers) => {
+                            void handleRequestReview(reviewers);
+                        }}
+                        open
+                        pending={requestReview.isPending}
+                        prNumber={task.pr.number}
                         repoFullName={repoFullName}
                         token={githubToken}
                     />
