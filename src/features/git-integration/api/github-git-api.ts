@@ -8,6 +8,8 @@ const PR_COMMITS_PAGE_SIZE = 100;
 const PR_COMMITS_MAX_PAGES = 10;
 const PR_FILES_PAGE_SIZE = 100;
 const PR_FILES_MAX_PAGES = 30;
+const REVIEWER_CANDIDATES_PAGE_SIZE = 100;
+const REVIEWER_CANDIDATES_MAX_PAGES = 3;
 
 const GITHUB_HEADERS = (token: string) => ({
     Accept: "application/vnd.github+json",
@@ -85,6 +87,11 @@ export type GitCommit = {
     url: string;
 };
 
+export type GitHubReviewer = {
+    avatar_url: null | string;
+    login: string;
+};
+
 export type GitHubWriteErrorKind =
     | "auth"
     | "conflict"
@@ -155,11 +162,38 @@ export type PullRequestFilesResult = {
     truncated: boolean;
 };
 
+export type PullRequestReviewerCandidatesResult = {
+    /** PR author login — GitHub refuses a review request from the author. */
+    authorLogin: null | string;
+    candidates: GitHubReviewer[];
+    /**
+     * True when GitHub would not list collaborators for this token (needs push
+     * access). Reviewers can still be requested by typing a login.
+     */
+    listUnavailable: boolean;
+    /** Logins that already have a pending review request on this PR. */
+    requestedLogins: string[];
+};
+
 export type ReopenPullRequestInput = {
     prNumber: number;
     repoFullName: string;
     token: string;
 };
+
+export type RequestPullRequestReviewersInput = {
+    prNumber: number;
+    repoFullName: string;
+    reviewers: string[];
+    token: string;
+};
+
+export type RequestPullRequestReviewersResult = {
+    requestedLogins: string[];
+};
+
+export type RequestReviewErrorKind =
+    "author" | "invalid_reviewer" | GitHubWriteErrorKind;
 
 type GithubFetchOptions = {
     body?: unknown;
@@ -218,13 +252,21 @@ type RawPrPayload = {
     updated_at: string;
 };
 
+type RawReviewerPayload = {
+    avatar_url?: null | string;
+    login: string;
+};
+
 export class GitHubApiError extends Error {
+    /** GitHub's own `message` from the error body, when it sent one. */
+    readonly detail: string | undefined;
     readonly status: number;
 
-    constructor(status: number, path: string) {
+    constructor(status: number, path: string, detail?: string) {
         super(`GitHub API ${status}: ${path}`);
         this.name = "GitHubApiError";
         this.status = status;
+        this.detail = detail;
     }
 }
 
@@ -498,6 +540,70 @@ export async function fetchPullRequestFiles(
     return { files, truncated };
 }
 
+/**
+ * Who can be asked to review a PR: repo collaborators, plus the PR's author and
+ * already-requested logins so the picker can rule those out up front.
+ */
+export async function fetchPullRequestReviewerCandidates(
+    repoFullName: string,
+    prNumber: number,
+    token: string,
+    signal?: AbortSignal
+): Promise<PullRequestReviewerCandidatesResult> {
+    type RawPrReviewersPayload = {
+        requested_reviewers?: RawReviewerPayload[];
+        user?: null | { login: string };
+    };
+
+    const pr = await githubFetch<RawPrReviewersPayload>(
+        `/repos/${repoFullName}/pulls/${prNumber}`,
+        token,
+        { signal }
+    );
+    const candidates: GitHubReviewer[] = [];
+    let listUnavailable = false;
+
+    try {
+        for (let page = 1; page <= REVIEWER_CANDIDATES_MAX_PAGES; page += 1) {
+            const raw = await githubFetch<RawReviewerPayload[]>(
+                `/repos/${repoFullName}/collaborators`,
+                token,
+                {
+                    parameters: {
+                        page: String(page),
+                        per_page: String(REVIEWER_CANDIDATES_PAGE_SIZE),
+                    },
+                    signal,
+                }
+            );
+
+            for (const collaborator of raw) {
+                candidates.push(mapReviewer(collaborator));
+            }
+
+            if (raw.length < REVIEWER_CANDIDATES_PAGE_SIZE) break;
+        }
+    } catch (error) {
+        // Listing collaborators needs push access; requesting may still work.
+        if (
+            !isGitHubApiError(error) ||
+            (error.status !== 403 && error.status !== 404)
+        ) {
+            throw error;
+        }
+        listUnavailable = true;
+    }
+
+    return {
+        authorLogin: pr.user?.login ?? null,
+        candidates,
+        listUnavailable,
+        requestedLogins: (pr.requested_reviewers ?? []).map(
+            (reviewer) => reviewer.login
+        ),
+    };
+}
+
 export function gitHubWriteErrorKind(error: unknown): GitHubWriteErrorKind {
     if (!isGitHubApiError(error)) return "unknown";
     switch (error.status) {
@@ -565,6 +671,49 @@ export async function reopenPullRequest(
     return mapPullRequest(pr);
 }
 
+/** Request review from GitHub users on an open PR (GitHub enforces who is eligible). */
+export async function requestPullRequestReviewers(
+    input: RequestPullRequestReviewersInput
+): Promise<RequestPullRequestReviewersResult> {
+    type RawRequestedReviewersPayload = {
+        requested_reviewers?: RawReviewerPayload[];
+    };
+
+    const pr = await githubFetch<RawRequestedReviewersPayload>(
+        `/repos/${input.repoFullName}/pulls/${input.prNumber}/requested_reviewers`,
+        input.token,
+        {
+            body: { reviewers: input.reviewers },
+            method: "POST",
+        }
+    );
+
+    return {
+        requestedLogins: (pr.requested_reviewers ?? []).map(
+            (reviewer) => reviewer.login
+        ),
+    };
+}
+
+/**
+ * Request-review failures, split finer than `gitHubWriteErrorKind`: GitHub
+ * answers 422 for both a non-collaborator and the PR author, and reports rate
+ * limits as 403 — only its message tells them apart.
+ */
+export function requestReviewErrorKind(error: unknown): RequestReviewErrorKind {
+    if (!isGitHubApiError(error)) return "unknown";
+    const detail = error.detail?.toLowerCase() ?? "";
+
+    if (error.status === 403 && detail.includes("rate limit")) {
+        return "rate_limit";
+    }
+    if (error.status === 422) {
+        return detail.includes("author") ? "author" : "invalid_reviewer";
+    }
+
+    return gitHubWriteErrorKind(error);
+}
+
 /**
  * Commits whose message mentions a task key (Jira-style smart commits).
  * Uses GitHub commit search — requires auth; rate-limited separately from REST.
@@ -615,7 +764,11 @@ async function githubFetch<T>(
     });
 
     if (!response.ok) {
-        throw new GitHubApiError(response.status, path);
+        throw new GitHubApiError(
+            response.status,
+            path,
+            await readGithubErrorDetail(response)
+        );
     }
 
     if (response.status === 204) {
@@ -712,6 +865,26 @@ function mapPullRequest(pr: RawPrPayload): GitPullRequest {
         updated_at: pr.updated_at,
         url: pr.html_url,
     };
+}
+
+function mapReviewer(raw: RawReviewerPayload): GitHubReviewer {
+    return {
+        avatar_url: raw.avatar_url ?? null,
+        login: raw.login,
+    };
+}
+
+async function readGithubErrorDetail(
+    response: Response
+): Promise<string | undefined> {
+    try {
+        const payload = (await response.json()) as { message?: unknown };
+        return typeof payload.message === "string"
+            ? payload.message
+            : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 export { mapCheckRollup } from "@/features/git-integration/lib/map-check-rollup";

@@ -68,6 +68,48 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
         expect(approveHandler).toMatch(/approvePrToast/);
     });
 
+    it("offers Request review on open PRs behind the review gate, not the write gate", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+        const gate = panel.match(/const canRequestReview =[\s\S]*?;/)?.[0];
+
+        expect(gate).toBeDefined();
+        expect(gate).toMatch(/canReviewPr/);
+        expect(gate).toMatch(/canFetchGithub/);
+        expect(gate).toMatch(/task\.pr\?\.state === "open"/);
+        expect(gate).not.toMatch(/canWritePr/);
+        expect(panel).toMatch(/useRequestPullRequestReviewers/);
+        expect(panel).toMatch(/RequestReviewDialog/);
+        expect(panel).toMatch(/github\.requestReview"/);
+    });
+
+    it("Request review success neither approves, merges, nor touches pr state", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+        const handler = panel.match(
+            /const handleRequestReview = async \([\s\S]*?\n {4}\};/
+        )?.[0];
+
+        expect(handler).toBeDefined();
+        expect(handler).toMatch(/canRequestReview/);
+        expect(handler).toMatch(/requestReview\.mutateAsync/);
+        expect(handler).toMatch(/requestReviewToast/);
+        expect(handler).toMatch(/requestReviewErrorKind/);
+        expect(handler).toMatch(/toastWriteFailure/);
+        expect(handler).not.toMatch(/onPrChange/);
+        expect(handler).not.toMatch(/approvePr|mergePr/);
+    });
+
+    it("reviewer picker rules out the author and already-requested logins", () => {
+        const dialog = read(
+            "src/features/git-integration/ui/request-review-dialog.tsx"
+        );
+
+        expect(dialog).toMatch(/usePullRequestReviewerCandidates/);
+        expect(dialog).toMatch(/reviewerLoginStatus/);
+        expect(dialog).toMatch(/requestReviewAlreadyRequested/);
+        expect(dialog).toMatch(/requestReviewError\.author/);
+        expect(dialog).toMatch(/selected\.length === 0/);
+    });
+
     it("shows Diff for guests and authed sessions via canFetchPullRequestFiles", () => {
         const panel = read("src/features/tasks/ui/task-github-panel.tsx");
 
@@ -93,6 +135,12 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
             expect(source).toMatch(/"approvePr"/);
             expect(source).toMatch(/"approvePrToast"/);
             expect(source).toMatch(/"approvePrFailed"/);
+            expect(source).toMatch(/"requestReview"/);
+            expect(source).toMatch(/"requestReviewTitle"/);
+            expect(source).toMatch(/"requestReviewToast"/);
+            expect(source).toMatch(/"requestReviewFailed"/);
+            expect(source).toMatch(/"requestReviewAlreadyRequested"/);
+            expect(source).toMatch(/"invalid_reviewer"/);
             expect(source).toMatch(/"mergeMethodSquash"/);
             expect(source).toMatch(/"writeError"/);
         }

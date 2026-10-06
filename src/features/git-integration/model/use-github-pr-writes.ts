@@ -8,6 +8,7 @@ import {
     type GitMergeMethod,
     mergePullRequest,
     reopenPullRequest,
+    requestPullRequestReviewers,
 } from "@/features/git-integration/api/github-git-api";
 import {
     gitAuthFingerprint,
@@ -41,6 +42,13 @@ export type ReopenPullRequestVariables = {
     headBranchName?: string;
     prNumber: number;
     repoFullName: string;
+    token: string;
+};
+
+export type RequestPullRequestReviewersVariables = {
+    prNumber: number;
+    repoFullName: string;
+    reviewers: string[];
     token: string;
 };
 
@@ -151,6 +159,31 @@ export function useReopenPullRequest() {
                     ),
                 });
             }
+        },
+    });
+}
+
+export function useRequestPullRequestReviewers() {
+    const queryClient = useQueryClient();
+    const { user } = useAuth();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useMutation({
+        mutationFn: (variables: RequestPullRequestReviewersVariables) =>
+            requestPullRequestReviewers({
+                prNumber: variables.prNumber,
+                repoFullName: variables.repoFullName,
+                reviewers: variables.reviewers,
+                token: variables.token,
+            }),
+        onSuccess: (_data, variables) => {
+            void queryClient.invalidateQueries({
+                queryKey: gitKeys.prReviewers(
+                    authFingerprint,
+                    variables.repoFullName,
+                    variables.prNumber
+                ),
+            });
         },
     });
 }
