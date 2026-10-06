@@ -41,6 +41,7 @@
     "emptyDescription": "Создайте команду, чтобы группировать проекты и работать с участниками.",
     "teamCardHint": "Открыть проекты",
     "openTeamSettings": "Настройки команды",
+    "openTeamTasks": "Задачи команды",
     "teamProjectsSubtitle": "Проекты этой команды",
     "teamEmptyProjectsTitle": "Пока нет проектов",
     "teamEmptyProjectsDescription": "Создайте проект только с названием или подключите репозиторий GitHub.",
