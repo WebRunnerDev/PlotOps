@@ -96,6 +96,10 @@ _Avoid_: board order (ambiguous with column position among Board columns), rank,
 A per-viewer display preference that reorders Tasks inside each column by a chosen field and direction (Priority, Deadline, created date, or Title) without changing Manual order. When not Manual, within-column drag reorder is off; moving a Task across columns still updates status (and Manual order for that move as today). Persists until the viewer explicitly changes or clears it.
 _Avoid_: filter (filters hide Tasks; Board sort only reorders), Manual order, column sort (Board-wide, not per-column)
 
+**Team Tasks**:
+A read-first, Team-scoped list of the Tasks of every Project in one Team (`/teams/$teamId/tasks`) — the single queue for people who work across several Projects. Not a Board: it has no columns, Sprints, Backlog, Manual order, or drag-and-drop, and it changes nothing about Project or Board scoping. Each row shows the Task's Project, Board, and status (the name of its column on its own Board). Archived Tasks and Epics are excluded; Subtasks are listed like any Task. Grouping (Project, Assignee, Deadline bucket, or none), sort (Deadline, Priority, created date), and filters (Project, Assignee, hide Done via `board_columns.is_done`) are per-viewer preferences stored per Team; the default is "assigned to me, not Done, soonest Deadline first, grouped by Project". Opening a row opens the Task on its own Project's Board — edits happen there, not in the list. New Task asks for a Project and Board first, then uses that Board's create path (Manager+). Visible to any Team Owner or Member, Viewer included; available in Guest Mode over the sandbox.
+_Avoid_: Team board, cross-Project Board, multi-Project Board (a Board lives in one Project), dashboard, work queue, My Tasks (the Assignee filter is a preference, not the view)
+
 **Label**:
 A Project-scoped tag attachable to any Task in the Project, regardless of Board. Not owned by a Board.
 _Avoid_: Board label, tag (prefer Label)
