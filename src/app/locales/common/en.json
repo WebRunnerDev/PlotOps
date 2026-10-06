@@ -116,7 +116,8 @@
         "about": "About",
         "completeProfile": "Complete your profile",
         "dashboard": "Dashboard",
-        "invite": "Team invite"
+        "invite": "Team invite",
+        "teamTasks": "Team Tasks"
     },
     "settingsDescription": "Your profile, sign-in methods, and how PlotOps behaves for you.",
     "settingsEyebrow": "Account",

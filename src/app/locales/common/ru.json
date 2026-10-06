@@ -116,7 +116,8 @@
         "about": "О проекте",
         "completeProfile": "Заполните профиль",
         "dashboard": "Панель управления",
-        "invite": "Приглашение в Команду"
+        "invite": "Приглашение в Команду",
+        "teamTasks": "Задачи команды"
     },
     "settingsDescription": "Профиль, способы входа и поведение PlotOps для вас.",
     "settingsEyebrow": "Аккаунт",
