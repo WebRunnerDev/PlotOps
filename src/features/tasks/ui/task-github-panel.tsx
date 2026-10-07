@@ -20,6 +20,7 @@ import type { Task, TaskPullRequest } from "@/features/tasks/model/types";
 import { useAuth } from "@/features/auth";
 import { matchesAllowedHeadPatterns } from "@/features/boards";
 import {
+    approvePrErrorKind,
     fetchCommitBySha,
     fetchPullRequest,
     gitHubWriteErrorKind,
@@ -132,6 +133,7 @@ export function TaskGithubPanel({
     const [prLoading, setPrLoading] = useState(false);
     const [diffOpen, setDiffOpen] = useState(false);
     const [pendingBranch, setPendingBranch] = useState<null | string>(null);
+    const [approveOpen, setApproveOpen] = useState(false);
     const [mergeOpen, setMergeOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [requestReviewOpen, setRequestReviewOpen] = useState(false);
@@ -442,10 +444,18 @@ export function TaskGithubPanel({
                 repoFullName,
                 token: githubToken,
             });
+            setApproveOpen(false);
             toast.success(
                 t("github.approvePrToast", { number: task.pr.number })
             );
         } catch (error) {
+            if (approvePrErrorKind(error) === "own_pr") {
+                setApproveOpen(false);
+                toast.error(t("github.approvePrFailed"), {
+                    description: t("github.approvePrOwnError"),
+                });
+                return;
+            }
             toastWriteFailure(error, "github.approvePrFailed");
         }
     };
@@ -724,9 +734,7 @@ export function TaskGithubPanel({
                     {canApprovePr ? (
                         <Button
                             disabled={writeActionPending}
-                            onClick={() => {
-                                void handleApprovePr();
-                            }}
+                            onClick={() => setApproveOpen(true)}
                             size="xs"
                             type="button"
                             variant="outline"
@@ -1233,6 +1241,43 @@ export function TaskGithubPanel({
                             }}
                         >
                             {t("github.patternMismatchConfirm")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+                onOpenChange={(open) => {
+                    if (!open && !approvePr.isPending) setApproveOpen(false);
+                }}
+                open={approveOpen}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {t("github.approvePrTitle", {
+                                number: task.pr?.number ?? 0,
+                            })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {t("github.approvePrBody")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={approvePr.isPending}>
+                            {t("github.approvePrCancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={approvePr.isPending}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                void handleApprovePr();
+                            }}
+                        >
+                            {approvePr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : undefined}
+                            {t("github.approvePrConfirm")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -1,10 +1,20 @@
-import { Ban, Calendar, Flag, GitBranch, User } from "lucide-react";
+import {
+    Ban,
+    Calendar,
+    Flag,
+    GitBranch,
+    GitMerge,
+    GitPullRequest,
+    GitPullRequestClosed,
+    type LucideIcon,
+    User,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
 import type { TaskCardEpic } from "@/features/tasks/lib/board-epics";
 import type { SubtaskProgress } from "@/features/tasks/lib/board-subtask-visibility";
-import type { Task } from "@/features/tasks/model/types";
+import type { Task, TaskPullRequest } from "@/features/tasks/model/types";
 
 import { TaskLabelChips } from "@/features/labels";
 import {
@@ -39,6 +49,18 @@ import {
     TooltipTrigger,
 } from "@/shared/shadcn/ui/tooltip";
 
+const PR_STATE_CLASS: Record<TaskPullRequest["state"], string> = {
+    closed: "text-red-500",
+    merged: "text-purple-500",
+    open: "text-emerald-500",
+};
+
+const PR_STATE_ICON: Record<TaskPullRequest["state"], LucideIcon> = {
+    closed: GitPullRequestClosed,
+    merged: GitMerge,
+    open: GitPullRequest,
+};
+
 type TaskCardProperties = {
     epic?: TaskCardEpic;
     labels: ProjectLabel[];
@@ -71,6 +93,7 @@ export function TaskCard({
     const shared = task.branchName ? isSharedBranch(task.branchName) : false;
     const TypeIcon = TASK_TYPE_ICON[task.type];
     const typeLabel = t(`taskType.${task.type}`);
+    const PrIcon = task.pr ? PR_STATE_ICON[task.pr.state] : undefined;
     const showSelectionControl =
         selection !== undefined &&
         (selection.forceVisible || selection.checked);
@@ -188,25 +211,48 @@ export function TaskCard({
                             </span>
                         )}
                     </span>
-                    {task.pr ? (
-                        <a
-                            aria-label={t("prLink", {
-                                number: task.pr.number,
-                                state: t(`prState.${task.pr.state}`),
-                            })}
-                            className="shrink-0 text-code text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                            href={task.pr.url}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                            }}
-                            onPointerDown={(event) => {
-                                event.stopPropagation();
-                            }}
-                            rel="noreferrer"
-                            target="_blank"
-                        >
-                            PR #{task.pr.number}
-                        </a>
+                    {task.pr && PrIcon ? (
+                        <TooltipProvider delay={200}>
+                            <Tooltip>
+                                <TooltipTrigger
+                                    render={
+                                        <a
+                                            aria-label={t("prLink", {
+                                                number: task.pr.number,
+                                                state: t(
+                                                    `prState.${task.pr.state}`
+                                                ),
+                                            })}
+                                            className={cn(
+                                                "inline-flex shrink-0 cursor-pointer items-center gap-1 text-code outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring",
+                                                PR_STATE_CLASS[task.pr.state]
+                                            )}
+                                            href={task.pr.url}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                            }}
+                                            onPointerDown={(event) => {
+                                                event.stopPropagation();
+                                            }}
+                                            rel="noreferrer"
+                                            target="_blank"
+                                        />
+                                    }
+                                >
+                                    <PrIcon
+                                        aria-hidden
+                                        className="size-3 shrink-0"
+                                    />
+                                    #{task.pr.number}
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                    {t("prTooltip", {
+                                        number: task.pr.number,
+                                        state: t(`prState.${task.pr.state}`),
+                                    })}
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     ) : undefined}
                 </div>
 
