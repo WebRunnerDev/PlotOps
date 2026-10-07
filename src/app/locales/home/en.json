@@ -37,6 +37,7 @@
     "emptyDescription": "Create a Team to group Projects and collaborate with members.",
     "teamCardHint": "Open projects",
     "openTeamSettings": "Team settings",
+    "openTeamTasks": "Team Tasks",
     "teamProjectsSubtitle": "Projects in this Team",
     "teamEmptyProjectsTitle": "No Projects yet",
     "teamEmptyProjectsDescription": "Create a Project with a name only, or connect a GitHub repository.",

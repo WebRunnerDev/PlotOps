@@ -18,17 +18,23 @@ const PRIORITY_RANK = Object.fromEntries(
     TASK_PRIORITIES.toReversed().map((priority, index) => [priority, index])
 ) as Record<TaskPriority, number>;
 
-type IndexedTask = { manualIndex: number; task: Task };
+/** The fields Board sort reads — lets leaner Task rows reuse the ordering. */
+export type BoardSortableTask = Pick<
+    Task,
+    "createdAt" | "deadline" | "priority" | "title"
+>;
+
+type IndexedTask = { manualIndex: number; task: BoardSortableTask };
 
 /**
  * Reorder Tasks for Board sort display. Does not mutate input or Manual order.
  * Null Priority / Deadline always sort last. Ties: Title A→Z, then Manual order
  * (Title Board sort ties → Manual order only).
  */
-export function sortTasksByBoardSort(
-    tasks: Task[],
+export function sortTasksByBoardSort<T extends BoardSortableTask>(
+    tasks: T[],
     sort: BoardSortPreference
-): Task[] {
+): T[] {
     if (sort.field === "manual") {
         return [...tasks];
     }
@@ -52,8 +58,8 @@ export function sortTasksByBoardSort(
 }
 
 function compareField(
-    left: Task,
-    right: Task,
+    left: BoardSortableTask,
+    right: BoardSortableTask,
     field: BoardSortField,
     direction: number
 ): number {
@@ -112,7 +118,9 @@ function compareTies(
     return left.manualIndex - right.manualIndex;
 }
 
-function priorityRank(priority: Task["priority"]): number | undefined {
+function priorityRank(
+    priority: BoardSortableTask["priority"]
+): number | undefined {
     if (!priority) return undefined;
     return PRIORITY_RANK[priority];
 }

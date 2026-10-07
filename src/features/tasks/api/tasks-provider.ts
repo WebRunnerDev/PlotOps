@@ -9,6 +9,7 @@ import type {
     TaskLinkKind,
     TaskStatus,
     TaskType,
+    TeamTask,
 } from "@/features/tasks/model/types";
 
 /**
@@ -48,6 +49,8 @@ export type TasksProvider = {
         projectId: string,
         options?: { includeArchived?: boolean }
     ): Promise<Task[]>;
+    /** Team Tasks: active non-Epic Tasks across every Project of the Team. */
+    fetchTeamTasks(teamId: string): Promise<TeamTask[]>;
     moveTaskToBoard(
         taskId: string,
         targetBoardId: string,

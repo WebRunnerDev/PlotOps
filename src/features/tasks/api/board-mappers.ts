@@ -6,6 +6,7 @@ import type {
     TaskPriority,
     TaskPullRequest,
     TaskType,
+    TeamTask,
 } from "@/features/tasks/model/types";
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
@@ -94,6 +95,31 @@ export type DatabaseTaskLinkPeer = {
     status?: string;
     task_key: string;
     title: string;
+};
+
+/** Row of the Team Tasks select — a Task with its Project and Board names. */
+export type DatabaseTeamTask = {
+    assignee: DatabaseProfile | DatabaseProfile[] | null;
+    board: Array<{ name: string }> | null | { name: string };
+    board_id: string;
+    created_at: string;
+    deadline: null | string;
+    id: string;
+    priority: null | string;
+    project: Array<{ name: string }> | null | { name: string };
+    project_id: string;
+    status: string;
+    task_key: string;
+    task_type: string;
+    title: string;
+};
+
+/** Column lookup for Team Tasks — column ids are only unique per Board. */
+export type TeamTaskColumn = {
+    boardId: string;
+    id: string;
+    isDone: boolean;
+    name: string;
 };
 
 const TASK_PRIORITIES = new Set<string>(["high", "low", "medium", "urgent"]);
@@ -186,6 +212,40 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
     };
 }
 
+/**
+ * Team Tasks row. A status with no matching column (deleted mid-flight) keeps
+ * the raw id as its name and never counts as Done.
+ */
+export function mapDatabaseTeamTask(
+    row: DatabaseTeamTask,
+    columns: ReadonlyMap<string, TeamTaskColumn>
+): TeamTask {
+    const assignee = Array.isArray(row.assignee)
+        ? row.assignee[0]
+        : row.assignee;
+    const board = Array.isArray(row.board) ? row.board[0] : row.board;
+    const project = Array.isArray(row.project) ? row.project[0] : row.project;
+    const column = columns.get(teamTaskColumnKey(row.board_id, row.status));
+
+    return {
+        assignee: toTaskPerson(assignee),
+        boardId: row.board_id,
+        boardName: board?.name ?? "",
+        createdAt: row.created_at,
+        deadline: row.deadline ?? undefined,
+        id: row.id,
+        isDone: column?.isDone === true,
+        key: row.task_key,
+        priority: toTaskPriority(row.priority),
+        projectId: row.project_id,
+        projectName: project?.name ?? "",
+        status: row.status,
+        statusName: column?.name ?? row.status,
+        title: row.title,
+        type: toTaskType(row.task_type),
+    };
+}
+
 export function parentIdsMissingFromRows(rows: DatabaseTask[]): string[] {
     const present = new Set(rows.map((row) => row.id));
     const missing = new Set<string>();
@@ -205,6 +265,10 @@ export function sortTasksByPosition(
         (left, right) =>
             (positions.get(left.id) ?? 0) - (positions.get(right.id) ?? 0)
     );
+}
+
+export function teamTaskColumnKey(boardId: string, columnId: string): string {
+    return `${boardId}:${columnId}`;
 }
 
 export function withResolvedParentKeys(

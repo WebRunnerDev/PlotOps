@@ -841,9 +841,32 @@
         "closePrCancel": "Cancel",
         "closePrToast": "Closed PR #{{number}}",
         "closePrFailed": "Could not close pull request",
+        "reopenPr": "Reopen",
+        "reopenPrToast": "Reopened PR #{{number}}",
+        "reopenPrFailed": "Could not reopen pull request",
         "approvePr": "Approve",
         "approvePrToast": "Approved PR #{{number}}",
         "approvePrFailed": "Could not approve pull request",
+        "requestReview": "Request review",
+        "requestReviewTitle": "Request review on PR #{{number}}",
+        "requestReviewBody": "Pick repository collaborators, or type a GitHub login to add someone who is not listed.",
+        "requestReviewSearch": "Filter or type a GitHub login",
+        "requestReviewAdd": "Add reviewer",
+        "requestReviewLoading": "Loading collaborators…",
+        "requestReviewLoadFailed": "Could not load collaborators — you can still type a GitHub login.",
+        "requestReviewListUnavailable": "GitHub does not list collaborators for your access level — type a GitHub login instead.",
+        "requestReviewEmpty": "No matching reviewers.",
+        "requestReviewRequested": "Already requested",
+        "requestReviewAlreadyRequested": "Review is already requested from {{login}}",
+        "requestReviewInvalidLogin": "Enter a valid GitHub login",
+        "requestReviewConfirm": "Request review",
+        "requestReviewCancel": "Cancel",
+        "requestReviewToast": "Requested review on PR #{{number}} from {{reviewers}}",
+        "requestReviewFailed": "Could not request review",
+        "requestReviewError": {
+            "author": "The pull request author cannot be asked to review it",
+            "invalid_reviewer": "GitHub rejected a reviewer — every reviewer must be an existing user with access to this repository"
+        },
         "smartCommitsHint": "Include {{key}} in commit messages (e.g. “{{key}}: Fix login”) — matching commits appear automatically below.",
         "linkCommit": "Link commit",
         "linkCommitHint": "Enter a commit SHA or GitHub commit URL.",
@@ -1063,6 +1086,7 @@
         "columnKey": "Key",
         "columnLabels": "Labels",
         "columnEstimate": "Pts",
+        "columnStatus": "Status",
         "columnTitle": "Title",
         "completedHint": "Completed tasks",
         "createDraft": "New draft sprint",
@@ -1209,5 +1233,57 @@
         "activeLiveUndated": "Set start and end dates to track the window.",
         "activeLiveUpcoming": "days to go",
         "activeJumpNav": "Jump to sprint"
+    },
+    "teamTasks": {
+        "title": "Team Tasks",
+        "subtitle": "Every Task across this Team's Projects, in one list.",
+        "newTask": "New Task",
+        "openTask": "Open {{key}}: {{title}}",
+        "count_one": "{{count}} Task",
+        "count_other": "{{count}} Tasks",
+        "teamLoadFailed": "Could not load this Team.",
+        "loadFailed": "Could not load Team Tasks.",
+        "retry": "Retry",
+        "groupBy": {
+            "label": "Group by",
+            "project": "By Project",
+            "assignee": "By Assignee",
+            "deadline": "By Deadline",
+            "none": "No grouping"
+        },
+        "filters": {
+            "project": "Project",
+            "allProjects": "All Projects"
+        },
+        "assignee": {
+            "me": "Assigned to me",
+            "any": "Anyone",
+            "unassigned": "Unassigned"
+        },
+        "columns": {
+            "task": "Task",
+            "project": "Project"
+        },
+        "empty": {
+            "title": "No Tasks yet",
+            "description": "Tasks from every Project in this Team will show up here.",
+            "noProjects": "This Team has no Projects yet. Add a Project to start tracking Tasks."
+        },
+        "emptyFiltered": {
+            "title": "No Tasks match this view",
+            "description": "Nothing fits the current Project, Assignee, and completed filters.",
+            "showAll": "Show all Tasks"
+        },
+        "create": {
+            "title": "New Task",
+            "description": "Choose where the Task lives. It opens on that Board once created.",
+            "pickProject": "Choose a Project",
+            "pickBoard": "Choose a Board",
+            "noColumns": "This Board has no columns yet.",
+            "titlePlaceholder": "What needs to be done?",
+            "cancel": "Cancel",
+            "submit": "Create Task",
+            "failed": "Could not create the Task."
+        }
     }
 }

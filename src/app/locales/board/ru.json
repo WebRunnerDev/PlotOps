@@ -849,9 +849,32 @@
         "closePrCancel": "Отмена",
         "closePrToast": "Закрыт PR #{{number}}",
         "closePrFailed": "Не удалось закрыть pull request",
+        "reopenPr": "Открыть заново",
+        "reopenPrToast": "PR #{{number}} открыт заново",
+        "reopenPrFailed": "Не удалось заново открыть pull request",
         "approvePr": "Одобрить",
         "approvePrToast": "Одобрен PR #{{number}}",
         "approvePrFailed": "Не удалось одобрить pull request",
+        "requestReview": "Запросить ревью",
+        "requestReviewTitle": "Запросить ревью PR #{{number}}",
+        "requestReviewBody": "Выберите участников репозитория или введите логин GitHub, если человека нет в списке.",
+        "requestReviewSearch": "Фильтр или логин GitHub",
+        "requestReviewAdd": "Добавить ревьюера",
+        "requestReviewLoading": "Загрузка участников…",
+        "requestReviewLoadFailed": "Не удалось загрузить участников — логин GitHub можно ввести вручную.",
+        "requestReviewListUnavailable": "GitHub не показывает список участников при вашем уровне доступа — введите логин GitHub вручную.",
+        "requestReviewEmpty": "Подходящих ревьюеров нет.",
+        "requestReviewRequested": "Уже запрошено",
+        "requestReviewAlreadyRequested": "Ревью у {{login}} уже запрошено",
+        "requestReviewInvalidLogin": "Введите корректный логин GitHub",
+        "requestReviewConfirm": "Запросить ревью",
+        "requestReviewCancel": "Отмена",
+        "requestReviewToast": "Запрошено ревью PR #{{number}} у {{reviewers}}",
+        "requestReviewFailed": "Не удалось запросить ревью",
+        "requestReviewError": {
+            "author": "Нельзя запросить ревью у автора pull request",
+            "invalid_reviewer": "GitHub отклонил ревьюера — каждый ревьюер должен быть существующим пользователем с доступом к репозиторию"
+        },
         "smartCommitsHint": "Указывайте {{key}} в сообщении коммита (например «{{key}}: Fix login») — подходящие коммиты появятся ниже автоматически.",
         "linkCommit": "Привязать коммит",
         "linkCommitHint": "Введите SHA коммита или URL коммита на GitHub.",
@@ -1071,6 +1094,7 @@
         "columnKey": "Ключ",
         "columnLabels": "Метки",
         "columnEstimate": "Pts",
+        "columnStatus": "Статус",
         "columnTitle": "Название",
         "completedHint": "Завершённые задачи",
         "createDraft": "Новый draft-спринт",
@@ -1217,5 +1241,59 @@
         "activeLiveUndated": "Укажите даты старта и конца, чтобы отслеживать окно.",
         "activeLiveUpcoming": "дней до конца",
         "activeJumpNav": "К спринту"
+    },
+    "teamTasks": {
+        "title": "Задачи команды",
+        "subtitle": "Все задачи из проектов этой команды в одном списке.",
+        "newTask": "Новая задача",
+        "openTask": "Открыть {{key}}: {{title}}",
+        "count_one": "{{count}} задача",
+        "count_few": "{{count}} задачи",
+        "count_many": "{{count}} задач",
+        "count_other": "{{count}} задачи",
+        "teamLoadFailed": "Не удалось загрузить эту команду.",
+        "loadFailed": "Не удалось загрузить задачи команды.",
+        "retry": "Повторить",
+        "groupBy": {
+            "label": "Группировка",
+            "project": "По проекту",
+            "assignee": "По исполнителю",
+            "deadline": "По дедлайну",
+            "none": "Без группировки"
+        },
+        "filters": {
+            "project": "Проект",
+            "allProjects": "Все проекты"
+        },
+        "assignee": {
+            "me": "Назначены мне",
+            "any": "Любой исполнитель",
+            "unassigned": "Без исполнителя"
+        },
+        "columns": {
+            "task": "Задача",
+            "project": "Проект"
+        },
+        "empty": {
+            "title": "Задач пока нет",
+            "description": "Здесь появятся задачи из всех проектов этой команды.",
+            "noProjects": "В этой команде пока нет проектов. Добавьте проект, чтобы вести задачи."
+        },
+        "emptyFiltered": {
+            "title": "Нет задач для этого вида",
+            "description": "Ничего не подходит под текущие фильтры проекта, исполнителя и завершённых.",
+            "showAll": "Показать все задачи"
+        },
+        "create": {
+            "title": "Новая задача",
+            "description": "Выберите, где будет жить задача. После создания она откроется на этой доске.",
+            "pickProject": "Выберите проект",
+            "pickBoard": "Выберите доску",
+            "noColumns": "На этой доске пока нет колонок.",
+            "titlePlaceholder": "Что нужно сделать?",
+            "cancel": "Отмена",
+            "submit": "Создать задачу",
+            "failed": "Не удалось создать задачу."
+        }
     }
 }

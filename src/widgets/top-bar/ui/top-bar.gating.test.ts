@@ -32,6 +32,41 @@ describe("Top bar narrow viewport seam", () => {
         expect(topBar).not.toMatch(/nav\.projects/);
     });
 
+    it("Project crumb keeps truncating next to the Project switcher", () => {
+        const topBar = readUi("top-bar.tsx");
+        const switcher = readUi("project-switcher.tsx");
+        expect(topBar).toMatch(/<ProjectSwitcher/);
+        expect(topBar).toMatch(/min-w-0 truncate text-foreground/);
+        expect(switcher).toMatch(/shrink-0/);
+        expect(switcher).toMatch(
+            /aria-label=\{t\("projectSwitcher\.label"\)\}/
+        );
+        expect(switcher).toMatch(/focus-visible:ring-2/);
+    });
+
+    it("Project switcher lists the Team's Projects and switches via /projects/$projectId", () => {
+        const switcher = readUi("project-switcher.tsx");
+        expect(switcher).toMatch(/project\.team_id === teamId/);
+        expect(switcher).toMatch(/switchProjectIntent/);
+        expect(switcher).toMatch(/to: "\/projects\/\$projectId"/);
+        expect(switcher).toMatch(/to: "\/teams\/\$teamId"/);
+    });
+
+    it("Project switcher gates Create project to Owner/Admin and the Project cap", () => {
+        const switcher = readUi("project-switcher.tsx");
+        expect(switcher).toMatch(
+            /canAddProject = Boolean\(!guest && canCreateProject && user\)/
+        );
+        expect(switcher).toMatch(
+            /\{canAddProject \? \(\s*<>\s*<DropdownMenuItem[^>]*disabled=\{isProjectCapReached\}/
+        );
+        expect(switcher).toMatch(/canAddProjectToTeam\(teamProjects\.length\)/);
+        expect(switcher).toMatch(/addProjectCapReached/);
+        expect(switcher).toMatch(
+            /canAddProject && !isProjectCapReached && isAddOpen \? \(\s*<AddProjectDialog/
+        );
+    });
+
     it("shows Demo badge for Guest Mode sessions", () => {
         const topBar = readUi("top-bar.tsx");
         expect(topBar).toMatch(/demoAccountBadgeVisible/);

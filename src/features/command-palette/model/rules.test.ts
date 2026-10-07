@@ -15,6 +15,7 @@ import {
     resolveCreateTaskIntent,
     resolveJumpTaskIntents,
     resolveNavigateIntent,
+    resolveTeamTasksIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
@@ -490,6 +491,20 @@ describe("Command Palette rules seam — intents", () => {
             taskKey: "TASK-9",
             type: "select-task",
         });
+    });
+
+    it("Team Tasks needs Team context and view capability", () => {
+        expect(
+            resolveTeamTasksIntent(
+                baseContext({ canViewMembers: true, teamId: "team-1" })
+            )
+        ).toEqual({ teamId: "team-1", type: "open-team-tasks" });
+        expect(
+            resolveTeamTasksIntent(baseContext({ teamId: "team-1" }))
+        ).toBeNull();
+        expect(
+            resolveTeamTasksIntent(baseContext({ canViewMembers: true }))
+        ).toBeNull();
     });
 
     it("open Member settings declares intent with teamId and userId", () => {

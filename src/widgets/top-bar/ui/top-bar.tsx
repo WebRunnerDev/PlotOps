@@ -15,6 +15,7 @@ import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 
 import { ProjectSectionNav } from "./project-section-nav";
+import { ProjectSwitcher } from "./project-switcher";
 import { UserMenu } from "./user-menu";
 
 export function TopBar() {
@@ -94,17 +95,21 @@ export function TopBar() {
                                 />
                                 {boardId ? (
                                     <Link
-                                        className="truncate text-foreground transition-colors duration-200 ease-[var(--ease-out-quart)] hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                                        className="min-w-0 truncate text-foreground transition-colors duration-200 ease-[var(--ease-out-quart)] hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
                                         params={{ boardId, projectId }}
                                         to="/projects/$projectId/boards/$boardId"
                                     >
                                         {project.name}
                                     </Link>
                                 ) : (
-                                    <span className="truncate text-foreground">
+                                    <span className="min-w-0 truncate text-foreground">
                                         {project.name}
                                     </span>
                                 )}
+                                <ProjectSwitcher
+                                    projectId={projectId}
+                                    teamId={project.team_id}
+                                />
                             </>
                         ) : null}
                     </nav>

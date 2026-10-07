@@ -17,6 +17,7 @@ import { SprintTaskTable } from "@/features/sprints/ui/sprint-task-table";
 
 type WindowedSprintTaskTableProperties = {
     canManage: boolean;
+    columns: ReadonlyArray<{ id: string; name: string }>;
     containerId: string;
     draggingTaskIds: string[];
     epicsById?: ReadonlyMap<string, ProjectEpic>;
@@ -30,6 +31,7 @@ type WindowedSprintTaskTableProperties = {
 
 export function WindowedSprintTaskTable({
     canManage,
+    columns,
     containerId,
     draggingTaskIds,
     epicsById,
@@ -70,6 +72,7 @@ export function WindowedSprintTaskTable({
             />
             <SprintTaskTable
                 canManage={canManage}
+                columns={columns}
                 containerId={containerId}
                 draggingTaskIds={draggingTaskIds}
                 epicsById={epicsById}

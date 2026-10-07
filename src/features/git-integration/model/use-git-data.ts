@@ -19,6 +19,7 @@ import {
     fetchPullRequestChecks,
     fetchPullRequestCommits,
     fetchPullRequestFiles,
+    fetchPullRequestReviewerCandidates,
     searchCommitsByTaskKey,
 } from "@/features/git-integration/api/github-git-api";
 import {
@@ -243,6 +244,38 @@ export function usePullRequestFiles(
             prNumber ?? 0
         ),
         staleTime: 5 * 60_000,
+    });
+}
+
+/** Reviewer picker data — never fetched for guests (request-review is hidden). */
+export function usePullRequestReviewerCandidates(
+    repoFullName: string | undefined,
+    prNumber: number | undefined,
+    token: null | string,
+    enabled = true
+) {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+
+    return useQuery({
+        enabled:
+            enabled &&
+            !guest &&
+            Boolean(token && repoFullName && prNumber !== undefined),
+        queryFn: ({ signal }) =>
+            fetchPullRequestReviewerCandidates(
+                repoFullName!,
+                prNumber!,
+                token!,
+                signal
+            ),
+        queryKey: gitKeys.prReviewers(
+            authFingerprint,
+            repoFullName ?? "",
+            prNumber ?? 0
+        ),
+        staleTime: 60_000,
     });
 }
 

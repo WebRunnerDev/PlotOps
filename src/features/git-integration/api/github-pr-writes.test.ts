@@ -4,9 +4,13 @@ import {
     approvePullRequest,
     closePullRequest,
     createPullRequest,
+    fetchPullRequestReviewerCandidates,
     GitHubApiError,
     gitHubWriteErrorKind,
     mergePullRequest,
+    reopenPullRequest,
+    requestPullRequestReviewers,
+    requestReviewErrorKind,
 } from "@/features/git-integration/api/github-git-api";
 
 afterEach(() => {
@@ -174,6 +178,57 @@ describe("closePullRequest", () => {
     });
 });
 
+describe("reopenPullRequest", () => {
+    it("PATCHes pull with state open", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                body: null,
+                created_at: "2026-08-11T00:00:00Z",
+                draft: false,
+                head: { ref: "feature/TASK-1" },
+                html_url: "https://github.com/o/r/pull/7",
+                mergeable: null,
+                merged_at: null,
+                number: 7,
+                state: "open",
+                title: "TASK-1: Login",
+                updated_at: "2026-08-11T02:00:00Z",
+            }),
+            ok: true,
+            status: 200,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const pr = await reopenPullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        });
+
+        expect(pr.number).toBe(7);
+        expect(pr.state).toBe("open");
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7");
+        expect(init.method).toBe("PATCH");
+        expect(JSON.parse(String(init.body))).toEqual({ state: "open" });
+    });
+
+    it("throws GitHubApiError on failure (e.g. deleted head 422)", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({ ok: false, status: 422 })
+        );
+
+        await expect(
+            reopenPullRequest({
+                prNumber: 7,
+                repoFullName: "o/r",
+                token: "tok",
+            })
+        ).rejects.toMatchObject({ status: 422 });
+    });
+});
+
 describe("approvePullRequest", () => {
     it("POSTs a review with APPROVE event", async () => {
         const fetchMock = vi.fn().mockResolvedValue({
@@ -216,5 +271,200 @@ describe("approvePullRequest", () => {
                 token: "tok",
             })
         ).rejects.toMatchObject({ status: 422 });
+    });
+});
+
+describe("requestPullRequestReviewers", () => {
+    it("POSTs requested_reviewers with the chosen logins", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            json: async () => ({
+                number: 7,
+                requested_reviewers: [{ login: "octocat" }, { login: "mona" }],
+            }),
+            ok: true,
+            status: 201,
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const result = await requestPullRequestReviewers({
+            prNumber: 7,
+            repoFullName: "o/r",
+            reviewers: ["octocat", "mona"],
+            token: "tok",
+        });
+
+        expect(result.requestedLogins).toEqual(["octocat", "mona"]);
+        expect(fetchMock).toHaveBeenCalledOnce();
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toBe(
+            "https://api.github.com/repos/o/r/pulls/7/requested_reviewers"
+        );
+        expect(init.method).toBe("POST");
+        expect(JSON.parse(String(init.body))).toEqual({
+            reviewers: ["octocat", "mona"],
+        });
+    });
+
+    it("carries GitHub's message on the thrown error", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                json: async () => ({
+                    message:
+                        "Reviews may only be requested from collaborators.",
+                }),
+                ok: false,
+                status: 422,
+            })
+        );
+
+        await expect(
+            requestPullRequestReviewers({
+                prNumber: 7,
+                repoFullName: "o/r",
+                reviewers: ["ghost"],
+                token: "tok",
+            })
+        ).rejects.toMatchObject({
+            detail: "Reviews may only be requested from collaborators.",
+            status: 422,
+        });
+    });
+});
+
+describe("requestReviewErrorKind", () => {
+    it("splits 422 into PR author vs invalid reviewer", () => {
+        expect(
+            requestReviewErrorKind(
+                new GitHubApiError(
+                    422,
+                    "/x",
+                    "Review cannot be requested from pull request author."
+                )
+            )
+        ).toBe("author");
+        expect(
+            requestReviewErrorKind(
+                new GitHubApiError(
+                    422,
+                    "/x",
+                    "Reviews may only be requested from collaborators."
+                )
+            )
+        ).toBe("invalid_reviewer");
+        expect(requestReviewErrorKind(new GitHubApiError(422, "/x"))).toBe(
+            "invalid_reviewer"
+        );
+    });
+
+    it("tells a rate-limited 403 from a permission 403", () => {
+        expect(
+            requestReviewErrorKind(
+                new GitHubApiError(403, "/x", "API rate limit exceeded")
+            )
+        ).toBe("rate_limit");
+        expect(
+            requestReviewErrorKind(
+                new GitHubApiError(403, "/x", "Must have admin rights")
+            )
+        ).toBe("forbidden");
+        expect(requestReviewErrorKind(new GitHubApiError(403, "/x"))).toBe(
+            "forbidden"
+        );
+    });
+
+    it("falls back to the shared write kinds", () => {
+        expect(requestReviewErrorKind(new GitHubApiError(401, "/x"))).toBe(
+            "auth"
+        );
+        expect(requestReviewErrorKind(new GitHubApiError(404, "/x"))).toBe(
+            "not_found"
+        );
+        expect(requestReviewErrorKind(new GitHubApiError(429, "/x"))).toBe(
+            "rate_limit"
+        );
+        expect(requestReviewErrorKind(new Error("nope"))).toBe("unknown");
+    });
+});
+
+describe("fetchPullRequestReviewerCandidates", () => {
+    const prPayload = {
+        requested_reviewers: [{ login: "pending" }],
+        user: { login: "author" },
+    };
+
+    it("returns collaborators with the PR author and pending requests", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                json: async () => prPayload,
+                ok: true,
+                status: 200,
+            })
+            .mockResolvedValueOnce({
+                json: async () => [
+                    { avatar_url: "https://a/1", login: "octocat" },
+                    { login: "mona" },
+                ],
+                ok: true,
+                status: 200,
+            });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const result = await fetchPullRequestReviewerCandidates(
+            "o/r",
+            7,
+            "tok"
+        );
+
+        expect(result).toEqual({
+            authorLogin: "author",
+            candidates: [
+                { avatar_url: "https://a/1", login: "octocat" },
+                { avatar_url: null, login: "mona" },
+            ],
+            listUnavailable: false,
+            requestedLogins: ["pending"],
+        });
+        const urls = fetchMock.mock.calls.map((call) => (call as [string])[0]);
+        expect(urls).toEqual([
+            "https://api.github.com/repos/o/r/pulls/7",
+            "https://api.github.com/repos/o/r/collaborators?page=1&per_page=100",
+        ]);
+    });
+
+    it("degrades to typed logins when collaborators cannot be listed", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi
+                .fn()
+                .mockResolvedValueOnce({
+                    json: async () => prPayload,
+                    ok: true,
+                    status: 200,
+                })
+                .mockResolvedValueOnce({ ok: false, status: 403 })
+        );
+
+        const result = await fetchPullRequestReviewerCandidates(
+            "o/r",
+            7,
+            "tok"
+        );
+
+        expect(result.listUnavailable).toBe(true);
+        expect(result.candidates).toEqual([]);
+        expect(result.authorLogin).toBe("author");
+    });
+
+    it("still fails when the PR itself cannot be read", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({ ok: false, status: 401 })
+        );
+
+        await expect(
+            fetchPullRequestReviewerCandidates("o/r", 7, "tok")
+        ).rejects.toMatchObject({ status: 401 });
     });
 });

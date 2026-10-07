@@ -1194,3 +1194,68 @@ describe("guest tasks provider happy path", () => {
         ).toBe(inProgress.id);
     });
 });
+
+describe("guest tasks provider Team Tasks", () => {
+    it("lists active non-Epic Tasks of every Project in the Team with names", async () => {
+        const { getGuestSandbox, startGuestSession, updateGuestSandbox } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const seeded = getGuestSandbox()!;
+        const team = seeded.teams[0]!;
+        const archived = seeded.tasks.find((task) => task.type !== "epic")!;
+        updateGuestSandbox((sandbox) => {
+            sandbox.tasks.find((task) => task.id === archived.id)!.archivedAt =
+                "2026-08-01T00:00:00.000Z";
+        });
+
+        const sandbox = getGuestSandbox()!;
+        const teamProjectIds = new Set(
+            sandbox.projects
+                .filter((project) => project.teamId === team.id)
+                .map((project) => project.id)
+        );
+        const expected = sandbox.tasks.filter(
+            (task) =>
+                teamProjectIds.has(task.projectId) &&
+                task.type !== "epic" &&
+                !task.archivedAt
+        );
+        expect(teamProjectIds.size).toBeGreaterThan(1);
+
+        const rows = await guestTasksProvider.fetchTeamTasks(team.id);
+
+        expect(rows.map((row) => row.id).toSorted()).toEqual(
+            expected.map((task) => task.id).toSorted()
+        );
+        expect(new Set(rows.map((row) => row.projectId))).toEqual(
+            teamProjectIds
+        );
+        expect(rows.some((row) => row.id === archived.id)).toBe(false);
+
+        for (const row of rows) {
+            const board = sandbox.boards.find(
+                (item) => item.id === row.boardId
+            )!;
+            const column = board.columns.find(
+                (item) => item.id === row.status
+            )!;
+            expect(row.boardName).toBe(board.name);
+            expect(row.statusName).toBe(column.name);
+            expect(row.isDone).toBe(column.isDone);
+            expect(row.projectName).toBe(
+                sandbox.projects.find((item) => item.id === row.projectId)!.name
+            );
+        }
+    });
+
+    it("returns nothing for a Team outside the sandbox", async () => {
+        const { startGuestSession } = await import("@/features/guest-mode");
+
+        startGuestSession();
+
+        expect(await guestTasksProvider.fetchTeamTasks("other-team")).toEqual(
+            []
+        );
+    });
+});

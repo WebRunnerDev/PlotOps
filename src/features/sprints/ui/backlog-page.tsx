@@ -857,6 +857,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                     >
                                         <WindowedSprintTaskTable
                                             canManage={canManage}
+                                            columns={columns}
                                             containerId={BACKLOG_DROP_ID}
                                             draggingTaskIds={draggingTasks.map(
                                                 (task) => task.id
@@ -1695,7 +1696,7 @@ function SprintSection({
     allTasks: Task[];
     boardId: string;
     canManage: boolean;
-    columns: Array<{ id: string; isDone: boolean }>;
+    columns: Array<{ id: string; isDone: boolean; name: string }>;
     drafts: Sprint[];
     draggingTaskIds: string[];
     firstColumnId?: string;
@@ -1866,6 +1867,7 @@ function SprintSection({
 
             <WindowedSprintTaskTable
                 canManage={canManage}
+                columns={columns}
                 containerId={sprintDropId(sprint.id)}
                 draggingTaskIds={draggingTaskIds}
                 epicsById={epicsById}

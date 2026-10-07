@@ -9,6 +9,7 @@ import type {
     TaskPriority,
     TaskStatus,
     TaskType,
+    TeamTask,
 } from "@/features/tasks/model/types";
 import type { Database } from "@/shared/api/database.types";
 
@@ -29,10 +30,14 @@ import { supabase } from "@/shared/api/supabase";
 import {
     type DatabaseProjectEpic,
     type DatabaseTask,
+    type DatabaseTeamTask,
     mapDatabaseProjectEpic,
     mapDatabaseTask,
+    mapDatabaseTeamTask,
     parentIdsMissingFromRows,
     sortTasksByPosition,
+    type TeamTaskColumn,
+    teamTaskColumnKey,
     withResolvedParentKeys,
 } from "./board-mappers";
 
@@ -191,6 +196,37 @@ const TASK_SELECT = `
     )
   )
 `;
+
+/** Team Tasks rows: list fields only — no description, links, or labels. */
+const TEAM_TASK_SELECT = `
+  id,
+  project_id,
+  board_id,
+  title,
+  status,
+  priority,
+  deadline,
+  task_key,
+  task_type,
+  created_at,
+  assignee:profiles!tasks_assignee_id_fkey (
+    id,
+    username,
+    avatar_url,
+    first_name,
+    last_name
+  ),
+  project:projects!inner (
+    name,
+    team_id
+  ),
+  board:boards!tasks_board_id_fkey (
+    name
+  )
+`;
+
+/** PostgREST caps a response at 1000 rows — Team Tasks pages past it. */
+const TEAM_TASKS_PAGE_SIZE = 1000;
 
 /** Optional create overrides for column / backlog quick-add. */
 export type CreateTaskRecordExtras = {
@@ -501,6 +537,51 @@ export async function fetchProjectTasks(
 
     if (error) throw error;
     return mapSelectedTaskRows((data ?? []) as DatabaseTask[]);
+}
+
+/**
+ * Team Tasks: active non-Epic Tasks across every Project of a Team.
+ * RLS (`can_view_project`) already scopes rows to Teams the caller belongs to,
+ * so a non-member gets an empty list rather than an error.
+ */
+export async function fetchTeamTasks(teamId: string): Promise<TeamTask[]> {
+    const { data: columnRows, error: columnsError } = await supabase
+        .from("board_columns")
+        .select("id, board_id, name, is_done, project:projects!inner (team_id)")
+        .eq("project.team_id", teamId);
+    if (columnsError) throw columnsError;
+
+    const columns = new Map<string, TeamTaskColumn>(
+        (columnRows ?? []).map((row) => [
+            teamTaskColumnKey(row.board_id, row.id),
+            {
+                boardId: row.board_id,
+                id: row.id,
+                isDone: row.is_done,
+                name: row.name,
+            },
+        ])
+    );
+
+    const rows: DatabaseTeamTask[] = [];
+    for (let from = 0; ; from += TEAM_TASKS_PAGE_SIZE) {
+        const { data, error } = await supabase
+            .from("tasks")
+            .select(TEAM_TASK_SELECT)
+            .eq("project.team_id", teamId)
+            .is("archived_at", null)
+            .neq("task_type", "epic")
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: true })
+            .range(from, from + TEAM_TASKS_PAGE_SIZE - 1);
+        if (error) throw error;
+
+        const page = (data ?? []) as DatabaseTeamTask[];
+        rows.push(...page);
+        if (page.length < TEAM_TASKS_PAGE_SIZE) break;
+    }
+
+    return rows.map((row) => mapDatabaseTeamTask(row, columns));
 }
 
 export async function moveTaskToBoard(

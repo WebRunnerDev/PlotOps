@@ -20,6 +20,7 @@ const labels = {
     notFound: "Page not found",
     notifications: "Notifications",
     settings: "Settings",
+    teamTasks: "Team Tasks",
 };
 
 describe("parseAppShellPath", () => {
@@ -46,6 +47,10 @@ describe("parseAppShellPath", () => {
         });
         expect(parseAppShellPath("/teams/team-1/settings")).toEqual({
             kind: "team-settings",
+            teamId: "team-1",
+        });
+        expect(parseAppShellPath("/teams/team-1/tasks")).toEqual({
+            kind: "team-tasks",
             teamId: "team-1",
         });
         expect(parseAppShellPath("/projects/proj-1/tasks/TASK-12")).toEqual({

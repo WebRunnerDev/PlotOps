@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FolderGit2, Plus, Settings } from "lucide-react";
+import { FolderGit2, ListChecks, Plus, Settings } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
@@ -197,6 +197,19 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                                 {t("reconnectGitHub")}
                             </Button>
                         ) : null}
+                        <Button
+                            nativeButton={false}
+                            render={
+                                <Link
+                                    params={{ teamId }}
+                                    to="/teams/$teamId/tasks"
+                                />
+                            }
+                            variant="outline"
+                        >
+                            <ListChecks data-icon="inline-start" />
+                            {t("openTeamTasks")}
+                        </Button>
                         <Button
                             nativeButton={false}
                             render={

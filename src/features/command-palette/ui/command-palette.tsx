@@ -8,6 +8,7 @@ import {
     FolderIcon,
     KanbanIcon,
     LayoutListIcon,
+    ListChecksIcon,
     MoonIcon,
     PlusIcon,
     SettingsIcon,
@@ -39,6 +40,7 @@ import {
     resolveCreateTaskIntent,
     resolveJumpTaskIntents,
     resolveNavigateIntent,
+    resolveTeamTasksIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
@@ -251,8 +253,15 @@ export function CommandPalette() {
     const visibleNavigateIntents = navigateIntents.filter((intent) =>
         matchesNavigateQuery(intent.section, normalizedQuery, t)
     );
+    const teamTasksLabel = t("command:openTeamTasks");
+    const teamTasksIntent = teamTasksLabel
+        .toLowerCase()
+        .includes(normalizedQuery)
+        ? resolveTeamTasksIntent(routeContext)
+        : null;
     const showActions =
         showTheme ||
+        teamTasksIntent !== null ||
         createIntents.length > 0 ||
         visibleNavigateIntents.length > 0 ||
         visibleJumpIntents.length > 0;
@@ -470,6 +479,23 @@ export function CommandPalette() {
                                 >
                                     {isDark ? <SunIcon /> : <MoonIcon />}
                                     <span>{themeLabel}</span>
+                                </CommandItem>
+                            ) : null}
+                            {teamTasksIntent ? (
+                                <CommandItem
+                                    onSelect={() => {
+                                        void navigate({
+                                            params: {
+                                                teamId: teamTasksIntent.teamId,
+                                            },
+                                            to: "/teams/$teamId/tasks",
+                                        });
+                                        close();
+                                    }}
+                                    value="open-team-tasks"
+                                >
+                                    <ListChecksIcon />
+                                    <span>{teamTasksLabel}</span>
                                 </CommandItem>
                             ) : null}
                             {visibleNavigateIntents.map((intent) => (
