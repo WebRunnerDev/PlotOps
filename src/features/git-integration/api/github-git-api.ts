@@ -17,6 +17,8 @@ const GITHUB_HEADERS = (token: string) => ({
     "X-GitHub-Api-Version": "2022-11-28",
 });
 
+export type ApprovePrErrorKind = "own_pr" | GitHubWriteErrorKind;
+
 export type ApprovePullRequestInput = {
     body?: string;
     prNumber: number;
@@ -258,7 +260,7 @@ type RawReviewerPayload = {
 };
 
 export class GitHubApiError extends Error {
-    /** GitHub's own `message` from the error body, when it sent one. */
+    /** GitHub's own `message` (plus any `errors[]` text) from the error body. */
     readonly detail: string | undefined;
     readonly status: number;
 
@@ -268,6 +270,22 @@ export class GitHubApiError extends Error {
         this.status = status;
         this.detail = detail;
     }
+}
+
+/**
+ * Approve failures: GitHub answers 422 for an author approving their own PR
+ * regardless of branch protection — only its `errors[]` text says so.
+ */
+export function approvePrErrorKind(error: unknown): ApprovePrErrorKind {
+    if (
+        isGitHubApiError(error) &&
+        error.status === 422 &&
+        (error.detail?.toLowerCase() ?? "").includes("own pull request")
+    ) {
+        return "own_pr";
+    }
+
+    return gitHubWriteErrorKind(error);
 }
 
 /** Submit an APPROVE review on an open PR (GitHub enforces own-PR / review rules). */
@@ -878,10 +896,28 @@ async function readGithubErrorDetail(
     response: Response
 ): Promise<string | undefined> {
     try {
-        const payload = (await response.json()) as { message?: unknown };
-        return typeof payload.message === "string"
-            ? payload.message
-            : undefined;
+        const payload = (await response.json()) as {
+            errors?: unknown;
+            message?: unknown;
+        };
+        const parts: string[] = [];
+        if (typeof payload.message === "string") parts.push(payload.message);
+        // 422 bodies put the real reason in `errors[]` (strings or objects).
+        if (Array.isArray(payload.errors)) {
+            for (const entry of payload.errors as unknown[]) {
+                if (typeof entry === "string") {
+                    parts.push(entry);
+                } else if (
+                    entry &&
+                    typeof entry === "object" &&
+                    "message" in entry &&
+                    typeof entry.message === "string"
+                ) {
+                    parts.push(entry.message);
+                }
+            }
+        }
+        return parts.length > 0 ? parts.join(" — ") : undefined;
     } catch {
         return undefined;
     }

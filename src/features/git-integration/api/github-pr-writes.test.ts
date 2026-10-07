@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+    approvePrErrorKind,
     approvePullRequest,
     closePullRequest,
     createPullRequest,
@@ -271,6 +272,40 @@ describe("approvePullRequest", () => {
                 token: "tok",
             })
         ).rejects.toMatchObject({ status: 422 });
+    });
+});
+
+describe("approvePrErrorKind", () => {
+    it("reads own-PR refusal from GitHub's errors[] on 422", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                json: async () => ({
+                    errors: ["Review Can not approve your own pull request"],
+                    message: "Unprocessable Entity",
+                }),
+                ok: false,
+                status: 422,
+            })
+        );
+
+        const error = await approvePullRequest({
+            prNumber: 7,
+            repoFullName: "o/r",
+            token: "tok",
+        }).catch((error_: unknown) => error_);
+
+        expect(approvePrErrorKind(error)).toBe("own_pr");
+    });
+
+    it("falls back to write error kinds otherwise", () => {
+        expect(approvePrErrorKind(new GitHubApiError(422, "/x"))).toBe(
+            "validation"
+        );
+        expect(approvePrErrorKind(new GitHubApiError(403, "/x"))).toBe(
+            "forbidden"
+        );
+        expect(approvePrErrorKind(new Error("boom"))).toBe("unknown");
     });
 });
 
