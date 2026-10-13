@@ -1,12 +1,12 @@
 ---
 version: alpha
 name: PlotOps
-description: Dark project tracker with sharp corners, a cyan accent, and mono type for git data.
+description: Dark project tracker with sharp corners, a cyan primary, and mono type for git data.
 x-zsd:
   profile: "0.1"
   kind: project
   source:
-    method: generated
+    method: hybrid
     captured: 2026-10-13
     paths:
       - src/app/styles/index.css
@@ -28,7 +28,7 @@ x-zsd:
   intent:
     audience: People who track project work and git status.
     primary-task: Move tasks on a board and read git, CI, and task detail.
-    character: Dark surfaces, sharp corners, cyan accent, and mono git data.
+    character: Dark surfaces, sharp corners, cyan primary, and mono git data.
     density: compact
     theme: dark
     references:
@@ -46,6 +46,7 @@ x-zsd:
     preserve:
       - Font families Space Grotesk, IBM Plex Sans, and JetBrains Mono.
       - Feature structure when the skin changes. See docs/adr/0007-figma-make-skin-redesign.md.
+      - Audience, primary task, and character in intent.
   implementation:
     token-source: src/app/styles/index.css
     component-sources:
@@ -60,28 +61,29 @@ x-zsd:
     icon-assets:
       - lucide-react
   unresolved:
-    - Running interface styles are not measured. Values come from source files captured on 2026-10-13.
-    - Light primary #0284C7 with text #F8FAFC is 3.91:1. The light mode does not replace primary or on-primary.
-    - Light muted #E2E8F0 with text #64748B is 3.86:1. The light mode does not replace surface-muted or on-surface-muted.
-    - Light success text #238636 on the light page surface is 4.23:1.
-    - Light warning text #9A6700 on the light page surface is 4.44:1.
+    - Computed styles were measured at http://127.0.0.1:5173/ on 2026-10-13. Viewport was 1569 by 914. Dark and light classes were both measured.
+    - Light primary text in source is #F8FAFC at 3.91:1. That text is rejected. Light on-primary is #0A0F1D, a decision, at 4.67:1.
+    - Light muted text in source is #64748B at 3.86:1 on the muted fill and 4.34:1 on the page. That text is rejected. Light on-surface-muted is #475569, a decision.
+    - Light success #238636 on the light page is 4.23:1. It is not in the light mode.
+    - Light warning #9A6700 on the light page is 4.44:1. It is not in the light mode.
     - Light error text #DA3633 on the light page surface is 4.21:1. The same text on a white card is 4.61:1.
-    - Light border and sidebar border use color-mix. No hex is recorded. Do not reuse dark outline on a light page.
+    - Light border and light sidebar border measure #C5DCEF. Dark sidebar border measures #191A1F and is not a separate token.
     - Light sidebar surface is #F8FAFC. It is not a separate token.
     - Dark menu highlight uses accent #2BB8E8 with text #F0F2F5 at 2.05:1. No on-accent token is recorded.
     - Dark error fill #F85149 with text #F0F2F5 is 2.99:1. No on-error token is recorded.
     - Dark success fill text is #08090E. Components use success as text, not as a solid fill.
     - Display type uses clamp. No headline-display token is recorded.
     - Primary hover is primary at 80 percent. No separate hex is recorded.
-    - Control focus is a 3px ring at 50 percent of primary. The brand link uses a 2px ring and a 2px offset.
-    - Light focus ring is #0EA5E9. The light mode does not replace the focus color.
+    - The dark focus ring measures primary at half strength. The brand link uses a 2px ring and a 2px offset.
+    - The light focus ring measures #0EA5E9 at half strength. It is not the light primary.
     - Button, input, and card primitives do not define loading, empty, or success states.
     - The minimum viewport width is not set in source.
     - Epic and priority colors use Tailwind palette classes, not these tokens.
     - Chart scale colors use oklch, not hex.
     - Grid line color is #141820 in dark and #CBD5E1 in light. Input border in dark matches outline. Light input border is #E2E8F0.
     - Auth page insets differ from the app spacing scale.
-    - Toast inline padding is 14px. The toast records md for the block padding.
+    - Toast padding is 12px on the block axis, 14px at the start, and 32px at the end. No single padding token records all three.
+    - Alert padding is 10px inline and 8px on the block axis. The alert token records the inline value.
     - Icon stroke width is the Lucide default. The project does not set it.
   layout:
     content-max: 1152px
@@ -94,6 +96,7 @@ x-zsd:
     color-default: "{colors.outline}"
   elevation:
     toast: 3px 3px 0 0
+    mix: 10%
   motion:
     duration-fast: 100ms
     duration-section: 300ms
@@ -118,10 +121,12 @@ x-zsd:
         on-surface-raised: "#0A0F1D"
         surface-secondary: "#E2E8F0"
         on-surface-secondary: "#0A0F1D"
+        primary: "#0284C7"
+        on-primary: "#0A0F1D"
+        surface-muted: "#E2E8F0"
+        on-surface-muted: "#475569"
+        outline: "#C5DCEF"
         error: "#DA3633"
-        success: "#238636"
-        warning: "#9A6700"
-        on-warning: "#F8FAFC"
 colors:
   primary: "#3ECFFF"
   on-primary: "#08090E"
@@ -287,7 +292,7 @@ components:
 ## Overview
 
 PlotOps is a dark project tracker. People move tasks and read git status.
-This file records source tokens from 2026-10-13. It does not record a running page.
+This file records source tokens from 2026-10-13. It also records computed styles from that date.
 
 The default theme is dark. Light mode replaces only keys in `x-zsd.modes.light`.
 Corners use `none`. Read `x-zsd.unresolved` before you copy a dark color into light.
@@ -307,10 +312,11 @@ Reuse the listed components. Keep feature behavior when you change the skin.
 - `outline`: Use for control borders and dividers in the dark theme.
 - `error`: Use for error text and for an invalid control border.
 - `success`: Use for success status text on the page.
-- `warning` and `on-warning`: Use `warning` for status text. Use `on-warning` on a solid warning fill.
+- `warning` and `on-warning`: Use `warning` for status text. Use `on-warning` only on a solid warning fill. Leave that fill open.
 
-The light mode lists its own keys. It does not replace `primary`, `outline`, or `surface-muted`.
-Do not reuse those dark colors on a light page.
+The light mode replaces `primary`, `surface-muted`, and `outline`.
+It does not replace `success` or `warning`.
+Do not put dark `success` or dark `warning` on a light page.
 
 ## Typography
 
@@ -346,12 +352,12 @@ Separate regions with surface contrast, spacing, and borders.
 Apply `x-zsd.border.width-default` and `outline` to control borders.
 Cards and dialogs use a hairline ring.
 Toasts use `x-zsd.elevation.toast` and `x-zsd.border.width-status` on the leading edge.
-The toast shadow is a hard offset. It mixes foreground at a low percent.
+The toast shadow and the card ring mix foreground by `x-zsd.elevation.mix`.
 
 ## Shapes
 
 - `none`: Use for controls, cards, dialogs, alerts, and toasts.
-- `full`: Use for the board scrollbar thumb only.
+- `full`: Use for avatars, status dots, counts, filter chips, and the board scrollbar thumb.
 
 ## Components
 
@@ -359,7 +365,7 @@ The toast shadow is a hard offset. It mixes foreground at a low percent.
 
 Use `button-primary` for the main action in a group.
 Use `button-secondary` for an alternate action.
-Use `button-muted` for a quiet action.
+Use `button-muted` for the toast close control.
 Name the action in the label.
 
 - On hover, show `primary` at 80 percent for the main action.
@@ -373,6 +379,7 @@ Name the action in the label.
 
 Use `input` with a visible label above the control.
 Placeholder text uses `on-surface-muted`.
+The component token is the size below `md`.
 
 - On hover, keep the same fill and label.
 - On focus, use the focus rules in Accessibility.
@@ -386,7 +393,7 @@ Use `card` for one related group.
 Dialogs use the same fill and text as `card`.
 Use `headline-xs` for the group title.
 
-- An empty group must state what belongs there and offer the next action.
+- This file leaves an empty card open.
 - Task-card selection is not part of this primitive.
 
 ### Badge
@@ -404,7 +411,7 @@ Use `alert-error` when the task needs attention. State the failure and a recover
 Toasts use the card fill, `x-zsd.elevation.toast`, and a status border.
 Announce the notice to assistive technology.
 
-- Block padding on an alert uses `sm`.
+- Block padding uses `sm`. The component token records the inline padding.
 - A success or error toast keeps `on-surface-raised` text and colors the leading edge.
 
 ### Status
@@ -412,6 +419,7 @@ Announce the notice to assistive technology.
 Use `status-success` and `status-warning` for status text on `surface`.
 Add an icon or a text label with the color.
 This file leaves a solid success fill open.
+This file leaves light page text for `success` and `warning` open.
 
 ## Do's and Don'ts
 
@@ -421,7 +429,7 @@ This file leaves a solid success fill open.
 - Do pair a status color with an icon or a text label.
 - Do read `x-zsd.unresolved` before you apply the light mode.
 - Do not add a font outside the three recorded families.
-- Do not set a control radius other than `none`.
+- Do not set a radius other than `none` on buttons, inputs, cards, dialogs, alerts, or toasts.
 - Do not use a solid error fill with light text.
 - Do not hide the focus ring.
 
@@ -455,6 +463,8 @@ This file leaves the grid line color open. See `x-zsd.unresolved`.
 
 Support keyboard use. Follow reading order for the tab order.
 Use `x-zsd.accessibility.focus-width`, `x-zsd.accessibility.focus-offset`, and `x-zsd.accessibility.focus-color` on controls.
+In dark, use `primary` at half strength for that ring.
+The light ring color is in `x-zsd.unresolved`.
 Keep the focus ring visible when a dialog or sticky bar covers the page.
 
 Expose input errors in text and in the control association.
