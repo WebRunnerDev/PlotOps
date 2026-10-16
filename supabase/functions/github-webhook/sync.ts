@@ -7,8 +7,9 @@ import {
 import {
     type CandidateTask,
     isAlreadySynced,
-    matchTask,
     pickLastColumnId,
+    pickProjectTaskForWebhook,
+    type WebhookProjectTasks,
 } from "./match-task.ts";
 import {
     planReopenPullRequestSync,
@@ -117,26 +118,26 @@ export async function syncMergedPullRequest(
         return { ok: true, reason: "no_project", skipped: true };
     }
 
-    for (const project of projects) {
-        const result = await syncInProject(supabase, {
-            baseRef: baseReference,
-            headRef: headReference,
-            log,
-            prHtmlUrl: pr.html_url ?? null,
-            prNumber,
-            projectId: project.id,
-            repoFullName,
-        });
-        if (!result.skipped) {
-            return result;
-        }
-        if (result.reason !== "no_task") {
-            return result;
-        }
+    const groups = await loadWebhookProjectTasks(supabase, projects);
+    const picked = pickProjectTaskForWebhook(
+        groups,
+        { headRef: headReference, prNumber },
+        "merge"
+    );
+    if (!picked) {
+        log({ pr: prNumber, reason: "no_task", repo: repoFullName });
+        return { ok: true, reason: "no_task", skipped: true };
     }
 
-    log({ pr: prNumber, reason: "no_task", repo: repoFullName });
-    return { ok: true, reason: "no_task", skipped: true };
+    return syncInProject(supabase, {
+        baseRef: baseReference,
+        log,
+        matched: picked.task,
+        prHtmlUrl: pr.html_url ?? null,
+        prNumber,
+        projectId: picked.projectId,
+        repoFullName,
+    });
 }
 
 /** Reopened — update `pr_state` back to `open` only (no column move). */
@@ -156,33 +157,15 @@ async function syncInProject(
     supabase: SupabaseClient,
     input: {
         baseRef: string;
-        headRef: string;
         log: (fields: Record<string, unknown>) => void;
+        matched: CandidateTask;
         prHtmlUrl: null | string;
         prNumber: number;
         projectId: string;
         repoFullName: string;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
-
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
-        headRef: input.headRef,
-        prNumber: input.prNumber,
-    });
-
-    if (!matched) {
-        return { ok: true, reason: "no_task", skipped: true };
-    }
+    const matched = input.matched;
 
     const { data: board, error: boardError } = await supabase
         .from("boards")
@@ -420,53 +403,67 @@ async function syncPrStateOnly(
         return { ok: true, reason: "no_project", skipped: true };
     }
 
-    for (const project of projects) {
-        const result = await syncPrStateOnlyInProject(supabase, {
-            headRef: headReference,
-            log,
-            prHtmlUrl: pr?.html_url ?? null,
-            prNumber,
-            projectId: project.id,
-            sync,
-        });
-        if (!result.skipped) {
-            return result;
-        }
-        if (result.reason !== "no_task") {
-            return result;
-        }
+    const groups = await loadWebhookProjectTasks(supabase, projects);
+    const picked = pickProjectTaskForWebhook(
+        groups,
+        { headRef: headReference, prNumber },
+        "pr_state"
+    );
+    if (!picked) {
+        log({ pr: prNumber, reason: "no_task", repo: repoFullName });
+        return { ok: true, reason: "no_task", skipped: true };
     }
 
-    log({ pr: prNumber, reason: "no_task", repo: repoFullName });
-    return { ok: true, reason: "no_task", skipped: true };
+    return syncPrStateOnlyInProject(supabase, {
+        log,
+        matched: picked.task,
+        prHtmlUrl: pr?.html_url ?? null,
+        prNumber,
+        projectId: picked.projectId,
+        sync,
+    });
+}
+
+const WEBHOOK_TASK_SELECT =
+    "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id";
+
+async function loadWebhookProjectTasks(
+    supabase: SupabaseClient,
+    projects: Array<{ id: string }>
+): Promise<WebhookProjectTasks[]> {
+    const groups: WebhookProjectTasks[] = [];
+
+    for (const project of projects) {
+        const { data, error } = await supabase
+            .from("tasks")
+            .select(WEBHOOK_TASK_SELECT)
+            .eq("project_id", project.id);
+
+        if (error) {
+            throw error;
+        }
+
+        groups.push({
+            projectId: project.id,
+            tasks: (data ?? []) as CandidateTask[],
+        });
+    }
+
+    return groups;
 }
 
 async function syncPrStateOnlyInProject(
     supabase: SupabaseClient,
     input: {
-        headRef: string;
         log: (fields: Record<string, unknown>) => void;
+        matched: CandidateTask;
         prHtmlUrl: null | string;
         prNumber: number;
         projectId: string;
         sync: PrStateOnlySync;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
-
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
-        headRef: input.headRef,
-        prNumber: input.prNumber,
-    });
+    const matched = input.matched;
 
     const plan = input.sync.plan(matched, {
         prHtmlUrl: input.prHtmlUrl,

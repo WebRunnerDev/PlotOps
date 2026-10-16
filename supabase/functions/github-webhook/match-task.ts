@@ -15,6 +15,11 @@ export type CandidateTask = {
     task_key: string;
 };
 
+export type WebhookProjectTasks = {
+    projectId: string;
+    tasks: CandidateTask[];
+};
+
 /**
  * Extract PlotOps task key from a head branch like `feature/TASK-12-login`
  * or `fix/BUG-5-crash`.
@@ -30,6 +35,22 @@ export function isAlreadySynced(
     lastColumnId: string
 ): boolean {
     return task.status === lastColumnId && task.pr_state === "merged";
+}
+
+/**
+ * Active task already linked to this PR number.
+ * Ignores branch and task-key fall-throughs.
+ */
+export function matchBoundTask(
+    tasks: CandidateTask[],
+    prNumber: number
+): CandidateTask | null {
+    return (
+        tasks.find(
+            (task) =>
+                task.archived_at == undefined && task.pr_number === prNumber
+        ) ?? null
+    );
 }
 
 /**
@@ -90,4 +111,42 @@ export function pickLastColumnId(columns: BoardColumnRow[]): null | string {
     }
 
     return best.id;
+}
+
+/**
+ * Task a webhook should write when several Projects share one GitHub repo.
+ *
+ * `github_full_name` is unique per Team, not globally, and task keys restart
+ * in every Project — so `feature/TASK-12-…` matches TASK-12 in every Project.
+ * A task that already stores this PR number wins, in any Project, over a
+ * branch or task-key hit in an earlier Project. Close and reopen never
+ * retarget: they update only that bound task.
+ *
+ * Merge still falls through to branch / task key when no Project has the PR
+ * linked, and that first fall-through wins (same as a single-Project repo).
+ */
+export function pickProjectTaskForWebhook(
+    projects: readonly WebhookProjectTasks[],
+    input: { headRef: string; prNumber: number },
+    kind: "merge" | "pr_state"
+): null | { projectId: string; task: CandidateTask } {
+    for (const project of projects) {
+        const bound = matchBoundTask(project.tasks, input.prNumber);
+        if (bound) {
+            return { projectId: project.projectId, task: bound };
+        }
+    }
+
+    if (kind === "pr_state") {
+        return null;
+    }
+
+    for (const project of projects) {
+        const matched = matchTask(project.tasks, input);
+        if (matched) {
+            return { projectId: project.projectId, task: matched };
+        }
+    }
+
+    return null;
 }

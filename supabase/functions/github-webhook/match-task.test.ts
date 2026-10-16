@@ -4,9 +4,11 @@ import {
     type CandidateTask,
     extractTaskKeyFromBranch,
     isAlreadySynced,
+    matchBoundTask,
     matchTask,
     normalizeBranchName,
     pickLastColumnId,
+    pickProjectTaskForWebhook,
 } from "./match-task";
 
 function task(
@@ -98,6 +100,92 @@ describe("matchTask", () => {
         ];
         expect(
             matchTask(onlyArchived, { headRef: "x", prNumber: 3 })
+        ).toBeNull();
+    });
+});
+
+describe("pickProjectTaskForWebhook", () => {
+    const input = {
+        headRef: "feature/TASK-12-login",
+        prNumber: 42,
+    };
+
+    const colliding = task({
+        id: "other-team-task",
+        task_key: "TASK-12",
+    });
+    const bound = task({
+        id: "bound-task",
+        pr_number: 42,
+        pr_state: "open",
+        task_key: "TASK-12",
+    });
+
+    it("prefers the Project that already has this PR over an earlier task-key hit", () => {
+        const picked = pickProjectTaskForWebhook(
+            [
+                { projectId: "team-a", tasks: [colliding] },
+                { projectId: "team-b", tasks: [bound] },
+            ],
+            input,
+            "merge"
+        );
+
+        expect(picked).toEqual({ projectId: "team-b", task: bound });
+    });
+
+    it("keeps the first branch or task-key match when the PR is not linked yet", () => {
+        const picked = pickProjectTaskForWebhook(
+            [
+                { projectId: "team-a", tasks: [colliding] },
+                {
+                    projectId: "team-b",
+                    tasks: [task({ id: "also-12", task_key: "TASK-12" })],
+                },
+            ],
+            input,
+            "merge"
+        );
+
+        expect(picked?.projectId).toBe("team-a");
+        expect(picked?.task.id).toBe("other-team-task");
+    });
+
+    it("close and reopen ignore task-key fall-throughs and still find a later binding", () => {
+        const picked = pickProjectTaskForWebhook(
+            [
+                { projectId: "team-a", tasks: [colliding] },
+                { projectId: "team-b", tasks: [bound] },
+            ],
+            input,
+            "pr_state"
+        );
+
+        expect(picked).toEqual({ projectId: "team-b", task: bound });
+    });
+
+    it("close and reopen skip when no Project has this PR linked", () => {
+        expect(
+            pickProjectTaskForWebhook(
+                [{ projectId: "team-a", tasks: [colliding] }],
+                input,
+                "pr_state"
+            )
+        ).toBeNull();
+    });
+
+    it("does not treat an archived binding as the target", () => {
+        expect(
+            matchBoundTask(
+                [
+                    task({
+                        archived_at: "2026-01-01T00:00:00Z",
+                        id: "archived",
+                        pr_number: 42,
+                    }),
+                ],
+                42
+            )
         ).toBeNull();
     });
 });
