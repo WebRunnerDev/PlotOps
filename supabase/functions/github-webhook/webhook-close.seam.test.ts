@@ -18,6 +18,7 @@ describe("github-webhook close routing seam", () => {
         expect(index).toMatch(/syncClosedPullRequest/);
         expect(index).toMatch(/not_merged_pr/);
         expect(sync).toMatch(/planClosePullRequestSync/);
+        expect(sync).toMatch(/fetchProjectCandidateTasks/);
         expect(sync).toMatch(/shouldHandleClosedUnmergedPr/);
         expect(sync).toMatch(/plan\.update/);
         expect(sync).toMatch(/closed_pr_synced/);

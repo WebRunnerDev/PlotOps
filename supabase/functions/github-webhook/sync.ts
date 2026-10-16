@@ -4,12 +4,8 @@ import {
     planClosePullRequestSync,
     shouldHandleClosedUnmergedPr,
 } from "./close-sync.ts";
-import {
-    type CandidateTask,
-    isAlreadySynced,
-    matchTask,
-    pickLastColumnId,
-} from "./match-task.ts";
+import { isAlreadySynced, matchTask, pickLastColumnId } from "./match-task.ts";
+import { fetchProjectCandidateTasks } from "./project-candidate-tasks.ts";
 import {
     planReopenPullRequestSync,
     shouldHandleReopenedPr,
@@ -164,18 +160,12 @@ async function syncInProject(
         repoFullName: string;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
+    const taskRows = await fetchProjectCandidateTasks(
+        supabase,
+        input.projectId
+    );
 
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+    const matched = matchTask(taskRows, {
         headRef: input.headRef,
         prNumber: input.prNumber,
     });
@@ -452,18 +442,12 @@ async function syncPrStateOnlyInProject(
         sync: PrStateOnlySync;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
+    const taskRows = await fetchProjectCandidateTasks(
+        supabase,
+        input.projectId
+    );
 
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+    const matched = matchTask(taskRows, {
         headRef: input.headRef,
         prNumber: input.prNumber,
     });
