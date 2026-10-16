@@ -318,6 +318,19 @@ npx supabase functions deploy send-team-invite --project-ref ijcelrdcygzyzhcijkh
 
 **Auth:** caller must be able to `SELECT` the invite under RLS (`can_manage_team_members`). Only `kind = email` + `status = pending` are sent.
 
+**Rate limit:** 30 sends / hour per user and 60 / hour per client IP → `429 { error: "rate_limited", retryAfterSec }`. Counted in Postgres (`public.consume_edge_rate_limit`, service-role only) so all Edge isolates share one window; falls back to a per-isolate in-memory window if the RPC is unavailable.
+
+### Shared hardening (`supabase/functions/_shared`)
+
+Both functions go through the same helpers:
+
+- **Body:** read with a byte cap (`send-team-invite` 8 KiB, `github-webhook` 5 MiB) → `413 payload_too_large`; parsed and validated with zod → `400 invalid_json` / `400 invalid_body` (no zod issue details in the response).
+- **CORS** (`cors.ts`): never `*`. Allowed origins are `https://plotops.webrunner.dev`, any `http://localhost:*` / `http://127.0.0.1:*`, plus the comma-separated `CORS_ALLOWED_ORIGINS` secret (e.g. preview deploys). Other origins get no `Access-Control-Allow-*` headers; their preflight is answered `403`.
+- **Errors:** unexpected throws become `500 { error: "internal_error" }` — no stack or internal message leaves the function (the message is logged).
+- **Webhook signature:** `X-Hub-Signature-256` is required and checked (HMAC SHA-256, constant-time) before the body is parsed; missing or wrong → `401 invalid_signature`.
+
+zod resolves through each function's `deno.json` import map (`npm:zod`), and from `node_modules` under Vitest.
+
 ## Migrations
 
 - `supabase/migrations/20260710120000_create_projects.sql` — `projects` table, RLS, GitHub fields (idempotent)

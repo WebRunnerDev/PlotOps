@@ -11,7 +11,7 @@ function read(name: string) {
 
 describe("github-webhook close routing seam", () => {
     it("dispatches non-merge closes after merge path skip", () => {
-        const index = read("index.ts");
+        const index = read("handler.ts");
         const sync = read("sync.ts");
 
         expect(index).toMatch(/syncMergedPullRequest/);
@@ -27,7 +27,7 @@ describe("github-webhook close routing seam", () => {
     });
 
     it("dispatches reopened after the non-merge close path skips", () => {
-        const index = read("index.ts");
+        const index = read("handler.ts");
         const sync = read("sync.ts");
 
         expect(index).toMatch(/syncReopenedPullRequest/);
