@@ -29,6 +29,8 @@ jobs:
                         - 'supabase/config.toml'
                         - 'supabase/seed.sql'
                         - 'supabase/seed-guest-dataset.sql'
+                        - 'supabase/tests/**'
+                        - '.github/workflows/supabase-migrate-check.yml'
 
             - name: Setup Supabase CLI
               if: steps.filter.outputs.supabase == 'true'
@@ -46,6 +48,10 @@ jobs:
               if: steps.filter.outputs.supabase == 'true'
               run: |
                   supabase db advisors --local --type security --level error --fail-on error
+
+            - name: pgTAP tests (RLS / cross-team isolation)
+              if: steps.filter.outputs.supabase == 'true'
+              run: supabase test db
 
             - name: Skip (no supabase schema paths changed)
               if: steps.filter.outputs.supabase != 'true'
