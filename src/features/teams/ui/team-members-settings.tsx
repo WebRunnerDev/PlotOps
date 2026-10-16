@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { guestActionPolicy, useAuth } from "@/features/auth";
+import { guestActionPolicy, useAuth, useTurnstileToken } from "@/features/auth";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { isGuest } from "@/features/guest-mode";
 import {
@@ -81,7 +81,10 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
         access.canManageMembers && !guest
     );
 
-    const createInvite = useCreateTeamInvite(teamId);
+    const inviteCaptcha = useTurnstileToken("invite");
+    const createInvite = useCreateTeamInvite(teamId, {
+        getCaptchaToken: inviteCaptcha.getToken,
+    });
     const revokeInvite = useRevokeTeamInvite(teamId);
     const confirmInvite = useConfirmTeamInvite(teamId);
     const updateRole = useUpdateTeamMemberRole(teamId);
@@ -806,6 +809,9 @@ export function TeamMembersSettings({ teamId }: TeamMembersSettingsProperties) {
                                 </div>
                             </div>
                             <div className="flex flex-col gap-3">
+                                {inviteMode === "email"
+                                    ? inviteCaptcha.widget
+                                    : null}
                                 <Button
                                     className="w-full sm:w-fit"
                                     disabled={

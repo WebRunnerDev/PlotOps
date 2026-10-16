@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { TurnstileTokenGetter } from "@/features/auth";
 import type {
     InviteTtlValue,
     ProjectMemberRole,
@@ -53,7 +54,13 @@ export function useConfirmTeamInvite(teamId: string) {
     });
 }
 
-export function useCreateTeamInvite(teamId: string) {
+export function useCreateTeamInvite(
+    teamId: string,
+    options?: {
+        /** Turnstile token source for the email send (Edge `siteverify`). */
+        getCaptchaToken?: TurnstileTokenGetter;
+    }
+) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const { t } = useTranslation("board");
@@ -80,8 +87,10 @@ export function useCreateTeamInvite(teamId: string) {
             });
             if (error) throw error;
             if (kind === "email" && data?.id) {
+                const captchaToken =
+                    (await options?.getCaptchaToken?.()) ?? null;
                 const { data: sendData, error: sendError } =
-                    await sendTeamInviteEmail(data.id);
+                    await sendTeamInviteEmail(data.id, captchaToken);
                 const sendFailed =
                     Boolean(sendError) ||
                     (sendData !== null &&

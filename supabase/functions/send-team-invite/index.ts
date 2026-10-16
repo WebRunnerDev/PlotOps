@@ -11,6 +11,11 @@ import {
     resolveMailDelivery,
 } from "./invite-email.ts";
 import { sendResendEmail } from "./resend.ts";
+import {
+    clientIpFrom,
+    TURNSTILE_INVITE_ACTION,
+    verifyTurnstileToken,
+} from "./turnstile.ts";
 
 const inviteSendLimiter = createSlidingWindowRateLimiter({
     limit: 30,
@@ -47,7 +52,7 @@ Deno.serve(async (request) => {
         return json({ error: "unauthorized" }, 401);
     }
 
-    let body: { inviteId?: unknown };
+    let body: { captchaToken?: unknown; inviteId?: unknown };
     try {
         body = (await request.json()) as typeof body;
     } catch {
@@ -89,6 +94,28 @@ Deno.serve(async (request) => {
             },
             429
         );
+    }
+
+    // Bot protection: when the Turnstile secret is set, every send needs a
+    // fresh single-use token from the SPA widget (action "invite").
+    const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY")?.trim();
+    if (turnstileSecret) {
+        const captcha = await verifyTurnstileToken({
+            expectedAction: TURNSTILE_INVITE_ACTION,
+            remoteIp: clientIpFrom(request.headers),
+            secret: turnstileSecret,
+            token: body.captchaToken,
+        });
+        if (!captcha.ok) {
+            console.warn(
+                JSON.stringify({
+                    inviteId,
+                    reason: `captcha_${captcha.reason}`,
+                    userId: user.id,
+                })
+            );
+            return json({ error: "captcha_failed" }, 403);
+        }
     }
 
     const { data: invite, error: inviteError } = await supabase

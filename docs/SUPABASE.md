@@ -103,13 +103,14 @@ If local Google fails nonce validation, set `skip_nonce_check = true` under `[au
 
 ### Turnstile CAPTCHA (auth hardening)
 
-Email/password sign-in and sign-up pass a Turnstile token to GoTrue when configured. OAuth and Guest demo are unchanged.
+Email/password sign-in and sign-up pass a Turnstile token to GoTrue when configured; `resetPasswordForEmail` / `resendSignupConfirmation` accept one too (GoTrue checks `/recover` and `/resend`). Email invite sends verify a token in the `send-team-invite` Edge Function (see below). OAuth and Guest demo are unchanged.
 
 | Layer              | Config                                                                                                                                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Remote PlotOps** | Dashboard → **Authentication → Bot and Abuse Protection** → Turnstile secret. Match rate limits / password policy in Dashboard → **Authentication → Rate Limits** and password settings (mirror `supabase/config.toml`). |
 | **SPA**            | `VITE_TURNSTILE_SITE_KEY` in `.env` / production env (publishable site key). Widget is omitted when unset.                                                                                                               |
 | **Local GoTrue**   | `[auth.captcha]` in `supabase/config.toml` + `SUPABASE_AUTH_CAPTCHA_SECRET` in root `.env`. Restart stack after changes.                                                                                                 |
+| **Invite emails**  | Edge secret `TURNSTILE_SECRET_KEY` (same Turnstile widget secret). When set, `send-team-invite` rejects sends without a valid token (`403 captcha_failed`).                                                              |
 
 **Local testing without a Cloudflare account:** Cloudflare [dummy keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) always pass verification:
 
@@ -296,17 +297,18 @@ After `createTeamInvite` (email kind), the client invokes this function with the
 
 **Secrets** (Dashboard → Edge Functions → Secrets, or CLI — never `VITE_*`):
 
-| Secret              | Required | Notes                                                                                                                                                  |
-| ------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `RESEND_API_KEY`    | For send | [Resend](https://resend.com) API key. If unset, function returns `200` + `{ skipped: true }` and logs skip metadata only (never the invite URL/token). |
-| `INVITE_FROM_EMAIL` | For send | Verified Resend from address, e.g. `PlotOps <invites@yourdomain.com>`.                                                                                 |
-| `INVITE_APP_ORIGIN` | For send | Canonical app origin for invite links (`https://app.example.com`). Required when Resend is configured — never taken from the SPA (phishing risk).      |
+| Secret                 | Required | Notes                                                                                                                                                                                                               |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`       | For send | [Resend](https://resend.com) API key. If unset, function returns `200` + `{ skipped: true }` and logs skip metadata only (never the invite URL/token).                                                              |
+| `INVITE_FROM_EMAIL`    | For send | Verified Resend from address, e.g. `PlotOps <invites@yourdomain.com>`.                                                                                                                                              |
+| `INVITE_APP_ORIGIN`    | For send | Canonical app origin for invite links (`https://app.example.com`). Required when Resend is configured — never taken from the SPA (phishing risk).                                                                   |
+| `TURNSTILE_SECRET_KEY` | Prod     | Turnstile secret. When set, every send must carry a fresh `captchaToken` (action `invite`) verified via Cloudflare `siteverify`; otherwise `403 { error: "captcha_failed" }`. Unset → no CAPTCHA check (local dev). |
 
 `SUPABASE_URL` and `SUPABASE_ANON_KEY` are provided automatically to Edge Functions.
 
 ```bash
 # Set secrets (PlotOps remote)
-npx supabase secrets set RESEND_API_KEY="re_..." INVITE_FROM_EMAIL="PlotOps <invites@yourdomain.com>" INVITE_APP_ORIGIN="https://your-app.example" --project-ref ijcelrdcygzyzhcijkhe
+npx supabase secrets set RESEND_API_KEY="re_..." INVITE_FROM_EMAIL="PlotOps <invites@yourdomain.com>" INVITE_APP_ORIGIN="https://your-app.example" TURNSTILE_SECRET_KEY="0x..." --project-ref ijcelrdcygzyzhcijkhe
 
 # Deploy
 npx supabase functions deploy send-team-invite --project-ref ijcelrdcygzyzhcijkhe
