@@ -152,6 +152,44 @@ export async function syncReopenedPullRequest(
     return syncPrStateOnly(supabase, payload, log, REOPENED_SYNC);
 }
 
+/**
+ * PostgREST `max_rows` (supabase/config.toml) caps one response at 1000.
+ * A single `.select()` drops every task past that page and the webhook
+ * answers 200 `no_task`, so a merged or closed PR never reaches the row.
+ */
+const TASK_MATCH_PAGE_SIZE = 1000;
+
+const TASK_MATCH_COLUMNS =
+    "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id";
+
+/** Active tasks in a project, paged past the PostgREST row cap. */
+async function fetchCandidateTasks(
+    supabase: SupabaseClient,
+    projectId: string
+): Promise<CandidateTask[]> {
+    const rows: CandidateTask[] = [];
+
+    for (let from = 0; ; from += TASK_MATCH_PAGE_SIZE) {
+        const { data, error } = await supabase
+            .from("tasks")
+            .select(TASK_MATCH_COLUMNS)
+            .eq("project_id", projectId)
+            .is("archived_at", null)
+            .order("id", { ascending: true })
+            .range(from, from + TASK_MATCH_PAGE_SIZE - 1);
+
+        if (error) {
+            throw error;
+        }
+
+        const page = (data ?? []) as CandidateTask[];
+        rows.push(...page);
+        if (page.length < TASK_MATCH_PAGE_SIZE) break;
+    }
+
+    return rows;
+}
+
 async function syncInProject(
     supabase: SupabaseClient,
     input: {
@@ -164,18 +202,9 @@ async function syncInProject(
         repoFullName: string;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
+    const taskRows = await fetchCandidateTasks(supabase, input.projectId);
 
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+    const matched = matchTask(taskRows, {
         headRef: input.headRef,
         prNumber: input.prNumber,
     });
@@ -432,7 +461,9 @@ async function syncPrStateOnly(
         if (!result.skipped) {
             return result;
         }
-        if (result.reason !== "no_task") {
+        // `pr_mismatch` means this project only collided on branch / task key.
+        // The project that actually linked this PR may be later in the list.
+        if (result.reason !== "no_task" && result.reason !== "pr_mismatch") {
             return result;
         }
     }
@@ -452,18 +483,9 @@ async function syncPrStateOnlyInProject(
         sync: PrStateOnlySync;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
+    const taskRows = await fetchCandidateTasks(supabase, input.projectId);
 
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+    const matched = matchTask(taskRows, {
         headRef: input.headRef,
         prNumber: input.prNumber,
     });
