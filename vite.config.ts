@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
 
+import { securityHeaders } from "./config/vite-security-headers.ts";
+
 // https://vite.dev/config/
 export default defineConfig({
     plugins: [
@@ -16,6 +18,7 @@ export default defineConfig({
         }),
         react(),
         tailwindcss(),
+        securityHeaders(),
     ],
     resolve: {
         alias: {

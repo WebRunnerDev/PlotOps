@@ -1,0 +1,27 @@
+# Cloudflare Pages response headers (https://developers.cloudflare.com/pages/configuration/headers/).
+#
+# __SUPABASE_ORIGIN__ / __SUPABASE_WS_ORIGIN__ are replaced at `vite build`
+# from VITE_SUPABASE_URL (config/vite-security-headers.ts). `vite preview` serves
+# these same headers so Playwright checks them (e2e/security-headers.spec.ts).
+#
+# CSP rollout: ships as Content-Security-Policy-Report-Only. Once production
+# shows no violations in the console (login, board, rich-text editor, CI/CD),
+# rename the header to Content-Security-Policy to enforce it.
+#
+# Source notes:
+#   script/frame challenges.cloudflare.com — Turnstile CAPTCHA
+#   connect *.actions.githubusercontent.com, *.blob.core.windows.net — job
+#     logs zip: api.github.com 302-redirects there
+#   img *.githubusercontent.com, github.com — avatars, PR/markdown images;
+#     *.googleusercontent.com — Google OAuth avatars
+#   frame-ancestors is ignored in Report-Only — X-Frame-Options covers it
+#   style 'unsafe-inline' — prerendered style="" attributes, sonner/TipTap
+#     runtime <style> tags
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: __SUPABASE_ORIGIN__ https://*.githubusercontent.com https://github.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' data: blob: __SUPABASE_ORIGIN__ __SUPABASE_WS_ORIGIN__ https://api.github.com https://*.actions.githubusercontent.com https://*.blob.core.windows.net; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

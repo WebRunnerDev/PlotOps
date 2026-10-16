@@ -2,38 +2,11 @@
 <html lang="ru">
     <head>
         <meta charset="UTF-8" />
-        <script>
-            (function () {
-                var theme = localStorage.getItem("plotops-theme");
-                if (theme === "light")
-                    document.documentElement.classList.remove("dark");
-                else document.documentElement.classList.add("dark");
-            })();
-        </script>
         <!--
-          Hide prerendered LoginForm when a Supabase Auth token is still in
-          localStorage (SPA /* → index.html). Cleared when BootScreen mounts.
+          Theme + persisted-Auth-session mask, before first paint. External
+          (not inline) so CSP script-src stays 'self' — see public/_headers.
         -->
-        <script>
-            (function () {
-                try {
-                    for (var i = 0; i < localStorage.length; i++) {
-                        var key = localStorage.key(i);
-                        if (
-                            key &&
-                            /^sb-[a-z0-9]+-auth-token$/i.test(key) &&
-                            localStorage.getItem(key)
-                        ) {
-                            document.documentElement.setAttribute(
-                                "data-plotops-auth-session",
-                                ""
-                            );
-                            break;
-                        }
-                    }
-                } catch (e) {}
-            })();
-        </script>
+        <script src="/head-boot.js"></script>
         <style>
             #plotops-ssg-auth-mask {
                 display: none;
