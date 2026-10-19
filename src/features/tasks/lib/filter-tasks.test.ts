@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Task } from "@/features/tasks/model/types";
 
 import {
+    countActiveBoardFilterFacets,
     EMPTY_BOARD_FILTERS,
     filterTasks,
     isBoardFiltersActive,
@@ -121,5 +122,21 @@ describe("filterTasks boards", () => {
                 boardIds: ["board-a"],
             }).map((item) => item.id)
         ).toEqual(["a"]);
+    });
+});
+
+describe("countActiveBoardFilterFacets", () => {
+    it("is zero for empty filters", () => {
+        expect(countActiveBoardFilterFacets(EMPTY_BOARD_FILTERS)).toBe(0);
+    });
+
+    it("counts facets, not picked values", () => {
+        expect(
+            countActiveBoardFilterFacets({
+                ...EMPTY_BOARD_FILTERS,
+                labelIds: ["a"],
+                priorities: ["high", "low"],
+            })
+        ).toBe(2);
     });
 });

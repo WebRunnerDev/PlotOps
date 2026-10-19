@@ -305,6 +305,7 @@
     },
     "filters": {
         "label": "Фильтр",
+        "toggle": "Фильтры",
         "clear": "Сбросить",
         "selectAll": "Выбрать все",
         "deselectAll": "Снять выбор",
