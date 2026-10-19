@@ -10,6 +10,8 @@ export function collectParentTaskCandidates(input: {
 }): Task[] {
     const child = input.tasks.find((item) => item.id === input.childId);
     if (!child || child.parentId != undefined) return [];
+    // Epics are never Subtasks and never Parents (ADR 0031).
+    if (child.type === "epic") return [];
 
     const nodes = input.tasks.map((item) => ({
         id: item.id,
@@ -19,7 +21,7 @@ export function collectParentTaskCandidates(input: {
 
     return input.tasks.filter((item) => {
         if (item.archivedAt || item.id === input.childId) return false;
-        if (item.parentId != undefined) return false;
+        if (item.parentId != undefined || item.type === "epic") return false;
         return (
             parentLinkRefusal(
                 {
@@ -60,7 +62,7 @@ export function collectSubtaskLinkCandidates(input: {
 
     return input.tasks.filter((item) => {
         if (item.archivedAt || item.id === input.parentId) return false;
-        if (item.parentId != undefined) return false;
+        if (item.parentId != undefined || item.type === "epic") return false;
         return (
             parentLinkRefusal(
                 {

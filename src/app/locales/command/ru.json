@@ -4,7 +4,8 @@
     "columnsLoading": "Загрузка колонок доски…",
     "columnsLoadFailed": "Не удалось загрузить колонки доски",
     "createBugWithTitle": "Создать баг «{{title}}»",
-    "createFeatureWithTitle": "Создать фичу «{{title}}»",
+    "createEpicWithTitle": "Создать эпик «{{title}}»",
+    "createStoryWithTitle": "Создать историю «{{title}}»",
     "createTaskFailed": "Не удалось создать задачу",
     "createTaskWithTitle": "Создать задачу «{{title}}»",
     "description": "Найдите команду…",
@@ -22,6 +23,7 @@
         "settings": "Перейти в настройки"
     },
     "open": "Открыть палитру команд",
+    "openTeamTasks": "Перейти к задачам команды",
     "placeholder": "Команда или поиск…",
     "projects": "Проекты",
     "shortcut": "Ctrl Л",

@@ -9,16 +9,15 @@ import { useTranslation } from "react-i18next";
 import type { ProjectLabel } from "@/features/labels";
 
 import {
+    isBoardMultiSelectModifier,
+    shouldPreventBoardTaskTextSelection,
     type SubtaskProgress,
     type Task,
     TaskCard,
+    type TaskCardEpic,
     useBoardTaskSelectionStore,
     useTasksUiStore,
 } from "@/features/tasks";
-import {
-    isBoardMultiSelectModifier,
-    shouldPreventBoardTaskTextSelection,
-} from "@/features/tasks/lib/board-task-selection";
 import { cn } from "@/shared/lib/utils";
 import { gateDragListeners } from "@/widgets/kanban-board/model/gate-drag-pointer-down";
 import { shouldOpenTaskFromKeyboard } from "@/widgets/kanban-board/model/should-open-task-from-keyboard";
@@ -28,6 +27,7 @@ type DraggableTaskCardProperties = {
     boardId: string;
     canDrag: boolean;
     columnTaskIds: readonly string[];
+    epic?: TaskCardEpic;
     labels: ProjectLabel[];
     selectionEnabled: boolean;
     sprintBadge?: string;
@@ -39,6 +39,7 @@ export function DraggableTaskCard({
     boardId,
     canDrag,
     columnTaskIds,
+    epic,
     labels,
     selectionEnabled,
     sprintBadge,
@@ -217,6 +218,7 @@ export function DraggableTaskCard({
             tabIndex={0}
         >
             <TaskCard
+                epic={epic}
                 labels={labels}
                 selection={
                     selectionEnabled

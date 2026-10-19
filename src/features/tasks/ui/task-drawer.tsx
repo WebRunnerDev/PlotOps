@@ -15,11 +15,7 @@ import { enUS, ru } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type {
-    TaskPriority,
-    TaskStatus,
-    TaskType,
-} from "@/features/tasks/model/types";
+import type { TaskPriority, TaskStatus } from "@/features/tasks/model/types";
 import type {
     MentionCandidate,
     RichTextEditorHandle,
@@ -78,12 +74,12 @@ import {
     TASK_DESCRIPTION_MAX_LENGTH,
     TASK_PRIORITIES,
     TASK_TITLE_MAX_LENGTH,
-    TASK_TYPES,
 } from "@/features/tasks/model/constants";
 import { resolveTaskSwapAnimation } from "@/features/tasks/model/resolve-task-swap-animation";
 import { useTaskDrawerPreferencesStore } from "@/features/tasks/model/task-drawer-preferences-store";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
+import { useProjectEpics } from "@/features/tasks/model/use-project-epics";
 import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
 import { useSyncTaskUrl } from "@/features/tasks/model/use-sync-task-url";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
@@ -92,6 +88,12 @@ import { TaskActivitySection } from "@/features/tasks/ui/task-activity-section";
 import { TaskCommentsSection } from "@/features/tasks/ui/task-comments-section";
 import { TaskDrawerBottomSnapWheel } from "@/features/tasks/ui/task-drawer-bottom-snap-wheel";
 import { TaskDrawerSideEdgeHandle } from "@/features/tasks/ui/task-drawer-side-edge-handle";
+import {
+    EpicColorField,
+    TaskEpicField,
+    TaskTypeField,
+} from "@/features/tasks/ui/task-epic-fields";
+import { TaskEpicMembersSection } from "@/features/tasks/ui/task-epic-members-section";
 import { TaskGithubPanel } from "@/features/tasks/ui/task-github-panel";
 import { TaskLinksSection } from "@/features/tasks/ui/task-links-section";
 import { TaskMemberField } from "@/features/tasks/ui/task-member-field";
@@ -272,6 +274,13 @@ export function TaskDrawer({
         Boolean(selectedTaskId)
     );
     const task = boardTask ?? archivedTask;
+    const isEpic = task?.type === "epic";
+    const { epics, epicsById } = useProjectEpics(projectId);
+    // Board + Project Tasks, for Subtask detection when converting to Epic.
+    const structureTasks = useMemo(
+        () => [...tasks, ...mentionProjectTasks],
+        [mentionProjectTasks, tasks]
+    );
     const { fields: customFields } = useProjectCustomFields(projectId);
     const { valueByFieldId } = useTaskCustomFieldValues(task?.id ?? "");
     const taskMentionCandidates = useMemo<TaskMentionCandidate[]>(
@@ -1033,16 +1042,30 @@ export function TaskDrawer({
                                                 taskType={task.type}
                                             />
 
-                                            <TaskSubtasksSection
-                                                boardId={boardId}
-                                                canAdd={canAddSubtask}
-                                                canRemoveParent={
-                                                    canRemoveParent
-                                                }
-                                                canSetParent={canSetParent}
-                                                projectId={projectId}
-                                                task={task}
-                                            />
+                                            {isEpic ? (
+                                                <TaskEpicMembersSection
+                                                    boardId={boardId}
+                                                    canCreate={
+                                                        isSettled &&
+                                                        canCreateTasks &&
+                                                        !isArchived
+                                                    }
+                                                    canEdit={canEdit}
+                                                    epic={task}
+                                                    projectId={projectId}
+                                                />
+                                            ) : (
+                                                <TaskSubtasksSection
+                                                    boardId={boardId}
+                                                    canAdd={canAddSubtask}
+                                                    canRemoveParent={
+                                                        canRemoveParent
+                                                    }
+                                                    canSetParent={canSetParent}
+                                                    projectId={projectId}
+                                                    task={task}
+                                                />
+                                            )}
 
                                             <TaskLinksSection
                                                 boardId={boardId}
@@ -1079,55 +1102,30 @@ export function TaskDrawer({
                                                     >
                                                         {t("fields.type")}
                                                     </Label>
-                                                    <Select
-                                                        disabled={!canEdit}
-                                                        onValueChange={(
-                                                            value
-                                                        ) => {
+                                                    <TaskTypeField
+                                                        canEdit={canEdit}
+                                                        canManageEpics={
+                                                            isSettled &&
+                                                            canCreateTasks
+                                                        }
+                                                        className={
+                                                            FIELD_CONTROL_CLASS
+                                                        }
+                                                        epicTaskCount={
+                                                            epicsById.get(
+                                                                task.id
+                                                            )?.taskCount ?? 0
+                                                        }
+                                                        id="task-type"
+                                                        onChange={(type) => {
                                                             updateTaskDetails(
                                                                 task.id,
-                                                                {
-                                                                    type: value as TaskType,
-                                                                }
+                                                                { type }
                                                             );
                                                         }}
-                                                        value={task.type}
-                                                    >
-                                                        <SelectTrigger
-                                                            className={
-                                                                FIELD_CONTROL_CLASS
-                                                            }
-                                                            id="task-type"
-                                                        >
-                                                            <span>
-                                                                {t(
-                                                                    `taskType.${task.type}`
-                                                                )}
-                                                            </span>
-                                                        </SelectTrigger>
-                                                        <SelectContent
-                                                            alignItemWithTrigger={
-                                                                false
-                                                            }
-                                                        >
-                                                            {TASK_TYPES.map(
-                                                                (type) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            type
-                                                                        }
-                                                                        value={
-                                                                            type
-                                                                        }
-                                                                    >
-                                                                        {t(
-                                                                            `taskType.${type}`
-                                                                        )}
-                                                                    </SelectItem>
-                                                                )
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
+                                                        task={task}
+                                                        tasks={structureTasks}
+                                                    />
                                                 </div>
 
                                                 <div className="flex flex-col gap-1.5">
@@ -1379,96 +1377,129 @@ export function TaskDrawer({
                                                     >
                                                         {t("fields.estimate")}
                                                     </Label>
-                                                    <Select
-                                                        disabled={
-                                                            !canSetEstimate
-                                                        }
-                                                        onValueChange={(
-                                                            value
-                                                        ) => {
-                                                            if (
-                                                                typeof value !==
-                                                                "string"
-                                                            ) {
-                                                                return;
-                                                            }
-                                                            updateTaskDetails(
-                                                                task.id,
-                                                                {
-                                                                    estimate:
-                                                                        value ===
-                                                                        ESTIMATE_NONE
-                                                                            ? null
-                                                                            : (Number(
-                                                                                  value
-                                                                              ) as (typeof TASK_ESTIMATE_VALUES)[number]),
-                                                                }
-                                                            );
-                                                        }}
-                                                        value={
-                                                            task.estimate ===
-                                                            undefined
-                                                                ? ESTIMATE_NONE
-                                                                : String(
-                                                                      task.estimate
-                                                                  )
-                                                        }
-                                                    >
-                                                        <SelectTrigger
+                                                    {isEpic ? (
+                                                        <Input
                                                             className={
                                                                 FIELD_CONTROL_CLASS
                                                             }
+                                                            disabled
                                                             id="task-estimate"
-                                                        >
-                                                            <span>
-                                                                {task.estimate ===
+                                                            readOnly
+                                                            title={t(
+                                                                "epics.estimateRollupHint"
+                                                            )}
+                                                            value={t(
+                                                                "epics.points",
+                                                                {
+                                                                    done:
+                                                                        epicsById.get(
+                                                                            task.id
+                                                                        )
+                                                                            ?.pointsDone ??
+                                                                        0,
+                                                                    total:
+                                                                        epicsById.get(
+                                                                            task.id
+                                                                        )
+                                                                            ?.pointsTotal ??
+                                                                        0,
+                                                                }
+                                                            )}
+                                                        />
+                                                    ) : (
+                                                        <Select
+                                                            disabled={
+                                                                !canSetEstimate
+                                                            }
+                                                            onValueChange={(
+                                                                value
+                                                            ) => {
+                                                                if (
+                                                                    typeof value !==
+                                                                    "string"
+                                                                ) {
+                                                                    return;
+                                                                }
+                                                                updateTaskDetails(
+                                                                    task.id,
+                                                                    {
+                                                                        estimate:
+                                                                            value ===
+                                                                            ESTIMATE_NONE
+                                                                                ? null
+                                                                                : (Number(
+                                                                                      value
+                                                                                  ) as (typeof TASK_ESTIMATE_VALUES)[number]),
+                                                                    }
+                                                                );
+                                                            }}
+                                                            value={
+                                                                task.estimate ===
                                                                 undefined
-                                                                    ? t(
-                                                                          "estimate.none"
+                                                                    ? ESTIMATE_NONE
+                                                                    : String(
+                                                                          task.estimate
                                                                       )
-                                                                    : t(
-                                                                          "estimate.points",
-                                                                          {
-                                                                              count: task.estimate,
-                                                                          }
-                                                                      )}
-                                                            </span>
-                                                        </SelectTrigger>
-                                                        <SelectContent
-                                                            alignItemWithTrigger={
-                                                                false
                                                             }
                                                         >
-                                                            <SelectItem
-                                                                value={
-                                                                    ESTIMATE_NONE
+                                                            <SelectTrigger
+                                                                className={
+                                                                    FIELD_CONTROL_CLASS
+                                                                }
+                                                                id="task-estimate"
+                                                            >
+                                                                <span>
+                                                                    {task.estimate ===
+                                                                    undefined
+                                                                        ? t(
+                                                                              "estimate.none"
+                                                                          )
+                                                                        : t(
+                                                                              "estimate.points",
+                                                                              {
+                                                                                  count: task.estimate,
+                                                                              }
+                                                                          )}
+                                                                </span>
+                                                            </SelectTrigger>
+                                                            <SelectContent
+                                                                alignItemWithTrigger={
+                                                                    false
                                                                 }
                                                             >
-                                                                {t(
-                                                                    "estimate.none"
-                                                                )}
-                                                            </SelectItem>
-                                                            {TASK_ESTIMATE_VALUES.map(
-                                                                (points) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            points
-                                                                        }
-                                                                        value={String(
-                                                                            points
-                                                                        )}
-                                                                    >
-                                                                        {t(
-                                                                            "estimate.points",
-                                                                            {
-                                                                                count: points,
+                                                                <SelectItem
+                                                                    value={
+                                                                        ESTIMATE_NONE
+                                                                    }
+                                                                >
+                                                                    {t(
+                                                                        "estimate.none"
+                                                                    )}
+                                                                </SelectItem>
+                                                                {TASK_ESTIMATE_VALUES.map(
+                                                                    (
+                                                                        points
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                points
                                                                             }
-                                                                        )}
-                                                                    </SelectItem>
-                                                                )
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
+                                                                            value={String(
+                                                                                points
+                                                                            )}
+                                                                        >
+                                                                            {t(
+                                                                                "estimate.points",
+                                                                                {
+                                                                                    count: points,
+                                                                                }
+                                                                            )}
+                                                                        </SelectItem>
+                                                                    )
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
                                                 </div>
 
                                                 <div className="flex flex-col gap-1.5">
@@ -1496,6 +1527,52 @@ export function TaskDrawer({
                                                         value={task.deadline}
                                                     />
                                                 </div>
+                                            </div>
+
+                                            <div className="flex min-w-0 flex-col gap-1.5">
+                                                <Label
+                                                    className={
+                                                        FIELD_LABEL_CLASS
+                                                    }
+                                                    htmlFor="task-epic"
+                                                    id="task-epic-label"
+                                                >
+                                                    {isEpic
+                                                        ? t("epics.color")
+                                                        : t("epics.field")}
+                                                </Label>
+                                                {isEpic ? (
+                                                    <EpicColorField
+                                                        canEdit={canEdit}
+                                                        labelledBy="task-epic-label"
+                                                        onChange={(
+                                                            epicColor
+                                                        ) => {
+                                                            updateTaskDetails(
+                                                                task.id,
+                                                                { epicColor }
+                                                            );
+                                                        }}
+                                                        value={task.epicColor}
+                                                    />
+                                                ) : (
+                                                    <TaskEpicField
+                                                        canEdit={canEdit}
+                                                        className={
+                                                            FIELD_CONTROL_CLASS
+                                                        }
+                                                        epics={epics}
+                                                        epicsById={epicsById}
+                                                        id="task-epic"
+                                                        onChange={(epicId) => {
+                                                            updateTaskDetails(
+                                                                task.id,
+                                                                { epicId }
+                                                            );
+                                                        }}
+                                                        task={task}
+                                                    />
+                                                )}
                                             </div>
 
                                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1588,7 +1665,7 @@ export function TaskDrawer({
                                                 />
                                             </div>
 
-                                            {isArchived ? (
+                                            {isEpic ? undefined : isArchived ? (
                                                 task.branchName || task.pr ? (
                                                     <GithubTaskMeta
                                                         branchName={
@@ -1646,7 +1723,8 @@ export function TaskDrawer({
                                             )}
 
                                             {/* Live / fixture Git data — token or guest session */}
-                                            {repoFullName &&
+                                            {!isEpic &&
+                                            repoFullName &&
                                             canFetchTaskGitTab({
                                                 isGuest: isGuestSessionActive,
                                                 repoFullName,

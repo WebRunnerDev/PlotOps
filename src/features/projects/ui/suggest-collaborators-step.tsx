@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { fetchGitHubAuthenticatedUser } from "@/features/auth/lib/fetch-github-authenticated-user";
 import { githubLoginFromUser } from "@/features/auth/lib/user-display";
 import { useAuth } from "@/features/auth/model/use-auth";
+import { useTurnstileToken } from "@/features/auth/ui/use-turnstile-token";
 import { fetchRepoCollaborators } from "@/features/projects/api/github-api";
 import { planCollaboratorSuggestions } from "@/features/projects/lib/plan-collaborator-suggestions";
 import { inviteUrl } from "@/features/teams/api/team-members-api";
@@ -42,7 +43,10 @@ export function SuggestCollaboratorsStep({
     const { t } = useTranslation("home");
     const { profile, user } = useAuth();
     const mountedReference = useRef(true);
-    const createInvite = useCreateTeamInvite(teamId);
+    const inviteCaptcha = useTurnstileToken("invite");
+    const createInvite = useCreateTeamInvite(teamId, {
+        getCaptchaToken: inviteCaptcha.getToken,
+    });
     const { data: team, isLoading: teamLoading } = useTeam(teamId);
     const { data: ownerProfile, isLoading: ownerLoading } = useTeamOwnerProfile(
         team?.owner_id
@@ -394,6 +398,10 @@ export function SuggestCollaboratorsStep({
                             : t("collaboratorSuggestCopyOpenLink")}
                     </Button>
                 </div>
+            ) : null}
+
+            {inviteCaptcha.widget ? (
+                <div className="px-4">{inviteCaptcha.widget}</div>
             ) : null}
 
             <DialogFooter className="mx-0 mb-0 sm:justify-between">

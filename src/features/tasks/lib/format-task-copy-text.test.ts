@@ -11,7 +11,7 @@ import {
 } from "@/features/tasks/lib/format-task-copy-text";
 
 const descriptionField: ProjectCustomField = {
-    appliesTo: ["bug", "feature", "task"],
+    appliesTo: ["bug", "story", "task"],
     id: "field-description",
     name: "Description",
     position: 0,
@@ -20,7 +20,7 @@ const descriptionField: ProjectCustomField = {
 };
 
 const stepsField: ProjectCustomField = {
-    appliesTo: ["bug", "feature", "task"],
+    appliesTo: ["bug", "story", "task"],
     id: "field-steps",
     name: "Steps",
     position: 1,

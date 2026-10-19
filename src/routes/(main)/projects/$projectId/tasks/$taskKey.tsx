@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { resolveProjectByReference } from "@/features/projects/lib/resolve-project-reference";
 import { useProjects } from "@/features/projects/model/use-projects";
-import { useProjectTasks } from "@/features/tasks/model/use-project-tasks";
+import { useProjectTasks } from "@/features/tasks";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 export const Route = createFileRoute(

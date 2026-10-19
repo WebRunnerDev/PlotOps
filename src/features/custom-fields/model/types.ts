@@ -2,7 +2,7 @@
 export type CustomFieldSystemKey = "description";
 
 /** Built-in Task type — mirrors `public.task_type` / tasks.TaskType. */
-export type CustomFieldTaskType = "bug" | "feature" | "task";
+export type CustomFieldTaskType = "bug" | "epic" | "story" | "task";
 
 /** Minimal Task ref for Settings usage (delete confirm / counts). */
 export type CustomFieldValueUsage = {

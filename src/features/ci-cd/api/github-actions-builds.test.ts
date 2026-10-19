@@ -36,6 +36,14 @@ function createMemoryStorage(): Storage {
     };
 }
 
+function jsonResponse(body: unknown) {
+    return {
+        json: () => Promise.resolve(body),
+        ok: true,
+        status: 200,
+    } as unknown as Response;
+}
+
 describe("mapWorkflowRunToBuild", () => {
     it("maps a completed successful run", () => {
         const build = mapWorkflowRunToBuild({
@@ -178,5 +186,116 @@ describe("GitHub Actions 401 clears token SoT", () => {
         ).rejects.toBeInstanceOf(CiCdUnauthorizedError);
 
         expect(getGitHubAccessToken()).toBeNull();
+    });
+});
+
+describe("getBuildsStats", () => {
+    beforeEach(() => {
+        vi.stubGlobal("localStorage", createMemoryStorage());
+        clearGitHubAccessToken();
+        setGitHubAccessToken("token", "user-1");
+        vi.spyOn(projectsApi, "fetchProject").mockResolvedValue({
+            count: null,
+            data: {
+                created_at: "2026-01-01T00:00:00.000Z",
+                description: null,
+                github_default_branch: "main",
+                github_full_name: "org/repo",
+                github_html_url: "https://github.com/org/repo",
+                github_repo_id: 1,
+                id: "project-1",
+                is_private: false,
+                name: "Repo",
+                owner_id: "user-1",
+                slug: "repo",
+                team_id: "team-1",
+                updated_at: "2026-01-01T00:00:00.000Z",
+            },
+            error: null,
+            status: 200,
+            statusText: "OK",
+            success: true,
+        });
+    });
+
+    afterEach(() => {
+        clearGitHubAccessToken();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it("counts the whole repo, not the loaded page", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn((input: string) => {
+                const url = new URL(input);
+                const status = url.searchParams.get("status");
+                const branch = url.searchParams.get("branch");
+
+                if (branch === "main") {
+                    return Promise.resolve(
+                        jsonResponse({
+                            total_count: 120,
+                            workflow_runs: [
+                                {
+                                    conclusion: "success",
+                                    created_at: "2026-07-24T09:10:01.000Z",
+                                    display_title: "chore: bump filters",
+                                    head_branch: "main",
+                                    head_sha: "a1b2c3d4",
+                                    html_url:
+                                        "https://github.com/org/repo/actions/runs/99",
+                                    id: 99,
+                                    name: "CI",
+                                    path: ".github/workflows/ci.yml",
+                                    status: "completed",
+                                    updated_at: "2026-07-24T09:12:04.000Z",
+                                },
+                            ],
+                        })
+                    );
+                }
+
+                const totals: Record<string, number> = {
+                    all: 340,
+                    completed: 336,
+                    success: 300,
+                };
+                return Promise.resolve(
+                    jsonResponse({
+                        total_count: totals[status ?? "all"] ?? 0,
+                        workflow_runs: [],
+                    })
+                );
+            })
+        );
+
+        const stats = await githubActionsBuilds.getBuildsStats("project-1", {
+            defaultBranch: "main",
+        });
+
+        expect(stats).toMatchObject({
+            failure: 36,
+            running: 4,
+            success: 300,
+            total: 340,
+        });
+        expect(stats.defaultBranchBuild).toMatchObject({
+            branch: "main",
+            id: "99",
+            status: "success",
+        });
+    });
+
+    it("skips the branch lookup when no default branch is known", async () => {
+        const fetchMock = vi.fn(() =>
+            Promise.resolve(jsonResponse({ total_count: 0, workflow_runs: [] }))
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        const stats = await githubActionsBuilds.getBuildsStats("project-1");
+
+        expect(stats.defaultBranchBuild).toBeUndefined();
+        expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 });

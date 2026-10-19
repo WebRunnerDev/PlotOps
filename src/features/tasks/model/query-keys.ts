@@ -5,11 +5,16 @@ export const taskKeys = {
     /** Active (non-archived) Tasks on a Board — not columns or Labels. */
     board: (projectId: string, boardId: string) =>
         [...taskKeys.all, "board", projectId, boardId] as const,
+    /** Project Epics with rollup progress (RPC `project_epics`). */
+    epics: (projectId: string) =>
+        [...taskKeys.all, "epics", projectId] as const,
     /** Active (non-archived) Tasks across all Boards in a Project.
      * With `includeArchived: true`, the same Project list plus archived Tasks.
      */
     project: (projectId: string, includeArchived = false) =>
         [...taskKeys.all, "project", projectId, includeArchived] as const,
+    /** Team Tasks — active non-Epic Tasks across every Project of a Team. */
+    team: (teamId: string) => [...taskKeys.all, "team", teamId] as const,
 };
 
 /** Local drag/status move mutations — used to gate Realtime task invalidation. */

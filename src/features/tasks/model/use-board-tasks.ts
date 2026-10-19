@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import type { BoardColumn, ProjectBoardRecord } from "@/features/boards";
 import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
+    EpicColor,
+    ProjectEpic,
     Task,
     TaskActivityChange,
     TaskLinkKind,
@@ -55,6 +57,10 @@ import {
     buildTaskActivityChanges,
     toTaskActivitySnapshot,
 } from "@/features/tasks/lib/build-task-activity-changes";
+import {
+    EPIC_RULE_TOAST_KEY,
+    epicRefusalFromError,
+} from "@/features/tasks/lib/epic-rules";
 import { moveTasksToColumnInMemory } from "@/features/tasks/lib/move-task-to-column-in-memory";
 import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-for-board";
 import {
@@ -123,6 +129,10 @@ type TaskDetailsUpdate = {
     deadline?: null | string;
     /** Pass `null` to clear the description. */
     description?: null | string;
+    /** Epics only; `null` resets to the default colour. */
+    epicColor?: EpicColor | null;
+    /** Root non-Epic Tasks only; `null` removes the Task from its Epic. */
+    epicId?: null | string;
     /** Pass `null` to clear estimate (unestimated). Manager+ only. */
     estimate?: null | TaskEstimate;
     /** Pass `null` (or `[]`) to clear all labels. */
@@ -141,10 +151,13 @@ type TaskDetailsUpdate = {
         | "branchName"
         | "deadline"
         | "description"
+        | "epicColor"
+        | "epicId"
         | "estimate"
         | "id"
         | "labelIds"
         | "linkedCommitSha"
+        | "parentEpicId"
         | "pr"
         | "priority"
         | "status"
@@ -314,6 +327,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
             if (details.type !== undefined) {
                 patch.task_type = details.type;
             }
+            if (details.epicId !== undefined) {
+                patch.epic_id = details.epicId ?? null;
+            }
+            if (details.epicColor !== undefined) {
+                patch.epic_color = details.epicColor ?? null;
+            }
             if (details.assignee !== undefined) {
                 patch.assignee_id = details.assignee?.id ?? null;
             }
@@ -382,14 +401,19 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 taskId: id,
             });
         },
-        onError: (_error, variables) => {
+        onError: (error, variables) => {
             if (variables.previousCache) {
                 queryClient.setQueryData(
                     taskKeys.board(projectId, boardId),
                     variables.previousCache
                 );
             }
-            toast.error("Failed to update task");
+            const epicReason = epicRefusalFromError(error);
+            toast.error(
+                epicReason
+                    ? t(EPIC_RULE_TOAST_KEY[epicReason])
+                    : "Failed to update task"
+            );
         },
         onSettled: (_data, _error, variables) => {
             invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
@@ -628,6 +652,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const createTaskMutation = useMutation({
         mutationFn: async ({
             assigneeId,
+            epicColor,
+            epicId,
             labelIds,
             priority,
             sprintId,
@@ -636,6 +662,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             title,
         }: {
             assigneeId?: null | string;
+            epicColor?: EpicColor;
+            epicId?: string;
             labelIds?: string[];
             priority?: null | TaskPriority;
             sprintId?: string;
@@ -652,6 +680,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 sprintId,
                 {
                     ...(assigneeId === undefined ? {} : { assigneeId }),
+                    ...(epicColor === undefined ? {} : { epicColor }),
+                    ...(epicId === undefined ? {} : { epicId }),
                     ...(priority === undefined ? {} : { priority }),
                 }
             );
@@ -1169,6 +1199,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
             title: string,
             options?: {
                 assigneeId?: null | string;
+                epicColor?: EpicColor;
+                epicId?: string;
                 labelIds?: string[];
                 priority?: null | TaskPriority;
                 sprintId?: string;
@@ -1177,6 +1209,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
         ) => {
             const { task } = await createTaskMutation.mutateAsync({
                 assigneeId: options?.assigneeId,
+                epicColor: options?.epicColor,
+                epicId: options?.epicId,
                 labelIds: options?.labelIds,
                 priority: options?.priority,
                 sprintId: options?.sprintId,
@@ -1416,10 +1450,23 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         previous.status
                     ),
                 });
+                const epics = queryClient.getQueryData<ProjectEpic[]>(
+                    taskKeys.epics(projectId)
+                );
+                if (details.epicId !== undefined) {
+                    before.epic = toEpicActivityReference(
+                        previous.epicId,
+                        epics
+                    );
+                }
                 const after = applyDetailsToSnapshot(before, {
                     assignee: details.assignee,
                     branchName: details.branchName,
                     deadline: details.deadline,
+                    epic:
+                        details.epicId === undefined
+                            ? undefined
+                            : toEpicActivityReference(details.epicId, epics),
                     estimate: details.estimate,
                     labelNames:
                         details.labelIds === undefined
@@ -1450,6 +1497,8 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         branchName: nextBranch,
                         deadline: nextDeadline,
                         description: nextDescription,
+                        epicColor: nextEpicColor,
+                        epicId: nextEpicId,
                         estimate: nextEstimate,
                         labelIds: nextLabelIds,
                         linkedCommitSha: nextLinkedCommit,
@@ -1457,9 +1506,29 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         priority: nextPriority,
                         ...rest
                     } = details;
+                    // Mirror the server's silent clears (assert_task_epic_rules).
+                    const nextType = rest.type ?? task.type;
+                    const epicFields =
+                        nextType === "epic"
+                            ? {
+                                  epicColor:
+                                      nextEpicColor === undefined
+                                          ? task.epicColor
+                                          : (nextEpicColor ?? undefined),
+                                  epicId: undefined,
+                                  estimate: undefined,
+                              }
+                            : {
+                                  epicColor: undefined,
+                                  epicId:
+                                      nextEpicId === undefined
+                                          ? task.epicId
+                                          : (nextEpicId ?? undefined),
+                              };
                     return {
                         ...task,
                         ...rest,
+                        ...epicFields,
                         ...(nextAssignee === undefined
                             ? {}
                             : { assignee: nextAssignee ?? undefined }),
@@ -1500,6 +1569,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         ...(nextPriority === undefined
                             ? {}
                             : { priority: nextPriority ?? undefined }),
+                        ...(nextType === "epic" ? { estimate: undefined } : {}),
                     };
                 }),
             }));
@@ -2044,4 +2114,14 @@ function subscribeTasksChannel(
 
     taskChannels.set(projectId, { channel, subscribers: 1 });
     return () => releaseTasksChannel(projectId);
+}
+
+/** Activity payload for an Epic membership change. */
+function toEpicActivityReference(
+    epicId: null | string | undefined,
+    epics: readonly ProjectEpic[] | undefined
+): null | { key: string; title: string } {
+    if (!epicId) return null;
+    const epic = epics?.find((item) => item.id === epicId);
+    return epic ? { key: epic.key, title: epic.title } : null;
 }

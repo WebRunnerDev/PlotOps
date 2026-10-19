@@ -2,11 +2,14 @@ import type { BoardColumn } from "@/features/boards";
 import type { ProjectLabel } from "@/features/labels";
 import type { TaskEstimate } from "@/features/tasks/lib/task-estimate";
 import type {
+    EpicColor,
+    ProjectEpic,
     Task,
     TaskLinkKind,
     TaskPriority,
     TaskStatus,
     TaskType,
+    TeamTask,
 } from "@/features/tasks/model/types";
 import type { Database } from "@/shared/api/database.types";
 
@@ -25,10 +28,16 @@ import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 import {
+    type DatabaseProjectEpic,
     type DatabaseTask,
+    type DatabaseTeamTask,
+    mapDatabaseProjectEpic,
     mapDatabaseTask,
+    mapDatabaseTeamTask,
     parentIdsMissingFromRows,
     sortTasksByPosition,
+    type TeamTaskColumn,
+    teamTaskColumnKey,
     withResolvedParentKeys,
 } from "./board-mappers";
 
@@ -79,11 +88,15 @@ async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
 
 async function mapSelectedTaskRows(rows: DatabaseTask[]): Promise<Task[]> {
     const missing = parentIdsMissingFromRows(rows);
-    let extraParents: Array<{ id: string; task_key: string }> = [];
+    let extraParents: Array<{
+        epic_id: null | string;
+        id: string;
+        task_key: string;
+    }> = [];
     if (missing.length > 0) {
         const { data, error } = await supabase
             .from("tasks")
-            .select("id, task_key")
+            .select("id, task_key, epic_id")
             .in("id", missing);
         if (error) throw error;
         extraParents = data ?? [];
@@ -130,6 +143,8 @@ const TASK_SELECT = `
   linked_commit_sha,
   task_key,
   task_type,
+  epic_id,
+  epic_color,
   created_at,
   assignee:profiles!tasks_assignee_id_fkey (
     id,
@@ -182,10 +197,45 @@ const TASK_SELECT = `
   )
 `;
 
+/** Team Tasks rows: list fields only — no description, links, or labels. */
+const TEAM_TASK_SELECT = `
+  id,
+  project_id,
+  board_id,
+  title,
+  status,
+  priority,
+  deadline,
+  task_key,
+  task_type,
+  created_at,
+  assignee:profiles!tasks_assignee_id_fkey (
+    id,
+    username,
+    avatar_url,
+    first_name,
+    last_name
+  ),
+  project:projects!inner (
+    name,
+    team_id
+  ),
+  board:boards!tasks_board_id_fkey (
+    name
+  )
+`;
+
+/** PostgREST caps a response at 1000 rows — Team Tasks pages past it. */
+const TEAM_TASKS_PAGE_SIZE = 1000;
+
 /** Optional create overrides for column / backlog quick-add. */
 export type CreateTaskRecordExtras = {
     /** Pass `null` to force Unassigned (skips board auto-assign). */
     assigneeId?: null | string;
+    /** Epic colour when creating an Epic. */
+    epicColor?: EpicColor;
+    /** Create straight into an Epic (root Stories / Tasks / Bugs only). */
+    epicId?: string;
     /** Pass `null` for priority None. */
     priority?: null | TaskPriority;
 };
@@ -197,6 +247,10 @@ export type TaskRecordPatch = {
     branch_name?: null | string;
     deadline?: null | string;
     description?: null | string;
+    /** Epics only; `null` falls back to the default colour in UI. */
+    epic_color?: EpicColor | null;
+    /** Root non-Epic Tasks only; `null` removes the Task from its Epic. */
+    epic_id?: null | string;
     /** Pass `null` to clear estimate (unestimated). Manager+ only. */
     estimate?: null | TaskEstimate;
     linked_commit_sha?: null | string;
@@ -316,7 +370,7 @@ export async function createTaskRecord(
     let resolvedType: TaskType = taskType ?? "task";
     if (taskType === undefined) {
         const raw = boardRow?.default_task_type;
-        if (raw === "bug" || raw === "feature" || raw === "task") {
+        if (raw === "bug" || raw === "story" || raw === "task") {
             resolvedType = raw;
         }
     }
@@ -389,6 +443,9 @@ export async function createTaskRecord(
             status,
             task_type: resolvedType,
             title: normalizeTaskTitle(title),
+            ...(resolvedType === "epic"
+                ? { epic_color: extras?.epicColor ?? null }
+                : { epic_id: extras?.epicId ?? null }),
         } as Database["public"]["Tables"]["tasks"]["Insert"])
         .select(TASK_SELECT)
         .single();
@@ -446,6 +503,19 @@ export async function fetchBoardTasks(
     };
 }
 
+/** Every Epic in a Project (all Boards, archived included) with rollup progress. */
+export async function fetchProjectEpics(
+    projectId: string
+): Promise<ProjectEpic[]> {
+    const { data, error } = await supabase.rpc("project_epics", {
+        p_project_id: projectId,
+    });
+    if (error) throw error;
+    return ((data ?? []) as DatabaseProjectEpic[]).map((row) =>
+        mapDatabaseProjectEpic(row)
+    );
+}
+
 /** Tasks for a Project (all Boards) — palette search and similar.
  * By default excludes archived; pass `includeArchived` for opt-in archive search.
  */
@@ -467,6 +537,51 @@ export async function fetchProjectTasks(
 
     if (error) throw error;
     return mapSelectedTaskRows((data ?? []) as DatabaseTask[]);
+}
+
+/**
+ * Team Tasks: active non-Epic Tasks across every Project of a Team.
+ * RLS (`can_view_project`) already scopes rows to Teams the caller belongs to,
+ * so a non-member gets an empty list rather than an error.
+ */
+export async function fetchTeamTasks(teamId: string): Promise<TeamTask[]> {
+    const { data: columnRows, error: columnsError } = await supabase
+        .from("board_columns")
+        .select("id, board_id, name, is_done, project:projects!inner (team_id)")
+        .eq("project.team_id", teamId);
+    if (columnsError) throw columnsError;
+
+    const columns = new Map<string, TeamTaskColumn>(
+        (columnRows ?? []).map((row) => [
+            teamTaskColumnKey(row.board_id, row.id),
+            {
+                boardId: row.board_id,
+                id: row.id,
+                isDone: row.is_done,
+                name: row.name,
+            },
+        ])
+    );
+
+    const rows: DatabaseTeamTask[] = [];
+    for (let from = 0; ; from += TEAM_TASKS_PAGE_SIZE) {
+        const { data, error } = await supabase
+            .from("tasks")
+            .select(TEAM_TASK_SELECT)
+            .eq("project.team_id", teamId)
+            .is("archived_at", null)
+            .neq("task_type", "epic")
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: true })
+            .range(from, from + TEAM_TASKS_PAGE_SIZE - 1);
+        if (error) throw error;
+
+        const page = (data ?? []) as DatabaseTeamTask[];
+        rows.push(...page);
+        if (page.length < TEAM_TASKS_PAGE_SIZE) break;
+    }
+
+    return rows.map((row) => mapDatabaseTeamTask(row, columns));
 }
 
 export async function moveTaskToBoard(

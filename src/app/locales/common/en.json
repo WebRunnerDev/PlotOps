@@ -31,6 +31,11 @@
         "settings": "Settings",
         "settingsShort": "Set"
     },
+    "projectSwitcher": {
+        "allProjects": "All projects",
+        "create": "Create project",
+        "label": "Switch project"
+    },
     "notifications": {
         "allProjects": "All projects",
         "backToProjects": "Back to projects",
@@ -111,7 +116,8 @@
         "about": "About",
         "completeProfile": "Complete your profile",
         "dashboard": "Dashboard",
-        "invite": "Team invite"
+        "invite": "Team invite",
+        "teamTasks": "Team Tasks"
     },
     "settingsDescription": "Your profile, sign-in methods, and how PlotOps behaves for you.",
     "settingsEyebrow": "Account",

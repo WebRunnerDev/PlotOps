@@ -1,13 +1,22 @@
 import type {
+    EpicColor,
+    ProjectEpic,
     Task,
     TaskLinkPeer,
     TaskPriority,
     TaskPullRequest,
     TaskType,
+    TeamTask,
 } from "@/features/tasks/model/types";
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
+
+/** Parent Task fields resolved client-side for Subtask badges / Epic inheritance. */
+export type DatabaseParentReference = {
+    epic_id?: null | string;
+    task_key: string;
+};
 
 export type DatabaseProfile = {
     avatar_url: null | string;
@@ -15,6 +24,24 @@ export type DatabaseProfile = {
     id: string;
     last_name: null | string;
     username: null | string;
+};
+
+/** Row of RPC `project_epics`. */
+export type DatabaseProjectEpic = {
+    archived_at: null | string;
+    board_id: string;
+    created_at: string;
+    done_count: number;
+    epic_color: null | string;
+    id: string;
+    is_done: boolean;
+    points_done: number;
+    points_total: number;
+    status: string;
+    task_count: number;
+    task_key: string;
+    title: string;
+    unestimated_count: number;
 };
 
 export type DatabaseTask = {
@@ -30,12 +57,14 @@ export type DatabaseTask = {
     created_at: string;
     deadline: null | string;
     description: null | string;
+    epic_color?: null | string;
+    epic_id?: null | string;
     estimate: null | number;
     id: string;
     incoming_links?: DatabaseTaskLinkEmbed[] | null;
     linked_commit_sha: null | string;
     outgoing_links?: DatabaseTaskLinkEmbed[] | null;
-    parent?: Array<{ task_key: string }> | null | { task_key: string };
+    parent?: Array<DatabaseParentReference> | DatabaseParentReference | null;
     parent_id?: null | string;
     position: number;
     pr_number: null | number;
@@ -68,9 +97,53 @@ export type DatabaseTaskLinkPeer = {
     title: string;
 };
 
+/** Row of the Team Tasks select — a Task with its Project and Board names. */
+export type DatabaseTeamTask = {
+    assignee: DatabaseProfile | DatabaseProfile[] | null;
+    board: Array<{ name: string }> | null | { name: string };
+    board_id: string;
+    created_at: string;
+    deadline: null | string;
+    id: string;
+    priority: null | string;
+    project: Array<{ name: string }> | null | { name: string };
+    project_id: string;
+    status: string;
+    task_key: string;
+    task_type: string;
+    title: string;
+};
+
+/** Column lookup for Team Tasks — column ids are only unique per Board. */
+export type TeamTaskColumn = {
+    boardId: string;
+    id: string;
+    isDone: boolean;
+    name: string;
+};
+
 const TASK_PRIORITIES = new Set<string>(["high", "low", "medium", "urgent"]);
 
-const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
+const TASK_TYPES = new Set<string>(["bug", "epic", "story", "task"]);
+
+const EPIC_COLORS = new Set<string>([
+    "blue",
+    "gray",
+    "green",
+    "orange",
+    "pink",
+    "purple",
+    "red",
+    "teal",
+    "yellow",
+]);
+
+export function toEpicColor(
+    value: null | string | undefined
+): EpicColor | undefined {
+    if (!value || !EPIC_COLORS.has(value)) return undefined;
+    return value as EpicColor;
+}
 
 function toTaskType(value: null | string): TaskType {
     if (!value || !TASK_TYPES.has(value)) return "task";
@@ -78,6 +151,24 @@ function toTaskType(value: null | string): TaskType {
 }
 
 const PR_STATES = new Set<string>(["closed", "merged", "open"]);
+
+export function mapDatabaseProjectEpic(row: DatabaseProjectEpic): ProjectEpic {
+    return {
+        archivedAt: row.archived_at ?? undefined,
+        boardId: row.board_id,
+        color: toEpicColor(row.epic_color),
+        doneCount: row.done_count,
+        id: row.id,
+        isDone: row.is_done,
+        key: row.task_key,
+        pointsDone: row.points_done,
+        pointsTotal: row.points_total,
+        status: row.status,
+        taskCount: row.task_count,
+        title: row.title,
+        unestimatedCount: row.unestimated_count,
+    };
+}
 
 export function mapDatabaseTask(row: DatabaseTask): Task {
     const labelIds = row.task_labels?.map((item) => item.label_id) ?? [];
@@ -99,20 +190,57 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         createdAt: row.created_at,
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
+        epicColor: toEpicColor(row.epic_color),
+        epicId: row.epic_id ?? undefined,
         estimate: isTaskEstimate(row.estimate) ? row.estimate : undefined,
         hasOpenBlocker: hasOpenBlockerFromRow(row),
         id: row.id,
         key: row.task_key,
         labelIds: labelIds.length > 0 ? labelIds : undefined,
         linkedCommitSha: row.linked_commit_sha ?? undefined,
+        parentEpicId: firstParent(row)?.epic_id ?? undefined,
         parentId: row.parent_id ?? undefined,
-        parentKey: toParentKey(row),
+        parentKey: firstParent(row)?.task_key ?? undefined,
         pr: toPullRequest(row),
         priority: toTaskPriority(row.priority),
         relatedTasks: toRelatedTasks(row),
         sprintId: row.sprint_id ?? undefined,
         sprintPosition: row.sprint_position ?? undefined,
         status: row.status,
+        title: row.title,
+        type: toTaskType(row.task_type),
+    };
+}
+
+/**
+ * Team Tasks row. A status with no matching column (deleted mid-flight) keeps
+ * the raw id as its name and never counts as Done.
+ */
+export function mapDatabaseTeamTask(
+    row: DatabaseTeamTask,
+    columns: ReadonlyMap<string, TeamTaskColumn>
+): TeamTask {
+    const assignee = Array.isArray(row.assignee)
+        ? row.assignee[0]
+        : row.assignee;
+    const board = Array.isArray(row.board) ? row.board[0] : row.board;
+    const project = Array.isArray(row.project) ? row.project[0] : row.project;
+    const column = columns.get(teamTaskColumnKey(row.board_id, row.status));
+
+    return {
+        assignee: toTaskPerson(assignee),
+        boardId: row.board_id,
+        boardName: board?.name ?? "",
+        createdAt: row.created_at,
+        deadline: row.deadline ?? undefined,
+        id: row.id,
+        isDone: column?.isDone === true,
+        key: row.task_key,
+        priority: toTaskPriority(row.priority),
+        projectId: row.project_id,
+        projectName: project?.name ?? "",
+        status: row.status,
+        statusName: column?.name ?? row.status,
         title: row.title,
         type: toTaskType(row.task_type),
     };
@@ -139,21 +267,42 @@ export function sortTasksByPosition(
     );
 }
 
+export function teamTaskColumnKey(boardId: string, columnId: string): string {
+    return `${boardId}:${columnId}`;
+}
+
 export function withResolvedParentKeys(
     rows: DatabaseTask[],
-    extraParents: Array<{ id: string; task_key: string }> = []
+    extraParents: Array<{
+        epic_id?: null | string;
+        id: string;
+        task_key: string;
+    }> = []
 ): DatabaseTask[] {
-    const keys = new Map(rows.map((row) => [row.id, row.task_key]));
+    const parents = new Map<string, DatabaseParentReference>(
+        rows.map((row) => [
+            row.id,
+            { epic_id: row.epic_id ?? null, task_key: row.task_key },
+        ])
+    );
     for (const parent of extraParents) {
-        keys.set(parent.id, parent.task_key);
+        parents.set(parent.id, {
+            epic_id: parent.epic_id ?? null,
+            task_key: parent.task_key,
+        });
     }
     return rows.map((row) => {
-        const taskKey = row.parent_id ? keys.get(row.parent_id) : undefined;
+        const parent = row.parent_id ? parents.get(row.parent_id) : undefined;
         return {
             ...row,
-            parent: taskKey ? { task_key: taskKey } : null,
+            parent: parent ?? null,
         };
     });
+}
+
+function firstParent(row: DatabaseTask): DatabaseParentReference | undefined {
+    const parent = Array.isArray(row.parent) ? row.parent[0] : row.parent;
+    return parent ?? undefined;
 }
 
 function firstPeer(
@@ -169,11 +318,6 @@ function hasOpenBlockerFromRow(row: DatabaseTask): boolean {
         const source = firstPeer(link.source);
         return source?.archived_at == undefined;
     });
-}
-
-function toParentKey(row: DatabaseTask): string | undefined {
-    const parent = Array.isArray(row.parent) ? row.parent[0] : row.parent;
-    return parent?.task_key ?? undefined;
 }
 
 function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {

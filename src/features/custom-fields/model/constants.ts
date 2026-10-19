@@ -11,9 +11,10 @@ export const CUSTOM_FIELD_DEFINITIONS_CAP = 10;
 export const CUSTOM_FIELD_VALUE_MAX_LENGTH = 8192;
 
 export const CUSTOM_FIELD_TASK_TYPES: CustomFieldTaskType[] = [
-    "bug",
-    "feature",
+    "epic",
+    "story",
     "task",
+    "bug",
 ];
 
 export const DESCRIPTION_SYSTEM_KEY: CustomFieldSystemKey = "description";

@@ -8,8 +8,11 @@ import {
     Tag,
     User,
     X,
+    Zap,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+
+import type { EpicColor } from "@/features/tasks/model/types";
 
 import { getLabelDotProperties, type ProjectLabel } from "@/features/labels";
 import {
@@ -17,12 +20,14 @@ import {
     DEADLINE_FILTER_VALUES,
     EMPTY_BOARD_FILTERS,
     isBoardFiltersActive,
+    NO_EPIC_FILTER,
     type PriorityFilterValue,
     toggleFilterValue,
     UNASSIGNED_ASSIGNEE_FILTER,
 } from "@/features/tasks/lib/filter-tasks";
 import { TASK_PRIORITIES } from "@/features/tasks/model/constants";
 import { BoardHideCompletedControl } from "@/features/tasks/ui/board-hide-completed-control";
+import { EpicColorDot } from "@/features/tasks/ui/epic-badge";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -41,6 +46,13 @@ export type BoardFilterBoard = {
     name: string;
 };
 
+export type BoardFilterEpic = {
+    color?: EpicColor;
+    id: string;
+    key: string;
+    title: string;
+};
+
 export type BoardFilterPerson = {
     avatarUrl?: string;
     id: string;
@@ -52,6 +64,8 @@ type BoardTaskFiltersBarProperties = {
     boards?: BoardFilterBoard[];
     /** Hide the “Filter” legend — use in compact pickers. */
     compact?: boolean;
+    /** When non-empty, show an Epic facet (Subtasks match their Parent's Epic). */
+    epics?: BoardFilterEpic[];
     filters: BoardTaskFilters;
     /** When set, show a toggle to hide Tasks in Done columns. */
     hideCompleted?: boolean;
@@ -76,6 +90,7 @@ const PRIORITY_FILTER_VALUES: PriorityFilterValue[] = [
 export function BoardTaskFiltersBar({
     boards,
     compact = false,
+    epics,
     filters,
     hideCompleted = false,
     labels,
@@ -94,6 +109,12 @@ export function BoardTaskFiltersBar({
         ...people.map((person) => person.id),
     ];
     const boardOptions = boards?.map((board) => board.id) ?? [];
+    const epicIds = filters.epicIds ?? [];
+    const epicOptions = [
+        NO_EPIC_FILTER,
+        ...(epics?.map((epic) => epic.id) ?? []),
+    ];
+    const showEpicFilter = (epics?.length ?? 0) > 0;
     const labelOptions = labels.map((label) => label.id);
 
     const clearFilters = () => {
@@ -146,6 +167,61 @@ export function BoardTaskFiltersBar({
                                 }}
                             >
                                 {board.name}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                    </DropdownMenuGroup>
+                </FilterMenu>
+            ) : undefined}
+
+            {showEpicFilter && epics ? (
+                <FilterMenu
+                    activeCount={epicIds.length}
+                    icon={<Zap className="size-3.5" />}
+                    label={t("epics.field")}
+                    modal={menuModal}
+                >
+                    <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                            {t("epics.field")}
+                        </DropdownMenuLabel>
+                        <SelectAllCheckboxItem
+                            allValues={epicOptions}
+                            onChange={(next) => {
+                                onChange({ ...filters, epicIds: next });
+                            }}
+                            selected={epicIds}
+                        />
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                            checked={epicIds.includes(NO_EPIC_FILTER)}
+                            onCheckedChange={() => {
+                                onChange({
+                                    ...filters,
+                                    epicIds: toggleFilterValue(
+                                        epicIds,
+                                        NO_EPIC_FILTER
+                                    ),
+                                });
+                            }}
+                        >
+                            {t("epics.none")}
+                        </DropdownMenuCheckboxItem>
+                        {epics.map((epic) => (
+                            <DropdownMenuCheckboxItem
+                                checked={epicIds.includes(epic.id)}
+                                key={epic.id}
+                                onCheckedChange={() => {
+                                    onChange({
+                                        ...filters,
+                                        epicIds: toggleFilterValue(
+                                            epicIds,
+                                            epic.id
+                                        ),
+                                    });
+                                }}
+                            >
+                                <EpicColorDot color={epic.color} />
+                                <span className="truncate">{epic.title}</span>
                             </DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuGroup>

@@ -219,6 +219,63 @@
         "showToggle": "Show Subtasks",
         "progressBadge": "{{done}}/{{total}} Done"
     },
+    "epics": {
+        "title": "Epics",
+        "field": "Epic",
+        "none": "No epic",
+        "color": "Epic colour",
+        "cardBadge": "Epic {{key}} · {{title}}",
+        "panelHint": "Click an epic to filter the backlog.",
+        "panelHintManage": "Click to filter · drop tasks on an epic to add them.",
+        "empty": "No epics in this project yet.",
+        "emptyManage": "No epics yet. Group related stories, tasks, and bugs under an epic to track a bigger goal across sprints and boards.",
+        "createPlaceholder": "New epic title…",
+        "create": "Create epic",
+        "created": "Epic {{key}} created",
+        "createFailed": "Could not create epic",
+        "filterByEpic": "Filter backlog by “{{title}}”",
+        "open": "Open epic {{key}}",
+        "progress": "{{done}}/{{total}} done",
+        "points": "{{done}}/{{total}} pts",
+        "addedToEpic_one": "Added {{count}} task to “{{title}}”",
+        "addedToEpic_other": "Added {{count}} tasks to “{{title}}”",
+        "subtasksFollowParent": "Subtasks follow their parent task's epic — move the parent instead.",
+        "inheritedFromParent": "Inherited from the parent task.",
+        "estimateRollupHint": "Epic size is the sum of its tasks' estimates.",
+        "members": "Tasks in this epic",
+        "membersEmpty": "No tasks in this epic yet.",
+        "addExisting": "Add existing",
+        "taskPlaceholder": "New story title…",
+        "taskCreated": "{{key}} created in this epic",
+        "taskCreateFailed": "Could not create the task",
+        "removeFromEpic": "Remove {{key}} from this epic",
+        "colors": {
+            "purple": "Purple",
+            "blue": "Blue",
+            "teal": "Teal",
+            "green": "Green",
+            "yellow": "Yellow",
+            "orange": "Orange",
+            "red": "Red",
+            "pink": "Pink",
+            "gray": "Grey"
+        },
+        "errors": {
+            "archivedEpic": "Archived epics cannot receive tasks.",
+            "archivedTask": "Archived tasks cannot be changed.",
+            "differentProject": "An epic and its tasks must be in the same project.",
+            "epicHasMembers": "Remove all tasks from this epic before changing its type.",
+            "epicInEpic": "An epic cannot belong to another epic.",
+            "epicInSprint": "Remove the task from its sprint before turning it into an epic.",
+            "epicIsSubtask": "A subtask cannot become an epic.",
+            "epicMissing": "Epic not found.",
+            "epicSubtasks": "Epics cannot have subtasks — add tasks to the epic instead.",
+            "managerOnly": "Only managers can create or convert epics.",
+            "notAnEpic": "The selected task is not an epic.",
+            "parentBecomesEpic": "A task with subtasks cannot become an epic.",
+            "subtaskEpic": "Subtasks follow their parent task's epic."
+        }
+    },
     "taskLinks": {
         "title": "Linked tasks",
         "relatesTo": "Relates to",
@@ -275,6 +332,7 @@
             "status": "Status",
             "priority": "Priority",
             "deadline": "Deadline",
+            "epic": "Epic",
             "estimate": "Estimate",
             "assignee": "Assignee",
             "labels": "Labels",
@@ -288,6 +346,8 @@
         }
     },
     "taskType": {
+        "epic": "Epic",
+        "story": "Story",
         "task": "Task",
         "bug": "Bug",
         "feature": "Feature"
@@ -611,6 +671,7 @@
         "accept": "Accept invite",
         "acceptSuccess": "You joined the Team",
         "acceptFailed": "Could not accept invite",
+        "membershipCapReached": "You have joined {{cap}} Teams — the maximum. Leave one to accept this invite.",
         "emailMismatch": "Your account email does not match the invite. Claim it so an owner or admin can confirm you.",
         "claim": "Claim with this account",
         "claimSuccess": "Claimed — ask an owner or admin to confirm in Team settings.",
@@ -680,9 +741,10 @@
         "appliesTo": "Applies to Task types",
         "systemBadge": "Built-in",
         "types": {
+            "epic": "epic",
+            "story": "story",
             "task": "task",
-            "bug": "bug",
-            "feature": "feature"
+            "bug": "bug"
         },
         "searchPlaceholder": "Search fields…",
         "noSearchMatches": "No fields match this search.",
@@ -780,9 +842,37 @@
         "closePrCancel": "Cancel",
         "closePrToast": "Closed PR #{{number}}",
         "closePrFailed": "Could not close pull request",
+        "reopenPr": "Reopen",
+        "reopenPrToast": "Reopened PR #{{number}}",
+        "reopenPrFailed": "Could not reopen pull request",
         "approvePr": "Approve",
         "approvePrToast": "Approved PR #{{number}}",
         "approvePrFailed": "Could not approve pull request",
+        "approvePrTitle": "Approve pull request #{{number}}?",
+        "approvePrBody": "The approval is posted on GitHub under your name and is visible to the team.",
+        "approvePrConfirm": "Approve",
+        "approvePrCancel": "Cancel",
+        "approvePrOwnError": "GitHub never lets authors approve their own pull request, even without branch protection. Ask a teammate for review, or merge directly.",
+        "requestReview": "Request review",
+        "requestReviewTitle": "Request review on PR #{{number}}",
+        "requestReviewBody": "Pick repository collaborators, or type a GitHub login to add someone who is not listed.",
+        "requestReviewSearch": "Filter or type a GitHub login",
+        "requestReviewAdd": "Add reviewer",
+        "requestReviewLoading": "Loading collaborators…",
+        "requestReviewLoadFailed": "Could not load collaborators — you can still type a GitHub login.",
+        "requestReviewListUnavailable": "GitHub does not list collaborators for your access level — type a GitHub login instead.",
+        "requestReviewEmpty": "No matching reviewers.",
+        "requestReviewRequested": "Already requested",
+        "requestReviewAlreadyRequested": "Review is already requested from {{login}}",
+        "requestReviewInvalidLogin": "Enter a valid GitHub login",
+        "requestReviewConfirm": "Request review",
+        "requestReviewCancel": "Cancel",
+        "requestReviewToast": "Requested review on PR #{{number}} from {{reviewers}}",
+        "requestReviewFailed": "Could not request review",
+        "requestReviewError": {
+            "author": "The pull request author cannot be asked to review it",
+            "invalid_reviewer": "GitHub rejected a reviewer — every reviewer must be an existing user with access to this repository"
+        },
         "smartCommitsHint": "Include {{key}} in commit messages (e.g. “{{key}}: Fix login”) — matching commits appear automatically below.",
         "linkCommit": "Link commit",
         "linkCommitHint": "Enter a commit SHA or GitHub commit URL.",
@@ -1002,6 +1092,7 @@
         "columnKey": "Key",
         "columnLabels": "Labels",
         "columnEstimate": "Pts",
+        "columnStatus": "Status",
         "columnTitle": "Title",
         "completedHint": "Completed tasks",
         "createDraft": "New draft sprint",
@@ -1089,10 +1180,14 @@
         "reportCarryover": "Carryover: {{backlog}} to Backlog · {{drafts}} to Draft(s)",
         "reportCompletedList": "Completed tasks",
         "reportCompletedMissing": "Task {{id}}… (unavailable)",
+        "reportCompletedInBacklog": "in Backlog",
         "reportCompletedMoved": "no longer on this Sprint",
         "reportMoveToBacklog": "To Backlog",
         "reportMoveToBacklogDone": "Task moved to Backlog",
         "reportMoveToBacklogFailed": "Could not move task to Backlog",
+        "reportMoveToBacklogUndo": "Undo",
+        "reportMoveToBacklogUndoFailed": "Could not return task to the Sprint",
+        "reportReturnToSprint": "To Sprint",
         "reportPoints": "Points: committed {{committedPoints}} · completed {{completedPoints}}",
         "reportScope": "Scope changes: +{{added}} / −{{removed}}",
         "reportSummary": "Committed {{committed}} · Completed {{completed}}",
@@ -1144,5 +1239,57 @@
         "activeLiveUndated": "Set start and end dates to track the window.",
         "activeLiveUpcoming": "days to go",
         "activeJumpNav": "Jump to sprint"
+    },
+    "teamTasks": {
+        "title": "Team Tasks",
+        "subtitle": "Every Task across this Team's Projects, in one list.",
+        "newTask": "New Task",
+        "openTask": "Open {{key}}: {{title}}",
+        "count_one": "{{count}} Task",
+        "count_other": "{{count}} Tasks",
+        "teamLoadFailed": "Could not load this Team.",
+        "loadFailed": "Could not load Team Tasks.",
+        "retry": "Retry",
+        "groupBy": {
+            "label": "Group by",
+            "project": "By Project",
+            "assignee": "By Assignee",
+            "deadline": "By Deadline",
+            "none": "No grouping"
+        },
+        "filters": {
+            "project": "Project",
+            "allProjects": "All Projects"
+        },
+        "assignee": {
+            "me": "Assigned to me",
+            "any": "Anyone",
+            "unassigned": "Unassigned"
+        },
+        "columns": {
+            "task": "Task",
+            "project": "Project"
+        },
+        "empty": {
+            "title": "No Tasks yet",
+            "description": "Tasks from every Project in this Team will show up here.",
+            "noProjects": "This Team has no Projects yet. Add a Project to start tracking Tasks."
+        },
+        "emptyFiltered": {
+            "title": "No Tasks match this view",
+            "description": "Nothing fits the current Project, Assignee, and completed filters.",
+            "showAll": "Show all Tasks"
+        },
+        "create": {
+            "title": "New Task",
+            "description": "Choose where the Task lives. It opens on that Board once created.",
+            "pickProject": "Choose a Project",
+            "pickBoard": "Choose a Board",
+            "noColumns": "This Board has no columns yet.",
+            "titlePlaceholder": "What needs to be done?",
+            "cancel": "Cancel",
+            "submit": "Create Task",
+            "failed": "Could not create the Task."
+        }
     }
 }

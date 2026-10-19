@@ -22,7 +22,7 @@ type DatabaseBoard = {
 const BOARD_SELECT =
     "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator, is_development";
 
-const TASK_TYPES = new Set<string>(["bug", "feature", "task"]);
+const TASK_TYPES = new Set<string>(["bug", "story", "task"]);
 
 export async function boardHasTasks(boardId: string): Promise<boolean> {
     const { count, error } = await supabase

@@ -4,7 +4,8 @@
     "columnsLoading": "Loading board columns…",
     "columnsLoadFailed": "Could not load board columns",
     "createBugWithTitle": "Create bug “{{title}}”",
-    "createFeatureWithTitle": "Create feature “{{title}}”",
+    "createEpicWithTitle": "Create epic “{{title}}”",
+    "createStoryWithTitle": "Create story “{{title}}”",
     "createTaskFailed": "Could not create task",
     "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
@@ -22,6 +23,7 @@
         "settings": "Go to Settings"
     },
     "open": "Open command palette",
+    "openTeamTasks": "Go to Team Tasks",
     "placeholder": "Type a command or search…",
     "projects": "Projects",
     "shortcut": "Ctrl K",

@@ -578,7 +578,7 @@ function BoardSettingsCard({
                                     onValueChange={(value) => {
                                         if (
                                             value === "bug" ||
-                                            value === "feature" ||
+                                            value === "story" ||
                                             value === "task"
                                         ) {
                                             setDefaultTaskType(value);

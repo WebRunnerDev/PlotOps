@@ -40,7 +40,7 @@ describe("resolveQuickAddDefaults", () => {
             resolveQuickAddDefaults({
                 autoAssignToCreator: true,
                 currentUserId: "user-1",
-                defaultTaskType: "feature",
+                defaultTaskType: "story",
                 teamPeopleCount: 2,
             }).assigneeId
         ).toBeNull();

@@ -21,6 +21,11 @@ import {
 } from "@/features/guest-mode";
 import { applyGuestStakeWatchEnrollment } from "@/features/notifications/api/guest-task-watchers";
 import { sortTasksByPosition } from "@/features/tasks/api/board-mappers";
+import {
+    applyEpicRules,
+    type EpicRuleTask,
+    summarizeProjectEpics,
+} from "@/features/tasks/lib/epic-rules";
 import { isTaskEstimate } from "@/features/tasks/lib/task-estimate";
 import {
     assertParentArchiveLegal,
@@ -137,6 +142,12 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     if (patch.task_type !== undefined) {
         task.type = patch.task_type;
     }
+    if (patch.epic_id !== undefined) {
+        task.epicId = patch.epic_id ?? undefined;
+    }
+    if (patch.epic_color !== undefined) {
+        task.epicColor = patch.epic_color ?? undefined;
+    }
     if (patch.position !== undefined) {
         task.position = patch.position;
     }
@@ -225,6 +236,29 @@ function assertDoneMoveLegal(
     );
 }
 
+/**
+ * Mirror `assert_task_epic_rules` on a mutated (or new) sandbox Task.
+ * Guest is always the Team owner, so Manager-only conversions are allowed.
+ */
+function enforceEpicRules(
+    sandbox: GuestSandbox,
+    task: GuestTask,
+    /** Row before the write; omit for inserts. */
+    before?: EpicRuleTask
+): void {
+    const next = applyEpicRules(
+        before,
+        toEpicRuleTask(task),
+        sandbox.tasks.map((item) => toEpicRuleTask(item)),
+        { canManage: true }
+    );
+    if (next.epicId === undefined) delete task.epicId;
+    else task.epicId = next.epicId;
+    if (next.epicColor === undefined) delete task.epicColor;
+    else task.epicColor = next.epicColor;
+    if (next.estimate === undefined) delete task.estimate;
+}
+
 function enrollWatchersOnCreate(sandbox: GuestSandbox, task: GuestTask): void {
     applyGuestStakeWatchEnrollment({
         next: stakeIdsFromTask(task),
@@ -283,6 +317,8 @@ function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
         createdAt: task.createdAt,
         deadline: task.deadline,
         description: task.description,
+        epicColor: task.epicColor,
+        epicId: task.epicId,
         estimate: task.estimate,
         hasOpenBlocker: hasOpenBlocker(
             task.id,
@@ -292,6 +328,7 @@ function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
         id: task.id,
         key: task.key,
         labelIds: task.labelIds,
+        parentEpicId: parent?.epicId,
         parentId: task.parentId,
         parentKey: parent?.key,
         pr: task.pr,
@@ -326,9 +363,15 @@ function maxSprintPositionAmong(tasks: GuestTask[]): number {
     return max;
 }
 
+const TASK_KEY_PREFIX: Record<TaskType, string> = {
+    bug: "BUG",
+    epic: "EPIC",
+    story: "STORY",
+    task: "TASK",
+};
+
 function nextTaskKey(tasks: GuestTask[], taskType: TaskType): string {
-    const prefix =
-        taskType === "bug" ? "BUG" : taskType === "feature" ? "FEAT" : "TASK";
+    const prefix = TASK_KEY_PREFIX[taskType];
     let max = 0;
     for (const task of tasks) {
         const match = new RegExp(String.raw`^${prefix}-(\d+)$`, "i").exec(
@@ -418,6 +461,20 @@ function taskLinkEdges(
         sourceId: link.sourceTaskId,
         targetId: link.targetTaskId,
     }));
+}
+
+function toEpicRuleTask(task: GuestTask): EpicRuleTask {
+    return {
+        archivedAt: task.archivedAt,
+        epicColor: task.epicColor,
+        epicId: task.epicId,
+        estimate: task.estimate,
+        id: task.id,
+        parentId: task.parentId,
+        projectId: task.projectId,
+        sprintId: task.sprintId,
+        type: task.type,
+    };
 }
 
 /** Guest Mode Tasks adapter — mutates sessionStorage sandbox; never calls Supabase. */
@@ -572,6 +629,7 @@ export const guestTasksProvider: TasksProvider = {
                 title: normalizedTitle,
                 type: resolvedType,
             };
+            enforceEpicRules(sandbox, created);
             sandbox.tasks.push(created);
 
             enrollWatchersOnCreate(sandbox, created);
@@ -710,7 +768,15 @@ export const guestTasksProvider: TasksProvider = {
                 status,
                 title: normalizedTitle,
                 type: resolvedType,
+                ...(resolvedType === "epic"
+                    ? extras?.epicColor
+                        ? { epicColor: extras.epicColor }
+                        : {}
+                    : extras?.epicId
+                      ? { epicId: extras.epicId }
+                      : {}),
             };
+            enforceEpicRules(sandbox, created);
             sandbox.tasks.push(created);
             enrollWatchersOnCreate(sandbox, created);
         });
@@ -758,6 +824,10 @@ export const guestTasksProvider: TasksProvider = {
             findTaskOrThrow(sandbox.tasks, taskId);
             assertParentDeleteLegal(taskId, parentGateTasks(sandbox));
             sandbox.tasks = sandbox.tasks.filter((task) => task.id !== taskId);
+            // Mirrors tasks_epic_id_fkey `on delete set null`.
+            for (const task of sandbox.tasks) {
+                if (task.epicId === taskId) delete task.epicId;
+            }
             sandbox.comments = sandbox.comments.filter(
                 (comment) => comment.taskId !== taskId
             );
@@ -820,6 +890,35 @@ export const guestTasksProvider: TasksProvider = {
         };
     },
 
+    async fetchProjectEpics(projectId) {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            throw new Error("No Guest Session");
+        }
+        const doneColumns = new Map(
+            sandbox.boards.map((board) => [
+                board.id,
+                new Set(
+                    board.columns
+                        .filter((column) => column.isDone)
+                        .map((column) => column.id)
+                ),
+            ])
+        );
+        return summarizeProjectEpics(
+            sandbox.tasks.map((task) => ({
+                ...toEpicRuleTask(task),
+                boardId: task.boardId,
+                createdAt: task.createdAt,
+                key: task.key,
+                status: task.status,
+                title: task.title,
+            })),
+            projectId,
+            (boardId, status) => doneColumns.get(boardId)?.has(status) === true
+        );
+    },
+
     async fetchProjectTasks(projectId, options) {
         const sandbox = getGuestSandbox();
         if (!sandbox) {
@@ -833,6 +932,51 @@ export const guestTasksProvider: TasksProvider = {
                     (includeArchived || isActiveTask(task))
             )
             .map((task) => mapGuestTask(task, sandbox));
+    },
+
+    async fetchTeamTasks(teamId) {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            throw new Error("No Guest Session");
+        }
+        const projects = new Map(
+            sandbox.projects
+                .filter((project) => project.teamId === teamId)
+                .map((project) => [project.id, project] as const)
+        );
+        const boards = new Map(
+            sandbox.boards.map((board) => [board.id, board] as const)
+        );
+        return sandbox.tasks
+            .filter(
+                (task) =>
+                    projects.has(task.projectId) &&
+                    task.type !== "epic" &&
+                    isActiveTask(task)
+            )
+            .map((task) => {
+                const board = boards.get(task.boardId);
+                const column = board?.columns.find(
+                    (item) => item.id === task.status
+                );
+                return {
+                    assignee: task.assignee,
+                    boardId: task.boardId,
+                    boardName: board?.name ?? "",
+                    createdAt: task.createdAt,
+                    deadline: task.deadline,
+                    id: task.id,
+                    isDone: column?.isDone === true,
+                    key: task.key,
+                    priority: task.priority,
+                    projectId: task.projectId,
+                    projectName: projects.get(task.projectId)?.name ?? "",
+                    status: task.status,
+                    statusName: column?.name ?? task.status,
+                    title: task.title,
+                    type: task.type,
+                };
+            });
     },
 
     async moveTaskToBoard(taskId, targetBoardId, targetStatus) {
@@ -987,6 +1131,12 @@ export const guestTasksProvider: TasksProvider = {
                 throw new Error("Board not found");
             }
 
+            enforceEpicRules(
+                sandbox,
+                { ...child, parentId: parent.id },
+                toEpicRuleTask(child)
+            );
+
             const status = firstColumnId(board);
             const columnTasks = sandbox.tasks.filter(
                 (task) =>
@@ -1018,6 +1168,8 @@ export const guestTasksProvider: TasksProvider = {
 
             child.boardId = parent.boardId;
             child.parentId = parent.id;
+            // Becoming a Subtask: Epic membership now comes from the Parent.
+            delete child.epicId;
             child.position = maxPosition + 1;
             child.status = status;
             if (resolvedSprintId) {
@@ -1055,7 +1207,9 @@ export const guestTasksProvider: TasksProvider = {
     async updateTaskDetails(taskId, patch, labelIds) {
         updateGuestSandbox((sandbox) => {
             const task = findTaskOrThrow(sandbox.tasks, taskId);
+            const before = toEpicRuleTask(task);
             applyPatchWithWatchEnrollment(sandbox, task, patch);
+            enforceEpicRules(sandbox, task, before);
             if (labelIds !== undefined) {
                 task.labelIds =
                     labelIds === null || labelIds.length === 0
@@ -1076,7 +1230,9 @@ export const guestTasksProvider: TasksProvider = {
                     task.boardId
                 );
             }
+            const before = toEpicRuleTask(task);
             applyPatchWithWatchEnrollment(sandbox, task, patch);
+            enforceEpicRules(sandbox, task, before);
         });
     },
 };

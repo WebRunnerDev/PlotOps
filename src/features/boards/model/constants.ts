@@ -10,9 +10,9 @@ export const DEFAULT_KANBAN_COLUMNS: BoardColumn[] = [
 
 export const KANBAN_COLUMNS = DEFAULT_KANBAN_COLUMNS;
 
-/** Options for boards.default_task_type (mirrors tasks.TaskType). */
+/** Options for boards.default_task_type — level-0 types only (never Epic). */
 export const BOARD_DEFAULT_TASK_TYPES: BoardDefaultTaskType[] = [
+    "story",
     "task",
     "bug",
-    "feature",
 ];

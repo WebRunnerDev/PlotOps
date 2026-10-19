@@ -11,6 +11,12 @@ import {
     getInviteByToken,
     type InvitePreview,
 } from "@/features/projects/api/members-api";
+import {
+    countJoinedTeams,
+    TEAM_MEMBERSHIPS_CAP,
+} from "@/features/teams/model/limits";
+import { useTeams } from "@/features/teams/model/use-teams";
+import { isCapExceeded } from "@/shared/lib/is-cap-exceeded";
 import { safeRemoveItem, safeSetItem } from "@/shared/lib/safe-storage";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
@@ -26,6 +32,7 @@ function InviteAcceptPage() {
     const { t } = useTranslation("board");
     const { isLoading: authLoading, user } = useAuth();
     const navigate = useNavigate();
+    const { data: teams = [], isLoading: teamsLoading } = useTeams();
 
     const [invite, setInvite] = useState<InvitePreview | null>(null);
     const [loadError, setLoadError] = useState(false);
@@ -72,6 +79,13 @@ function InviteAcceptPage() {
         };
     }, [authLoading, token, user]);
 
+    const joinedTeamCount = user ? countJoinedTeams(teams, user.id) : 0;
+    const isMembershipCapReached =
+        Boolean(user) &&
+        !teamsLoading &&
+        joinedTeamCount >= TEAM_MEMBERSHIPS_CAP &&
+        !teams.some((team) => team.id === invite?.team_id);
+
     const onAccept = async () => {
         if (!invite || isActing) return;
         setIsActing(true);
@@ -81,8 +95,14 @@ function InviteAcceptPage() {
             safeRemoveItem("sessionStorage", "plotops_pending_invite");
             toast.success(t("invite.acceptSuccess"));
             void navigate({ to: "/home" });
-        } catch {
-            toast.error(t("invite.acceptFailed"));
+        } catch (acceptError) {
+            toast.error(
+                isCapExceeded(acceptError, "team_memberships_cap")
+                    ? t("invite.membershipCapReached", {
+                          cap: TEAM_MEMBERSHIPS_CAP,
+                      })
+                    : t("invite.acceptFailed")
+            );
         } finally {
             setIsActing(false);
         }
@@ -242,7 +262,15 @@ function InviteAcceptPage() {
                                 email: user.email ?? t("members.unknownUser"),
                             })}
                         </p>
-                        {invite.kind === "open" || invite.email_matches ? (
+                        {isMembershipCapReached ? (
+                            <Alert>
+                                <AlertDescription>
+                                    {t("invite.membershipCapReached", {
+                                        cap: TEAM_MEMBERSHIPS_CAP,
+                                    })}
+                                </AlertDescription>
+                            </Alert>
+                        ) : invite.kind === "open" || invite.email_matches ? (
                             <Button
                                 className="w-full"
                                 disabled={isActing}

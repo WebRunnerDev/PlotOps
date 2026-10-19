@@ -72,6 +72,7 @@ export function AppShellSeo({ notFound = false }: AppShellSeoProperties) {
                 notFound: t("notFound.title"),
                 notifications: t("nav.notifications"),
                 settings: t("nav.settings"),
+                teamTasks: t("seo.teamTasks"),
             },
             notFound,
         })

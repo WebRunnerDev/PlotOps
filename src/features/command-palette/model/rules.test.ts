@@ -15,6 +15,7 @@ import {
     resolveCreateTaskIntent,
     resolveJumpTaskIntents,
     resolveNavigateIntent,
+    resolveTeamTasksIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
@@ -492,6 +493,20 @@ describe("Command Palette rules seam — intents", () => {
         });
     });
 
+    it("Team Tasks needs Team context and view capability", () => {
+        expect(
+            resolveTeamTasksIntent(
+                baseContext({ canViewMembers: true, teamId: "team-1" })
+            )
+        ).toEqual({ teamId: "team-1", type: "open-team-tasks" });
+        expect(
+            resolveTeamTasksIntent(baseContext({ teamId: "team-1" }))
+        ).toBeNull();
+        expect(
+            resolveTeamTasksIntent(baseContext({ canViewMembers: true }))
+        ).toBeNull();
+    });
+
     it("open Member settings declares intent with teamId and userId", () => {
         expect(openMemberSettingsIntent("team-1", "user-9")).toEqual({
             teamId: "team-1",
@@ -523,11 +538,11 @@ describe("Command Palette rules seam — intents", () => {
         {
             expected: {
                 boardId: "board-1",
-                taskType: "feature" as const,
+                taskType: "story" as const,
                 title: "Dark mode",
                 type: "create-task" as const,
             },
-            taskType: "feature" as const,
+            taskType: "story" as const,
             title: "Dark mode",
         },
     ])(
@@ -598,11 +613,11 @@ describe("Command Palette rules seam — intents", () => {
         {
             expected: {
                 boardId: "board-1",
-                taskType: "feature" as const,
+                taskType: "story" as const,
                 title: "Crash on save",
                 type: "create-task" as const,
             },
-            taskType: "feature" as const,
+            taskType: "story" as const,
         },
     ])(
         "resolveCreateTaskIntent threads taskType $taskType through create gate",

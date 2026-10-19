@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { BacklogPage } from "@/features/sprints";
-import { parseTaskBoardSearch } from "@/features/tasks/model/task-board-search";
+import { parseTaskBoardSearch } from "@/features/tasks";
 
 export const Route = createFileRoute(
     "/(main)/projects/$projectId/boards/$boardId/backlog"

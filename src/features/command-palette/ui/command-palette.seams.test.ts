@@ -43,7 +43,10 @@ describe("Command palette active sprint create seam", () => {
         expect(source).toMatch(/resolveCreateTaskSprint/);
         expect(source).toMatch(/resolveActiveSprintFilterIds/);
         expect(source).toMatch(/createTaskSprint\.mode\s*===\s*"pick"/);
-        expect(source).toMatch(/sprintId:\s*createSprintId/);
+        // Epics never join a Sprint (ADR 0031) — only non-Epic creates use it.
+        expect(source).toMatch(
+            /sprintId:\s*isEpic\s*\?\s*undefined\s*:\s*createSprintId/
+        );
     });
 });
 
@@ -72,7 +75,8 @@ describe("Command palette navigate + typed create seam", () => {
         );
         expect(source).toMatch(/taskType:\s*intent\.taskType/);
         expect(source).toMatch(/command:createBugWithTitle/);
-        expect(source).toMatch(/command:createFeatureWithTitle/);
+        expect(source).toMatch(/command:createStoryWithTitle/);
+        expect(source).toMatch(/command:createEpicWithTitle/);
     });
 });
 

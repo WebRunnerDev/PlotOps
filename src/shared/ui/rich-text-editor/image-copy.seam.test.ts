@@ -20,8 +20,15 @@ describe("rich-text image copy seams", () => {
         )?.[0];
         expect(contextmenu).toBeDefined();
         expect(contextmenu!).toMatch(/rich-text-image-view/);
-        expect(contextmenu!).toMatch(
-            /selection\s+instanceof\s+NodeSelection[\s\S]*return false/
+        expect(contextmenu!).toMatch(/hasTextSelection[\s\S]*return false/);
+
+        // The NodeSelection guard itself lives in the helper the handler asks.
+        const hasTextSelection = source.match(
+            /function hasTextSelection\([\s\S]*?\n\}/
+        )?.[0];
+        expect(hasTextSelection).toBeDefined();
+        expect(hasTextSelection!).toMatch(
+            /!\s*\(\s*selection\s+instanceof\s+NodeSelection\s*\)/
         );
     });
 

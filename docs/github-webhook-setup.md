@@ -67,6 +67,7 @@ https://ijcelrdcygzyzhcijkhe.supabase.co/functions/v1/github-webhook
 | ----------------------------------------------------- | ------------------------------------------------------- |
 | `pull_request` closed + merged into Board Base branch | Match Task → last column + `pr_state=merged` + activity |
 | `pull_request` closed + not merged                    | Match Task → `pr_state=closed` only (no column change)  |
+| `pull_request` reopened                               | Match Task → `pr_state=open` only (no column change)    |
 | `push`                                                | 200 no-op                                               |
 | No matching Project/Task / wrong base                 | 200 + log (no GitHub retry storm)                       |
 | Bad HMAC                                              | 401                                                     |

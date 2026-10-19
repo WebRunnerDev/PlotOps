@@ -19,3 +19,5 @@ export { GitHubIntegrationSettings } from "./ui/github-integration-settings";
 export { LoginForm } from "./ui/login-form";
 export { ProfileSettingsForm } from "./ui/profile-settings-form";
 export { SignUpForm } from "./ui/sign-up-form";
+export { useTurnstileToken } from "./ui/use-turnstile-token";
+export type { TurnstileTokenGetter } from "./ui/use-turnstile-token";

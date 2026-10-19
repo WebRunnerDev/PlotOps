@@ -21,6 +21,10 @@ import {
 } from "@/shared/shadcn/ui/dropdown-menu";
 
 type BoardSortControlProperties = {
+    /** Offer Manual order — off for lists with no Manual order to restore. */
+    allowManual?: boolean;
+    /** Sortable fields, in menu order. */
+    fields?: BoardSortField[];
     onChange: (sort: BoardSortPreference) => void;
     value: BoardSortPreference;
 };
@@ -36,6 +40,8 @@ const FIELD_OPTIONS: BoardSortField[] = [
 ];
 
 export function BoardSortControl({
+    allowManual = true,
+    fields = FIELD_OPTIONS,
     onChange,
     value,
 }: BoardSortControlProperties) {
@@ -70,10 +76,12 @@ export function BoardSortControl({
                         value={radioValue}
                     >
                         <DropdownMenuLabel>{t("sort.label")}</DropdownMenuLabel>
-                        <DropdownMenuRadioItem value="manual">
-                            {t("sort.manual")}
-                        </DropdownMenuRadioItem>
-                        {FIELD_OPTIONS.flatMap((field) => [
+                        {allowManual ? (
+                            <DropdownMenuRadioItem value="manual">
+                                {t("sort.manual")}
+                            </DropdownMenuRadioItem>
+                        ) : undefined}
+                        {fields.flatMap((field) => [
                             <DropdownMenuRadioItem
                                 key={`${field}:asc`}
                                 value={`${field}:asc`}

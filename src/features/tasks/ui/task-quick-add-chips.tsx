@@ -1,4 +1,4 @@
-import { Bug, Flag, Lightbulb, SquareCheck, Tag, User } from "lucide-react";
+import { Flag, Tag, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { QuickAddFields } from "@/features/tasks/lib/resolve-quick-add-defaults";
@@ -10,8 +10,9 @@ import {
     PRIORITY_CLASS,
     TASK_PRIORITIES,
     TASK_TYPE_ICON_CLASS,
-    TASK_TYPES,
+    WORK_ITEM_TASK_TYPES,
 } from "@/features/tasks/model/constants";
+import { TASK_TYPE_ICON } from "@/features/tasks/ui/task-type-icon";
 import { cn } from "@/shared/lib/utils";
 import {
     DropdownMenu,
@@ -28,12 +29,6 @@ import {
 
 const chipTriggerClass =
     "inline-flex h-7 max-w-full cursor-pointer items-center gap-1.5 rounded-full border border-border bg-background px-2.5 text-meta font-medium outline-none select-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-expanded:bg-muted";
-
-const TYPE_ICON = {
-    bug: Bug,
-    feature: Lightbulb,
-    task: SquareCheck,
-} as const;
 
 type TaskQuickAddChipsProperties = {
     disabled?: boolean;
@@ -59,7 +54,7 @@ export function TaskQuickAddChips({
         fields.labelIds.includes(label.id)
     );
     const assignee = people.find((person) => person.id === fields.assigneeId);
-    const TypeIcon = TYPE_ICON[fields.type];
+    const TypeIcon = TASK_TYPE_ICON[fields.type];
 
     const notifyMenu = (open: boolean) => {
         onMenuOpenChange?.(open);
@@ -91,8 +86,8 @@ export function TaskQuickAddChips({
                     </span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="min-w-36">
-                    {TASK_TYPES.map((type) => {
-                        const Icon = TYPE_ICON[type];
+                    {WORK_ITEM_TASK_TYPES.map((type) => {
+                        const Icon = TASK_TYPE_ICON[type];
                         return (
                             <DropdownMenuItem
                                 key={type}

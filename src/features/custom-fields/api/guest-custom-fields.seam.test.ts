@@ -50,13 +50,13 @@ describe("guest custom fields provider", () => {
         });
 
         await provider.updateProjectCustomField(created.id, {
-            appliesTo: ["bug", "feature"],
+            appliesTo: ["bug", "story"],
             name: "Expected result",
         });
 
         let listed = await provider.fetchProjectCustomFields(projectId);
         expect(listed.find((field) => field.id === created.id)).toMatchObject({
-            appliesTo: ["bug", "feature"],
+            appliesTo: ["bug", "story"],
             name: "Expected result",
         });
 

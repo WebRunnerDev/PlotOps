@@ -143,6 +143,16 @@ function asBoard(value: unknown): null | { name: string } {
     return asNamed(value);
 }
 
+/** Epic change payload `{ key, title }` → "Title (EPIC-3)". */
+function asEpicReference(value: unknown): string | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const record = value as Record<string, unknown>;
+    if (typeof record.key !== "string") return undefined;
+    return typeof record.title === "string"
+        ? `${record.title} (${record.key})`
+        : record.key;
+}
+
 function asNamed(value: unknown): null | { name: string } {
     if (!value || typeof value !== "object") return null;
     const name = (value as { name?: unknown }).name;
@@ -229,6 +239,13 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
                 field: fieldLabel,
                 from: displayScalar(change.from, none),
                 to: displayScalar(change.to, none),
+            });
+        }
+        case "epic": {
+            return t("activity.change.fromTo", {
+                field: fieldLabel,
+                from: asEpicReference(change.from) ?? none,
+                to: asEpicReference(change.to) ?? none,
             });
         }
         case "estimate": {

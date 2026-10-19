@@ -13,9 +13,11 @@ import {
     isValidProjectSlug,
     suggestProjectSlug,
 } from "@/features/projects/model/build-create-project-input";
+import { TEAM_PROJECTS_CAP } from "@/features/projects/model/limits";
 import { useGitHubRepos } from "@/features/projects/model/use-github-repos";
 import { useCreateProject } from "@/features/projects/model/use-projects";
 import { SuggestCollaboratorsStep } from "@/features/projects/ui/suggest-collaborators-step";
+import { isCapExceeded } from "@/shared/lib/is-cap-exceeded";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -126,9 +128,11 @@ export function AddProjectDialog({
             onOpenChange(false);
         } catch (connectError) {
             toast.error(
-                isUniqueViolation(connectError)
-                    ? t("createProjectDuplicate")
-                    : t("createProjectFailed")
+                isCapExceeded(connectError, "team_projects_cap")
+                    ? t("addProjectCapReached", { cap: TEAM_PROJECTS_CAP })
+                    : isUniqueViolation(connectError)
+                      ? t("createProjectDuplicate")
+                      : t("createProjectFailed")
             );
         }
     };
@@ -147,9 +151,11 @@ export function AddProjectDialog({
             onOpenChange(false);
         } catch (createError) {
             toast.error(
-                isUniqueViolation(createError)
-                    ? t("createProjectSlugDuplicate")
-                    : t("createNameOnlyProjectFailed")
+                isCapExceeded(createError, "team_projects_cap")
+                    ? t("addProjectCapReached", { cap: TEAM_PROJECTS_CAP })
+                    : isUniqueViolation(createError)
+                      ? t("createProjectSlugDuplicate")
+                      : t("createNameOnlyProjectFailed")
             );
         }
     };

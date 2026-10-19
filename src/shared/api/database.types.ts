@@ -48,7 +48,7 @@ export type Database = {
     Enums: {
       project_invite_status: "accepted" | "expired" | "pending" | "revoked"
       project_member_role: "admin" | "contributor" | "manager" | "viewer"
-      task_type: "bug" | "feature" | "task"
+      task_type: "bug" | "epic" | "story" | "task"
     }
     Functions: {
       accept_team_invite: {
@@ -411,6 +411,25 @@ export type Database = {
       persist_task_moves: {
         Args: { p_board_id: string; p_updates: Json }
         Returns: undefined
+      }
+      project_epics: {
+        Args: { p_project_id: string }
+        Returns: {
+          archived_at: null | string
+          board_id: string
+          created_at: string
+          done_count: number
+          epic_color: null | string
+          id: string
+          is_done: boolean
+          points_done: number
+          points_total: number
+          status: string
+          task_count: number
+          task_key: string
+          title: string
+          unestimated_count: number
+        }[]
       }
       project_member_role_of: {
         Args: { project_uuid: string }
@@ -1259,6 +1278,8 @@ export type Database = {
           created_at?: string
           deadline?: null | string
           description?: null | string
+          epic_color?: null | string
+          epic_id?: null | string
           estimate?: null | number
           id?: string
           linked_commit_sha?: null | string
@@ -1306,6 +1327,13 @@ export type Database = {
             referencedRelation: "boards"
           },
           {
+            columns: ["epic_id"]
+            foreignKeyName: "tasks_epic_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+          {
             columns: ["parent_id"]
             foreignKeyName: "tasks_parent_id_fkey"
             isOneToOne: false
@@ -1337,6 +1365,8 @@ export type Database = {
           created_at: string
           deadline: null | string
           description: null | string
+          epic_color: null | string
+          epic_id: null | string
           estimate: null | number
           id: string
           linked_commit_sha: null | string
@@ -1364,6 +1394,8 @@ export type Database = {
           created_at?: string
           deadline?: null | string
           description?: null | string
+          epic_color?: null | string
+          epic_id?: null | string
           estimate?: null | number
           id?: string
           linked_commit_sha?: null | string
@@ -1648,7 +1680,7 @@ export const Constants = {
     Enums: {
       project_invite_status: ["pending", "accepted", "expired", "revoked"],
       project_member_role: ["admin", "manager", "contributor", "viewer"],
-      task_type: ["task", "bug", "feature"],
+      task_type: ["epic", "task", "bug", "story"],
     },
   },
 } as const

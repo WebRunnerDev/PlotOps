@@ -12,6 +12,7 @@ import {
     isAuthE2EEnabled,
     openAuthSharedTaskDrawer,
     postCommentMentioning,
+    readAuthE2ENotificationKinds,
     resetAuthSharedTaskDescription,
     saveDescriptionMentioning,
     setSelfWatch,
@@ -78,6 +79,13 @@ test.describe("Auth Mentionee dedupe + Comment Watcher", () => {
 
             await expectNoNotificationCopy(trio.pageA, "New Comment");
             await expectNoNotificationCopy(trio.pageA, mentionCopy);
+
+            // Postgres is the source of truth: exactly one row per recipient.
+            expect(await readAuthE2ENotificationKinds()).toEqual({
+                a: [],
+                b: ["mention"],
+                c: ["comment"],
+            });
         } finally {
             await disposeAuthBrowserTrio(trio);
         }
@@ -137,6 +145,12 @@ test.describe("Auth Mentionee dedupe + Comment Watcher", () => {
 
             await expectNoNotificationCopy(trio.pageA, "Description changed");
             await expectNoNotificationCopy(trio.pageA, mentionCopy);
+
+            expect(await readAuthE2ENotificationKinds()).toEqual({
+                a: [],
+                b: ["mention"],
+                c: ["description_change"],
+            });
         } finally {
             await disposeAuthBrowserTrio(trio);
         }

@@ -446,6 +446,47 @@ export async function postPlainComment(
     ).toBeVisible({ timeout: 15_000 });
 }
 
+/**
+ * Inbox kinds per Auth e2e user straight from Postgres, oldest first.
+ * Race-free complement to bell-preview asserts (preview `staleTime` can hide a
+ * row that should not exist — e.g. actor self-noise or a duplicate kind).
+ */
+export async function readAuthE2ENotificationKinds(): Promise<
+    Record<AuthE2EUserKey, string[]>
+> {
+    const output = execFileSync(
+        "docker",
+        [
+            "exec",
+            "-i",
+            "supabase_db_PlotOps",
+            "psql",
+            "-U",
+            "postgres",
+            "-At",
+            "-c",
+            `select recipient_id, kind from public.notifications
+             where recipient_id in (
+               'c0000000-0000-4000-8000-000000000001',
+               'c0000000-0000-4000-8000-000000000002',
+               'c0000000-0000-4000-8000-000000000003'
+             )
+             order by created_at, id;`,
+        ],
+        { encoding: "utf8", stdio: "pipe" }
+    );
+
+    const kinds: Record<AuthE2EUserKey, string[]> = { a: [], b: [], c: [] };
+    for (const line of output.split(/\r?\n/)) {
+        const [recipientId, kind] = line.trim().split("|");
+        if (!recipientId || !kind) continue;
+        for (const key of ["a", "b", "c"] as const) {
+            if (AUTH_E2E_USERS[key].id === recipientId) kinds[key].push(kind);
+        }
+    }
+    return kinds;
+}
+
 /** Remove a Watcher from the open manage popover. */
 export async function removeManagedWatcher(
     page: Page,

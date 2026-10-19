@@ -10,7 +10,7 @@ import {
 const CREATE_PREFIX = "plotops:task-draft:create:";
 const CREATE_BACKLOG_PREFIX = "plotops:task-draft:create-backlog:";
 
-const TASK_TYPES = new Set<TaskType>(["bug", "feature", "task"]);
+const TASK_TYPES = new Set<TaskType>(["bug", "epic", "story", "task"]);
 const TASK_PRIORITIES = new Set<TaskPriority>([
     "high",
     "low",
@@ -152,11 +152,10 @@ function parseLabelIds(value: unknown): string[] | undefined {
 function parseMeta(parsed: Record<string, unknown>): CreateTaskDraftMeta {
     const meta: CreateTaskDraftMeta = {};
 
-    if (
-        typeof parsed.type === "string" &&
-        TASK_TYPES.has(parsed.type as TaskType)
-    ) {
-        meta.type = parsed.type as TaskType;
+    // Drafts saved before ADR 0031 say `feature` — now `story`.
+    const rawType = parsed.type === "feature" ? "story" : parsed.type;
+    if (typeof rawType === "string" && TASK_TYPES.has(rawType as TaskType)) {
+        meta.type = rawType as TaskType;
     }
 
     if (parsed.priority === null) {

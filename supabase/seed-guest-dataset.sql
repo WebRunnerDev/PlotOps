@@ -213,7 +213,7 @@ begin
       'in_progress', 'high', 0,
       'feature/TASK-1-guest-signin-cta',
       42, 'open', 'https://github.com/plotops-demo/plotops/pull/42',
-      guest_id, guest_id, 'feature', current_date + 2,
+      guest_id, guest_id, 'story', current_date + 2,
       sprint_active_id, 0, now() - interval '6 days'
     ),
     (
@@ -223,7 +223,7 @@ begin
       'in_progress', 'urgent', 1,
       'feature/FEAT-2-guest-ci-mock',
       43, 'open', 'https://github.com/plotops-demo/plotops/pull/43',
-      guest_id, guest_id, 'feature', current_date + 1,
+      guest_id, guest_id, 'story', current_date + 1,
       sprint_active_id, 1, now() - interval '5 days'
     ),
     (
@@ -243,7 +243,7 @@ begin
       'done', 'medium', 0,
       'feature/TASK-4-is-guest-session',
       38, 'merged', 'https://github.com/plotops-demo/plotops/pull/38',
-      guest_id, guest_id, 'feature', current_date - 4,
+      guest_id, guest_id, 'story', current_date - 4,
       sprint_active_id, 3, now() - interval '12 days'
     ),
     (
@@ -290,7 +290,7 @@ begin
       'todo', 'high', 3,
       'feature/FEAT-9-git-fixtures',
       null, null, null,
-      guest_id, guest_id, 'feature', current_date + 7,
+      guest_id, guest_id, 'story', current_date + 7,
       null, null, now() - interval '3 days'
     ),
     (
@@ -299,7 +299,7 @@ begin
       '<p>Replay canned CI log lines so the CI tab looks alive without Actions.</p>',
       'todo', 'medium', 4,
       null, null, null, null,
-      null, guest_id, 'feature', null,
+      null, guest_id, 'story', null,
       null, null, now() - interval '3 days'
     ),
     (

@@ -4,9 +4,14 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Skeleton from "react-loading-skeleton";
 
+import { useAuth } from "@/features/auth";
 import { useProjects } from "@/features/projects/model/use-projects";
 import { ProjectCard } from "@/features/projects/ui/project-card";
 import { buildHomeAllProjects } from "@/features/teams/model/build-home-all-projects";
+import {
+    countOwnedTeams,
+    TEAMS_OWNED_CAP,
+} from "@/features/teams/model/limits";
 import { useTeams } from "@/features/teams/model/use-teams";
 import { CreateTeamDialog } from "@/features/teams/ui/create-team-dialog";
 import { HomeEmptyPreview } from "@/features/teams/ui/home-empty-preview";
@@ -35,6 +40,7 @@ type HomeView = "all-projects" | "teams";
 export function TeamsPage() {
     const { t } = useTranslation("home");
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [view, setView] = useState<HomeView>("teams");
     const {
@@ -47,6 +53,9 @@ export function TeamsPage() {
         isError: projectsError,
         isLoading: projectsLoading,
     } = useProjects();
+
+    const ownedTeamCount = user ? countOwnedTeams(teams, user.id) : 0;
+    const isOwnedTeamCapReached = ownedTeamCount >= TEAMS_OWNED_CAP;
 
     const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
     const allProjectRows = buildHomeAllProjects(projects, teamNameById);
@@ -83,14 +92,23 @@ export function TeamsPage() {
                     </div>
 
                     {isTeamsView ? (
-                        <Button
-                            className="motion-reveal shrink-0 self-start sm:self-end [animation-delay:120ms]"
-                            onClick={() => setIsCreateOpen(true)}
-                            type="button"
-                        >
-                            <Plus data-icon="inline-start" />
-                            {t("createTeam")}
-                        </Button>
+                        <div className="motion-reveal flex shrink-0 flex-col items-start gap-2 self-start [animation-delay:120ms] sm:items-end sm:self-end">
+                            <Button
+                                disabled={isOwnedTeamCapReached}
+                                onClick={() => setIsCreateOpen(true)}
+                                type="button"
+                            >
+                                <Plus data-icon="inline-start" />
+                                {t("createTeam")}
+                            </Button>
+                            {isOwnedTeamCapReached ? (
+                                <p className="max-w-xs text-meta text-muted-foreground sm:text-right">
+                                    {t("createTeamCapReached", {
+                                        cap: TEAMS_OWNED_CAP,
+                                    })}
+                                </p>
+                            ) : undefined}
+                        </div>
                     ) : undefined}
                 </div>
 

@@ -5,7 +5,7 @@ import {
     pointerWithin,
 } from "@dnd-kit/core";
 
-import { columnTaskDropId } from "@/features/tasks/lib/board-drop-target-id";
+import { columnTaskDropId } from "@/features/tasks";
 
 /**
  * Column drags must never fall through to task droppables. An unscoped

@@ -25,6 +25,7 @@ export type CommandPaletteIntent =
       }
     | { projectId: string; type: "switch-project" }
     | { teamId: string; type: "open-member-settings"; userId: string }
+    | { teamId: string; type: "open-team-tasks" }
     | { type: "toggle-theme" };
 
 export type CommandPaletteJumpAction = {
@@ -74,7 +75,7 @@ export type CommandPaletteTask = {
     title: string;
 };
 
-export type CommandPaletteTaskType = "bug" | "feature" | "task";
+export type CommandPaletteTaskType = "bug" | "epic" | "story" | "task";
 
 export type CommandPaletteVisibility = {
     createTask: boolean;
@@ -334,6 +335,16 @@ export function resolveNavigateIntent(
         section,
         type: "navigate",
     };
+}
+
+/** Team Tasks offer — null without Team context or view capability. */
+export function resolveTeamTasksIntent(
+    context: CommandPaletteRouteContext
+): Extract<CommandPaletteIntent, { type: "open-team-tasks" }> | null {
+    if (!(context.teamId && context.canViewMembers)) {
+        return null;
+    }
+    return { teamId: context.teamId, type: "open-team-tasks" };
 }
 
 export function selectTaskIntent(

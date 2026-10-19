@@ -12,6 +12,8 @@ export type TaskActivitySnapshot = {
     board?: null | { id: string; name: string };
     branchName: null | string;
     deadline: null | string;
+    /** Epic membership; `undefined` = not tracked by this snapshot. */
+    epic?: null | { key: string; title: string };
     estimate: null | number;
     labelNames: string[];
     pr: null | { number: number; state: string };
@@ -27,6 +29,7 @@ export function applyDetailsToSnapshot(
         assignee?: null | Task["assignee"];
         branchName?: null | string;
         deadline?: null | string;
+        epic?: null | { key: string; title: string };
         estimate?: null | number;
         labelNames?: string[];
         pr?: null | TaskPullRequest;
@@ -51,6 +54,7 @@ export function applyDetailsToSnapshot(
             details.deadline === undefined
                 ? base.deadline
                 : (details.deadline ?? null),
+        epic: details.epic === undefined ? base.epic : details.epic,
         estimate:
             details.estimate === undefined
                 ? base.estimate
@@ -95,6 +99,13 @@ export function buildTaskActivityChanges(
     }
     if (before.estimate !== after.estimate) {
         pushChange(changes, "estimate", before.estimate, after.estimate);
+    }
+    if (
+        before.epic !== undefined &&
+        after.epic !== undefined &&
+        (before.epic?.key ?? null) !== (after.epic?.key ?? null)
+    ) {
+        pushChange(changes, "epic", before.epic, after.epic);
     }
     if (before.status.id !== after.status.id) {
         pushChange(changes, "status", before.status, after.status);

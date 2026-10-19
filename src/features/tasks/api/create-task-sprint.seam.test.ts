@@ -35,7 +35,9 @@ describe("createTaskRecord sprint assign seam", () => {
 
         expect(source).toMatch(/assigneeId\?:\s*null\s*\|\s*string/);
         expect(source).toMatch(/priority\?:\s*null\s*\|\s*TaskPriority/);
-        expect(source).toMatch(/assigneeId\s*!==\s*undefined/);
-        expect(source).toMatch(/priority\s*!==\s*undefined/);
+        // Either direction of the undefined check is fine — what matters is
+        // that create consults the override before falling back to a default.
+        expect(source).toMatch(/extras\?\.assigneeId\s*[!=]==\s*undefined/);
+        expect(source).toMatch(/extras\?\.priority\s*[!=]==\s*undefined/);
     });
 });

@@ -2,7 +2,9 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import { TEAMS_OWNED_CAP } from "@/features/teams/model/limits";
 import { useCreateTeam } from "@/features/teams/model/use-teams";
+import { isCapExceeded } from "@/shared/lib/is-cap-exceeded";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
     Dialog,
@@ -42,8 +44,12 @@ export function CreateTeamDialog({
             setName("");
             onOpenChange(false);
             onCreated(team.id);
-        } catch {
-            toast.error(t("createTeamFailed"));
+        } catch (createError) {
+            toast.error(
+                isCapExceeded(createError, "teams_owned_cap")
+                    ? t("createTeamCapReached", { cap: TEAMS_OWNED_CAP })
+                    : t("createTeamFailed")
+            );
         }
     };
 

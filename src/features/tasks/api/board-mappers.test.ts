@@ -4,7 +4,9 @@ import type { DatabaseTask } from "./board-mappers";
 
 import {
     mapDatabaseTask,
+    mapDatabaseTeamTask,
     parentIdsMissingFromRows,
+    teamTaskColumnKey,
     withResolvedParentKeys,
 } from "./board-mappers";
 
@@ -189,5 +191,81 @@ describe("mapDatabaseTask", () => {
                 otherTitle: "Blocker",
             },
         ]);
+    });
+});
+
+describe("mapDatabaseTeamTask", () => {
+    const row = {
+        assignee: {
+            avatar_url: null,
+            first_name: "Mira",
+            id: "user-1",
+            last_name: "Stone",
+            username: "mira",
+        },
+        board: { name: "Core" },
+        board_id: "board-1",
+        created_at: "2026-07-15T12:00:00.000Z",
+        deadline: "2026-08-01",
+        id: "task-1",
+        priority: "high",
+        project: { name: "Apollo" },
+        project_id: "project-1",
+        status: "done",
+        task_key: "BUG-4",
+        task_type: "bug",
+        title: "Fix login",
+    };
+
+    it("resolves the column by Board, since column ids repeat across Boards", () => {
+        const columns = new Map([
+            [
+                teamTaskColumnKey("board-1", "done"),
+                {
+                    boardId: "board-1",
+                    id: "done",
+                    isDone: true,
+                    name: "Shipped",
+                },
+            ],
+            [
+                teamTaskColumnKey("board-2", "done"),
+                {
+                    boardId: "board-2",
+                    id: "done",
+                    isDone: false,
+                    name: "Review",
+                },
+            ],
+        ]);
+
+        expect(mapDatabaseTeamTask(row, columns)).toEqual({
+            assignee: {
+                avatarUrl: undefined,
+                id: "user-1",
+                name: "Mira Stone",
+            },
+            boardId: "board-1",
+            boardName: "Core",
+            createdAt: "2026-07-15T12:00:00.000Z",
+            deadline: "2026-08-01",
+            id: "task-1",
+            isDone: true,
+            key: "BUG-4",
+            priority: "high",
+            projectId: "project-1",
+            projectName: "Apollo",
+            status: "done",
+            statusName: "Shipped",
+            title: "Fix login",
+            type: "bug",
+        });
+    });
+
+    it("keeps the raw status and stays open when the column is gone", () => {
+        const task = mapDatabaseTeamTask(row, new Map());
+
+        expect(task.statusName).toBe("done");
+        expect(task.isDone).toBe(false);
     });
 });

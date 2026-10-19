@@ -4,10 +4,12 @@ import type {
     TaskRecordPatch,
 } from "@/features/tasks/api/tasks-api";
 import type {
+    ProjectEpic,
     Task,
     TaskLinkKind,
     TaskStatus,
     TaskType,
+    TeamTask,
 } from "@/features/tasks/model/types";
 
 /**
@@ -42,10 +44,13 @@ export type TasksProvider = {
     deleteTaskRecord(taskId: string): Promise<void>;
     fetchArchivedTasks(boardId: string): Promise<Task[]>;
     fetchBoardTasks(boardId: string): Promise<BoardTasksCache>;
+    fetchProjectEpics(projectId: string): Promise<ProjectEpic[]>;
     fetchProjectTasks(
         projectId: string,
         options?: { includeArchived?: boolean }
     ): Promise<Task[]>;
+    /** Team Tasks: active non-Epic Tasks across every Project of the Team. */
+    fetchTeamTasks(teamId: string): Promise<TeamTask[]>;
     moveTaskToBoard(
         taskId: string,
         targetBoardId: string,

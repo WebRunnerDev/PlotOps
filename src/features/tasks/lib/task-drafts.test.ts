@@ -65,14 +65,14 @@ describe("task drafts", () => {
             assigneeId: null,
             labelIds: [],
             priority: null,
-            type: "feature",
+            type: "story",
         });
         expect(getCreateTaskDraft("board-a", "todo")).toEqual({
             assigneeId: null,
             labelIds: [],
             priority: null,
             title: "No meta",
-            type: "feature",
+            type: "story",
             updatedAt: expect.any(Number),
             v: 2,
         });

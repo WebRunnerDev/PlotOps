@@ -56,6 +56,18 @@ export const gitKeys = {
             repoFullName,
             prNumber,
         ] as const,
+    prReviewers: (
+        authFingerprint: string,
+        repoFullName: string,
+        prNumber: number
+    ) =>
+        [
+            ...gitKeys.all,
+            "pr-reviewers",
+            authFingerprint,
+            repoFullName,
+            prNumber,
+        ] as const,
     pullRequests: (
         authFingerprint: string,
         repoFullName: string,

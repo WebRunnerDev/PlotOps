@@ -126,19 +126,33 @@ export async function linkIdentityWithGoogle() {
     });
 }
 
-export async function resendSignupConfirmation(email: string) {
+// GoTrue enforces CAPTCHA on /resend and /recover too — callers must pass a
+// Turnstile token whenever `VITE_TURNSTILE_SITE_KEY` is configured.
+export async function resendSignupConfirmation(
+    email: string,
+    captcha?: AuthCaptchaOptions
+) {
     return supabase.auth.resend({
         email,
         options: {
             emailRedirectTo: postAuthRedirectTo(),
+            ...(captcha?.captchaToken
+                ? { captchaToken: captcha.captchaToken }
+                : {}),
         },
         type: "signup",
     });
 }
 
-export async function resetPasswordForEmail(email: string) {
+export async function resetPasswordForEmail(
+    email: string,
+    captcha?: AuthCaptchaOptions
+) {
     return supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${globalThis.location.origin}/sign-in`,
+        ...(captcha?.captchaToken
+            ? { captchaToken: captcha.captchaToken }
+            : {}),
     });
 }
 

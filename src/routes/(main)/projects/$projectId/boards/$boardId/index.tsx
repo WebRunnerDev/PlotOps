@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { parseTaskBoardSearch } from "@/features/tasks/model/task-board-search";
+import { parseTaskBoardSearch } from "@/features/tasks";
 import { BoardPage } from "@/widgets/kanban-board";
 
 export const Route = createFileRoute(

@@ -17,6 +17,7 @@ export type AppShellPageKind =
     | "task"
     | "team"
     | "team-settings"
+    | "team-tasks"
     | "unknown";
 
 export type AppShellSeoEntities = {
@@ -39,6 +40,7 @@ export type AppShellSeoLabels = {
     notFound: string;
     notifications: string;
     settings: string;
+    teamTasks: string;
 };
 
 export type BuildAppShellTitleOptions = {
@@ -64,6 +66,7 @@ export type ParsedAppShellPage =
     | { kind: "task"; projectId: string; taskKey: string }
     | { kind: "team"; teamId: string }
     | { kind: "team-settings"; teamId: string }
+    | { kind: "team-tasks"; teamId: string }
     | { kind: "unknown" };
 
 export function appShellPageNeedsBoard(page: ParsedAppShellPage): boolean {
@@ -79,7 +82,11 @@ export function appShellPageNeedsProject(page: ParsedAppShellPage): boolean {
 }
 
 export function appShellPageNeedsTeam(page: ParsedAppShellPage): boolean {
-    return page.kind === "team" || page.kind === "team-settings";
+    return (
+        page.kind === "team" ||
+        page.kind === "team-settings" ||
+        page.kind === "team-tasks"
+    );
 }
 
 export function formatAppShellDocumentTitle(parts: string[]): string {
@@ -114,6 +121,11 @@ export function parseAppShellPath(pathname: string): ParsedAppShellPage {
     match = /^\/teams\/([^/]+)\/settings$/.exec(path);
     if (match?.[1]) {
         return { kind: "team-settings", teamId: match[1] };
+    }
+
+    match = /^\/teams\/([^/]+)\/tasks$/.exec(path);
+    if (match?.[1]) {
+        return { kind: "team-tasks", teamId: match[1] };
     }
 
     match = /^\/teams\/([^/]+)$/.exec(path);
@@ -237,6 +249,9 @@ export function resolveAppShellTitleParts(
         }
         case "team-settings": {
             return [entities.teamName ?? "", labels.settings];
+        }
+        case "team-tasks": {
+            return [entities.teamName ?? "", labels.teamTasks];
         }
         case "unknown": {
             return [];
