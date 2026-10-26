@@ -195,14 +195,19 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                 return;
             }
 
-            // With confirmations on, an existing email may return a user with no identities.
+            // Captcha was already consumed by this request. Refresh before the
+            // next submit — a spent token makes every retry fail.
             if (data.user && (data.user.identities?.length ?? 0) === 0) {
+                resetTurnstile();
                 setError(t("errors.userAlreadyRegistered"));
                 return;
             }
 
             // Confirm-email ON: no session until the link is clicked.
+            // The signup token is single-use, so the check-email screen needs
+            // a new widget before Resend can pass captcha to GoTrue.
             if (!data.session) {
+                resetTurnstile();
                 setAwaitingConfirmation(true);
                 return;
             }
@@ -224,7 +229,10 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
         setResendMessage(null);
         setIsResending(true);
 
-        const { error: resendError } = await resendSignupConfirmation(email);
+        const { error: resendError } = await resendSignupConfirmation(
+            email,
+            captchaToken ? { captchaToken } : undefined
+        );
 
         setIsResending(false);
 
@@ -233,6 +241,7 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
             return;
         }
 
+        resetTurnstile();
         setResendMessage(t("checkEmail.resent"));
     };
 
@@ -254,9 +263,15 @@ export function SignUpForm({ initialEmail = "" }: SignUpFormProperties) {
                     </Alert>
                 ) : undefined}
 
+                <AuthTurnstile
+                    action="signup"
+                    onTokenChange={setCaptchaToken}
+                    resetKey={turnstileResetKey}
+                />
+
                 <Button
                     className="w-full"
-                    disabled={isResending}
+                    disabled={isResending || isRateLimited || !captchaReady}
                     onClick={() => void handleResend()}
                     size="lg"
                     type="button"
