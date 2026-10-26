@@ -17,6 +17,11 @@ function mapBoard(board: GuestBoard): ProjectBoardRecord {
         defaultTaskType: board.defaultTaskType ?? "task",
         id: board.id,
         isDevelopment: board.isDevelopment ?? Boolean(board.baseBranch),
+        mergeTargetColumnId:
+            board.mergeTargetMode === "column"
+                ? (board.mergeTargetColumnId ?? null)
+                : null,
+        mergeTargetMode: board.mergeTargetMode ?? "last_column",
         name: board.name,
         position: board.position,
         projectId: board.projectId,
@@ -80,6 +85,8 @@ export const guestBoardsProvider: BoardsProvider = {
                 defaultTaskType: "task",
                 id: crypto.randomUUID(),
                 isDevelopment,
+                mergeTargetColumnId: null,
+                mergeTargetMode: "last_column",
                 name: name.trim() || "Board",
                 position: maxPosition + 1,
                 projectId,
@@ -168,6 +175,14 @@ export const guestBoardsProvider: BoardsProvider = {
             board.columns = board.columns.filter(
                 (column) => column.id !== columnId
             );
+            // Mirrors `boards_merge_target_column_deleted`: stop moving on merge.
+            if (
+                board.mergeTargetMode === "column" &&
+                board.mergeTargetColumnId === columnId
+            ) {
+                board.mergeTargetColumnId = null;
+                board.mergeTargetMode = "none";
+            }
         });
     },
 
@@ -280,6 +295,21 @@ export const guestBoardsProvider: BoardsProvider = {
                 board.allowedHeadPatterns = [
                     ...normalized.allowed_head_patterns,
                 ];
+            }
+            if (normalized.merge_target_mode !== undefined) {
+                board.mergeTargetMode = normalized.merge_target_mode;
+            }
+            if (normalized.merge_target_column_id !== undefined) {
+                if (
+                    normalized.merge_target_column_id !== null &&
+                    !board.columns.some(
+                        (column) =>
+                            column.id === normalized.merge_target_column_id
+                    )
+                ) {
+                    throw new Error("Merge target column not found");
+                }
+                board.mergeTargetColumnId = normalized.merge_target_column_id;
             }
             if (patch.default_task_type !== undefined) {
                 board.defaultTaskType = patch.default_task_type;
