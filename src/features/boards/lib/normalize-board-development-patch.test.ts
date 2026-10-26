@@ -28,4 +28,25 @@ describe("normalizeBoardDevelopmentPatch", () => {
             is_development: true,
         });
     });
+
+    it("clears the merge target column unless the mode is column", () => {
+        expect(
+            normalizeBoardDevelopmentPatch({
+                merge_target_column_id: "qa",
+                merge_target_mode: "none",
+            })
+        ).toEqual({
+            merge_target_column_id: null,
+            merge_target_mode: "none",
+        });
+        expect(
+            normalizeBoardDevelopmentPatch({
+                merge_target_column_id: "qa",
+                merge_target_mode: "column",
+            })
+        ).toEqual({
+            merge_target_column_id: "qa",
+            merge_target_mode: "column",
+        });
+    });
 });

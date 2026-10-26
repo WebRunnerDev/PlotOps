@@ -29,6 +29,10 @@ export type GuestBoard = {
     id: string;
     /** Git branch mapping (Base branch + Allowed head patterns). */
     isDevelopment?: boolean;
+    /** Set when `mergeTargetMode === "column"`; optional on older stored sessions. */
+    mergeTargetColumnId?: null | string;
+    /** After PR merge into Base branch; absent → `last_column`. */
+    mergeTargetMode?: "column" | "last_column" | "none";
     name: string;
     position: number;
     projectId: string;
