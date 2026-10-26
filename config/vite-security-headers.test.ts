@@ -96,10 +96,10 @@ describe("index.html", () => {
             path.resolve(import.meta.dirname, "..", "index.html"),
             "utf8"
         );
-        const scripts = html.match(/<script\b[^>]*>/g) ?? [];
+        const scripts = html.match(/<script\b[^>]*>/gi) ?? [];
         for (const tag of scripts) {
-            if (tag.includes('type="application/ld+json"')) continue;
-            expect(tag).toMatch(/\ssrc="/);
+            if (/type=["']application\/ld\+json["']/i.test(tag)) continue;
+            expect(tag).toMatch(/\ssrc=["']/i);
         }
     });
 });
