@@ -86,15 +86,25 @@ describe("ssg auth session mask", () => {
      */
     it("ships an early head mask in index.html for persisted Auth sessions", () => {
         const html = readFileSync(path.join(root, "index.html"), "utf8");
+        // Inline scripts are forbidden by CSP — the boot runs from public/.
+        const boot = readFileSync(
+            path.join(root, "public", "head-boot.js"),
+            "utf8"
+        );
 
-        expect(html).toMatch(/data-plotops-auth-session/);
+        // dataset.plotopsAuthSession ↔ data-plotops-auth-session
+        expect(boot).toMatch(/dataset\.plotopsAuthSession = ""/);
+        expect(boot).toContain("^sb-[a-z0-9]+-auth-token$");
         expect(html).toMatch(/plotops-ssg-auth-mask/);
-        expect(html).toContain("^sb-[a-z0-9]+-auth-token$");
         expect(html).toMatch(/id="plotops-ssg-auth-mask"/);
-        // Mask must be decided in <head> before #root body paint.
+        expect(html).toMatch(/data-plotops-auth-session/);
+        // Mask must be decided in <head> before #root body paint, by a
+        // blocking (classic, non-async/defer) script.
         const headEnd = html.indexOf("</head>");
-        const attributeScript = html.indexOf("data-plotops-auth-session");
-        expect(attributeScript).toBeGreaterThan(-1);
-        expect(attributeScript).toBeLessThan(headEnd);
+        const bootScript = html.indexOf(
+            '<script src="/head-boot.js"></script>'
+        );
+        expect(bootScript).toBeGreaterThan(-1);
+        expect(bootScript).toBeLessThan(headEnd);
     });
 });

@@ -51,5 +51,12 @@ export default config(
       'unicorn/filename-case': 'off',
     },
   },
+  {
+    files: ['src/shared/lib/utils.ts'],
+    rules: {
+      // shadcn CLI resolves `cn` from this path (components.json aliases.utils)
+      'unicorn/prevent-abbreviations': 'off',
+    },
+  },
   eslintConfigPrettier,
 );

@@ -11,6 +11,17 @@ env:
     VITE_SUPABASE_PUBLISHABLE_KEY: ci_build_placeholder_publishable_key
 
 jobs:
+    audit:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+            # Gate on shipped (production) deps only; dev-tool advisories are
+            # surfaced by Dependabot alerts instead of blocking every PR.
+            - run: npm audit --audit-level=high --omit=dev
+
     unit:
         runs-on: ubuntu-latest
         steps:

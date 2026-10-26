@@ -46,6 +46,19 @@ export const DEADLINE_FILTER_VALUES: DeadlineFilterValue[] = [
     "none",
 ];
 
+/** Number of facets (priority, assignee, …) with at least one value picked. */
+export function countActiveBoardFilterFacets(
+    filters: BoardTaskFilters
+): number {
+    return [
+        filters.assigneeIds,
+        filters.boardIds,
+        filters.deadlines,
+        filters.labelIds,
+        filters.priorities,
+    ].filter((values) => values.length > 0).length;
+}
+
 /** AND across filter groups; OR within each group. Empty group = no restriction. */
 export function filterTasks(
     tasks: Task[],

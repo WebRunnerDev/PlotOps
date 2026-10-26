@@ -17,7 +17,7 @@ function readHook() {
 }
 
 describe("sendTeamInviteEmail API", () => {
-    it("invokes send-team-invite with inviteId only (no caller origin)", () => {
+    it("invokes send-team-invite with inviteId + captcha (no caller origin)", () => {
         const source = readApi();
         const function_ = source.slice(
             source.indexOf("export async function sendTeamInviteEmail")
@@ -26,7 +26,8 @@ describe("sendTeamInviteEmail API", () => {
         expect(function_).toMatch(
             /functions\.invoke\(\s*["']send-team-invite["']/
         );
-        expect(function_).toMatch(/body:\s*\{\s*inviteId\s*\}/);
+        expect(function_).toMatch(/body:\s*\{\s*inviteId,/);
+        expect(function_).toMatch(/captchaToken/);
         expect(function_).not.toMatch(/x-invite-origin/);
         expect(function_).not.toMatch(/location\.origin/);
         expect(function_).not.toMatch(/\borigin\s*:/);
@@ -42,6 +43,13 @@ describe("useCreateTeamInvite email send", () => {
         expect(source).toMatch(/members\.inviteEmailDelayed/);
         expect(source).not.toMatch(
             /kind === ["']open["'][\s\S]*sendTeamInviteEmail/
+        );
+    });
+
+    it("takes a Turnstile token right before the email send", () => {
+        const source = readHook();
+        expect(source).toMatch(
+            /getCaptchaToken\?\.\(\)[\s\S]*sendTeamInviteEmail\(data\.id,\s*captchaToken\)/
         );
     });
 
