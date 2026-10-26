@@ -224,6 +224,8 @@ export type Database = {
           default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
           is_development: boolean
+          merge_target_column_id: null | string
+          merge_target_mode: string
           name: string
           position: number
           project_id: string
@@ -611,11 +613,20 @@ export type Database = {
           default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
           is_development?: boolean
+          merge_target_column_id?: null | string
+          merge_target_mode?: string
           name: string
           position?: number
           project_id: string
         }
         Relationships: [
+          {
+            columns: ["id", "merge_target_column_id"]
+            foreignKeyName: "boards_merge_target_column_fkey"
+            isOneToOne: false
+            referencedColumns: ["board_id", "id"]
+            referencedRelation: "board_columns"
+          },
           {
             columns: ["project_id"]
             foreignKeyName: "boards_project_id_fkey"
@@ -632,6 +643,8 @@ export type Database = {
           default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
           is_development: boolean
+          merge_target_column_id: null | string
+          merge_target_mode: string
           name: string
           position: number
           project_id: string
@@ -644,6 +657,8 @@ export type Database = {
           default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
           is_development?: boolean
+          merge_target_column_id?: null | string
+          merge_target_mode?: string
           name?: string
           position?: number
           project_id?: string
