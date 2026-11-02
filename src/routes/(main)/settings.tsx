@@ -7,7 +7,7 @@ import {
     PanelRight,
     UserRound,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -19,15 +19,23 @@ import {
 } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
 import { TaskDrawerSettings } from "@/features/tasks";
+import {
+    parseSettingsSectionSearch,
+    resolveSettingsSection,
+} from "@/shared/lib/settings-section";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 
+const SETTINGS_SECTIONS = ["drawer", "profile", "github", "accounts"] as const;
+
+type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
 export const Route = createFileRoute("/(main)/settings")({
     component: SettingsPage,
+    validateSearch: (search: Record<string, unknown>) =>
+        parseSettingsSectionSearch(search, SETTINGS_SECTIONS),
 });
-
-type SettingsSection = "accounts" | "drawer" | "github" | "profile";
 
 const SECTION_ICONS = {
     accounts: Link2,
@@ -40,6 +48,8 @@ function SettingsPage() {
     const { t } = useTranslation("common");
     const { t: tAuth } = useTranslation("auth");
     const router = useRouter();
+    const navigate = Route.useNavigate();
+    const { section } = Route.useSearch();
     const guest = useIsGuest();
     const showDemoBadge = demoAccountBadgeVisible(guest);
 
@@ -73,18 +83,11 @@ function SettingsPage() {
         return items.filter((item) => item.visible);
     }, [guest, t, tAuth]);
 
-    const [section, setSection] = useState<SettingsSection>("drawer");
-
-    useEffect(() => {
-        if (!navItems.some((item) => item.id === section) && navItems[0]) {
-            setSection(navItems[0].id);
-        }
-    }, [navItems, section]);
-
-    const activeSection =
-        navItems.find((item) => item.id === section)?.id ??
-        navItems[0]?.id ??
-        "drawer";
+    const activeSection = resolveSettingsSection(
+        section,
+        navItems.map((item) => item.id),
+        "drawer"
+    );
 
     return (
         <div className="relative flex min-w-0 flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10">
@@ -158,7 +161,14 @@ function SettingsPage() {
                                                     ? "border-border bg-card text-foreground shadow-[inset_3px_0_0_0_var(--primary)]"
                                                     : "text-muted-foreground hover:border-border/80 hover:bg-muted/40 hover:text-foreground"
                                             )}
-                                            onClick={() => setSection(item.id)}
+                                            onClick={() =>
+                                                void navigate({
+                                                    replace: true,
+                                                    search: {
+                                                        section: item.id,
+                                                    },
+                                                })
+                                            }
                                             style={{
                                                 transitionDelay: `${index * 40}ms`,
                                             }}

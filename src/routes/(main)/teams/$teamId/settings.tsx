@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useTeamAccess } from "@/features/teams/model/use-team-access";
@@ -7,13 +8,27 @@ import { useTeam } from "@/features/teams/model/use-team-members";
 import { TeamDangerZone } from "@/features/teams/ui/team-danger-zone";
 import { TeamMembersSettings } from "@/features/teams/ui/team-members-settings";
 import { TeamNameSettings } from "@/features/teams/ui/team-name-settings";
+import { parseSettingsSectionSearch } from "@/shared/lib/settings-section";
+import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
+const SETTINGS_SECTIONS = ["name", "members"] as const;
+
+type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+const SECTION_HIGHLIGHT_MS = 2400;
+
 export const Route = createFileRoute("/(main)/teams/$teamId/settings")({
     component: TeamSettingsRoute,
+    validateSearch: (search: Record<string, unknown>) =>
+        parseSettingsSectionSearch(search, SETTINGS_SECTIONS),
 });
+
+function sectionElementId(section: SettingsSection) {
+    return `team-settings-section-${section}`;
+}
 
 function TeamSettingsRoute() {
     const { teamId } = Route.useParams();
@@ -28,6 +43,45 @@ function TeamSettingsRoute() {
         isLoading: accessLoading,
         isSettled,
     } = useTeamAccess(teamId);
+    const { section } = Route.useSearch();
+    const [highlightedSection, setHighlightedSection] =
+        useState<SettingsSection>();
+    const ready =
+        !isLoading &&
+        !accessLoading &&
+        isSettled &&
+        !accessError &&
+        !error &&
+        Boolean(team) &&
+        (canManageMembers || canView);
+
+    // No tabs here: `?section=` scrolls to its block and briefly highlights it.
+    useEffect(() => {
+        if (!ready || section === undefined) {
+            return;
+        }
+
+        setHighlightedSection(section);
+        const frame = globalThis.requestAnimationFrame(() => {
+            document
+                .querySelector(`#${sectionElementId(section)}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        const timer = globalThis.setTimeout(() => {
+            setHighlightedSection(undefined);
+        }, SECTION_HIGHLIGHT_MS);
+
+        return () => {
+            globalThis.cancelAnimationFrame(frame);
+            globalThis.clearTimeout(timer);
+        };
+    }, [ready, section]);
+
+    const sectionClassName = (id: SettingsSection) =>
+        cn(
+            "scroll-mt-4 transition-[background-color,box-shadow] duration-300",
+            highlightedSection === id && "bg-primary/5 ring-2 ring-primary/40"
+        );
 
     if (isLoading || accessLoading || !isSettled) {
         return (
@@ -98,10 +152,28 @@ function TeamSettingsRoute() {
             </header>
 
             <div className="relative flex flex-col gap-10 sm:gap-12">
-                <div className="motion-reveal [animation-delay:120ms]">
+                <div
+                    className={cn(
+                        "motion-reveal [animation-delay:120ms]",
+                        sectionClassName("name")
+                    )}
+                    data-highlighted={
+                        highlightedSection === "name" ? "true" : undefined
+                    }
+                    id={sectionElementId("name")}
+                >
                     <TeamNameSettings teamId={teamId} />
                 </div>
-                <div className="motion-reveal [animation-delay:220ms]">
+                <div
+                    className={cn(
+                        "motion-reveal [animation-delay:220ms]",
+                        sectionClassName("members")
+                    )}
+                    data-highlighted={
+                        highlightedSection === "members" ? "true" : undefined
+                    }
+                    id={sectionElementId("members")}
+                >
                     <TeamMembersSettings teamId={teamId} />
                 </div>
                 <div className="motion-reveal [animation-delay:320ms]">

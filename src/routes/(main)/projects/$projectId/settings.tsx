@@ -7,7 +7,7 @@ import {
     SlidersHorizontal,
     Tag,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
@@ -34,16 +34,24 @@ import {
     useTeam,
     useTeamMembers,
 } from "@/features/teams/model/use-team-members";
+import {
+    parseSettingsSectionSearch,
+    resolveSettingsSection,
+} from "@/shared/lib/settings-section";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
+const SETTINGS_SECTIONS = ["boards", "labels", "customFields"] as const;
+
+type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
 export const Route = createFileRoute("/(main)/projects/$projectId/settings")({
     component: ProjectSettingsRoute,
+    validateSearch: (search: Record<string, unknown>) =>
+        parseSettingsSectionSearch(search, SETTINGS_SECTIONS),
 });
-
-type SettingsSection = "boards" | "customFields" | "labels";
 
 const SECTION_ICONS = {
     boards: Columns3,
@@ -53,6 +61,8 @@ const SECTION_ICONS = {
 
 function ProjectSettingsRoute() {
     const { projectId } = Route.useParams();
+    const { section } = Route.useSearch();
+    const navigate = Route.useNavigate();
     const router = useRouter();
     const { t } = useTranslation("board");
     const { t: tCommon } = useTranslation("common");
@@ -89,8 +99,6 @@ function ProjectSettingsRoute() {
         );
     const defaultBoardId = boards[0]?.id ?? "";
     const selectTask = useTasksUiStore((state) => state.selectTask);
-
-    const [section, setSection] = useState<SettingsSection>("boards");
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -135,12 +143,6 @@ function ProjectSettingsRoute() {
         t,
     ]);
 
-    useEffect(() => {
-        if (!navItems.some((item) => item.id === section) && navItems[0]) {
-            setSection(navItems[0].id);
-        }
-    }, [navItems, section]);
-
     if (isLoading || accessLoading) {
         return (
             <div className="flex justify-center py-16">
@@ -159,10 +161,11 @@ function ProjectSettingsRoute() {
         );
     }
 
-    const activeSection =
-        navItems.find((item) => item.id === section)?.id ??
-        navItems[0]?.id ??
-        "boards";
+    const activeSection = resolveSettingsSection(
+        section,
+        navItems.map((item) => item.id),
+        "boards"
+    );
     const repoLinked = project
         ? projectHasGithubRepo(project.github_repo_id)
         : false;
@@ -253,7 +256,12 @@ function ProjectSettingsRoute() {
                                                         : "text-muted-foreground hover:border-border/80 hover:bg-muted/40 hover:text-foreground"
                                                 )}
                                                 onClick={() =>
-                                                    setSection(item.id)
+                                                    void navigate({
+                                                        replace: true,
+                                                        search: {
+                                                            section: item.id,
+                                                        },
+                                                    })
                                                 }
                                                 style={{
                                                     transitionDelay: `${index * 40}ms`,
