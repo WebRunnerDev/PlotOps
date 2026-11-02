@@ -116,15 +116,9 @@
     "guestCreateReminder": "Demo account — changes may be reset on the shared demo.",
     "includeArchived": "Include archived",
     "members": "Members",
-    "navigate": {
-        "archive": "Go to Archive",
-        "backlog": "Go to Backlog",
-        "board": "Go to Board",
-        "cicd": "Go to CI/CD",
-        "settings": "Go to Settings"
-    },
+    "navigation": "Navigation",
     "open": "Open command palette",
-    "openTeamTasks": "Go to Team Tasks",
+    "openArchive": "Go to Archive",
     "placeholder": "Type a command or search…",
     "projects": "Projects",
     "shortcut": "Ctrl K",

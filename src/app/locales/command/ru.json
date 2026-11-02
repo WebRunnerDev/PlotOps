@@ -116,15 +116,9 @@
     "guestCreateReminder": "Демо-аккаунт — изменения могут быть сброшены на общем демо.",
     "includeArchived": "Включать архив",
     "members": "Участники",
-    "navigate": {
-        "archive": "Перейти в архив",
-        "backlog": "Перейти в бэклог",
-        "board": "Перейти на доску",
-        "cicd": "Перейти в CI/CD",
-        "settings": "Перейти в настройки"
-    },
+    "navigation": "Навигация",
     "open": "Открыть палитру команд",
-    "openTeamTasks": "Перейти к задачам команды",
+    "openArchive": "Перейти в архив",
     "placeholder": "Команда или поиск…",
     "projects": "Проекты",
     "shortcut": "Ctrl Л",
