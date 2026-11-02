@@ -1,12 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import {
-    ArrowLeft,
-    Columns3,
-    GitBranch,
-    type LucideIcon,
-    SlidersHorizontal,
-    Tag,
-} from "lucide-react";
+import { ArrowLeft, GitBranch } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -21,6 +14,7 @@ import {
     ProjectCustomFieldsSettings,
     useProjectCustomFields,
 } from "@/features/custom-fields";
+import { useIsGuest } from "@/features/guest-mode";
 import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
 import {
     projectHasGithubRepo,
@@ -35,6 +29,11 @@ import {
     useTeamMembers,
 } from "@/features/teams/model/use-team-members";
 import {
+    resolveVisibleSettingsSections,
+    settingsSectionIds,
+    type SettingsSectionOf,
+} from "@/shared/lib/destinations";
+import {
     parseSettingsSectionSearch,
     resolveSettingsSection,
 } from "@/shared/lib/settings-section";
@@ -43,21 +42,15 @@ import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
-const SETTINGS_SECTIONS = ["boards", "labels", "customFields"] as const;
+const SETTINGS_SECTIONS = settingsSectionIds("/projects/$projectId/settings");
 
-type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+type SettingsSection = SettingsSectionOf<"/projects/$projectId/settings">;
 
 export const Route = createFileRoute("/(main)/projects/$projectId/settings")({
     component: ProjectSettingsRoute,
     validateSearch: (search: Record<string, unknown>) =>
         parseSettingsSectionSearch(search, SETTINGS_SECTIONS),
 });
-
-const SECTION_ICONS = {
-    boards: Columns3,
-    customFields: SlidersHorizontal,
-    labels: Tag,
-} as const satisfies Record<SettingsSection, LucideIcon>;
 
 function ProjectSettingsRoute() {
     const { projectId } = Route.useParams();
@@ -99,6 +92,7 @@ function ProjectSettingsRoute() {
         );
     const defaultBoardId = boards[0]?.id ?? "";
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const guest = useIsGuest();
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -106,39 +100,35 @@ function ProjectSettingsRoute() {
     );
 
     const navItems = useMemo(() => {
-        const items: {
-            count: null | number;
-            id: SettingsSection;
-            label: string;
-            visible: boolean;
-        }[] = [
-            {
-                count: boardsPending || boardsError ? null : boards.length,
-                id: "boards",
-                label: t("settings.nav.boards"),
-                visible: isSettled && canManageBoard,
-            },
-            {
-                count: projectLabels.length,
-                id: "labels",
-                label: t("settings.nav.labels"),
-                visible: isSettled && canManageBoard,
-            },
-            {
-                count: customFields.length,
-                id: "customFields",
-                label: t("settings.nav.customFields"),
-                visible: isSettled && canManageBoard,
-            },
-        ];
-        return items.filter((item) => item.visible);
+        const counts: Record<SettingsSection, null | number> = {
+            boards: boardsPending || boardsError ? null : boards.length,
+            customFields: customFields.length,
+            labels: projectLabels.length,
+        };
+        return resolveVisibleSettingsSections("/projects/$projectId/settings", {
+            boardId: null,
+            canManageBoard: isSettled && canManageBoard,
+            canViewTeam: isSettled && canView,
+            isGuest: guest,
+            projectId,
+            teamId: project?.team_id ?? null,
+        }).map((destination) => ({
+            count: counts[destination.section],
+            icon: destination.icon,
+            id: destination.section,
+            label: t(destination.titleKey),
+        }));
     }, [
         boards.length,
         boardsError,
         boardsPending,
         canManageBoard,
+        canView,
         customFields.length,
+        guest,
         isSettled,
+        project?.team_id,
+        projectId,
         projectLabels.length,
         t,
     ]);
@@ -238,7 +228,7 @@ function ProjectSettingsRoute() {
                             <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
                                 {navItems.map((item, index) => {
                                     const active = item.id === activeSection;
-                                    const Icon = SECTION_ICONS[item.id];
+                                    const Icon = item.icon;
                                     return (
                                         <li
                                             className="shrink-0 lg:w-full"

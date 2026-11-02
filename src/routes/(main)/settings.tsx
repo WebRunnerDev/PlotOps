@@ -1,12 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import {
-    ArrowLeft,
-    GitBranch,
-    Link2,
-    type LucideIcon,
-    PanelRight,
-    UserRound,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -20,6 +13,10 @@ import {
 import { useIsGuest } from "@/features/guest-mode";
 import { TaskDrawerSettings } from "@/features/tasks";
 import {
+    resolveVisibleSettingsSections,
+    settingsSectionIds,
+} from "@/shared/lib/destinations";
+import {
     parseSettingsSectionSearch,
     resolveSettingsSection,
 } from "@/shared/lib/settings-section";
@@ -27,9 +24,7 @@ import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 
-const SETTINGS_SECTIONS = ["drawer", "profile", "github", "accounts"] as const;
-
-type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+const SETTINGS_SECTIONS = settingsSectionIds("/settings");
 
 export const Route = createFileRoute("/(main)/settings")({
     component: SettingsPage,
@@ -37,51 +32,30 @@ export const Route = createFileRoute("/(main)/settings")({
         parseSettingsSectionSearch(search, SETTINGS_SECTIONS),
 });
 
-const SECTION_ICONS = {
-    accounts: Link2,
-    drawer: PanelRight,
-    github: GitBranch,
-    profile: UserRound,
-} as const satisfies Record<SettingsSection, LucideIcon>;
-
 function SettingsPage() {
-    const { t } = useTranslation("common");
-    const { t: tAuth } = useTranslation("auth");
+    const { t } = useTranslation(["common", "auth"]);
     const router = useRouter();
     const navigate = Route.useNavigate();
     const { section } = Route.useSearch();
     const guest = useIsGuest();
     const showDemoBadge = demoAccountBadgeVisible(guest);
 
-    const navItems = useMemo(() => {
-        const items: {
-            id: SettingsSection;
-            label: string;
-            visible: boolean;
-        }[] = [
-            {
-                id: "drawer",
-                label: t("uiSettings.title"),
-                visible: true,
-            },
-            {
-                id: "profile",
-                label: tAuth("settings.profileTitle"),
-                visible: !guest,
-            },
-            {
-                id: "github",
-                label: tAuth("settings.githubIntegration.title"),
-                visible: !guest,
-            },
-            {
-                id: "accounts",
-                label: tAuth("settings.connectedAccountsTitle"),
-                visible: !guest,
-            },
-        ];
-        return items.filter((item) => item.visible);
-    }, [guest, t, tAuth]);
+    const navItems = useMemo(
+        () =>
+            resolveVisibleSettingsSections("/settings", {
+                boardId: null,
+                canManageBoard: false,
+                canViewTeam: false,
+                isGuest: guest,
+                projectId: null,
+                teamId: null,
+            }).map((destination) => ({
+                icon: destination.icon,
+                id: destination.section,
+                label: t(destination.titleKey),
+            })),
+        [guest, t]
+    );
 
     const activeSection = resolveSettingsSection(
         section,
@@ -144,7 +118,7 @@ function SettingsPage() {
                         <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
                             {navItems.map((item, index) => {
                                 const active = item.id === activeSection;
-                                const Icon = SECTION_ICONS[item.id];
+                                const Icon = item.icon;
                                 return (
                                     <li
                                         className="shrink-0 lg:w-full"

@@ -9,6 +9,107 @@
     "createTaskFailed": "Could not create task",
     "createTaskWithTitle": "Create Task “{{title}}”",
     "description": "Search for a command to run…",
+    "destinations": {
+        "home": {
+            "keywords": ["home", "start", "projects", "teams", "main"]
+        },
+        "dashboard": {
+            "keywords": ["dashboard", "overview", "stats", "metrics"]
+        },
+        "notifications": {
+            "keywords": ["notifications", "inbox", "alerts", "mentions", "bell"]
+        },
+        "about": {
+            "keywords": ["about", "info", "version", "plotops"]
+        },
+        "settingsDrawer": {
+            "keywords": [
+                "task drawer",
+                "drawer",
+                "description",
+                "collapse",
+                "preferences",
+                "ui"
+            ]
+        },
+        "settingsProfile": {
+            "keywords": ["profile", "name", "username", "avatar", "account"]
+        },
+        "settingsGithub": {
+            "keywords": ["github", "git", "token", "integration", "repository"]
+        },
+        "settingsAccounts": {
+            "keywords": [
+                "connected accounts",
+                "sign-in",
+                "login",
+                "oauth",
+                "google",
+                "email"
+            ]
+        },
+        "team": {
+            "keywords": ["team", "projects", "workspace"],
+            "title": "Team"
+        },
+        "teamTasks": {
+            "keywords": [
+                "team tasks",
+                "my tasks",
+                "queue",
+                "assigned",
+                "deadlines"
+            ]
+        },
+        "teamSettingsName": {
+            "keywords": ["team name", "rename", "team settings"]
+        },
+        "teamSettingsMembers": {
+            "keywords": [
+                "members",
+                "people",
+                "invite",
+                "roles",
+                "access",
+                "permissions"
+            ]
+        },
+        "board": {
+            "keywords": ["board", "kanban", "columns", "tasks"]
+        },
+        "backlog": {
+            "keywords": ["backlog", "sprints", "planning", "epics"]
+        },
+        "cicd": {
+            "keywords": [
+                "ci/cd",
+                "ci",
+                "pipelines",
+                "actions",
+                "builds",
+                "workflows",
+                "deploy"
+            ]
+        },
+        "projectSettingsBoards": {
+            "keywords": [
+                "boards",
+                "columns",
+                "webhook",
+                "merge",
+                "branch",
+                "base branch",
+                "auto-assign",
+                "development"
+            ]
+        },
+        "projectSettingsLabels": {
+            "keywords": ["labels", "tags", "colors"]
+        },
+        "projectSettingsCustomFields": {
+            "keywords": ["custom fields", "fields", "attributes", "properties"]
+        }
+    },
     "empty": "No matches for that query.",
     "goToBlockingTask": "Go to blocking Task {{key}}",
     "goToParent": "Go to Parent",

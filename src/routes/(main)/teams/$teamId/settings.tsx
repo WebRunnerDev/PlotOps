@@ -8,15 +8,19 @@ import { useTeam } from "@/features/teams/model/use-team-members";
 import { TeamDangerZone } from "@/features/teams/ui/team-danger-zone";
 import { TeamMembersSettings } from "@/features/teams/ui/team-members-settings";
 import { TeamNameSettings } from "@/features/teams/ui/team-name-settings";
+import {
+    settingsSectionIds,
+    type SettingsSectionOf,
+} from "@/shared/lib/destinations";
 import { parseSettingsSectionSearch } from "@/shared/lib/settings-section";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
-const SETTINGS_SECTIONS = ["name", "members"] as const;
+const SETTINGS_SECTIONS = settingsSectionIds("/teams/$teamId/settings");
 
-type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+type SettingsSection = SettingsSectionOf<"/teams/$teamId/settings">;
 
 const SECTION_HIGHLIGHT_MS = 2400;
 
