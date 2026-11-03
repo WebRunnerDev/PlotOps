@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import type {
-    BoardDefaultTaskType,
     CreateBoardInput,
+    UpdateBoardPatch,
 } from "@/features/boards/model/types";
 
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
@@ -41,14 +41,7 @@ export function useBoardMutations(projectId: string) {
             patch,
         }: {
             boardId: string;
-            patch: {
-                allowed_head_patterns?: string[];
-                auto_assign_to_creator?: boolean;
-                base_branch?: null | string;
-                default_task_type?: BoardDefaultTaskType;
-                is_development?: boolean;
-                name?: string;
-            };
+            patch: UpdateBoardPatch;
         }) => boardsProvider.updateBoard(boardId, patch),
         onError: () => {
             toast.error("Could not update board");
@@ -72,17 +65,8 @@ export function useBoardMutations(projectId: string) {
         isCreating: createMutation.isPending,
         isDeleting: deleteMutation.isPending,
         isUpdating: updateMutation.isPending,
-        updateBoard: (
-            boardId: string,
-            patch: {
-                allowed_head_patterns?: string[];
-                auto_assign_to_creator?: boolean;
-                base_branch?: null | string;
-                default_task_type?: BoardDefaultTaskType;
-                is_development?: boolean;
-                name?: string;
-            }
-        ) => updateMutation.mutateAsync({ boardId, patch }),
+        updateBoard: (boardId: string, patch: UpdateBoardPatch) =>
+            updateMutation.mutateAsync({ boardId, patch }),
     };
 }
 

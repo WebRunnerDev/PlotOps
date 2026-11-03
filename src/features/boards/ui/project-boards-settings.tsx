@@ -5,11 +5,16 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type { BoardDefaultTaskType } from "@/features/boards/model/types";
+import type {
+    BoardDefaultTaskType,
+    BoardMergeTargetMode,
+    UpdateBoardPatch,
+} from "@/features/boards/model/types";
 
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { parseAllowedHeadPatterns } from "@/features/boards/lib/allowed-head-patterns";
 import { BOARD_DEFAULT_TASK_TYPES } from "@/features/boards/model/constants";
+import { boardKeys } from "@/features/boards/model/query-keys";
 import {
     useBoardMutations,
     useProjectBoards,
@@ -181,6 +186,10 @@ export function ProjectBoardsSettings({
                             initialBase={board.baseBranch ?? ""}
                             initialDefaultTaskType={board.defaultTaskType}
                             initialIsDevelopment={board.isDevelopment}
+                            initialMergeTargetColumnId={
+                                board.mergeTargetColumnId
+                            }
+                            initialMergeTargetMode={board.mergeTargetMode}
                             initialName={board.name}
                             isSaving={isUpdating}
                             key={board.id}
@@ -192,6 +201,7 @@ export function ProjectBoardsSettings({
                                 await updateBoard(board.id, patch);
                                 toast.success(t("boards.saved"));
                             }}
+                            projectId={projectId}
                             showAutoAssignToCreator={showAutoAssignToCreator}
                             showGitBranchSettings={showGitBranchSettings}
                         />
@@ -375,11 +385,14 @@ function BoardSettingsCard({
     initialBase,
     initialDefaultTaskType,
     initialIsDevelopment,
+    initialMergeTargetColumnId,
+    initialMergeTargetMode,
     initialName,
     isSaving,
     onDelete,
     onExpandedChange,
     onSave,
+    projectId,
     showAutoAssignToCreator,
     showGitBranchSettings,
 }: {
@@ -391,18 +404,14 @@ function BoardSettingsCard({
     initialBase: string;
     initialDefaultTaskType: BoardDefaultTaskType;
     initialIsDevelopment: boolean;
+    initialMergeTargetColumnId: null | string;
+    initialMergeTargetMode: BoardMergeTargetMode;
     initialName: string;
     isSaving: boolean;
     onDelete: () => void;
     onExpandedChange: (open: boolean) => void;
-    onSave: (patch: {
-        allowed_head_patterns?: string[];
-        auto_assign_to_creator?: boolean;
-        base_branch?: null | string;
-        default_task_type?: BoardDefaultTaskType;
-        is_development?: boolean;
-        name?: string;
-    }) => Promise<void>;
+    onSave: (patch: UpdateBoardPatch) => Promise<void>;
+    projectId: string;
     showAutoAssignToCreator: boolean;
     showGitBranchSettings: boolean;
 }) {
@@ -417,6 +426,11 @@ function BoardSettingsCard({
         initialAutoAssignToCreator
     );
     const [allowedRaw, setAllowedRaw] = useState(initialAllowed);
+    const initialMergeTarget = toMergeTargetValue(
+        initialMergeTargetMode,
+        initialMergeTargetColumnId
+    );
+    const [mergeTarget, setMergeTarget] = useState(initialMergeTarget);
 
     useEffect(() => {
         setName(initialName);
@@ -425,16 +439,38 @@ function BoardSettingsCard({
         setDefaultTaskType(initialDefaultTaskType);
         setAutoAssignToCreator(initialAutoAssignToCreator);
         setAllowedRaw(initialAllowed);
+        setMergeTarget(initialMergeTarget);
     }, [
         initialAllowed,
         initialAutoAssignToCreator,
         initialBase,
         initialDefaultTaskType,
         initialIsDevelopment,
+        initialMergeTarget,
         initialName,
     ]);
 
     const showDevelopmentFields = showGitBranchSettings && isDevelopment;
+
+    const columnsQuery = useQuery({
+        enabled: expanded && showDevelopmentFields,
+        queryFn: () =>
+            resolveBoardsProvider(isGuest()).fetchBoardColumns(
+                projectId,
+                boardId
+            ),
+        queryKey: boardKeys.columns(projectId, boardId),
+    });
+    const columns = columnsQuery.data ?? [];
+    const mergeTargetLabel =
+        mergeTarget === "last_column"
+            ? t("boards.mergeTargetLastColumn")
+            : mergeTarget === "none"
+              ? t("boards.mergeTargetNone")
+              : (columns.find(
+                    (column) =>
+                        toMergeTargetValue("column", column.id) === mergeTarget
+                )?.name ?? "…");
 
     const dirty =
         name.trim() !== initialName ||
@@ -445,7 +481,8 @@ function BoardSettingsCard({
             autoAssignToCreator !== initialAutoAssignToCreator) ||
         (showDevelopmentFields &&
             parseAllowedHeadPatterns(allowedRaw).join("\n") !==
-                parseAllowedHeadPatterns(initialAllowed).join("\n"));
+                parseAllowedHeadPatterns(initialAllowed).join("\n")) ||
+        (showDevelopmentFields && mergeTarget !== initialMergeTarget);
 
     const branchTone =
         baseBranch.trim() === "main" || baseBranch.trim() === "master"
@@ -659,6 +696,59 @@ function BoardSettingsCard({
                                 </div>
                             ) : undefined}
 
+                            {showDevelopmentFields ? (
+                                <div className="flex flex-col gap-1.5 sm:max-w-xs">
+                                    <Label
+                                        htmlFor={`board-merge-target-${boardId}`}
+                                    >
+                                        {t("boards.mergeTarget")}
+                                    </Label>
+                                    <Select
+                                        disabled={columnsQuery.isPending}
+                                        onValueChange={(value) => {
+                                            if (typeof value === "string") {
+                                                setMergeTarget(value);
+                                            }
+                                        }}
+                                        value={mergeTarget}
+                                    >
+                                        <SelectTrigger
+                                            id={`board-merge-target-${boardId}`}
+                                        >
+                                            <span>{mergeTargetLabel}</span>
+                                        </SelectTrigger>
+                                        <SelectContent
+                                            alignItemWithTrigger={false}
+                                        >
+                                            <SelectItem value="last_column">
+                                                {t(
+                                                    "boards.mergeTargetLastColumn"
+                                                )}
+                                            </SelectItem>
+                                            {columns.map((column) => (
+                                                <SelectItem
+                                                    key={column.id}
+                                                    value={toMergeTargetValue(
+                                                        "column",
+                                                        column.id
+                                                    )}
+                                                >
+                                                    {column.name}
+                                                </SelectItem>
+                                            ))}
+                                            <SelectItem value="none">
+                                                {t("boards.mergeTargetNone")}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-meta text-muted-foreground">
+                                        {columnsQuery.isError
+                                            ? t("boards.mergeTargetLoadFailed")
+                                            : t("boards.mergeTargetHint")}
+                                    </p>
+                                </div>
+                            ) : undefined}
+
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                                 <Button
                                     className="text-muted-foreground hover:text-destructive"
@@ -690,6 +780,9 @@ function BoardSettingsCard({
                                                           base_branch:
                                                               baseBranch.trim(),
                                                           is_development: true,
+                                                          ...fromMergeTargetValue(
+                                                              mergeTarget
+                                                          ),
                                                       }
                                                     : {
                                                           is_development: false,
@@ -717,4 +810,32 @@ function BoardSettingsCard({
             </Collapsible>
         </li>
     );
+}
+
+const MERGE_TARGET_COLUMN_PREFIX = "column:";
+
+function fromMergeTargetValue(
+    value: string
+): Pick<UpdateBoardPatch, "merge_target_column_id" | "merge_target_mode"> {
+    if (value.startsWith(MERGE_TARGET_COLUMN_PREFIX)) {
+        return {
+            merge_target_column_id: value.slice(
+                MERGE_TARGET_COLUMN_PREFIX.length
+            ),
+            merge_target_mode: "column",
+        };
+    }
+    return {
+        merge_target_column_id: null,
+        merge_target_mode: value === "none" ? "none" : "last_column",
+    };
+}
+
+/** Select value: `last_column` | `none` | `column:<id>`. */
+function toMergeTargetValue(
+    mode: BoardMergeTargetMode,
+    columnId: null | string
+): string {
+    if (mode !== "column") return mode;
+    return columnId ? `${MERGE_TARGET_COLUMN_PREFIX}${columnId}` : "none";
 }

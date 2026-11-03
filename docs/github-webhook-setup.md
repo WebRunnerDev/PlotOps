@@ -51,8 +51,8 @@ https://ijcelrdcygzyzhcijkhe.supabase.co/functions/v1/github-webhook
 
 1. In PlotOps, link a Task to a branch/PR on that repo (or ensure `task_key` appears in the head branch, e.g. `feature/TASK-12-…`).
 2. Open a PR into the Board’s **Base branch** and merge it on GitHub.
-3. Within a few seconds the Task should move to the Board’s **last column**; another open browser on the Board should see the card move via Realtime.
-4. Task activity should show actor **GitHub** with the status change.
+3. Within a few seconds the Task should move to the Board’s **merge target column** (Project Settings → Boards → _After a PR merges, move the task to_; default: last column); another open browser on the Board should see the card move via Realtime. With _Don’t move_, only the PR badge turns merged.
+4. Task activity should show actor **GitHub** with the PR change (and the status change when the Task moved).
 
 ### If nothing moves
 
@@ -63,11 +63,11 @@ https://ijcelrdcygzyzhcijkhe.supabase.co/functions/v1/github-webhook
 
 ## Behaviour summary
 
-| Event                                                 | Result                                                  |
-| ----------------------------------------------------- | ------------------------------------------------------- |
-| `pull_request` closed + merged into Board Base branch | Match Task → last column + `pr_state=merged` + activity |
-| `pull_request` closed + not merged                    | Match Task → `pr_state=closed` only (no column change)  |
-| `pull_request` reopened                               | Match Task → `pr_state=open` only (no column change)    |
-| `push`                                                | 200 no-op                                               |
-| No matching Project/Task / wrong base                 | 200 + log (no GitHub retry storm)                       |
-| Bad HMAC                                              | 401                                                     |
+| Event                                                 | Result                                                                                                      |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `pull_request` closed + merged into Board Base branch | Match Task → Board merge target column (default last column; none = no move) + `pr_state=merged` + activity |
+| `pull_request` closed + not merged                    | Match Task → `pr_state=closed` only (no column change)                                                      |
+| `pull_request` reopened                               | Match Task → `pr_state=open` only (no column change)                                                        |
+| `push`                                                | 200 no-op                                                                                                   |
+| No matching Project/Task / wrong base                 | 200 + log (no GitHub retry storm)                                                                           |
+| Bad HMAC                                              | 401                                                                                                         |

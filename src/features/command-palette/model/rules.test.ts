@@ -14,8 +14,7 @@ import {
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
     resolveJumpTaskIntents,
-    resolveNavigateIntent,
-    resolveTeamTasksIntent,
+    resolveOpenArchiveIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
@@ -108,7 +107,7 @@ describe("Command Palette rules seam — visibility", () => {
         expect(visibility.switchProject).toBe(expected);
     });
 
-    it("guest keeps Create Task, Search Tasks, Switch Project, navigate, and Toggle theme under normal gates", () => {
+    it("guest keeps Create Task, Search Tasks, Switch Project, Archive, and Toggle theme under normal gates", () => {
         const visibility = resolveCommandPaletteVisibility(
             baseContext({
                 boardId: "board-1",
@@ -121,11 +120,7 @@ describe("Command Palette rules seam — visibility", () => {
 
         expect(visibility).toEqual({
             createTask: true,
-            navigateArchive: true,
-            navigateBacklog: true,
-            navigateBoard: true,
-            navigateCicd: true,
-            navigateSettings: true,
+            openArchive: true,
             searchMembers: false,
             switchProject: true,
             tasks: true,
@@ -167,57 +162,30 @@ describe("Command Palette rules seam — visibility", () => {
     it.each([
         {
             boardId: null,
-            expected: {
-                navigateArchive: false,
-                navigateBacklog: false,
-                navigateBoard: false,
-                navigateCicd: true,
-                navigateSettings: true,
-            },
-            label: "CI/Settings with projectId only; Board/Backlog/Archive need boardId",
+            expected: false,
+            label: "hidden with projectId only",
             projectId: "project-1",
         },
         {
             boardId: "board-1",
-            expected: {
-                navigateArchive: true,
-                navigateBacklog: true,
-                navigateBoard: true,
-                navigateCicd: true,
-                navigateSettings: true,
-            },
-            label: "all TopBar sections when projectId and boardId present",
+            expected: true,
+            label: "shown when projectId and boardId present",
             projectId: "project-1",
         },
         {
             boardId: "board-1",
-            expected: {
-                navigateArchive: false,
-                navigateBacklog: false,
-                navigateBoard: false,
-                navigateCicd: false,
-                navigateSettings: false,
-            },
+            expected: false,
             label: "hidden without projectId even when boardId set",
             projectId: null,
         },
-    ] as const)(
-        "Navigate sections: $label",
-        ({ boardId, expected, projectId }) => {
-            const visibility = resolveCommandPaletteVisibility(
-                baseContext({ boardId, projectId }),
-                []
-            );
+    ] as const)("Open Archive: $label", ({ boardId, expected, projectId }) => {
+        const visibility = resolveCommandPaletteVisibility(
+            baseContext({ boardId, projectId }),
+            []
+        );
 
-            expect({
-                navigateArchive: visibility.navigateArchive,
-                navigateBacklog: visibility.navigateBacklog,
-                navigateBoard: visibility.navigateBoard,
-                navigateCicd: visibility.navigateCicd,
-                navigateSettings: visibility.navigateSettings,
-            }).toEqual(expected);
-        }
-    );
+        expect(visibility.openArchive).toBe(expected);
+    });
 
     it("guest still hides Create Task when board or create capability is missing", () => {
         expect(
@@ -493,20 +461,6 @@ describe("Command Palette rules seam — intents", () => {
         });
     });
 
-    it("Team Tasks needs Team context and view capability", () => {
-        expect(
-            resolveTeamTasksIntent(
-                baseContext({ canViewMembers: true, teamId: "team-1" })
-            )
-        ).toEqual({ teamId: "team-1", type: "open-team-tasks" });
-        expect(
-            resolveTeamTasksIntent(baseContext({ teamId: "team-1" }))
-        ).toBeNull();
-        expect(
-            resolveTeamTasksIntent(baseContext({ canViewMembers: true }))
-        ).toBeNull();
-    });
-
     it("open Member settings declares intent with teamId and userId", () => {
         expect(openMemberSettingsIntent("team-1", "user-9")).toEqual({
             teamId: "team-1",
@@ -653,114 +607,23 @@ describe("Command Palette rules seam — intents", () => {
         });
     });
 
-    it.each([
-        {
+    it("resolveOpenArchiveIntent: needs projectId and boardId", () => {
+        expect(
+            resolveOpenArchiveIntent(
+                baseContext({ boardId: "board-1", projectId: "project-1" })
+            )
+        ).toEqual({
             boardId: "board-1",
-            expected: {
-                boardId: "board-1",
-                projectId: "project-1",
-                section: "archive" as const,
-                type: "navigate" as const,
-            },
             projectId: "project-1",
-            section: "archive" as const,
-        },
-        {
-            boardId: "board-1",
-            expected: {
-                boardId: "board-1",
-                projectId: "project-1",
-                section: "board" as const,
-                type: "navigate" as const,
-            },
-            projectId: "project-1",
-            section: "board" as const,
-        },
-        {
-            boardId: "board-1",
-            expected: {
-                boardId: "board-1",
-                projectId: "project-1",
-                section: "backlog" as const,
-                type: "navigate" as const,
-            },
-            projectId: "project-1",
-            section: "backlog" as const,
-        },
-        {
-            boardId: null,
-            expected: {
-                projectId: "project-1",
-                section: "cicd" as const,
-                type: "navigate" as const,
-            },
-            projectId: "project-1",
-            section: "cicd" as const,
-        },
-        {
-            boardId: null,
-            expected: {
-                projectId: "project-1",
-                section: "settings" as const,
-                type: "navigate" as const,
-            },
-            projectId: "project-1",
-            section: "settings" as const,
-        },
-    ])(
-        "resolveNavigateIntent: $section when context allows",
-        ({ boardId, expected, projectId, section }) => {
-            expect(
-                resolveNavigateIntent(
-                    baseContext({ boardId, projectId }),
-                    section
-                )
-            ).toEqual(expected);
-        }
-    );
-
-    it.each([
-        {
-            boardId: null,
-            label: "Archive without boardId",
-            projectId: "project-1",
-            section: "archive" as const,
-        },
-        {
-            boardId: null,
-            label: "Board without boardId",
-            projectId: "project-1",
-            section: "board" as const,
-        },
-        {
-            boardId: null,
-            label: "Backlog without boardId",
-            projectId: "project-1",
-            section: "backlog" as const,
-        },
-        {
-            boardId: "board-1",
-            label: "CI without projectId",
-            projectId: null,
-            section: "cicd" as const,
-        },
-        {
-            boardId: "board-1",
-            label: "Settings without projectId",
-            projectId: null,
-            section: "settings" as const,
-        },
-    ])(
-        "resolveNavigateIntent: null for $label",
-        ({ boardId, projectId, section }) => {
-            expect(
-                resolveNavigateIntent(
-                    baseContext({ boardId, projectId }),
-                    section
-                )
-            ).toBeNull();
-        }
-    );
+            type: "open-archive",
+        });
+        expect(
+            resolveOpenArchiveIntent(baseContext({ projectId: "project-1" }))
+        ).toBeNull();
+        expect(
+            resolveOpenArchiveIntent(baseContext({ boardId: "board-1" }))
+        ).toBeNull();
+    });
 
     it("Switch Project declares switch intent with projectId", () => {
         expect(switchProjectIntent("project-7")).toEqual({

@@ -2,6 +2,7 @@ import type {
     BoardColumn,
     CreateBoardInput,
     ProjectBoardRecord,
+    UpdateBoardPatch,
 } from "@/features/boards/model/types";
 
 /**
@@ -45,14 +46,6 @@ export type BoardsProvider = {
     setBoardDoneColumn(boardId: string, columnId: null | string): Promise<void>;
     updateBoard(
         boardId: string,
-        patch: {
-            allowed_head_patterns?: string[];
-            auto_assign_to_creator?: boolean;
-            base_branch?: null | string;
-            default_task_type?: ProjectBoardRecord["defaultTaskType"];
-            is_development?: boolean;
-            name?: string;
-            position?: number;
-        }
+        patch: UpdateBoardPatch
     ): Promise<ProjectBoardRecord>;
 };

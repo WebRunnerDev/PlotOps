@@ -10,6 +10,7 @@ export type CommandPaletteFocusedTask = {
 };
 
 export type CommandPaletteIntent =
+    | { boardId: string; projectId: string; type: "open-archive" }
     | { boardId: string; taskId: string; taskKey: string; type: "select-task" }
     | {
           boardId: string;
@@ -17,15 +18,8 @@ export type CommandPaletteIntent =
           title: string;
           type: "create-task";
       }
-    | {
-          boardId?: string;
-          projectId: string;
-          section: CommandPaletteNavigateSection;
-          type: "navigate";
-      }
     | { projectId: string; type: "switch-project" }
     | { teamId: string; type: "open-member-settings"; userId: string }
-    | { teamId: string; type: "open-team-tasks" }
     | { type: "toggle-theme" };
 
 export type CommandPaletteJumpAction = {
@@ -41,9 +35,6 @@ export type CommandPaletteMember = {
     userId: string;
     username: null | string;
 };
-
-export type CommandPaletteNavigateSection =
-    "archive" | "backlog" | "board" | "cicd" | "settings";
 
 export type CommandPaletteProject = {
     id: string;
@@ -79,11 +70,7 @@ export type CommandPaletteTaskType = "bug" | "epic" | "story" | "task";
 
 export type CommandPaletteVisibility = {
     createTask: boolean;
-    navigateArchive: boolean;
-    navigateBacklog: boolean;
-    navigateBoard: boolean;
-    navigateCicd: boolean;
-    navigateSettings: boolean;
+    openArchive: boolean;
     searchMembers: boolean;
     switchProject: boolean;
     tasks: boolean;
@@ -223,11 +210,7 @@ export function resolveCommandPaletteVisibility(
 
     return {
         createTask: canOfferCreateTask(context),
-        navigateArchive: hasProject && hasBoard,
-        navigateBacklog: hasProject && hasBoard,
-        navigateBoard: hasProject && hasBoard,
-        navigateCicd: hasProject,
-        navigateSettings: hasProject,
+        openArchive: hasProject && hasBoard,
         searchMembers: Boolean(context.teamId) && context.canViewMembers,
         switchProject: projects.length > 0,
         tasks: hasProject,
@@ -307,44 +290,20 @@ export function resolveJumpTaskIntents(
 }
 
 /**
- * Navigate offer for a TopBar section — null when projectId (and boardId for
- * Board / Backlog) are missing from URL context.
+ * Open Archive offer (Board + Archive dialog) — null without projectId and
+ * boardId. Pages and sections are Destinations (Navigation group), not intents.
  */
-export function resolveNavigateIntent(
-    context: CommandPaletteRouteContext,
-    section: CommandPaletteNavigateSection
-): Extract<CommandPaletteIntent, { type: "navigate" }> | null {
-    if (!context.projectId) {
-        return null;
-    }
-
-    if (section === "board" || section === "backlog" || section === "archive") {
-        if (!context.boardId) {
-            return null;
-        }
-        return {
-            boardId: context.boardId,
-            projectId: context.projectId,
-            section,
-            type: "navigate",
-        };
-    }
-
-    return {
-        projectId: context.projectId,
-        section,
-        type: "navigate",
-    };
-}
-
-/** Team Tasks offer — null without Team context or view capability. */
-export function resolveTeamTasksIntent(
+export function resolveOpenArchiveIntent(
     context: CommandPaletteRouteContext
-): Extract<CommandPaletteIntent, { type: "open-team-tasks" }> | null {
-    if (!(context.teamId && context.canViewMembers)) {
+): Extract<CommandPaletteIntent, { type: "open-archive" }> | null {
+    if (!(context.projectId && context.boardId)) {
         return null;
     }
-    return { teamId: context.teamId, type: "open-team-tasks" };
+    return {
+        boardId: context.boardId,
+        projectId: context.projectId,
+        type: "open-archive",
+    };
 }
 
 export function selectTaskIntent(

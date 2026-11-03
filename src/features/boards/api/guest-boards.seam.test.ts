@@ -137,4 +137,53 @@ describe("guest boards provider happy path", () => {
         expect(asOps.baseBranch).toBeNull();
         expect(asOps.allowedHeadPatterns).toEqual([]);
     });
+
+    it("merge target defaults to last column and falls back to none when its column is deleted", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const sandbox = getGuestSandbox()!;
+        const projectId = sandbox.projects[0]!.id;
+        const provider = resolveBoardsProvider(true);
+
+        const seeded = await provider.fetchProjectBoards(projectId);
+        expect(seeded.map((item) => item.mergeTargetMode)).toEqual([
+            "last_column",
+        ]);
+
+        const board = await provider.createBoard(projectId, "Dev Board", {
+            baseBranch: "main",
+            isDevelopment: true,
+        });
+        expect(board.mergeTargetMode).toBe("last_column");
+        expect(board.mergeTargetColumnId).toBeNull();
+
+        const qa = await provider.createBoardColumn(projectId, board.id, "QA");
+        await provider.updateBoard(board.id, {
+            merge_target_column_id: qa,
+            merge_target_mode: "column",
+        });
+        const targeted = await provider.fetchBoard(board.id);
+        expect(targeted.mergeTargetMode).toBe("column");
+        expect(targeted.mergeTargetColumnId).toBe(qa);
+
+        await expect(
+            provider.updateBoard(board.id, {
+                merge_target_column_id: "missing",
+                merge_target_mode: "column",
+            })
+        ).rejects.toThrow("Merge target column not found");
+
+        await provider.deleteBoardColumn(board.id, qa);
+        const afterDelete = await provider.fetchBoard(board.id);
+        expect(afterDelete.mergeTargetMode).toBe("none");
+        expect(afterDelete.mergeTargetColumnId).toBeNull();
+
+        await provider.updateBoard(board.id, {
+            merge_target_mode: "last_column",
+        });
+        const reset = await provider.fetchBoard(board.id);
+        expect(reset.mergeTargetMode).toBe("last_column");
+    });
 });

@@ -1,13 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import {
-    ArrowLeft,
-    GitBranch,
-    Link2,
-    type LucideIcon,
-    PanelRight,
-    UserRound,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -19,72 +12,56 @@ import {
 } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
 import { TaskDrawerSettings } from "@/features/tasks";
+import {
+    resolveVisibleSettingsSections,
+    settingsSectionIds,
+} from "@/shared/lib/destinations";
+import {
+    parseSettingsSectionSearch,
+    resolveSettingsSection,
+} from "@/shared/lib/settings-section";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 
+const SETTINGS_SECTIONS = settingsSectionIds("/settings");
+
 export const Route = createFileRoute("/(main)/settings")({
     component: SettingsPage,
+    validateSearch: (search: Record<string, unknown>) =>
+        parseSettingsSectionSearch(search, SETTINGS_SECTIONS),
 });
 
-type SettingsSection = "accounts" | "drawer" | "github" | "profile";
-
-const SECTION_ICONS = {
-    accounts: Link2,
-    drawer: PanelRight,
-    github: GitBranch,
-    profile: UserRound,
-} as const satisfies Record<SettingsSection, LucideIcon>;
-
 function SettingsPage() {
-    const { t } = useTranslation("common");
-    const { t: tAuth } = useTranslation("auth");
+    const { t } = useTranslation(["common", "auth"]);
     const router = useRouter();
+    const navigate = Route.useNavigate();
+    const { section } = Route.useSearch();
     const guest = useIsGuest();
     const showDemoBadge = demoAccountBadgeVisible(guest);
 
-    const navItems = useMemo(() => {
-        const items: {
-            id: SettingsSection;
-            label: string;
-            visible: boolean;
-        }[] = [
-            {
-                id: "drawer",
-                label: t("uiSettings.title"),
-                visible: true,
-            },
-            {
-                id: "profile",
-                label: tAuth("settings.profileTitle"),
-                visible: !guest,
-            },
-            {
-                id: "github",
-                label: tAuth("settings.githubIntegration.title"),
-                visible: !guest,
-            },
-            {
-                id: "accounts",
-                label: tAuth("settings.connectedAccountsTitle"),
-                visible: !guest,
-            },
-        ];
-        return items.filter((item) => item.visible);
-    }, [guest, t, tAuth]);
+    const navItems = useMemo(
+        () =>
+            resolveVisibleSettingsSections("/settings", {
+                boardId: null,
+                canManageBoard: false,
+                canViewTeam: false,
+                isGuest: guest,
+                projectId: null,
+                teamId: null,
+            }).map((destination) => ({
+                icon: destination.icon,
+                id: destination.section,
+                label: t(destination.titleKey),
+            })),
+        [guest, t]
+    );
 
-    const [section, setSection] = useState<SettingsSection>("drawer");
-
-    useEffect(() => {
-        if (!navItems.some((item) => item.id === section) && navItems[0]) {
-            setSection(navItems[0].id);
-        }
-    }, [navItems, section]);
-
-    const activeSection =
-        navItems.find((item) => item.id === section)?.id ??
-        navItems[0]?.id ??
-        "drawer";
+    const activeSection = resolveSettingsSection(
+        section,
+        navItems.map((item) => item.id),
+        "drawer"
+    );
 
     return (
         <div className="relative flex min-w-0 flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10">
@@ -141,7 +118,7 @@ function SettingsPage() {
                         <ul className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
                             {navItems.map((item, index) => {
                                 const active = item.id === activeSection;
-                                const Icon = SECTION_ICONS[item.id];
+                                const Icon = item.icon;
                                 return (
                                     <li
                                         className="shrink-0 lg:w-full"
@@ -158,7 +135,14 @@ function SettingsPage() {
                                                     ? "border-border bg-card text-foreground shadow-[inset_3px_0_0_0_var(--primary)]"
                                                     : "text-muted-foreground hover:border-border/80 hover:bg-muted/40 hover:text-foreground"
                                             )}
-                                            onClick={() => setSection(item.id)}
+                                            onClick={() =>
+                                                void navigate({
+                                                    replace: true,
+                                                    search: {
+                                                        section: item.id,
+                                                    },
+                                                })
+                                            }
                                             style={{
                                                 transitionDelay: `${index * 40}ms`,
                                             }}

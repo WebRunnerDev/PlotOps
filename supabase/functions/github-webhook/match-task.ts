@@ -1,5 +1,6 @@
 export type BoardColumnRow = {
     id: string;
+    is_done?: boolean | null;
     position: number;
 };
 
@@ -25,11 +26,15 @@ export function extractTaskKeyFromBranch(branchName: string): null | string {
     return match?.[1] ?? null;
 }
 
+/** `targetColumnId === null` → Board does not move Tasks on merge. */
 export function isAlreadySynced(
     task: CandidateTask,
-    lastColumnId: string
+    targetColumnId: null | string
 ): boolean {
-    return task.status === lastColumnId && task.pr_state === "merged";
+    return (
+        task.pr_state === "merged" &&
+        (targetColumnId === null || task.status === targetColumnId)
+    );
 }
 
 /**

@@ -6,32 +6,42 @@ import {
     BugIcon,
     CornerUpLeftIcon,
     FolderIcon,
-    KanbanIcon,
-    LayoutListIcon,
-    ListChecksIcon,
     MoonIcon,
     PlusIcon,
-    SettingsIcon,
     SquareCheckBigIcon,
     SunIcon,
     UsersIcon,
-    WorkflowIcon,
     ZapIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
+import { useAuth } from "@/features/auth";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { useBoardColumns } from "@/features/boards";
 import { isCommandPaletteShortcut } from "@/features/command-palette/model/command-palette-shortcut";
+import {
+    type CommandPaletteGroup,
+    destinationSearchTerms,
+    formatDestinationPath,
+    matchDestinations,
+    resolveCommandPaletteGroupOrder,
+} from "@/features/command-palette/model/navigation";
+import {
+    type CommandPaletteRecentItem,
+    readCommandPaletteRecent,
+    recordCommandPaletteRecent,
+    resolveCommandPaletteRecent,
+    resolveCommandPaletteRecentOwner,
+    sameDestinationParameters,
+} from "@/features/command-palette/model/recent";
 import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
 import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
 import {
     type CommandPaletteIntent,
     type CommandPaletteMember,
-    type CommandPaletteNavigateSection,
     type CommandPaletteTaskType,
     openMemberSettingsIntent,
     resolveCommandPaletteMemberHits,
@@ -39,8 +49,7 @@ import {
     resolveCommandPaletteVisibility,
     resolveCreateTaskIntent,
     resolveJumpTaskIntents,
-    resolveNavigateIntent,
-    resolveTeamTasksIntent,
+    resolveOpenArchiveIntent,
     selectTaskIntent,
     shouldRemindGuestCreateTask,
     switchProjectIntent,
@@ -67,6 +76,12 @@ import {
     useTeamMembers,
     useTeamOwnerProfile,
 } from "@/features/teams/model/use-team-members";
+import {
+    type Destination,
+    type DestinationContext,
+    resolveDestinationAddress,
+    resolveVisibleDestinations,
+} from "@/shared/lib/destinations";
 import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Command,
@@ -79,14 +94,6 @@ import {
 } from "@/shared/shadcn/ui/command";
 import { Label } from "@/shared/shadcn/ui/label";
 
-const NAVIGATE_SECTIONS: CommandPaletteNavigateSection[] = [
-    "board",
-    "backlog",
-    "archive",
-    "cicd",
-    "settings",
-];
-
 const CREATE_TASK_TYPES: CommandPaletteTaskType[] = [
     "task",
     "story",
@@ -95,10 +102,12 @@ const CREATE_TASK_TYPES: CommandPaletteTaskType[] = [
 ];
 
 export function CommandPalette() {
-    const { t } = useTranslation(["command", "common"]);
+    const { i18n, t } = useTranslation(["command", "common"]);
     const navigate = useNavigate();
     const parameters = useParams({ strict: false });
     const guest = isGuest();
+    const { user } = useAuth();
+    const userId = user?.id ?? null;
     const projectId =
         typeof parameters.projectId === "string" ? parameters.projectId : null;
     const boardId =
@@ -109,7 +118,9 @@ export function CommandPalette() {
     const { data: projects = [] } = useProjects();
     const { data: project } = useProject(projectId ?? "");
     const teamId = teamIdFromRoute ?? project?.team_id ?? null;
-    const { canCreateTasks, isSettled } = useProjectAccess(projectId ?? "");
+    const { canCreateTasks, canManageBoard, isSettled } = useProjectAccess(
+        projectId ?? ""
+    );
     const teamAccess = useTeamAccess(teamId ?? "");
     const { data: team } = useTeam(teamId ?? "");
     const { data: teamMembers = [] } = useTeamMembers(teamId ?? "");
@@ -165,6 +176,9 @@ export function CommandPalette() {
     const open = useCommandPaletteStore((state) => state.open);
     const toggle = useCommandPaletteStore((state) => state.toggle);
     const [query, setQuery] = useState("");
+    const [recentItems, setRecentItems] = useState<CommandPaletteRecentItem[]>(
+        []
+    );
     const [isCreating, setIsCreating] = useState(false);
     const isDark = theme === "dark";
     const themeLabel = isDark ? t("common:themeLight") : t("common:themeDark");
@@ -194,13 +208,23 @@ export function CommandPalette() {
         ): intent is Extract<CommandPaletteIntent, { type: "create-task" }> =>
             intent !== null
     );
-    const navigateIntents = NAVIGATE_SECTIONS.map((section) =>
-        resolveNavigateIntent(routeContext, section)
-    ).filter(
-        (
-            intent
-        ): intent is Extract<CommandPaletteIntent, { type: "navigate" }> =>
-            intent !== null
+    const destinationContext: DestinationContext = {
+        boardId,
+        canManageBoard: isSettled && canManageBoard,
+        canViewTeam: teamAccess.isSettled && teamAccess.canView,
+        isGuest: guest,
+        projectId,
+        teamId,
+    };
+    const searchTranslators = [
+        i18n.getFixedT("en", "command"),
+        i18n.getFixedT("ru", "command"),
+    ];
+    const visibleDestinations = resolveVisibleDestinations(destinationContext);
+    const destinationHits = matchDestinations(
+        visibleDestinations,
+        query,
+        (destination) => destinationSearchTerms(destination, searchTranslators)
     );
     const paletteTasks = projectTasks.map((task) => ({
         archivedAt: task.archivedAt,
@@ -250,21 +274,52 @@ export function CommandPalette() {
             : paletteProjects.filter((project) =>
                   project.name.toLowerCase().includes(normalizedQuery)
               );
-    const visibleNavigateIntents = navigateIntents.filter((intent) =>
-        matchesNavigateQuery(intent.section, normalizedQuery, t)
-    );
-    const teamTasksLabel = t("command:openTeamTasks");
-    const teamTasksIntent = teamTasksLabel
-        .toLowerCase()
-        .includes(normalizedQuery)
-        ? resolveTeamTasksIntent(routeContext)
+    const archiveLabel = t("command:openArchive");
+    const archiveIntent = matchesArchiveQuery(archiveLabel, normalizedQuery)
+        ? resolveOpenArchiveIntent(routeContext)
         : null;
     const showActions =
         showTheme ||
-        teamTasksIntent !== null ||
+        archiveIntent !== null ||
         createIntents.length > 0 ||
-        visibleNavigateIntents.length > 0 ||
         visibleJumpIntents.length > 0;
+    // Recent re-checks every entry against the current context — no access,
+    // archived/deleted Task or unavailable Project → hidden.
+    const recentHits =
+        normalizedQuery.length === 0
+            ? resolveCommandPaletteRecent(recentItems, {
+                  destination: (item) =>
+                      visibleDestinations.find((destination) => {
+                          if (destination.id !== item.id) return false;
+                          const address = resolveDestinationAddress(
+                              destination,
+                              destinationContext
+                          );
+                          return (
+                              address !== null &&
+                              sameDestinationParameters(
+                                  address.params,
+                                  item.params
+                              )
+                          );
+                      }) ?? null,
+                  project: (item) =>
+                      visibility.switchProject
+                          ? (paletteProjects.find(
+                                (projectItem) =>
+                                    projectItem.id === item.projectId
+                            ) ?? null)
+                          : null,
+                  task: (item) =>
+                      visibility.tasks && item.projectId === projectId
+                          ? (jumpTasks.find(
+                                (task) =>
+                                    task.id === item.taskId && !task.archivedAt
+                            ) ?? null)
+                          : null,
+              })
+            : [];
+    const groupOrder = resolveCommandPaletteGroupOrder(query);
     const createColumnGate = resolveCreateTaskColumnGate(
         columnsReady,
         columns[0]?.id,
@@ -284,6 +339,12 @@ export function CommandPalette() {
             globalThis.removeEventListener("keydown", onKeyDown);
         };
     }, [toggle]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const owner = resolveCommandPaletteRecentOwner(guest, userId);
+        setRecentItems(owner ? readCommandPaletteRecent(owner) : []);
+    }, [guest, isOpen, userId]);
 
     useEffect(() => {
         if (isOpen) return;
@@ -344,10 +405,16 @@ export function CommandPalette() {
             });
     }
 
+    function rememberRecent(item: CommandPaletteRecentItem) {
+        const owner = resolveCommandPaletteRecentOwner(guest, userId);
+        if (owner) recordCommandPaletteRecent(owner, item);
+    }
+
     function runSelectTask(
         intent: Extract<CommandPaletteIntent, { type: "select-task" }>
     ) {
         if (!projectId) return;
+        rememberRecent({ kind: "task", projectId, taskId: intent.taskId });
         selectTask(intent.taskId);
         void navigate({
             params: {
@@ -360,61 +427,268 @@ export function CommandPalette() {
         close();
     }
 
-    function runNavigate(
-        intent: Extract<CommandPaletteIntent, { type: "navigate" }>
-    ) {
-        switch (intent.section) {
-            case "archive": {
-                if (!intent.boardId) return;
-                requestOpenArchiveDialog();
-                void navigate({
-                    params: {
-                        boardId: intent.boardId,
-                        projectId: intent.projectId,
-                    },
-                    to: "/projects/$projectId/boards/$boardId",
-                });
-                break;
-            }
-            case "backlog": {
-                if (!intent.boardId) return;
-                void navigate({
-                    params: {
-                        boardId: intent.boardId,
-                        projectId: intent.projectId,
-                    },
-                    to: "/projects/$projectId/boards/$boardId/backlog",
-                });
-                break;
-            }
-            case "board": {
-                if (!intent.boardId) return;
-                void navigate({
-                    params: {
-                        boardId: intent.boardId,
-                        projectId: intent.projectId,
-                    },
-                    to: "/projects/$projectId/boards/$boardId",
-                });
-                break;
-            }
-            case "cicd": {
-                void navigate({
-                    params: { projectId: intent.projectId },
-                    to: "/projects/$projectId/ci-cd",
-                });
-                break;
-            }
-            case "settings": {
-                void navigate({
-                    params: { projectId: intent.projectId },
-                    to: "/projects/$projectId/settings",
-                });
-                break;
-            }
-        }
+    function runDestination(destination: Destination) {
+        const address = resolveDestinationAddress(
+            destination,
+            destinationContext
+        );
+        if (!address) return;
+        rememberRecent({
+            id: destination.id,
+            kind: "destination",
+            params: address.params,
+        });
+        void navigate(address);
         close();
     }
+
+    function runSwitchProject(targetProjectId: string) {
+        const intent = switchProjectIntent(targetProjectId);
+        rememberRecent({ kind: "project", projectId: intent.projectId });
+        void navigate({
+            params: {
+                projectId: intent.projectId,
+            },
+            to: "/projects/$projectId",
+        });
+        close();
+    }
+
+    function runOpenArchive(
+        intent: Extract<CommandPaletteIntent, { type: "open-archive" }>
+    ) {
+        requestOpenArchiveDialog();
+        void navigate({
+            params: {
+                boardId: intent.boardId,
+                projectId: intent.projectId,
+            },
+            to: "/projects/$projectId/boards/$boardId",
+        });
+        close();
+    }
+
+    function destinationScope(destination: Destination): null | string {
+        if (destination.group === "project") return project?.name ?? null;
+        if (destination.group === "team") return team?.name ?? null;
+        return null;
+    }
+
+    function renderDestinationItem(destination: Destination, prefix: string) {
+        const title = t(destination.titleKey);
+        const path = formatDestinationPath({
+            parent:
+                "parentKey" in destination ? t(destination.parentKey) : null,
+            scope: destinationScope(destination),
+            title,
+        });
+        const Icon = destination.icon;
+        return (
+            <CommandItem
+                key={`${prefix}destination-${destination.id}`}
+                onSelect={() => {
+                    runDestination(destination);
+                }}
+                value={`${prefix}destination-${destination.id}`}
+            >
+                <Icon />
+                <span className="min-w-0 truncate">{title}</span>
+                {path ? (
+                    <span className="ml-auto min-w-0 shrink truncate text-xs text-muted-foreground">
+                        {path}
+                    </span>
+                ) : null}
+            </CommandItem>
+        );
+    }
+
+    function renderTaskItem(
+        task: {
+            archivedAt?: null | string;
+            boardId: string;
+            id: string;
+            key: string;
+            title: string;
+        },
+        prefix: string
+    ) {
+        return (
+            <CommandItem
+                key={`${prefix}task-${task.id}`}
+                onSelect={() => {
+                    runSelectTask(selectTaskIntent(task));
+                }}
+                value={`${prefix}task-${task.id}`}
+            >
+                <SquareCheckBigIcon />
+                <span className="font-mono text-xs text-muted-foreground">
+                    {task.key}
+                </span>
+                <span className="min-w-0 truncate">{task.title}</span>
+                {task.archivedAt ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                        {t("command:archivedBadge")}
+                    </span>
+                ) : null}
+            </CommandItem>
+        );
+    }
+
+    function renderProjectItem(
+        projectItem: { id: string; name: string },
+        prefix: string
+    ) {
+        return (
+            <CommandItem
+                key={`${prefix}project-${projectItem.id}`}
+                onSelect={() => {
+                    runSwitchProject(projectItem.id);
+                }}
+                value={`${prefix}project-${projectItem.id}`}
+            >
+                <FolderIcon />
+                <span>{projectItem.name}</span>
+            </CommandItem>
+        );
+    }
+
+    const groups: Record<CommandPaletteGroup, ReactNode> = {
+        actions: showActions ? (
+            <CommandGroup heading={t("command:actions")}>
+                {showTheme ? (
+                    <CommandItem
+                        onSelect={() => {
+                            toggleTheme();
+                            close();
+                        }}
+                        value={themeLabel}
+                    >
+                        {isDark ? <SunIcon /> : <MoonIcon />}
+                        <span>{themeLabel}</span>
+                    </CommandItem>
+                ) : null}
+                {archiveIntent ? (
+                    <CommandItem
+                        onSelect={() => {
+                            runOpenArchive(archiveIntent);
+                        }}
+                        value="open-archive"
+                    >
+                        <ArchiveIcon />
+                        <span>{archiveLabel}</span>
+                    </CommandItem>
+                ) : null}
+                {visibleJumpIntents.map((jump) => (
+                    <CommandItem
+                        key={`${jump.kind}-${jump.intent.taskId}`}
+                        onSelect={() => {
+                            runSelectTask(jump.intent);
+                        }}
+                        value={`jump-${jump.kind}-${jump.intent.taskId}`}
+                    >
+                        {jump.kind === "parent" ? (
+                            <CornerUpLeftIcon />
+                        ) : (
+                            <BanIcon />
+                        )}
+                        <span>
+                            {jump.kind === "parent"
+                                ? t("command:goToParent")
+                                : t("command:goToBlockingTask", {
+                                      key: jump.targetKey,
+                                  })}
+                        </span>
+                    </CommandItem>
+                ))}
+                {createIntents.map((intent) => (
+                    <CommandItem
+                        disabled={isCreating || createColumnGate === "loading"}
+                        key={intent.taskType}
+                        onSelect={() => {
+                            runCreateTask(intent);
+                        }}
+                        value={`create-${intent.taskType}-${intent.title}`}
+                    >
+                        {createTaskTypeIcon(intent.taskType)}
+                        <span>
+                            {t(createTaskLabelKey(intent.taskType), {
+                                title: intent.title,
+                            })}
+                        </span>
+                    </CommandItem>
+                ))}
+            </CommandGroup>
+        ) : null,
+        members:
+            visibility.searchMembers && memberHits.length > 0 ? (
+                <CommandGroup heading={t("command:members")}>
+                    {memberHits.map((member) => (
+                        <CommandItem
+                            key={member.userId}
+                            onSelect={() => {
+                                if (!teamId) return;
+                                const intent = openMemberSettingsIntent(
+                                    teamId,
+                                    member.userId
+                                );
+                                void navigate({
+                                    params: { teamId: intent.teamId },
+                                    to: "/teams/$teamId/settings",
+                                });
+                                close();
+                            }}
+                            value={`member-${member.userId}`}
+                        >
+                            <UsersIcon />
+                            <span className="min-w-0 truncate">
+                                {member.displayName}
+                            </span>
+                            {member.username ? (
+                                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                                    @{member.username}
+                                </span>
+                            ) : null}
+                        </CommandItem>
+                    ))}
+                </CommandGroup>
+            ) : null,
+        navigation:
+            destinationHits.length > 0 ? (
+                <CommandGroup heading={t("command:navigation")}>
+                    {destinationHits.map((destination) =>
+                        renderDestinationItem(destination, "")
+                    )}
+                </CommandGroup>
+            ) : null,
+        projects:
+            visibility.switchProject && projectHits.length > 0 ? (
+                <CommandGroup heading={t("command:projects")}>
+                    {projectHits.map((projectItem) =>
+                        renderProjectItem(projectItem, "")
+                    )}
+                </CommandGroup>
+            ) : null,
+        recent:
+            recentHits.length > 0 ? (
+                <CommandGroup heading={t("command:recent")}>
+                    {recentHits.map((hit) => {
+                        if (hit.kind === "destination") {
+                            return renderDestinationItem(hit.item, "recent-");
+                        }
+                        if (hit.kind === "task") {
+                            return renderTaskItem(hit.item, "recent-");
+                        }
+                        return renderProjectItem(hit.item, "recent-");
+                    })}
+                </CommandGroup>
+            ) : null,
+        tasks:
+            visibility.tasks && taskHits.length > 0 ? (
+                <CommandGroup heading={t("command:tasks")}>
+                    {taskHits.map((task) => renderTaskItem(task, ""))}
+                </CommandGroup>
+            ) : null,
+    };
 
     return (
         <CommandDialog
@@ -467,181 +741,9 @@ export function CommandPalette() {
                             {t("command:empty")}
                         </span>
                     </CommandEmpty>
-                    {showActions ? (
-                        <CommandGroup heading={t("command:actions")}>
-                            {showTheme ? (
-                                <CommandItem
-                                    onSelect={() => {
-                                        toggleTheme();
-                                        close();
-                                    }}
-                                    value={themeLabel}
-                                >
-                                    {isDark ? <SunIcon /> : <MoonIcon />}
-                                    <span>{themeLabel}</span>
-                                </CommandItem>
-                            ) : null}
-                            {teamTasksIntent ? (
-                                <CommandItem
-                                    onSelect={() => {
-                                        void navigate({
-                                            params: {
-                                                teamId: teamTasksIntent.teamId,
-                                            },
-                                            to: "/teams/$teamId/tasks",
-                                        });
-                                        close();
-                                    }}
-                                    value="open-team-tasks"
-                                >
-                                    <ListChecksIcon />
-                                    <span>{teamTasksLabel}</span>
-                                </CommandItem>
-                            ) : null}
-                            {visibleNavigateIntents.map((intent) => (
-                                <CommandItem
-                                    key={intent.section}
-                                    onSelect={() => {
-                                        runNavigate(intent);
-                                    }}
-                                    value={`navigate-${intent.section}`}
-                                >
-                                    {navigateSectionIcon(intent.section)}
-                                    <span>
-                                        {t(
-                                            `command:navigate.${intent.section}`
-                                        )}
-                                    </span>
-                                </CommandItem>
-                            ))}
-                            {visibleJumpIntents.map((jump) => (
-                                <CommandItem
-                                    key={`${jump.kind}-${jump.intent.taskId}`}
-                                    onSelect={() => {
-                                        runSelectTask(jump.intent);
-                                    }}
-                                    value={`jump-${jump.kind}-${jump.intent.taskId}`}
-                                >
-                                    {jump.kind === "parent" ? (
-                                        <CornerUpLeftIcon />
-                                    ) : (
-                                        <BanIcon />
-                                    )}
-                                    <span>
-                                        {jump.kind === "parent"
-                                            ? t("command:goToParent")
-                                            : t("command:goToBlockingTask", {
-                                                  key: jump.targetKey,
-                                              })}
-                                    </span>
-                                </CommandItem>
-                            ))}
-                            {createIntents.map((intent) => (
-                                <CommandItem
-                                    disabled={
-                                        isCreating ||
-                                        createColumnGate === "loading"
-                                    }
-                                    key={intent.taskType}
-                                    onSelect={() => {
-                                        runCreateTask(intent);
-                                    }}
-                                    value={`create-${intent.taskType}-${intent.title}`}
-                                >
-                                    {createTaskTypeIcon(intent.taskType)}
-                                    <span>
-                                        {t(
-                                            createTaskLabelKey(intent.taskType),
-                                            { title: intent.title }
-                                        )}
-                                    </span>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    ) : null}
-                    {visibility.tasks && taskHits.length > 0 ? (
-                        <CommandGroup heading={t("command:tasks")}>
-                            {taskHits.map((task) => (
-                                <CommandItem
-                                    key={task.id}
-                                    onSelect={() => {
-                                        runSelectTask(selectTaskIntent(task));
-                                    }}
-                                    value={`task-${task.id}`}
-                                >
-                                    <SquareCheckBigIcon />
-                                    <span className="font-mono text-xs text-muted-foreground">
-                                        {task.key}
-                                    </span>
-                                    <span className="min-w-0 truncate">
-                                        {task.title}
-                                    </span>
-                                    {task.archivedAt ? (
-                                        <span className="shrink-0 text-xs text-muted-foreground">
-                                            {t("command:archivedBadge")}
-                                        </span>
-                                    ) : null}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    ) : null}
-                    {visibility.searchMembers && memberHits.length > 0 ? (
-                        <CommandGroup heading={t("command:members")}>
-                            {memberHits.map((member) => (
-                                <CommandItem
-                                    key={member.userId}
-                                    onSelect={() => {
-                                        if (!teamId) return;
-                                        const intent = openMemberSettingsIntent(
-                                            teamId,
-                                            member.userId
-                                        );
-                                        void navigate({
-                                            params: { teamId: intent.teamId },
-                                            to: "/teams/$teamId/settings",
-                                        });
-                                        close();
-                                    }}
-                                    value={`member-${member.userId}`}
-                                >
-                                    <UsersIcon />
-                                    <span className="min-w-0 truncate">
-                                        {member.displayName}
-                                    </span>
-                                    {member.username ? (
-                                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                                            @{member.username}
-                                        </span>
-                                    ) : null}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    ) : null}
-                    {visibility.switchProject && projectHits.length > 0 ? (
-                        <CommandGroup heading={t("command:projects")}>
-                            {projectHits.map((projectItem) => (
-                                <CommandItem
-                                    key={projectItem.id}
-                                    onSelect={() => {
-                                        const intent = switchProjectIntent(
-                                            projectItem.id
-                                        );
-                                        void navigate({
-                                            params: {
-                                                projectId: intent.projectId,
-                                            },
-                                            to: "/projects/$projectId",
-                                        });
-                                        close();
-                                    }}
-                                    value={`project-${projectItem.id}`}
-                                >
-                                    <FolderIcon />
-                                    <span>{projectItem.name}</span>
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    ) : null}
+                    {groupOrder.map((group) => (
+                        <Fragment key={group}>{groups[group]}</Fragment>
+                    ))}
                 </CommandList>
             </Command>
         </CommandDialog>
@@ -711,6 +813,17 @@ function createTaskTypeIcon(taskType: CommandPaletteTaskType) {
     return <PlusIcon />;
 }
 
+function matchesArchiveQuery(label: string, normalizedQuery: string) {
+    if (normalizedQuery.length === 0) {
+        return true;
+    }
+    return [label.toLowerCase(), "archive", "archived", "архив"].some(
+        (keyword) =>
+            keyword.includes(normalizedQuery) ||
+            normalizedQuery.includes(keyword)
+    );
+}
+
 function matchesJumpQuery(
     kind: "blocker" | "parent",
     targetKey: string,
@@ -744,53 +857,4 @@ function matchesJumpQuery(
             keyword.includes(normalizedQuery) ||
             normalizedQuery.includes(keyword)
     );
-}
-
-function matchesNavigateQuery(
-    section: CommandPaletteNavigateSection,
-    normalizedQuery: string,
-    translate: (key: string) => string
-): boolean {
-    if (normalizedQuery.length === 0) {
-        return true;
-    }
-
-    const label = translate(`command:navigate.${section}`).toLowerCase();
-    if (label.includes(normalizedQuery)) {
-        return true;
-    }
-
-    const keywords: Record<CommandPaletteNavigateSection, string[]> = {
-        archive: ["archive", "archived", "архив"],
-        backlog: ["backlog", "бэклог", "бэклоги"],
-        board: ["board", "доска", "kanban"],
-        cicd: ["ci", "cicd", "ci/cd", "pipeline", "ci cd"],
-        settings: ["settings", "настройки", "setting"],
-    };
-
-    return keywords[section].some(
-        (keyword) =>
-            keyword.includes(normalizedQuery) ||
-            normalizedQuery.includes(keyword)
-    );
-}
-
-function navigateSectionIcon(section: CommandPaletteNavigateSection) {
-    switch (section) {
-        case "archive": {
-            return <ArchiveIcon />;
-        }
-        case "backlog": {
-            return <LayoutListIcon />;
-        }
-        case "board": {
-            return <KanbanIcon />;
-        }
-        case "cicd": {
-            return <WorkflowIcon />;
-        }
-        case "settings": {
-            return <SettingsIcon />;
-        }
-    }
 }

@@ -50,21 +50,31 @@ describe("Command palette active sprint create seam", () => {
     });
 });
 
-describe("Command palette navigate + typed create seam", () => {
-    it("wires resolveNavigateIntent to TopBar section routes", () => {
+describe("Command palette Navigation + typed create seam", () => {
+    it("builds Navigation from the Destinations registry in fixed group order", () => {
         const source = readUi("command-palette.tsx");
 
-        expect(source).toMatch(/resolveNavigateIntent/);
         expect(source).toMatch(
-            /to:\s*"\/projects\/\$projectId\/boards\/\$boardId"/
+            /resolveVisibleDestinations\(destinationContext\)/
         );
-        expect(source).toMatch(
-            /to:\s*"\/projects\/\$projectId\/boards\/\$boardId\/backlog"/
-        );
-        expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/ci-cd"/);
-        expect(source).toMatch(/to:\s*"\/projects\/\$projectId\/settings"/);
+        expect(source).toMatch(/matchDestinations/);
+        expect(source).toMatch(/getFixedT\("en", "command"\)/);
+        expect(source).toMatch(/getFixedT\("ru", "command"\)/);
+        expect(source).toMatch(/resolveDestinationAddress/);
+        expect(source).toMatch(/formatDestinationPath/);
+        expect(source).toMatch(/resolveCommandPaletteGroupOrder\(query\)/);
+        expect(source).toMatch(/command:navigation/);
+        expect(source).not.toMatch(/resolveNavigateIntent/);
+        expect(source).not.toMatch(/command:navigate\./);
+        expect(source).not.toMatch(/replace:\s*true/);
+    });
+
+    it("keeps Archive as an Action that opens the Archive dialog", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(/resolveOpenArchiveIntent/);
         expect(source).toMatch(/requestOpenArchiveDialog/);
-        expect(source).toMatch(/"archive"/);
+        expect(source).toMatch(/command:openArchive/);
     });
 
     it("threads create-task taskType into createTask options", () => {
@@ -77,6 +87,38 @@ describe("Command palette navigate + typed create seam", () => {
         expect(source).toMatch(/command:createBugWithTitle/);
         expect(source).toMatch(/command:createStoryWithTitle/);
         expect(source).toMatch(/command:createEpicWithTitle/);
+    });
+});
+
+describe("Command palette Recent seam", () => {
+    it("records picks per owner and shows Recent only on an empty query", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(
+            /resolveCommandPaletteRecentOwner\(guest,\s*userId\)/
+        );
+        expect(source).toMatch(/readCommandPaletteRecent/);
+        expect(source).toMatch(/recordCommandPaletteRecent/);
+        expect(source).toMatch(/kind:\s*"destination"/);
+        expect(source).toMatch(/kind:\s*"task"/);
+        expect(source).toMatch(/kind:\s*"project"/);
+        expect(source).toMatch(
+            /normalizedQuery\.length\s*===\s*0\s*\?\s*resolveCommandPaletteRecent/
+        );
+        expect(source).toMatch(/!task\.archivedAt/);
+        expect(source).toMatch(/command:recent/);
+    });
+
+    it("clears Recent on sign out and Leave / Reset demo", () => {
+        const source = readFileSync(
+            path.join(dirname, "../../../widgets/top-bar/ui/user-menu.tsx"),
+            "utf8"
+        );
+
+        expect(source.match(/resetCommandPaletteLocalState\(\{/g)).toHaveLength(
+            3
+        );
+        expect(source).toMatch(/recentOwner:\s*\{\s*kind:\s*"guest"\s*\}/);
     });
 });
 

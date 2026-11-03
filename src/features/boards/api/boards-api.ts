@@ -1,7 +1,9 @@
 import type {
     BoardDefaultTaskType,
+    BoardMergeTargetMode,
     CreateBoardInput,
     ProjectBoardRecord,
+    UpdateBoardPatch,
 } from "@/features/boards/model/types";
 
 import { normalizeBoardDevelopmentPatch } from "@/features/boards/lib/normalize-board-development-patch";
@@ -14,13 +16,17 @@ type DatabaseBoard = {
     default_task_type: null | string;
     id: string;
     is_development: boolean;
+    merge_target_column_id: null | string;
+    merge_target_mode: null | string;
     name: string;
     position: number;
     project_id: string;
 };
 
 const BOARD_SELECT =
-    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator, is_development";
+    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator, is_development, merge_target_mode, merge_target_column_id";
+
+const MERGE_TARGET_MODES = new Set<string>(["column", "last_column", "none"]);
 
 const TASK_TYPES = new Set<string>(["bug", "story", "task"]);
 
@@ -88,18 +94,7 @@ export async function fetchProjectBoards(
     return (data as DatabaseBoard[]).map((row) => mapDatabaseBoard(row));
 }
 
-export async function updateBoard(
-    boardId: string,
-    patch: {
-        allowed_head_patterns?: string[];
-        auto_assign_to_creator?: boolean;
-        base_branch?: null | string;
-        default_task_type?: BoardDefaultTaskType;
-        is_development?: boolean;
-        name?: string;
-        position?: number;
-    }
-) {
+export async function updateBoard(boardId: string, patch: UpdateBoardPatch) {
     const normalized = normalizeBoardDevelopmentPatch(patch);
     const payload = {
         ...patch,
@@ -125,6 +120,7 @@ function mapDatabaseBoard(row: DatabaseBoard): ProjectBoardRecord {
         defaultTaskType: toDefaultTaskType(row.default_task_type),
         id: row.id,
         isDevelopment: row.is_development,
+        ...toMergeTarget(row.merge_target_mode, row.merge_target_column_id),
         name: row.name,
         position: row.position,
         projectId: row.project_id,
@@ -136,4 +132,17 @@ function toDefaultTaskType(
 ): BoardDefaultTaskType {
     if (!value || !TASK_TYPES.has(value)) return "task";
     return value as BoardDefaultTaskType;
+}
+
+function toMergeTarget(
+    mode: null | string,
+    columnId: null | string
+): Pick<ProjectBoardRecord, "mergeTargetColumnId" | "mergeTargetMode"> {
+    if (!mode || !MERGE_TARGET_MODES.has(mode)) {
+        return { mergeTargetColumnId: null, mergeTargetMode: "last_column" };
+    }
+    return {
+        mergeTargetColumnId: mode === "column" ? columnId : null,
+        mergeTargetMode: mode as BoardMergeTargetMode,
+    };
 }

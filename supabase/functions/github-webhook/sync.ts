@@ -5,11 +5,11 @@ import {
     shouldHandleClosedUnmergedPr,
 } from "./close-sync.ts";
 import {
+    type BoardColumnRow,
     type CandidateTask,
-    isAlreadySynced,
     matchTask,
-    pickLastColumnId,
 } from "./match-task.ts";
+import { planMergePullRequestSync } from "./merge-sync.ts";
 import {
     planReopenPullRequestSync,
     shouldHandleReopenedPr,
@@ -186,7 +186,7 @@ async function syncInProject(
 
     const { data: board, error: boardError } = await supabase
         .from("boards")
-        .select("id, base_branch")
+        .select("id, base_branch, merge_target_mode, merge_target_column_id")
         .eq("id", matched.board_id)
         .maybeSingle();
 
@@ -211,61 +211,54 @@ async function syncInProject(
 
     const { data: columns, error: columnsError } = await supabase
         .from("board_columns")
-        .select("id, position")
+        .select("id, position, is_done, name")
         .eq("board_id", matched.board_id);
 
     if (columnsError) {
         throw columnsError;
     }
 
-    const lastColumnId = pickLastColumnId(columns ?? []);
-    if (!lastColumnId) {
-        input.log({ reason: "no_columns", taskId: matched.id });
-        return { ok: true, reason: "no_columns", skipped: true };
+    const columnRows = (columns ?? []) as (BoardColumnRow & {
+        name: string;
+    })[];
+
+    const plan = planMergePullRequestSync(matched, {
+        board,
+        columns: columnRows,
+        prHtmlUrl: input.prHtmlUrl,
+        prNumber: input.prNumber,
+    });
+
+    if (plan.skip) {
+        input.log({ reason: plan.reason, taskId: matched.id });
+        return { ok: true, reason: plan.reason, skipped: true };
     }
 
-    if (isAlreadySynced(matched, lastColumnId)) {
-        input.log({ reason: "already_synced", taskId: matched.id });
-        return { ok: true, reason: "already_synced", skipped: true };
-    }
-
-    const { data: maxPosRows, error: maxPosError } = await supabase
-        .from("tasks")
-        .select("position")
-        .eq("board_id", matched.board_id)
-        .eq("status", lastColumnId)
-        .order("position", { ascending: false })
-        .limit(1);
-
-    if (maxPosError) {
-        throw maxPosError;
-    }
-
-    const nextPosition = (maxPosRows?.[0]?.position ?? -1) + 1;
     const previousStatus = matched.status;
+    const moveTo = plan.moveTo;
+    let nextPosition: number | undefined;
 
-    const { data: statusColumn } = await supabase
-        .from("board_columns")
-        .select("id, name")
-        .eq("board_id", matched.board_id)
-        .eq("id", previousStatus)
-        .maybeSingle();
+    if (moveTo) {
+        const { data: maxPosRows, error: maxPosError } = await supabase
+            .from("tasks")
+            .select("position")
+            .eq("board_id", matched.board_id)
+            .eq("status", moveTo)
+            .order("position", { ascending: false })
+            .limit(1);
 
-    const { data: lastColumn } = await supabase
-        .from("board_columns")
-        .select("id, name")
-        .eq("board_id", matched.board_id)
-        .eq("id", lastColumnId)
-        .maybeSingle();
+        if (maxPosError) {
+            throw maxPosError;
+        }
+
+        nextPosition = (maxPosRows?.[0]?.position ?? -1) + 1;
+    }
 
     const { error: updateError } = await supabase
         .from("tasks")
         .update({
-            position: nextPosition,
-            pr_number: input.prNumber,
-            pr_state: "merged",
-            pr_url: input.prHtmlUrl,
-            status: lastColumnId,
+            ...plan.update,
+            ...(moveTo ? { position: nextPosition, status: moveTo } : {}),
         })
         .eq("id", matched.id);
 
@@ -273,18 +266,28 @@ async function syncInProject(
         throw updateError;
     }
 
+    const fromColumn = columnRows.find(
+        (column) => column.id === previousStatus
+    );
+    const toColumn = moveTo
+        ? columnRows.find((column) => column.id === moveTo)
+        : undefined;
+    const statusChange = moveTo
+        ? {
+              from: {
+                  id: previousStatus,
+                  name: fromColumn?.name ?? previousStatus,
+              },
+              to: {
+                  id: moveTo,
+                  name: toColumn?.name ?? moveTo,
+              },
+          }
+        : undefined;
+
+    // Status history only for a real move; the PR change is always recorded.
     const changes = [
-        {
-            field: "status",
-            from: {
-                id: previousStatus,
-                name: statusColumn?.name ?? previousStatus,
-            },
-            to: {
-                id: lastColumnId,
-                name: lastColumn?.name ?? lastColumnId,
-            },
-        },
+        ...(statusChange ? [{ field: "status", ...statusChange }] : []),
         {
             field: "pr",
             from: matched.pr_number
@@ -314,39 +317,31 @@ async function syncInProject(
         throw activityError;
     }
 
-    const statusChangeMetadata = {
-        from: {
-            id: previousStatus,
-            name: statusColumn?.name ?? previousStatus,
-        },
-        source: "github_webhook",
-        to: {
-            id: lastColumnId,
-            name: lastColumn?.name ?? lastColumnId,
-        },
-    };
+    if (statusChange) {
+        // Best-effort: after status is written, GitHub retries hit
+        // isAlreadySynced and would never re-run fan-out — so do not fail the
+        // webhook here.
+        const { error: notificationError } = await supabase.rpc(
+            "create_notifications_for_status_change",
+            {
+                p_metadata: { ...statusChange, source: "github_webhook" },
+                p_project_id: input.projectId,
+                p_task_id: matched.id,
+            }
+        );
 
-    // Best-effort: after status is written, GitHub retries hit isAlreadySynced
-    // and would never re-run fan-out — so do not fail the webhook here.
-    const { error: notificationError } = await supabase.rpc(
-        "create_notifications_for_status_change",
-        {
-            p_metadata: statusChangeMetadata,
-            p_project_id: input.projectId,
-            p_task_id: matched.id,
+        if (notificationError) {
+            input.log({
+                error: notificationError.message,
+                projectId: input.projectId,
+                reason: "notification_fan_out_failed",
+                taskId: matched.id,
+            });
         }
-    );
-
-    if (notificationError) {
-        input.log({
-            error: notificationError.message,
-            projectId: input.projectId,
-            reason: "notification_fan_out_failed",
-            taskId: matched.id,
-        });
     }
 
-    if (matched.parent_id) {
+    // Same rule as the app: a Subtask "closes" only when it enters Done.
+    if (matched.parent_id && toColumn?.is_done && !fromColumn?.is_done) {
         const { error: subtaskNotificationError } = await supabase.rpc(
             "create_task_notifications",
             {
@@ -376,17 +371,20 @@ async function syncInProject(
         }
     }
 
+    const status = moveTo ?? previousStatus;
+
     input.log({
+        moved: Boolean(moveTo),
         projectId: input.projectId,
         reason: "synced",
-        status: lastColumnId,
+        status,
         taskId: matched.id,
     });
 
     return {
         ok: true,
         skipped: false,
-        status: lastColumnId,
+        status,
         taskId: matched.id,
     };
 }
