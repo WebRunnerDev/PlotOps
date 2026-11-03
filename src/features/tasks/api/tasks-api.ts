@@ -11,18 +11,10 @@ import type {
     TaskType,
     TeamTask,
 } from "@/features/tasks/model/types";
-import type { Database } from "@/shared/api/database.types";
 
-import {
-    countTeamPeople,
-    fetchBoardColumnIds,
-    shouldAutoAssignToCreator,
-} from "@/features/boards";
+import { fetchBoardColumnIds } from "@/features/boards";
 import { parseTaskEstimate } from "@/features/tasks/lib/task-estimate";
-import {
-    DEFAULT_TASK_PRIORITY,
-    TASK_TITLE_MAX_LENGTH,
-} from "@/features/tasks/model/constants";
+import { TASK_TITLE_MAX_LENGTH } from "@/features/tasks/model/constants";
 import { resolveRestoreTaskStatus } from "@/features/tasks/model/resolve-restore-task-status";
 import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
@@ -52,34 +44,6 @@ export type ProjectBoard = {
     taskPositions: Map<string, number>;
     tasks: Task[];
 };
-
-async function fetchProjectTeamPeopleCount(projectId: string): Promise<number> {
-    const { data: project, error: projectError } = await supabase
-        .from("projects")
-        .select("team_id")
-        .eq("id", projectId)
-        .single();
-    if (projectError) throw projectError;
-    if (!project?.team_id) return 0;
-
-    const { data: team, error: teamError } = await supabase
-        .from("teams")
-        .select("owner_id")
-        .eq("id", project.team_id)
-        .single();
-    if (teamError) throw teamError;
-
-    const { count, error: membersError } = await supabase
-        .from("team_members")
-        .select("*", { count: "exact", head: true })
-        .eq("team_id", project.team_id);
-    if (membersError) throw membersError;
-
-    return countTeamPeople({
-        hasOwner: Boolean(team?.owner_id),
-        memberCount: count ?? 0,
-    });
-}
 
 async function mapSelectedTaskRow(row: DatabaseTask): Promise<Task> {
     const [task] = await mapSelectedTaskRows([row]);
@@ -359,99 +323,43 @@ export async function createTaskRecord(
     sprintId?: string,
     extras?: CreateTaskRecordExtras
 ) {
-    const { data: boardRow, error: boardError } = await supabase
-        .from("boards")
-        .select("default_task_type, auto_assign_to_creator")
-        .eq("id", boardId)
-        .single();
-
-    if (boardError) throw boardError;
-
-    let resolvedType: TaskType = taskType ?? "task";
-    if (taskType === undefined) {
-        const raw = boardRow?.default_task_type;
-        if (raw === "bug" || raw === "story" || raw === "task") {
-            resolvedType = raw;
-        }
+    const options: Record<string, unknown> = {
+        project_id: projectId,
+        status,
+    };
+    if (taskType !== undefined) {
+        options.task_type = taskType;
     }
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    let teamPeopleCount = 0;
-    if (
-        extras?.assigneeId === undefined &&
-        boardRow?.auto_assign_to_creator === true
-    ) {
-        teamPeopleCount = await fetchProjectTeamPeopleCount(projectId);
-    }
-    const autoAssigneeId = shouldAutoAssignToCreator({
-        autoAssignToCreator: boardRow?.auto_assign_to_creator === true,
-        teamPeopleCount,
-    })
-        ? (user?.id ?? null)
-        : null;
-
-    const resolvedAssigneeId =
-        extras?.assigneeId === undefined ? autoAssigneeId : extras.assigneeId;
-    const resolvedPriority =
-        extras?.priority === undefined
-            ? DEFAULT_TASK_PRIORITY
-            : extras.priority;
-
-    const { data: existing, error: existingError } = await supabase
-        .from("tasks")
-        .select("position")
-        .eq("board_id", boardId)
-        .eq("status", status)
-        .is("archived_at", null)
-        .order("position", { ascending: false })
-        .limit(1);
-
-    if (existingError) throw existingError;
-
-    const position = (existing?.[0]?.position ?? -1) + 1;
-
-    let sprintPosition: number | undefined;
     if (sprintId) {
-        const { data: sprintExisting, error: sprintPosError } = await supabase
-            .from("tasks")
-            .select("sprint_position")
-            .eq("sprint_id", sprintId)
-            .is("archived_at", null)
-            .order("sprint_position", { ascending: false })
-            .limit(1);
-
-        if (sprintPosError) throw sprintPosError;
-        sprintPosition = (sprintExisting?.[0]?.sprint_position ?? -1) + 1;
+        options.sprint_id = sprintId;
+    }
+    if (extras?.assigneeId !== undefined) {
+        options.assignee_id = extras.assigneeId;
+    }
+    if (extras?.priority !== undefined) {
+        options.priority = extras.priority;
+    }
+    if (taskType === "epic") {
+        options.epic_color = extras?.epicColor ?? null;
+    } else if (extras?.epicId !== undefined) {
+        options.epic_id = extras.epicId;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase.rpc("create_task", {
+        p_board_id: boardId,
+        p_options: asJson(options),
+        p_title: normalizeTaskTitle(title),
+    });
+    if (error) throw error;
+
+    const { data: row, error: fetchError } = await supabase
         .from("tasks")
-        // task_key is NOT NULL but filled by trg_set_task_key before insert.
-        .insert({
-            assignee_id: resolvedAssigneeId,
-            author_id: user?.id ?? null,
-            board_id: boardId,
-            position,
-            priority: resolvedPriority,
-            project_id: projectId,
-            ...(sprintId
-                ? { sprint_id: sprintId, sprint_position: sprintPosition }
-                : {}),
-            status,
-            task_type: resolvedType,
-            title: normalizeTaskTitle(title),
-            ...(resolvedType === "epic"
-                ? { epic_color: extras?.epicColor ?? null }
-                : { epic_id: extras?.epicId ?? null }),
-        } as Database["public"]["Tables"]["tasks"]["Insert"])
         .select(TASK_SELECT)
+        .eq("id", data)
         .single();
 
-    if (error) throw error;
-    return mapSelectedTaskRow(data as DatabaseTask);
+    if (fetchError) throw fetchError;
+    return mapSelectedTaskRow(row as DatabaseTask);
 }
 
 export async function deleteTaskLinkRecord(linkId: string) {

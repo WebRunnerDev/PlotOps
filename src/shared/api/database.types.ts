@@ -67,6 +67,10 @@ export type Database = {
           to: "team_members"
         }
       }
+      add_task_comment: {
+        Args: { p_body: string; p_parent_id?: string; p_task_id: string }
+        Returns: string
+      }
       archive_tasks: { Args: { p_task_ids: string[] }; Returns: number }
       assert_parent_task_may_archive: {
         Args: { p_task_id: string }
@@ -135,6 +139,14 @@ export type Database = {
           isSetofReturn: false
           to: "sprints"
         }
+      }
+      change_task_status: {
+        Args: { p_column_id: string; p_task_id: string }
+        Returns: undefined
+      }
+      claim_mcp_rate_limit: {
+        Args: { p_limit?: number; p_window_seconds?: number }
+        Returns: boolean
       }
       claim_team_invite: {
         Args: { p_token: string }
@@ -288,6 +300,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_task: {
+        Args: { p_board_id: string; p_options?: Json; p_title: string }
+        Returns: string
+      }
       create_task_link: {
         Args: {
           p_kind: string
@@ -381,6 +397,17 @@ export type Database = {
           isSetofReturn: true
           to: "notifications"
         }
+      }
+      log_mcp_action: {
+        Args: {
+          p_client_id?: string
+          p_error_code?: string
+          p_resource_id?: string
+          p_resource_type?: string
+          p_success?: boolean
+          p_tool_name: string
+        }
+        Returns: undefined
       }
       mark_notifications_read: {
         Args: { p_notification_ids: string[] }
@@ -735,6 +762,50 @@ export type Database = {
           id?: string
           name?: string
           project_id?: string
+        }
+      }
+      mcp_action_log: {
+        Insert: {
+          client_id?: null | string
+          created_at?: string
+          error_code?: null | string
+          id?: string
+          resource_id?: null | string
+          resource_type?: null | string
+          success?: boolean
+          tool_name: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            columns: ["user_id"]
+            foreignKeyName: "mcp_action_log_user_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "users"
+          },
+        ]
+        Row: {
+          client_id: null | string
+          created_at: string
+          error_code: null | string
+          id: string
+          resource_id: null | string
+          resource_type: null | string
+          success: boolean
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          client_id?: null | string
+          created_at?: string
+          error_code?: null | string
+          id?: string
+          resource_id?: null | string
+          resource_type?: null | string
+          success?: boolean
+          tool_name?: string
+          user_id?: string
         }
       }
       notifications: {

@@ -66,6 +66,30 @@
         "githubAria": "PlotOps on GitHub (opens in a new tab)",
         "line": "Open source ({{license}})"
     },
+    "oauthConsent": {
+        "actingAs": "Signed in as {{email}}",
+        "allow": "Allow",
+        "allowing": "Allowing...",
+        "clientFallback": "An application",
+        "clientLabel": "Application",
+        "decisionError": "Could not complete that choice. Try again.",
+        "deny": "Deny",
+        "denying": "Denying...",
+        "loadError": "Could not load this authorization request. It may have expired. Start again from your assistant.",
+        "loading": "Loading authorization request",
+        "missingId": "This authorization link is missing or invalid. Start the connection again from your assistant.",
+        "redirectLabel": "Redirects to",
+        "scope": {
+            "email": "See your email",
+            "openid": "Sign you in",
+            "profile": "See your profile"
+        },
+        "scopesLabel": "Requested access",
+        "seoDescription": "Authorize an AI assistant to access your PlotOps account.",
+        "subtitle": "This assistant will act as you in PlotOps, with your existing permissions. It cannot delete tasks, manage the team, or merge pull requests.",
+        "title": "Authorize application",
+        "unsafeRedirect": "The assistant returned an unsafe redirect. Denied for safety."
+    },
     "or": "or",
     "password": "Password",
     "passwordPlaceholder": "••••••••",

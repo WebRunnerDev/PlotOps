@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -12,6 +12,10 @@ import {
     AUTH_RATE_LIMIT_COOLDOWN_MS,
     isAuthRateLimited,
 } from "@/features/auth/lib/auth-rate-limit";
+import {
+    isOAuthConsentRedirect,
+    parseSafeAppRedirect,
+} from "@/features/auth/lib/safe-app-redirect";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { AuthPanel } from "@/features/auth/ui/auth-panel";
 import {
@@ -36,8 +40,13 @@ import { PasswordInput } from "./password-input";
 
 const REDIRECT_TIMEOUT_MS = 8000;
 
-export function LoginForm() {
+type LoginFormProperties = {
+    redirectTo?: string;
+};
+
+export function LoginForm({ redirectTo }: LoginFormProperties = {}) {
     const navigate = useNavigate();
+    const router = useRouter();
     const { user } = useAuth();
     const { t } = useTranslation("auth");
     const [email, setEmail] = useState("");
@@ -56,6 +65,8 @@ export function LoginForm() {
     // /home beforeLoad still sees user=null and bounces back to /sign-in.
     const [awaitingRedirect, setAwaitingRedirect] = useState(false);
 
+    const safeRedirect = parseSafeAppRedirect(redirectTo);
+    const hideGuestDemo = isOAuthConsentRedirect(safeRedirect);
     const isBusy = Boolean(oauthLoading) || isEmailLoading || isGuestLoading;
     const isRateLimited =
         rateLimitedUntil != undefined && Date.now() < rateLimitedUntil;
@@ -117,12 +128,17 @@ export function LoginForm() {
             return;
         }
 
+        if (safeRedirect) {
+            router.history.push(safeRedirect);
+            return;
+        }
+
         void navigate({ to: "/home" }).catch(() => {
             setAwaitingRedirect(false);
             clearAuthLoading();
             setError(t("errors.generic"));
         });
-    }, [awaitingRedirect, navigate, t, user]);
+    }, [awaitingRedirect, navigate, router, safeRedirect, t, user]);
 
     useEffect(() => {
         if (!awaitingRedirect || user) return;
@@ -237,17 +253,19 @@ export function LoginForm() {
                     onGoogle={() => void handleOAuthLogin("google")}
                 />
 
-                <Button
-                    className="w-full"
-                    data-testid="guest-try-demo"
-                    disabled={isBusy}
-                    onClick={handleGuestLogin}
-                    size="lg"
-                    type="button"
-                    variant="secondary"
-                >
-                    {isGuestLoading ? t("tryDemoLoading") : t("tryDemo")}
-                </Button>
+                {hideGuestDemo ? null : (
+                    <Button
+                        className="w-full"
+                        data-testid="guest-try-demo"
+                        disabled={isBusy}
+                        onClick={handleGuestLogin}
+                        size="lg"
+                        type="button"
+                        variant="secondary"
+                    >
+                        {isGuestLoading ? t("tryDemoLoading") : t("tryDemo")}
+                    </Button>
+                )}
             </div>
 
             <div className="flex items-center gap-3">

@@ -1,0 +1,16 @@
+name = "plotops-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+MCP_RATE_LIMIT = "60"
+MCP_RATE_WINDOW_SECONDS = "60"
+
+# Secrets (npx wrangler secret put NAME --config workers/mcp/wrangler.toml):
+#   SUPABASE_URL                — PlotOps project URL only
+#   SUPABASE_PUBLISHABLE_KEY    — same anon/publishable key as the SPA
+# Never store the service_role key. RLS is the authorization layer.
+#
+# Optional public override for the advertised MCP resource URL:
+#   MCP_RESOURCE_URL = "https://plotops-mcp.<account>.workers.dev/mcp"
