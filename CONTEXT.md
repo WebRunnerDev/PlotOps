@@ -1,6 +1,6 @@
 # PlotOps
 
-Git-native project tracker (Linear/Jira-style) with GitHub integration. Collaboration and access are scoped to a Team; Projects live under a Team and hold work (Boards, Tasks, linked GitHub repo).
+Git-native project tracker (Linear/Jira-style) with GitHub integration. Collaboration and access are scoped to a Team; Projects live under a Team and hold work (Boards, Tasks, linked GitHub Repositories).
 
 ## Language
 
@@ -37,8 +37,16 @@ The unit of ownership and collaboration. Members, Roles, and Invites belong to a
 _Avoid_: Workspace, Organization, Project (when meaning the access boundary)
 
 **Project**:
-A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, and optionally a linked GitHub repository. Does not own Members or Roles — those live on the Team. May be created by connecting a GitHub repository or as a name-only Project without a repo (Git/CI surfaces gated until a repo is attached).
-_Avoid_: Team, Workspace, repository (the GitHub repo is linked to the Project, not the same concept)
+A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, and zero or more linked Repositories (ADR 0034). Does not own Members or Roles — those live on the Team. May be created by connecting one or more GitHub repositories at once, or as a name-only Project without a repo (Git/CI surfaces gated until a Repository is attached); more Repositories can be added later in Project Settings.
+_Avoid_: Team, Workspace, repository (a Repository is linked to the Project, not the same concept)
+
+**Repository**:
+A GitHub repository linked to one Project (`project_repositories`, ADR 0034). A Project holds at most 5 (Repository cap); a GitHub repository belongs to at most one Project per Team, so a webhook delivery resolves to exactly one Project. All Repositories in a Project are equal — there is no primary one. Linking and unlinking are Admin+; unlinking deletes that Repository's Git links on every Task (recorded in Task activity) and touches nothing on GitHub. Project Settings shows per Repository whether the GitHub App is installed.
+_Avoid_: repo (UI only), primary repo, main repo (no such concept)
+
+**Repository cap**:
+The ceiling of 5 Repositories per Project (ADR 0034), enforced by a `BEFORE INSERT` trigger on `project_repositories` and mirrored in the app. Does not apply in Guest Mode.
+_Avoid_: repo limit (UI only), quota
 
 **Team cap**:
 The flat per-user ceiling on Teams (ADR 0032): a user may **own** at most 3 Teams (`teams.owner_id`) and **join** at most 10 more as a Member. The two counters are separate — the Owner is never a `team_members` row — so the maximum reach is 13 Teams. Enforced by `BEFORE INSERT` triggers in Postgres so the security-definer invite RPCs are covered, and re-checked when ownership transfers; the Owner demoted to Admin by a transfer is exempt, since their total does not grow. Mirrored in the app to disable the affordance, never as the only check. Does not apply in Guest Mode.
@@ -49,19 +57,19 @@ The ceiling of 10 Projects per Team (ADR 0032). Scoped to the Team, not the user
 _Avoid_: repo limit, per-user project limit, quota
 
 **Board**:
-A kanban workflow inside a Project: its own columns and Tasks. A Project may have several Boards (e.g. Core, Frontend). A Board may be a **Development Board** (`is_development`) — then it owns Git branch mapping (Base branch + Allowed head patterns) — or a regular Board without that mapping. Every Project has at least one Board. A Board may be deleted only when it has no Tasks and is not the Project's last Board.
+A kanban workflow inside a Project: its own columns and Tasks. A Project may have several Boards (e.g. Core, Frontend). A Board may be a **Development Board** (`is_development`) — then it owns Git branch mapping (a Base branch per Repository + Allowed head patterns) — or a regular Board without that mapping. Every Project has at least one Board. A Board may be deleted only when it has no Tasks and is not the Project's last Board.
 _Avoid_: Kanban, workspace board, Team board (Boards are Project-scoped, not Team-scoped)
 
 **Development Board**:
-A Board with Git branch mapping enabled: required Base branch (PR merge target / Done sync) and optional Allowed head patterns. Turned off for non-dev Boards, which clear Base branch and Allowed head patterns. The Development settings UI is shown only when the Project has a linked GitHub repository.
+A Board with Git branch mapping enabled: a required Base branch for each Repository in the Project (PR merge target / Done sync) and optional Allowed head patterns shared by all Repositories. Turned off for non-dev Boards, which clear Base branches and Allowed head patterns. The Development settings UI is shown only when the Project has at least one Repository.
 _Avoid_: git board, engineering board (prefer Development Board)
 
 **Base branch**:
-The single Git branch a Development Board treats as the default PR target (merge destination). Owned by the Board; seeded from the Project's repo default branch when a Development Board is created, then editable per Board. A Task is considered merge-complete (e.g. auto-DONE) when its PR merges into that Task's Board Base branch — not into an arbitrary project default. Absent on regular (non-development) Boards.
-_Avoid_: default branch (that term is the repo/GitHub default on the Project), main (a common value, not the concept)
+The Git branch a Development Board treats as the PR target (merge destination) in one Repository — one per Board × Repository (`board_repositories`, ADR 0034). Owned by the Board; seeded from the Repository's default branch when the Repository is added or the Development Board is created, then editable per Board and Repository. A Git link's PR counts as merged for merge sync only when it merges into the Base branch of the Task's Board for that Repository; a merge into any other branch leaves it pending. Absent on regular (non-development) Boards.
+_Avoid_: default branch (that term is the Repository's GitHub default), main (a common value, not the concept)
 
 **Allowed head pattern**:
-A glob-like rule on a Development Board that describes which task head-branch names fit that Board's workflow (e.g. `feature/*`, `fix/CORE-*`). An empty list means any branch is allowed. When patterns exist and a linked/generated name does not match, the product warns and may ask for confirmation — it does not hard-block. Cleared when the Board is not a Development Board.
+A glob-like rule on a Development Board, shared by all Repositories in the Project, that describes which task head-branch names fit that Board's workflow (e.g. `feature/*`, `fix/CORE-*`). An empty list means any branch is allowed. When patterns exist and a linked/generated name does not match, the product warns and may ask for confirmation — it does not hard-block. Cleared when the Board is not a Development Board.
 _Avoid_: branch filter, branch whitelist (implies hard deny)
 
 **Auto-assign to creator**:
@@ -69,7 +77,7 @@ A Board setting that assigns new Tasks (and Subtasks) on that Board to the perso
 _Avoid_: auto-assign to me (UI copy only; persistence is creator-relative)
 
 **Task**:
-A unit of work that always belongs to exactly one Board (and thus to that Board's Project). Has a Task type (`epic`, `story`, `task`, or `bug`). May optionally be a Subtask of one Parent Task in the same Project. A root non-Epic Task may belong to one Epic in the same Project. May optionally have Task Links to other Tasks in the same Project. May optionally link a Git branch and/or pull request. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared unless a Manager+ chooses a Draft or Active Sprint on the destination Board (otherwise Backlog). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
+A unit of work that always belongs to exactly one Board (and thus to that Board's Project). Has a Task type (`epic`, `story`, `task`, or `bug`). May optionally be a Subtask of one Parent Task in the same Project. A root non-Epic Task may belong to one Epic in the same Project. May optionally have Task Links to other Tasks in the same Project. May hold at most one Git link per Repository in its Project; Git links survive a Board move. May optionally belong to one Sprint on that Board. May optionally carry an Estimate (Fibonacci story points). May be moved to another Board in the same Project; on move, status is remapped to a matching column on the target Board or falls back to that Board's first column, and Sprint membership is cleared unless a Manager+ chooses a Draft or Active Sprint on the destination Board (otherwise Backlog). Soft-archive also clears Sprint membership. If the Task left an Active Sprint (board move or archive), that remove is a Scope change. Restore from archive returns the Task to the Backlog, not into a Sprint.
 _Avoid_: Issue, card (UI only), ticket
 
 **Task type**:
@@ -109,6 +117,10 @@ A Project-scoped named text slot whose definition lists which Task types it appl
 _Avoid_: Board custom field, property (Notion), custom attribute (generic)
 
 ### Structure
+
+**Git link**:
+A Task's branch and optional pull request in one Repository (`task_git_links`, ADR 0034); at most one per Task per Repository. Created from the Task drawer or automatically by the webhook when a PR's head branch carries the Task key and the Task has no Git link for that Repository (never overwrites an existing one). Merge sync moves the Task to its Board's merge target column only when every Git link that has a PR is merged into its Base branch; PRs closed without merge and branch-only Git links do not count. The Kanban card shows one aggregate PR badge.
+_Avoid_: Task Link (Task-to-Task relationship — unrelated), git fields (UI copy only)
 
 **Parent Task**:
 A root Task (no `parent_id`) that has one or more Subtasks. At most one hierarchy level — a Parent Task cannot itself be a Subtask. A Parent Task cannot be moved to the Board's Done column, archived, or hard-deleted while any of its Subtasks are not Done or still exist, respectively. Distinct from a Task Link — hierarchy is parent/child, not peer blocking.
