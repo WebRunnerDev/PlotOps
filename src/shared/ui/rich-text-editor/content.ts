@@ -59,10 +59,9 @@ export function richTextToPlainText(value: string): string {
         .replaceAll(/<img\b[^>]*>/gi, (tag) => {
             const alt = readHtmlAttribute(tag, "alt");
             return formatImagePlainTextReference(alt);
-        })
-        .replaceAll(/<[^>]+>/g, "");
+        });
 
-    return decodeHtmlEntities(withBreaks)
+    return decodeHtmlEntities(stripHtmlTags(withBreaks))
         .replaceAll("\r\n", "\n")
         .replaceAll(/[^\S\n\t]+/g, " ")
         .replaceAll(/ *\t */g, "\t")
@@ -105,4 +104,15 @@ function readHtmlAttribute(tag: string, name: string): string {
     const match = pattern.exec(tag);
     if (!match) return "";
     return decodeHtmlEntities(match[1] ?? match[2] ?? match[3] ?? "").trim();
+}
+
+/** Removes tags until stable, so nested fragments like `<<b>script>` cannot reassemble a tag. */
+function stripHtmlTags(value: string): string {
+    let previous: string;
+    let current = value;
+    do {
+        previous = current;
+        current = previous.replaceAll(/<[^>]*>/g, "");
+    } while (current !== previous);
+    return current;
 }
