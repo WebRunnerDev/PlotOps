@@ -9,7 +9,8 @@ An MCP client should use PlotOps the way a Jira connector uses Jira: as the sign
 - The Worker calls PostgREST / RPCs with the **publishable key + user access token**. The **service role key is never used**.
 - Task writes shared with the SPA: `create_task` (position, default type, auto-assign, `author_id = auth.uid()`), `update_task_details` (MCP omits author and git/PR fields), `change_task_status` → `persist_task_moves`, `add_task_comment`.
 - v1 tools: `whoami`, `list_projects`, `list_boards`, `list_tasks`, `get_task`, `create_task`, `update_task`, `change_status`, `add_comment`. No delete, team admin, or PR merge.
-- Verify tokens with `auth.getUser(jwt)` so HS256 and ES256 both work. Do not require `@supabase/server`'s JWKS path (ES256-only).
+- Verify tokens with `auth.getClaims(jwt)`: local ES256 verification against the cached JWKS (the hosted project signs with ES256), with supabase-js falling back to `getUser` for HS256. Accepted trade-off: no per-request revocation check, same as PostgREST.
+- Rate limit with Cloudflare Rate Limiting bindings, not a database claim per request. Retain `mcp_action_log` for 30 days (pg_cron).
 
 ## Rejected
 

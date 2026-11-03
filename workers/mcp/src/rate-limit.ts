@@ -1,9 +1,18 @@
-/** In-memory sliding window — per Worker isolate (same idea as Edge Functions). */
+/** Rate limiting for the MCP Worker: Cloudflare binding + in-memory fallback. */
 
 export type RateLimitAllowed = {
     allowed: true;
     remaining: number;
     resetAtMs: number;
+};
+
+/**
+ * Cloudflare Workers Rate Limiting binding (`[[ratelimits]]` in wrangler.toml).
+ * Counters are shared per Cloudflare location, not per isolate, and cost no
+ * database round-trip.
+ */
+export type RateLimitBinding = {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
 };
 
 export type RateLimitBlocked = {
@@ -17,6 +26,27 @@ export type RateLimitResult = RateLimitAllowed | RateLimitBlocked;
 export type SlidingWindowRateLimiter = {
     check(key: string, nowMs?: number): RateLimitResult;
 };
+
+/**
+ * Prefer the binding; fall back to the per-isolate window when the binding is
+ * absent (unit tests) or errors, so a limiter outage never fails open or
+ * blocks every request.
+ */
+export async function checkRateLimit(
+    binding: RateLimitBinding | undefined,
+    fallback: SlidingWindowRateLimiter,
+    key: string
+): Promise<boolean> {
+    if (binding) {
+        try {
+            const { success } = await binding.limit({ key });
+            return success;
+        } catch {
+            // fall through to the in-memory window
+        }
+    }
+    return fallback.check(key).allowed;
+}
 
 export function createSlidingWindowRateLimiter(options: {
     limit: number;

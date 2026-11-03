@@ -1,16 +1,11 @@
+import type { RateLimitBinding } from "./rate-limit.ts";
+
 export type McpEnv = {
-    MCP_RATE_LIMIT?: string;
-    MCP_RATE_WINDOW_SECONDS?: string;
+    /** Cloudflare Rate Limiting binding keyed by client IP (wrangler.toml). */
+    MCP_IP_LIMITER?: RateLimitBinding;
     MCP_RESOURCE_URL?: string;
+    /** Cloudflare Rate Limiting binding keyed by user id (wrangler.toml). */
+    MCP_USER_LIMITER?: RateLimitBinding;
     SUPABASE_PUBLISHABLE_KEY: string;
     SUPABASE_URL: string;
 };
-
-export function parsePositiveInt(
-    raw: string | undefined,
-    fallback: number
-): number {
-    const parsed = Number.parseInt(raw ?? "", 10);
-    if (!Number.isFinite(parsed) || parsed < 1) return fallback;
-    return parsed;
-}
