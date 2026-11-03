@@ -396,14 +396,13 @@ enabled = false
 # Obtain from https://clerk.com/setup/supabase
 # domain = "example.clerk.accounts.dev"
 
-# OAuth server configuration
+# OAuth server configuration — PlotOps MCP (Cloudflare Worker) is the resource
+# server; GoTrue issues user tokens. Hosted project must enable the same toggle
+# in the Auth dashboard (config.toml is local Docker only). See docs/MCP.md.
 [auth.oauth_server]
-# Enable OAuth server functionality
-enabled = false
-# Path for OAuth consent flow UI
+enabled = true
 authorization_url_path = "/oauth/consent"
-# Allow dynamic client registration
-allow_dynamic_registration = false
+allow_dynamic_registration = true
 
 [edge_runtime]
 enabled = true

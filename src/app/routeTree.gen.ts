@@ -14,6 +14,7 @@ import { Route as PrivacyRouteImport } from './../routes/privacy'
 import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
 import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
+import { Route as OauthConsentRouteImport } from './../routes/oauth/consent'
 import { Route as InviteTokenRouteImport } from './../routes/invite.$token'
 import { Route as mainSettingsRouteImport } from './../routes/(main)/settings'
 import { Route as mainNotificationsRouteImport } from './../routes/(main)/notifications'
@@ -56,6 +57,11 @@ const mainRouteRoute = mainRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof mainNotificationsRoute
   '/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof mainNotificationsRoute
   '/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
   '/teams/$teamId/settings': typeof mainTeamsTeamIdSettingsRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/(main)/notifications': typeof mainNotificationsRoute
   '/(main)/settings': typeof mainSettingsRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/(main)/projects/$projectId': typeof mainProjectsProjectIdRouteRouteWithChildren
   '/(main)/projects/$projectId/ci-cd': typeof mainProjectsProjectIdCiCdRoute
   '/(main)/projects/$projectId/settings': typeof mainProjectsProjectIdSettingsRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/settings'
     | '/invite/$token'
+    | '/oauth/consent'
     | '/projects/$projectId'
     | '/projects/$projectId/ci-cd'
     | '/projects/$projectId/settings'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/settings'
     | '/invite/$token'
+    | '/oauth/consent'
     | '/projects/$projectId/ci-cd'
     | '/projects/$projectId/settings'
     | '/teams/$teamId/settings'
@@ -301,6 +312,7 @@ export interface FileRouteTypes {
     | '/(main)/notifications'
     | '/(main)/settings'
     | '/invite/$token'
+    | '/oauth/consent'
     | '/(main)/projects/$projectId'
     | '/(main)/projects/$projectId/ci-cd'
     | '/(main)/projects/$projectId/settings'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   authSignInRoute: typeof authSignInRoute
   authSignUpRoute: typeof authSignUpRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  OauthConsentRoute: typeof OauthConsentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -360,6 +373,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite/$token': {
@@ -577,6 +597,7 @@ const rootRouteChildren: RootRouteChildren = {
   authSignInRoute: authSignInRoute,
   authSignUpRoute: authSignUpRoute,
   InviteTokenRoute: InviteTokenRoute,
+  OauthConsentRoute: OauthConsentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
