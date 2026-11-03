@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(22);
+select plan(25);
 
 select set_config('test.owner', 'a1111111-1111-1111-1111-111111111111', true);
 select set_config('test.manager', 'a2222222-2222-2222-2222-222222222222', true);
@@ -168,13 +168,14 @@ select is(
 );
 
 select pg_temp.as_user(current_setting('test.outsider')::uuid);
+-- RLS hides the board, so create_task cannot distinguish missing vs forbidden.
 select throws_ok(
   format(
     $$select public.create_task(%L::uuid, 'Steal', '{}'::jsonb)$$,
     current_setting('test.board')
   ),
-  '42501',
-  'Only managers can create tasks',
+  'P0002',
+  'Board not found',
   'Outsider cannot create_task'
 );
 
@@ -235,12 +236,13 @@ select throws_ok(
 );
 
 select pg_temp.as_user(current_setting('test.contributor')::uuid);
+-- Column GRANT strips task_key / project_id before the protect trigger runs.
 select throws_ok(
   $$update public.tasks
     set task_key = 'HACK-1'
     where id = current_setting('test.task_a')::uuid$$,
   '42501',
-  'System task columns cannot be updated',
+  'permission denied for table tasks',
   'task_key cannot be updated'
 );
 
@@ -249,7 +251,7 @@ select throws_ok(
     set project_id = '99999999-9999-9999-9999-999999999999'
     where id = current_setting('test.task_a')::uuid$$,
   '42501',
-  'System task columns cannot be updated',
+  'permission denied for table tasks',
   'project_id cannot be updated'
 );
 
@@ -258,6 +260,17 @@ select lives_ok(
     set title = 'Renamed'
     where id = current_setting('test.task_a')::uuid$$,
   'title remains updatable for editors'
+);
+
+-- Table owner still has UPDATE on system columns; the trigger is the backstop.
+set local role postgres;
+select throws_ok(
+  $$update public.tasks
+    set task_key = 'HACK-1'
+    where id = current_setting('test.task_a')::uuid$$,
+  '42501',
+  'System task columns cannot be updated',
+  'trigger blocks task_key even with full UPDATE'
 );
 
 select pg_temp.as_user(current_setting('test.manager')::uuid);
