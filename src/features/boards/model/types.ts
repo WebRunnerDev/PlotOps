@@ -17,6 +17,11 @@ export type BoardDefaultTaskType = "bug" | "story" | "task";
  */
 export type BoardMergeTargetMode = "column" | "last_column" | "none";
 
+export type BoardRepositoryBaseBranch = {
+    baseBranch: string;
+    repositoryId: string;
+};
+
 export type CreateBoardInput = {
     baseBranch?: string;
     isDevelopment: boolean;
@@ -26,7 +31,10 @@ export type ProjectBoardRecord = {
     allowedHeadPatterns: string[];
     /** Assign new Tasks on this Board to the creator when the Team is solo. */
     autoAssignToCreator: boolean;
-    /** PR merge target; required when isDevelopment. */
+    /**
+     * Single-repo view of `repositoryBaseBranches[0]` (null when none). Kept
+     * so screens built for one Repository read unchanged.
+     */
     baseBranch: null | string;
     /** Prefill for new Tasks created on this board when type is omitted. */
     defaultTaskType: BoardDefaultTaskType;
@@ -39,11 +47,14 @@ export type ProjectBoardRecord = {
     name: string;
     position: number;
     projectId: string;
+    /** Base branch per Repository (`board_repositories`); empty unless isDevelopment. */
+    repositoryBaseBranches: BoardRepositoryBaseBranch[];
 };
 
 export type UpdateBoardPatch = {
     allowed_head_patterns?: string[];
     auto_assign_to_creator?: boolean;
+    /** Written to every `board_repositories` row of the Board (single-repo UI). */
     base_branch?: null | string;
     default_task_type?: BoardDefaultTaskType;
     is_development?: boolean;

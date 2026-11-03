@@ -2110,6 +2110,18 @@ function subscribeTasksChannel(
                 controller.requestInvalidation();
             }
         )
+        .on(
+            "postgres_changes",
+            {
+                event: "*",
+                filter: `project_id=eq.${projectId}`,
+                schema: "public",
+                table: "task_git_links",
+            },
+            () => {
+                controller.requestInvalidation();
+            }
+        )
         .subscribe();
 
     taskChannels.set(projectId, { channel, subscribers: 1 });

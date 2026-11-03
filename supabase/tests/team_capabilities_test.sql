@@ -47,15 +47,24 @@ values
   ('11111111-1111-1111-1111-111111111111', current_setting('test.viewer')::uuid, 'viewer')
 on conflict do nothing;
 
-insert into public.projects (id, team_id, name, slug, github_repo_id)
+insert into public.projects (id, team_id, name, slug)
 values (
   '22222222-2222-2222-2222-222222222222',
   '11111111-1111-1111-1111-111111111111',
   'Repo A',
-  'repo-a',
-  1001
+  'repo-a'
 )
 on conflict (id) do nothing;
+
+insert into public.project_repositories (project_id, team_id, github_repo_id, github_full_name, github_html_url)
+values (
+  '22222222-2222-2222-2222-222222222222',
+  '11111111-1111-1111-1111-111111111111',
+  1001,
+  'o/repo-a',
+  'https://github.com/o/repo-a'
+)
+on conflict do nothing;
 
 create or replace function pg_temp.as_user(uid uuid)
 returns void

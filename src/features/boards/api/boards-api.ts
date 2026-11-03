@@ -12,7 +12,13 @@ import { supabase } from "@/shared/api/supabase";
 type DatabaseBoard = {
     allowed_head_patterns: null | string[];
     auto_assign_to_creator: boolean | null;
-    base_branch: null | string;
+    board_repositories?:
+        | null
+        | {
+              base_branch: string;
+              repository: null | { created_at: string };
+              repository_id: string;
+          }[];
     default_task_type: null | string;
     id: string;
     is_development: boolean;
@@ -24,7 +30,7 @@ type DatabaseBoard = {
 };
 
 const BOARD_SELECT =
-    "id, project_id, name, position, base_branch, allowed_head_patterns, default_task_type, auto_assign_to_creator, is_development, merge_target_mode, merge_target_column_id";
+    "id, project_id, name, position, allowed_head_patterns, default_task_type, auto_assign_to_creator, is_development, merge_target_mode, merge_target_column_id, board_repositories (repository_id, base_branch, repository:project_repositories (created_at))";
 
 const MERGE_TARGET_MODES = new Set<string>(["column", "last_column", "none"]);
 
@@ -57,12 +63,12 @@ export async function createBoard(
 
     if (error) throw error;
 
-    const row = data as DatabaseBoard | null;
+    const row = data as null | { id: string };
     if (!row) {
         throw new Error("create_board_with_columns returned no board");
     }
 
-    return mapDatabaseBoard(row);
+    return fetchBoard(row.id);
 }
 
 export async function deleteBoard(boardId: string) {
@@ -95,28 +101,49 @@ export async function fetchProjectBoards(
 }
 
 export async function updateBoard(boardId: string, patch: UpdateBoardPatch) {
-    const normalized = normalizeBoardDevelopmentPatch(patch);
-    const payload = {
+    const { base_branch: baseBranch, ...boardPatch } = {
         ...patch,
-        ...normalized,
+        ...normalizeBoardDevelopmentPatch(patch),
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from("boards")
-        .update(payload)
-        .eq("id", boardId)
-        .select(BOARD_SELECT)
-        .single();
+        .update(boardPatch)
+        .eq("id", boardId);
 
     if (error) throw error;
-    return mapDatabaseBoard(data as DatabaseBoard);
+
+    // Rows exist only on a Development Board (seeded by trigger on enable).
+    if (baseBranch) {
+        const { error: baseError } = await supabase
+            .from("board_repositories")
+            .update({ base_branch: baseBranch })
+            .eq("board_id", boardId);
+
+        if (baseError) throw baseError;
+    }
+
+    return fetchBoard(boardId);
 }
 
 function mapDatabaseBoard(row: DatabaseBoard): ProjectBoardRecord {
+    // Repository order (oldest first) matches Project.repositories.
+    const repositoryBaseBranches = (row.board_repositories ?? [])
+        .toSorted(
+            (a, b) =>
+                Date.parse(a.repository?.created_at ?? "") -
+                    Date.parse(b.repository?.created_at ?? "") ||
+                a.repository_id.localeCompare(b.repository_id)
+        )
+        .map((item) => ({
+            baseBranch: item.base_branch,
+            repositoryId: item.repository_id,
+        }));
+
     return {
         allowedHeadPatterns: row.allowed_head_patterns ?? [],
         autoAssignToCreator: row.auto_assign_to_creator === true,
-        baseBranch: row.base_branch,
+        baseBranch: repositoryBaseBranches[0]?.baseBranch ?? null,
         defaultTaskType: toDefaultTaskType(row.default_task_type),
         id: row.id,
         isDevelopment: row.is_development,
@@ -124,6 +151,7 @@ function mapDatabaseBoard(row: DatabaseBoard): ProjectBoardRecord {
         name: row.name,
         position: row.position,
         projectId: row.project_id,
+        repositoryBaseBranches,
     };
 }
 

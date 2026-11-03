@@ -2,6 +2,7 @@ import type {
     BoardTasksCache,
     CreateTaskRecordExtras,
     TaskRecordPatch,
+    TaskRowPatch,
 } from "@/features/tasks/api/tasks-api";
 import type {
     ProjectEpic,
@@ -67,5 +68,5 @@ export type TasksProvider = {
         patch: TaskRecordPatch,
         labelIds?: null | string[]
     ): Promise<void>;
-    updateTaskRecord(taskId: string, patch: TaskRecordPatch): Promise<void>;
+    updateTaskRecord(taskId: string, patch: TaskRowPatch): Promise<void>;
 };

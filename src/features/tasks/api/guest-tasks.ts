@@ -320,6 +320,17 @@ function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
         epicColor: task.epicColor,
         epicId: task.epicId,
         estimate: task.estimate,
+        // Guest Projects hold at most one Repository (`<projectId>:repo`).
+        gitLinks:
+            task.branchName || task.pr
+                ? [
+                      {
+                          branchName: task.branchName,
+                          pr: task.pr,
+                          repositoryId: `${task.projectId}:repo`,
+                      },
+                  ]
+                : undefined,
         hasOpenBlocker: hasOpenBlocker(
             task.id,
             parentGateTasks(sandbox),

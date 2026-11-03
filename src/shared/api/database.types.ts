@@ -89,6 +89,7 @@ export type Database = {
         Returns: undefined
       }
       assign_tasks_to_sprint: { Args: { p_updates: Json }; Returns: undefined }
+      before_user_created_hook: { Args: { hook_event: Json }; Returns: Json }
       blocks_link_would_cycle: {
         Args: { p_source_task_id: string; p_target_task_id: string }
         Returns: boolean
@@ -209,6 +210,13 @@ export type Database = {
           to: "team_members"
         }
       }
+      consume_edge_rate_limit: {
+        Args: { p_bucket: string; p_limit: number; p_window_seconds: number }
+        Returns: {
+          allowed: boolean
+          retry_after_sec: number
+        }[]
+      }
       create_board_with_columns: {
         Args: {
           p_base_branch: null | string
@@ -219,7 +227,6 @@ export type Database = {
         Returns: {
           allowed_head_patterns: string[]
           auto_assign_to_creator: boolean
-          base_branch: null | string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
@@ -279,6 +286,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_project_with_repositories: {
+        Args: {
+          p_description?: string
+          p_is_private?: boolean
+          p_name: string
+          p_repositories?: Json
+          p_slug: string
+          p_team_id: string
+        }
+        Returns: string
+      }
       create_subtask: {
         Args: {
           p_parent_id: string
@@ -300,6 +318,7 @@ export type Database = {
         Args: { p_events: Json; p_project_id: string; p_task_id: string }
         Returns: undefined
       }
+      custom_access_token_hook: { Args: { hook_event: Json }; Returns: Json }
       delete_board_column: {
         Args: {
           p_board_id: string
@@ -437,6 +456,7 @@ export type Database = {
         Args: { project_uuid: string }
         Returns: Database["public"]["Enums"]["project_member_role"]
       }
+      project_repositories_cap: { Args: never; Returns: number }
       project_team_id: { Args: { project_uuid: string }; Returns: string }
       reorder_board_columns: {
         Args: { p_board_id: string; p_column_ids: string[] }
@@ -481,10 +501,17 @@ export type Database = {
         }
       }
       task_is_archived: { Args: { task_uuid: string }; Returns: boolean }
+      task_media_path_task_id: {
+        Args: { object_name: string }
+        Returns: string
+      }
       team_member_role_of: {
         Args: { team_uuid: string }
         Returns: Database["public"]["Enums"]["project_member_role"]
       }
+      team_memberships_cap: { Args: never; Returns: number }
+      team_projects_cap: { Args: never; Returns: number }
+      teams_owned_cap: { Args: never; Returns: number }
       transfer_team_ownership: {
         Args: { p_new_owner_id: string; p_team_id: string }
         Returns: {
@@ -604,11 +631,53 @@ export type Database = {
           project_id?: string
         }
       }
+      board_repositories: {
+        Insert: {
+          base_branch: string
+          board_id: string
+          project_id: string
+          repository_id: string
+        }
+        Relationships: [
+          {
+            columns: ["board_id"]
+            foreignKeyName: "board_repositories_board_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "boards"
+          },
+          {
+            columns: ["project_id"]
+            foreignKeyName: "board_repositories_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["repository_id"]
+            foreignKeyName: "board_repositories_repository_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "project_repositories"
+          },
+        ]
+        Row: {
+          base_branch: string
+          board_id: string
+          project_id: string
+          repository_id: string
+        }
+        Update: {
+          base_branch?: string
+          board_id?: string
+          project_id?: string
+          repository_id?: string
+        }
+      }
       boards: {
         Insert: {
           allowed_head_patterns?: string[]
           auto_assign_to_creator?: boolean
-          base_branch?: null | string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
@@ -638,7 +707,6 @@ export type Database = {
         Row: {
           allowed_head_patterns: string[]
           auto_assign_to_creator: boolean
-          base_branch: null | string
           created_at: string
           default_task_type: Database["public"]["Enums"]["task_type"]
           id: string
@@ -652,7 +720,6 @@ export type Database = {
         Update: {
           allowed_head_patterns?: string[]
           auto_assign_to_creator?: boolean
-          base_branch?: null | string
           created_at?: string
           default_task_type?: Database["public"]["Enums"]["task_type"]
           id?: string
@@ -700,6 +767,24 @@ export type Database = {
           position?: number
           project_id?: string
           system_key?: null | string
+        }
+      }
+      edge_rate_limit_hits: {
+        Insert: {
+          bucket: string
+          hit_at?: string
+          id?: never
+        }
+        Relationships: []
+        Row: {
+          bucket: string
+          hit_at: string
+          id: number
+        }
+        Update: {
+          bucket?: string
+          hit_at?: string
+          id?: never
         }
       }
       labels: {
@@ -834,6 +919,54 @@ export type Database = {
           username?: null | string
         }
       }
+      project_repositories: {
+        Insert: {
+          created_at?: string
+          github_default_branch?: string
+          github_full_name: string
+          github_html_url: string
+          github_repo_id: number
+          id?: string
+          project_id: string
+          team_id: string
+        }
+        Relationships: [
+          {
+            columns: ["project_id"]
+            foreignKeyName: "project_repositories_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["team_id"]
+            foreignKeyName: "project_repositories_team_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "teams"
+          },
+        ]
+        Row: {
+          created_at: string
+          github_default_branch: string
+          github_full_name: string
+          github_html_url: string
+          github_repo_id: number
+          id: string
+          project_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          github_default_branch?: string
+          github_full_name?: string
+          github_html_url?: string
+          github_repo_id?: number
+          id?: string
+          project_id?: string
+          team_id?: string
+        }
+      }
       project_task_sequences: {
         Insert: {
           next_val?: number
@@ -861,10 +994,6 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: null | string
-          github_default_branch?: null | string
-          github_full_name?: null | string
-          github_html_url?: null | string
-          github_repo_id?: null | number
           id?: string
           is_private?: boolean
           name: string
@@ -884,10 +1013,6 @@ export type Database = {
         Row: {
           created_at: string
           description: null | string
-          github_default_branch: null | string
-          github_full_name: null | string
-          github_html_url: null | string
-          github_repo_id: null | number
           id: string
           is_private: boolean
           name: string
@@ -898,10 +1023,6 @@ export type Database = {
         Update: {
           created_at?: string
           description?: null | string
-          github_default_branch?: null | string
-          github_full_name?: null | string
-          github_html_url?: null | string
-          github_repo_id?: null | number
           id?: string
           is_private?: boolean
           name?: string
@@ -1143,6 +1264,67 @@ export type Database = {
           value?: string
         }
       }
+      task_git_links: {
+        Insert: {
+          branch_name?: null | string
+          created_at?: string
+          id?: string
+          pr_number?: null | number
+          pr_state?: null | string
+          pr_url?: null | string
+          project_id: string
+          repository_id: string
+          task_id: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            columns: ["project_id"]
+            foreignKeyName: "task_git_links_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["repository_id"]
+            foreignKeyName: "task_git_links_repository_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "project_repositories"
+          },
+          {
+            columns: ["task_id"]
+            foreignKeyName: "task_git_links_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+        ]
+        Row: {
+          branch_name: null | string
+          created_at: string
+          id: string
+          pr_number: null | number
+          pr_state: null | string
+          pr_url: null | string
+          project_id: string
+          repository_id: string
+          task_id: string
+          updated_at: string
+        }
+        Update: {
+          branch_name?: null | string
+          created_at?: string
+          id?: string
+          pr_number?: null | number
+          pr_state?: null | string
+          pr_url?: null | string
+          project_id?: string
+          repository_id?: string
+          task_id?: string
+          updated_at?: string
+        }
+      }
       task_labels: {
         Insert: {
           label_id: string
@@ -1289,7 +1471,6 @@ export type Database = {
           assignee_id?: null | string
           author_id?: null | string
           board_id: string
-          branch_name?: null | string
           created_at?: string
           deadline?: null | string
           description?: null | string
@@ -1300,9 +1481,6 @@ export type Database = {
           linked_commit_sha?: null | string
           parent_id?: null | string
           position?: number
-          pr_number?: null | number
-          pr_state?: null | string
-          pr_url?: null | string
           priority?: null | string
           project_id: string
           sprint_id?: null | string
@@ -1376,7 +1554,6 @@ export type Database = {
           assignee_id: null | string
           author_id: null | string
           board_id: string
-          branch_name: null | string
           created_at: string
           deadline: null | string
           description: null | string
@@ -1387,9 +1564,6 @@ export type Database = {
           linked_commit_sha: null | string
           parent_id: null | string
           position: number
-          pr_number: null | number
-          pr_state: null | string
-          pr_url: null | string
           priority: null | string
           project_id: string
           sprint_id: null | string
@@ -1405,7 +1579,6 @@ export type Database = {
           assignee_id?: null | string
           author_id?: null | string
           board_id?: string
-          branch_name?: null | string
           created_at?: string
           deadline?: null | string
           description?: null | string
@@ -1416,9 +1589,6 @@ export type Database = {
           linked_commit_sha?: null | string
           parent_id?: null | string
           position?: number
-          pr_number?: null | number
-          pr_state?: null | string
-          pr_url?: null | string
           priority?: null | string
           project_id?: string
           sprint_id?: null | string

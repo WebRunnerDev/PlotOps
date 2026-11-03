@@ -25,6 +25,15 @@ function mapBoard(board: GuestBoard): ProjectBoardRecord {
         name: board.name,
         position: board.position,
         projectId: board.projectId,
+        // Guest Projects hold at most one Repository (`<projectId>:repo`).
+        repositoryBaseBranches: board.baseBranch
+            ? [
+                  {
+                      baseBranch: board.baseBranch,
+                      repositoryId: `${board.projectId}:repo`,
+                  },
+              ]
+            : [],
     };
 }
 

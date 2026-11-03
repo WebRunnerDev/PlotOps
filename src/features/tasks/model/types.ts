@@ -36,6 +36,7 @@ export type Task = {
     assignee?: TaskAssignee;
     author?: TaskAssignee;
     boardId: string;
+    /** Single-repo view of `gitLinks[0].branchName`. */
     branchName?: string;
     /** ISO timestamp when the Task was created. */
     createdAt: string;
@@ -54,6 +55,8 @@ export type Task = {
      * Absent / undefined = unestimated.
      */
     estimate?: TaskEstimate;
+    /** Git links, one per Repository at most (`task_git_links`), oldest first. */
+    gitLinks?: TaskGitLink[];
     /** True when an open `blocks` Task Link targets this Task. */
     hasOpenBlocker?: boolean;
     id: string;
@@ -68,6 +71,7 @@ export type Task = {
     parentId?: string;
     /** Parent Task key for card/drawer badge; set when parentId is set. */
     parentKey?: string;
+    /** Single-repo view of `gitLinks[0].pr`. */
     pr?: TaskPullRequest;
     priority?: TaskPriority;
     /** Peer Task Link summaries for the drawer (and later cards). */
@@ -136,6 +140,13 @@ export type TaskComment = {
     parentId?: null | string;
     taskId: string;
     updatedAt: string;
+};
+
+/** A Task's branch / PR in one Repository (`task_git_links`). */
+export type TaskGitLink = {
+    branchName?: string;
+    pr?: TaskPullRequest;
+    repositoryId: string;
 };
 
 export type TaskLinkKind = "blocks" | "relates_to";

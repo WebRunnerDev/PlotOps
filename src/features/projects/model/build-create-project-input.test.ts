@@ -23,7 +23,7 @@ const repo: GitHubRepo = {
 };
 
 describe("buildNameOnlyCreateProjectInput", () => {
-    it("persists null github_* fields for a name-only Project", () => {
+    it("links no Repository for a name-only Project", () => {
         expect(
             buildNameOnlyCreateProjectInput({
                 name: "  Roadmap  ",
@@ -32,12 +32,9 @@ describe("buildNameOnlyCreateProjectInput", () => {
             })
         ).toEqual({
             description: null,
-            github_default_branch: null,
-            github_full_name: null,
-            github_html_url: null,
-            github_repo_id: null,
             is_private: false,
             name: "Roadmap",
+            repositories: [],
             slug: "roadmap",
             team_id: "team-1",
         });
@@ -45,15 +42,19 @@ describe("buildNameOnlyCreateProjectInput", () => {
 });
 
 describe("buildGitHubCreateProjectInput", () => {
-    it("maps repo fields and keeps github_repo_id for duplicate-repo uniqueness", () => {
+    it("maps repo fields into one Repository and keeps github_repo_id for duplicate-repo uniqueness", () => {
         expect(buildGitHubCreateProjectInput(repo, "team-1")).toEqual({
             description: "Widgets app",
-            github_default_branch: "main",
-            github_full_name: "acme/widgets",
-            github_html_url: "https://github.com/acme/widgets",
-            github_repo_id: 42,
             is_private: true,
             name: "widgets",
+            repositories: [
+                {
+                    github_default_branch: "main",
+                    github_full_name: "acme/widgets",
+                    github_html_url: "https://github.com/acme/widgets",
+                    github_repo_id: 42,
+                },
+            ],
             slug: "acme-widgets",
             team_id: "team-1",
         });

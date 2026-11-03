@@ -84,9 +84,9 @@ export function AddProjectDialog({
     const connectedRepoIds = useMemo(
         () =>
             new Set(
-                connectedProjects
-                    .map((project) => project.github_repo_id)
-                    .filter((id): id is number => id != undefined)
+                connectedProjects.flatMap((project) =>
+                    project.repositories.map((repo) => repo.github_repo_id)
+                )
             ),
         [connectedProjects]
     );

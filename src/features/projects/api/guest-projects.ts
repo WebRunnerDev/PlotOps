@@ -16,6 +16,21 @@ function mapProject(project: GuestProject, ownerId: string): Project {
         is_private: project.isPrivate,
         name: project.name,
         owner_id: ownerId,
+        repositories:
+            project.githubRepoId != undefined && project.githubFullName
+                ? [
+                      {
+                          github_default_branch:
+                              project.githubDefaultBranch ?? "main",
+                          github_full_name: project.githubFullName,
+                          github_html_url:
+                              project.githubHtmlUrl ??
+                              `https://github.com/${project.githubFullName}`,
+                          github_repo_id: project.githubRepoId,
+                          id: `${project.id}:repo`,
+                      },
+                  ]
+                : [],
         slug: project.slug,
         team_id: project.teamId,
         updated_at: project.updatedAt,

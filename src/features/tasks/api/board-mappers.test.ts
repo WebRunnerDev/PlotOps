@@ -20,7 +20,6 @@ function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
         author: null,
         author_id: null,
         board_id: "board",
-        branch_name: null,
         created_at: "2026-07-15T12:00:00.000Z",
         deadline: null,
         description: null,
@@ -30,9 +29,6 @@ function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
         parent: null,
         parent_id: null,
         position: 0,
-        pr_number: null,
-        pr_state: null,
-        pr_url: null,
         priority: null,
         project_id: "project",
         sprint_id: null,
@@ -47,6 +43,50 @@ function databaseTask(overrides: Partial<DatabaseTask> = {}): DatabaseTask {
 }
 
 describe("mapDatabaseTask", () => {
+    it("maps Git links per Repository and keeps the first as branch / PR", () => {
+        const task = mapDatabaseTask(
+            databaseTask({
+                git_links: [
+                    {
+                        branch_name: "feature/TASK-1-api",
+                        created_at: "2026-08-02T00:00:00.000Z",
+                        pr_number: 12,
+                        pr_state: "merged",
+                        pr_url: "https://github.com/o/api/pull/12",
+                        repository_id: "repo-api",
+                    },
+                    {
+                        branch_name: "feature/TASK-1-web",
+                        created_at: "2026-08-01T00:00:00.000Z",
+                        pr_number: 12,
+                        pr_state: "open",
+                        pr_url: "https://github.com/o/web/pull/12",
+                        repository_id: "repo-web",
+                    },
+                ],
+            })
+        );
+
+        expect(task.gitLinks?.map((link) => link.repositoryId)).toEqual([
+            "repo-web",
+            "repo-api",
+        ]);
+        expect(task.branchName).toBe("feature/TASK-1-web");
+        expect(task.pr).toEqual({
+            number: 12,
+            state: "open",
+            url: "https://github.com/o/web/pull/12",
+        });
+    });
+
+    it("leaves branch / PR unset without Git links", () => {
+        const task = mapDatabaseTask(databaseTask({ git_links: [] }));
+
+        expect(task.gitLinks).toBeUndefined();
+        expect(task.branchName).toBeUndefined();
+        expect(task.pr).toBeUndefined();
+    });
+
     it("maps created_at onto Task createdAt for Board sort", () => {
         const task = mapDatabaseTask(
             databaseTask({ created_at: "2026-08-01T09:30:00.000Z" })

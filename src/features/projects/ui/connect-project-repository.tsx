@@ -42,9 +42,9 @@ export function ConnectProjectRepository({
     const connectedRepoIds = useMemo(
         () =>
             new Set(
-                teamProjects
-                    .map((project) => project.github_repo_id)
-                    .filter((id): id is number => id != undefined)
+                teamProjects.flatMap((project) =>
+                    project.repositories.map((repo) => repo.github_repo_id)
+                )
             ),
         [teamProjects]
     );

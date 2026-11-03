@@ -5,6 +5,13 @@ import {
     shouldHandleClosedUnmergedPr,
 } from "./close-sync.ts";
 import {
+    fetchBoardBaseBranch,
+    findRepositories,
+    loadCandidateTasks,
+    type RepositoryReference,
+    writeGitLink,
+} from "./git-links.ts";
+import {
     type BoardColumnRow,
     type CandidateTask,
     matchTask,
@@ -103,29 +110,22 @@ export async function syncMergedPullRequest(
         return { ok: true, reason: "not_merged_pr", skipped: true };
     }
 
-    const { data: projects, error: projectError } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("github_full_name", repoFullName);
+    const repositories = await findRepositories(supabase, repoFullName);
 
-    if (projectError) {
-        throw projectError;
-    }
-
-    if (!projects?.length) {
+    if (repositories.length === 0) {
         log({ reason: "no_project", repo: repoFullName });
         return { ok: true, reason: "no_project", skipped: true };
     }
 
-    for (const project of projects) {
+    for (const repository of repositories) {
         const result = await syncInProject(supabase, {
             baseRef: baseReference,
             headRef: headReference,
             log,
             prHtmlUrl: pr.html_url ?? null,
             prNumber,
-            projectId: project.id,
             repoFullName,
+            repository,
         });
         if (!result.skipped) {
             return result;
@@ -160,22 +160,14 @@ async function syncInProject(
         log: (fields: Record<string, unknown>) => void;
         prHtmlUrl: null | string;
         prNumber: number;
-        projectId: string;
         repoFullName: string;
+        repository: RepositoryReference;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
+    const projectId = input.repository.project_id;
+    const taskRows = await loadCandidateTasks(supabase, input.repository);
 
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+    const matched = matchTask(taskRows, {
         headRef: input.headRef,
         prNumber: input.prNumber,
     });
@@ -186,7 +178,7 @@ async function syncInProject(
 
     const { data: board, error: boardError } = await supabase
         .from("boards")
-        .select("id, base_branch, merge_target_mode, merge_target_column_id")
+        .select("id, merge_target_mode, merge_target_column_id")
         .eq("id", matched.board_id)
         .maybeSingle();
 
@@ -199,10 +191,16 @@ async function syncInProject(
         return { ok: true, reason: "no_board", skipped: true };
     }
 
-    if (board.base_branch !== input.baseRef) {
+    const boardBase = await fetchBoardBaseBranch(
+        supabase,
+        board.id,
+        input.repository.id
+    );
+
+    if (boardBase !== input.baseRef) {
         input.log({
             base: input.baseRef,
-            boardBase: board.base_branch,
+            boardBase,
             reason: "wrong_base",
             taskId: matched.id,
         });
@@ -254,16 +252,19 @@ async function syncInProject(
         nextPosition = (maxPosRows?.[0]?.position ?? -1) + 1;
     }
 
-    const { error: updateError } = await supabase
-        .from("tasks")
-        .update({
-            ...plan.update,
-            ...(moveTo ? { position: nextPosition, status: moveTo } : {}),
-        })
-        .eq("id", matched.id);
+    // Git link first: a retry after a failed move still sees the Task off
+    // its target column, so isAlreadySynced lets it finish the move.
+    await writeGitLink(supabase, matched.id, input.repository, plan.update);
 
-    if (updateError) {
-        throw updateError;
+    if (moveTo) {
+        const { error: updateError } = await supabase
+            .from("tasks")
+            .update({ position: nextPosition, status: moveTo })
+            .eq("id", matched.id);
+
+        if (updateError) {
+            throw updateError;
+        }
     }
 
     const fromColumn = columnRows.find(
@@ -308,7 +309,7 @@ async function syncInProject(
         .insert({
             action: "updated",
             metadata: { changes, source: "github_webhook" },
-            project_id: input.projectId,
+            project_id: projectId,
             task_id: matched.id,
             user_id: null,
         });
@@ -325,7 +326,7 @@ async function syncInProject(
             "create_notifications_for_status_change",
             {
                 p_metadata: { ...statusChange, source: "github_webhook" },
-                p_project_id: input.projectId,
+                p_project_id: projectId,
                 p_task_id: matched.id,
             }
         );
@@ -333,7 +334,7 @@ async function syncInProject(
         if (notificationError) {
             input.log({
                 error: notificationError.message,
-                projectId: input.projectId,
+                projectId,
                 reason: "notification_fan_out_failed",
                 taskId: matched.id,
             });
@@ -355,7 +356,7 @@ async function syncInProject(
                         },
                     },
                 ],
-                p_project_id: input.projectId,
+                p_project_id: projectId,
                 p_task_id: matched.parent_id,
             }
         );
@@ -364,7 +365,7 @@ async function syncInProject(
             input.log({
                 error: subtaskNotificationError.message,
                 parentId: matched.parent_id,
-                projectId: input.projectId,
+                projectId,
                 reason: "subtask_change_fan_out_failed",
                 taskId: matched.id,
             });
@@ -375,7 +376,7 @@ async function syncInProject(
 
     input.log({
         moved: Boolean(moveTo),
-        projectId: input.projectId,
+        projectId,
         reason: "synced",
         status,
         taskId: matched.id,
@@ -404,27 +405,20 @@ async function syncPrStateOnly(
         return { ok: true, reason: sync.skipReason, skipped: true };
     }
 
-    const { data: projects, error: projectError } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("github_full_name", repoFullName);
+    const repositories = await findRepositories(supabase, repoFullName);
 
-    if (projectError) {
-        throw projectError;
-    }
-
-    if (!projects?.length) {
+    if (repositories.length === 0) {
         log({ reason: "no_project", repo: repoFullName });
         return { ok: true, reason: "no_project", skipped: true };
     }
 
-    for (const project of projects) {
+    for (const repository of repositories) {
         const result = await syncPrStateOnlyInProject(supabase, {
             headRef: headReference,
             log,
             prHtmlUrl: pr?.html_url ?? null,
             prNumber,
-            projectId: project.id,
+            repository,
             sync,
         });
         if (!result.skipped) {
@@ -446,22 +440,14 @@ async function syncPrStateOnlyInProject(
         log: (fields: Record<string, unknown>) => void;
         prHtmlUrl: null | string;
         prNumber: number;
-        projectId: string;
+        repository: RepositoryReference;
         sync: PrStateOnlySync;
     }
 ): Promise<SyncResult> {
-    const { data: taskRows, error: tasksError } = await supabase
-        .from("tasks")
-        .select(
-            "id, board_id, status, branch_name, pr_number, pr_state, task_key, archived_at, parent_id"
-        )
-        .eq("project_id", input.projectId);
+    const projectId = input.repository.project_id;
+    const taskRows = await loadCandidateTasks(supabase, input.repository);
 
-    if (tasksError) {
-        throw tasksError;
-    }
-
-    const matched = matchTask((taskRows ?? []) as CandidateTask[], {
+    const matched = matchTask(taskRows, {
         headRef: input.headRef,
         prNumber: input.prNumber,
     });
@@ -483,14 +469,7 @@ async function syncPrStateOnlyInProject(
     const previousPrState = matched?.pr_state ?? null;
     const previousStatus = matched?.status ?? "";
 
-    const { error: updateError } = await supabase
-        .from("tasks")
-        .update(plan.update)
-        .eq("id", plan.taskId);
-
-    if (updateError) {
-        throw updateError;
-    }
+    await writeGitLink(supabase, plan.taskId, input.repository, plan.update);
 
     const changes = [
         {
@@ -513,7 +492,7 @@ async function syncPrStateOnlyInProject(
         .insert({
             action: "updated",
             metadata: { changes, source: "github_webhook" },
-            project_id: input.projectId,
+            project_id: projectId,
             task_id: plan.taskId,
             user_id: null,
         });
@@ -523,7 +502,7 @@ async function syncPrStateOnlyInProject(
     }
 
     input.log({
-        projectId: input.projectId,
+        projectId,
         reason: input.sync.syncedReason,
         taskId: plan.taskId,
     });

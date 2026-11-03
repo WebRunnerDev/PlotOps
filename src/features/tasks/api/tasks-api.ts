@@ -131,15 +131,11 @@ const TASK_SELECT = `
   priority,
   estimate,
   deadline,
-  branch_name,
   assignee_id,
   author_id,
   archived_at,
   archived_by,
   position,
-  pr_number,
-  pr_state,
-  pr_url,
   linked_commit_sha,
   task_key,
   task_type,
@@ -169,6 +165,14 @@ const TASK_SELECT = `
   ),
   task_labels (
     label_id
+  ),
+  git_links:task_git_links (
+    repository_id,
+    branch_name,
+    pr_number,
+    pr_state,
+    pr_url,
+    created_at
   ),
   parent_id,
   outgoing_links:task_links!task_links_source_task_id_fkey (
@@ -259,10 +263,21 @@ export type TaskRecordPatch = {
     pr_state?: null | string;
     pr_url?: null | string;
     priority?: null | TaskPriority;
+    /**
+     * Git link target for `branch_name` / `pr_*`. Optional while the Project
+     * has exactly one Repository (`update_task_details` resolves it).
+     */
+    repository_id?: string;
     status?: TaskStatus;
     task_type?: TaskType;
     title?: string;
 };
+
+/** `tasks` columns only — Git fields go through `updateTaskDetails`. */
+export type TaskRowPatch = Omit<
+    TaskRecordPatch,
+    "branch_name" | "pr_number" | "pr_state" | "pr_url" | "repository_id"
+>;
 
 /** Signal archive; DB trigger sets `archived_at` / `archived_by`. */
 export async function archiveTaskRecord(taskId: string) {
@@ -756,7 +771,7 @@ export async function updateTaskDetails(
 }
 
 /** Row patch only — prefer `updateTaskDetails` when labels may change too. */
-export async function updateTaskRecord(taskId: string, patch: TaskRecordPatch) {
+export async function updateTaskRecord(taskId: string, patch: TaskRowPatch) {
     const withTitle =
         patch.title === undefined
             ? patch

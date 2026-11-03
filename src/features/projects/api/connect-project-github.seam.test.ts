@@ -6,24 +6,23 @@ import { describe, expect, it } from "vitest";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("connectProjectGithub seam", () => {
-    it("updates only name-only Projects and selects the mapped row", () => {
+    it("links a Repository only to a Project without one (ADR 0034)", () => {
         const source = readFileSync(
             path.join(dirname, "projects-api.ts"),
             "utf8"
         );
         const function_ = source.slice(
             source.indexOf("export async function connectProjectGithub"),
-            source.indexOf("export async function deleteProject")
+            source.indexOf("export async function createProject")
         );
 
-        expect(function_).toMatch(/\.from\(\s*["']projects["']\s*\)/);
-        expect(function_).toMatch(/\.update\(\s*patch\s*\)/);
-        expect(function_).toMatch(/\.eq\(\s*["']id["']\s*,\s*projectId\s*\)/);
+        expect(function_).toMatch(/repositories\.length\s*>\s*0/);
         expect(function_).toMatch(
-            /\.is\(\s*["']github_repo_id["']\s*,\s*null\s*\)/
+            /\.from\(\s*["']project_repositories["']\s*\)\s*\.insert\(/
         );
-        expect(function_).toMatch(/\.maybeSingle\(\)/);
-        expect(function_).toMatch(/if\s*\(\s*!data\s*\)/);
+        expect(function_).toMatch(/project_id:\s*projectId/);
+        expect(function_).toMatch(/\.update\(\s*\{\s*is_private/);
+        expect(function_).toMatch(/fetchProject\(\s*projectId\s*\)/);
     });
 
     it("preserves Postgres unique_violation code through the Supabase provider", () => {

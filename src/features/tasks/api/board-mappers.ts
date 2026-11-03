@@ -2,6 +2,7 @@ import type {
     EpicColor,
     ProjectEpic,
     Task,
+    TaskGitLink,
     TaskLinkPeer,
     TaskPriority,
     TaskPullRequest,
@@ -53,13 +54,13 @@ export type DatabaseTask = {
     author: DatabaseProfile | DatabaseProfile[] | null;
     author_id: null | string;
     board_id: string;
-    branch_name: null | string;
     created_at: string;
     deadline: null | string;
     description: null | string;
     epic_color?: null | string;
     epic_id?: null | string;
     estimate: null | number;
+    git_links?: DatabaseTaskGitLink[] | null;
     id: string;
     incoming_links?: DatabaseTaskLinkEmbed[] | null;
     linked_commit_sha: null | string;
@@ -67,9 +68,6 @@ export type DatabaseTask = {
     parent?: Array<DatabaseParentReference> | DatabaseParentReference | null;
     parent_id?: null | string;
     position: number;
-    pr_number: null | number;
-    pr_state: null | string;
-    pr_url: null | string;
     priority: null | string;
     project_id: string;
     sprint_id: null | string;
@@ -79,6 +77,16 @@ export type DatabaseTask = {
     task_labels: Array<{ label_id: string }> | null;
     task_type: string;
     title: string;
+};
+
+/** Embedded `task_git_links` row. */
+export type DatabaseTaskGitLink = {
+    branch_name: null | string;
+    created_at?: string;
+    pr_number: null | number;
+    pr_state: null | string;
+    pr_url: null | string;
+    repository_id: string;
 };
 
 export type DatabaseTaskLinkEmbed = {
@@ -172,6 +180,8 @@ export function mapDatabaseProjectEpic(row: DatabaseProjectEpic): ProjectEpic {
 
 export function mapDatabaseTask(row: DatabaseTask): Task {
     const labelIds = row.task_labels?.map((item) => item.label_id) ?? [];
+    const gitLinks = toGitLinks(row.git_links);
+    const firstGitLink = gitLinks[0];
     const assignee = Array.isArray(row.assignee)
         ? row.assignee[0]
         : row.assignee;
@@ -186,13 +196,14 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         assignee: toTaskPerson(assignee),
         author: toTaskPerson(author),
         boardId: row.board_id,
-        branchName: row.branch_name ?? undefined,
+        branchName: firstGitLink?.branchName,
         createdAt: row.created_at,
         deadline: row.deadline ?? undefined,
         description: row.description ?? undefined,
         epicColor: toEpicColor(row.epic_color),
         epicId: row.epic_id ?? undefined,
         estimate: isTaskEstimate(row.estimate) ? row.estimate : undefined,
+        gitLinks: gitLinks.length > 0 ? gitLinks : undefined,
         hasOpenBlocker: hasOpenBlockerFromRow(row),
         id: row.id,
         key: row.task_key,
@@ -201,7 +212,7 @@ export function mapDatabaseTask(row: DatabaseTask): Task {
         parentEpicId: firstParent(row)?.epic_id ?? undefined,
         parentId: row.parent_id ?? undefined,
         parentKey: firstParent(row)?.task_key ?? undefined,
-        pr: toPullRequest(row),
+        pr: firstGitLink?.pr,
         priority: toTaskPriority(row.priority),
         relatedTasks: toRelatedTasks(row),
         sprintId: row.sprint_id ?? undefined,
@@ -320,7 +331,24 @@ function hasOpenBlockerFromRow(row: DatabaseTask): boolean {
     });
 }
 
-function toPullRequest(row: DatabaseTask): TaskPullRequest | undefined {
+function toGitLinks(
+    rows: DatabaseTaskGitLink[] | null | undefined
+): TaskGitLink[] {
+    return (rows ?? [])
+        .toSorted(
+            (a, b) =>
+                Date.parse(a.created_at ?? "") -
+                    Date.parse(b.created_at ?? "") ||
+                a.repository_id.localeCompare(b.repository_id)
+        )
+        .map((row) => ({
+            branchName: row.branch_name ?? undefined,
+            pr: toPullRequest(row),
+            repositoryId: row.repository_id,
+        }));
+}
+
+function toPullRequest(row: DatabaseTaskGitLink): TaskPullRequest | undefined {
     if (row.pr_number == undefined || !row.pr_state || !row.pr_url)
         return undefined;
     if (!PR_STATES.has(row.pr_state)) return undefined;
