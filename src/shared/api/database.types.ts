@@ -144,10 +144,6 @@ export type Database = {
         Args: { p_column_id: string; p_task_id: string }
         Returns: undefined
       }
-      claim_mcp_rate_limit: {
-        Args: { p_limit?: number; p_window_seconds?: number }
-        Returns: boolean
-      }
       claim_team_invite: {
         Args: { p_token: string }
         Returns: {

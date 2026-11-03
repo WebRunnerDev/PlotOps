@@ -127,7 +127,9 @@ After changing it: `npm run db:stop && npm run db:start` (or `db:reset` when tes
 ## Security notes
 
 - **No service role** in the Worker. RLS (`can_create_tasks`, `can_edit_tasks`, project visibility) is the authorization layer.
-- **Rate limits:** in-memory sliding window per Worker isolate (IP + user) plus `claim_mcp_rate_limit` over `mcp_action_log`. Tool calls are logged via `log_mcp_action`.
+- **Token verification:** `auth.getClaims` verifies the ES256 signature against the project JWKS (cached per isolate), `exp`, `iss` (= `{SUPABASE_URL}/auth/v1`) and `role = authenticated` — no Auth round-trip per request. Legacy HS256 tokens fall back to `getUser`. Trade-off: a signed-out session stays usable until its access token expires (default 1 h); PostgREST accepts the same token for the same window.
+- **Rate limits:** Cloudflare [Rate Limiting bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) in `wrangler.toml` — `MCP_IP_LIMITER` 120/min per IP, `MCP_USER_LIMITER` 60/min per user. Counters are per Cloudflare location and approximate (a few extra requests can slip through). If a binding is missing or errors, an in-memory per-isolate window with the same limits applies. No database work per request.
+- **Audit log:** tool calls are logged via `log_mcp_action` into `mcp_action_log`; pg_cron job `mcp-action-log-retention` deletes rows older than 30 days nightly (03:17 UTC).
 - **Body cap:** 256 KiB. List tools cap at 100 rows.
 - **CORS:** reflects `Origin` (Bearer tokens, not cookies).
 - **Task UPDATE:** `tasks_protect_system_columns` blocks `id` / `project_id` / `task_key` / `created_at`. Column-level `GRANT UPDATE` matches that whitelist. Editors can still change `author_id` and git/PR columns through the SPA (`update_task_details`); MCP `update_task` does not send those fields.

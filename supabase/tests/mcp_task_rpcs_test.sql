@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(25);
+select plan(26);
 
 select set_config('test.owner', 'a1111111-1111-1111-1111-111111111111', true);
 select set_config('test.manager', 'a2222222-2222-2222-2222-222222222222', true);
@@ -279,17 +279,27 @@ select lives_ok(
   'Manager can log_mcp_action'
 );
 
-select is(
-  public.claim_mcp_rate_limit(100, 60),
-  true,
-  'claim_mcp_rate_limit allows under the cap'
-);
 
 select pg_temp.as_user(current_setting('test.outsider')::uuid);
 select is(
   (select count(*)::integer from public.mcp_action_log),
   0,
   'Outsider cannot read another user MCP action log'
+);
+
+reset role;
+select ok(
+  exists (
+    select 1 from cron.job
+    where jobname = 'mcp-action-log-retention'
+      and command like '%mcp_action_log%30 days%'
+  ),
+  'mcp_action_log retention job is scheduled'
+);
+
+select hasnt_function(
+  'public', 'claim_mcp_rate_limit', array['integer', 'integer'],
+  'claim_mcp_rate_limit was dropped (rate limit lives in the Worker)'
 );
 
 select * from finish();

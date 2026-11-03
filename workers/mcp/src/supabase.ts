@@ -1,11 +1,20 @@
-import { createClient, type User } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 import type { McpEnv as McpEnvironment } from "./env.ts";
 
+/** Subset of the Supabase access-token claims the Worker reads. */
+export type JwtClaims = {
+    [claim: string]: unknown;
+    email?: string;
+    iss?: string;
+    role?: string;
+    sub?: string;
+};
+
 export type UserSupabase = {
     auth: {
-        getUser: (jwt?: string) => Promise<{
-            data: { user: null | User };
+        getClaims: (jwt: string) => Promise<{
+            data: null | { claims: JwtClaims };
             error: null | { message: string };
         }>;
     };

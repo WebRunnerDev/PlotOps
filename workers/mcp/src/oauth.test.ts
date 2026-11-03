@@ -8,6 +8,7 @@ import {
     mcpResourceUrl,
     protectedResourceMetadata,
     readJwtClientId,
+    unauthorizedResponse,
 } from "./oauth.ts";
 
 describe("oauth helpers", () => {
@@ -68,5 +69,21 @@ describe("oauth helpers", () => {
         const payload = btoa(JSON.stringify({ client_id: "mcp-client" }));
         expect(readJwtClientId(`aaa.${payload}.sig`)).toBe("mcp-client");
         expect(readJwtClientId("not-a-jwt")).toBeNull();
+    });
+});
+
+describe("unauthorizedResponse", () => {
+    it("advertises resource_metadata per RFC 9728", () => {
+        const response = unauthorizedResponse(
+            new Request("https://mcp.example.dev/mcp", { method: "POST" }),
+            {
+                SUPABASE_PUBLISHABLE_KEY: "key",
+                SUPABASE_URL: "https://ijcelrdcygzyzhcijkhe.supabase.co",
+            }
+        );
+        expect(response.status).toBe(401);
+        expect(response.headers.get("WWW-Authenticate")).toBe(
+            'Bearer resource_metadata="https://mcp.example.dev/.well-known/oauth-protected-resource", resource="https://mcp.example.dev/mcp"'
+        );
     });
 });

@@ -1,7 +1,7 @@
 import type { McpEnv as McpEnvironment } from "./env.ts";
 
+import { verifyAccessToken } from "./auth.ts";
 import { corsHeaders, withCors } from "./cors.ts";
-import { parsePositiveInt } from "./env.ts";
 import { MAX_MCP_BODY_BYTES, utf8ByteLength } from "./limits.ts";
 import { acceptsMcp, handleMcpPost } from "./mcp.ts";
 import {
@@ -12,13 +12,25 @@ import {
     readJwtClientId,
     unauthorizedResponse,
 } from "./oauth.ts";
-import { createSlidingWindowRateLimiter } from "./rate-limit.ts";
+import {
+    checkRateLimit,
+    createSlidingWindowRateLimiter,
+} from "./rate-limit.ts";
 import { createUserClient } from "./supabase.ts";
 import { TOOLS } from "./tools.ts";
 
-const limiter = createSlidingWindowRateLimiter({
+/** Must match the `period` of the `[[ratelimits]]` bindings in wrangler.toml. */
+const RATE_LIMIT_PERIOD_SECONDS = 60;
+
+// Fallback only — used when the Cloudflare bindings are missing or error.
+// Limits mirror wrangler.toml.
+const ipFallback = createSlidingWindowRateLimiter({
     limit: 120,
-    windowMs: 60_000,
+    windowMs: RATE_LIMIT_PERIOD_SECONDS * 1000,
+});
+const userFallback = createSlidingWindowRateLimiter({
+    limit: 60,
+    windowMs: RATE_LIMIT_PERIOD_SECONDS * 1000,
 });
 
 function clientIp(request: Request): string {
@@ -87,9 +99,13 @@ export default {
         }
 
         const url = new URL(request.url);
-        const ipLimit = limiter.check(`ip:${clientIp(request)}`);
-        if (!ipLimit.allowed) {
-            return withCors(rateLimited(ipLimit.retryAfterSec), request);
+        const ipAllowed = await checkRateLimit(
+            environment.MCP_IP_LIMITER,
+            ipFallback,
+            `ip:${clientIp(request)}`
+        );
+        if (!ipAllowed) {
+            return withCors(rateLimited(RATE_LIMIT_PERIOD_SECONDS), request);
         }
 
         if (isProtectedResourceMetadataPath(url.pathname)) {
@@ -151,17 +167,21 @@ export default {
         }
 
         const supabase = createUserClient(environment, token);
-        const { data, error } = await supabase.auth.getUser(token);
-        if (error || !data.user) {
+        const user = await verifyAccessToken(supabase, token, environment);
+        if (!user) {
             return withCors(
                 unauthorizedResponse(request, environment),
                 request
             );
         }
 
-        const userLimit = limiter.check(`user:${data.user.id}`);
-        if (!userLimit.allowed) {
-            return withCors(rateLimited(userLimit.retryAfterSec), request);
+        const userAllowed = await checkRateLimit(
+            environment.MCP_USER_LIMITER,
+            userFallback,
+            `user:${user.id}`
+        );
+        if (!userAllowed) {
+            return withCors(rateLimited(RATE_LIMIT_PERIOD_SECONDS), request);
         }
 
         const body = await request.text();
@@ -170,26 +190,10 @@ export default {
         }
 
         const clientId = readJwtClientId(token);
-        const rateLimit = parsePositiveInt(environment.MCP_RATE_LIMIT, 60);
-        const windowSeconds = parsePositiveInt(
-            environment.MCP_RATE_WINDOW_SECONDS,
-            60
-        );
-        const allowed = await supabase.rpc("claim_mcp_rate_limit", {
-            p_limit: rateLimit,
-            p_window_seconds: windowSeconds,
-        });
-        if (allowed.error) {
-            // Table missing until migrations apply — fail open for reads,
-            // still enforce the in-memory window above.
-        } else if (allowed.data === false) {
-            return withCors(rateLimited(windowSeconds), request);
-        }
-
         const context = {
             clientId,
             supabase,
-            user: data.user,
+            user,
         };
 
         // Wrap tools/call logging without parsing twice: handleMcpPost owns

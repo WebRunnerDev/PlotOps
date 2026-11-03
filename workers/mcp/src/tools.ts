@@ -1,5 +1,4 @@
-import type { User } from "@supabase/supabase-js";
-
+import type { McpUser } from "./auth.ts";
 import type { UserSupabase } from "./supabase.ts";
 
 import {
@@ -54,7 +53,7 @@ const COMMENT_SELECT =
 export type ToolContext = {
     clientId: null | string;
     supabase: UserSupabase;
-    user: User;
+    user: McpUser;
 };
 
 export type ToolDefinition = {

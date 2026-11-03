@@ -71,13 +71,21 @@ describe("MCP Streamable HTTP handler", () => {
 
 describe("MCP worker security seam", () => {
     it("never mentions the service role key", () => {
-        const source = ["index.ts", "supabase.ts", "tools.ts", "oauth.ts"]
+        const source = [
+            "auth.ts",
+            "index.ts",
+            "supabase.ts",
+            "tools.ts",
+            "oauth.ts",
+        ]
             .map((name) => readFileSync(path.join(dirname, name), "utf8"))
             .join("\n");
 
         expect(source).not.toMatch(/service[_-]?role/i);
         expect(source).toMatch(/SUPABASE_PUBLISHABLE_KEY/);
-        expect(source).toMatch(/getUser/);
+        // Tokens are verified (signature + issuer), never just decoded.
+        expect(source).toMatch(/getClaims/);
+        expect(source).not.toMatch(/claim_mcp_rate_limit/);
     });
 
     it("registers the initial PlotOps tool set", () => {
