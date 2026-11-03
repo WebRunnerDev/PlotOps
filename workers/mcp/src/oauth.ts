@@ -76,7 +76,7 @@ export function unauthorizedResponse(
         {
             headers: {
                 "Content-Type": "application/json",
-                "WWW-Authenticate": `Bearer FAKESECRET_g3h4i5j6k7l8m9n0o1p2="${metadata}", resource="${resource}"`,
+                "WWW-Authenticate": `Bearer resource_metadata="${metadata}", resource="${resource}"`,
             },
             status: 401,
         }
