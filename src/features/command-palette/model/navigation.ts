@@ -2,7 +2,7 @@ import type { Destination } from "@/shared/lib/destinations";
 
 /** Palette groups in render order (SPEC §4 → Destinations → Group order). */
 export type CommandPaletteGroup =
-    "actions" | "members" | "navigation" | "projects" | "tasks";
+    "actions" | "members" | "navigation" | "projects" | "recent" | "tasks";
 
 /** Translator fixed to one locale and the `command` namespace (keyword keys), e.g. `i18n.getFixedT("en", "command")`. */
 export type CommandPaletteLocaleTranslate = (
@@ -92,10 +92,16 @@ export function matchDestinations<D extends Destination>(
     });
 }
 
-/** Fixed group order; a Task-key query lifts Tasks to the top. */
+/**
+ * Fixed group order; Recent leads on an empty query only, and a Task-key
+ * query lifts Tasks to the top.
+ */
 export function resolveCommandPaletteGroupOrder(
     query: string
 ): CommandPaletteGroup[] {
+    if (query.trim().length === 0) {
+        return ["recent", ...GROUP_ORDER];
+    }
     if (!isTaskKeyQuery(query)) {
         return [...GROUP_ORDER];
     }

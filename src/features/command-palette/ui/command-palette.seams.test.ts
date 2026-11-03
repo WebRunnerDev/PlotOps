@@ -90,6 +90,38 @@ describe("Command palette Navigation + typed create seam", () => {
     });
 });
 
+describe("Command palette Recent seam", () => {
+    it("records picks per owner and shows Recent only on an empty query", () => {
+        const source = readUi("command-palette.tsx");
+
+        expect(source).toMatch(
+            /resolveCommandPaletteRecentOwner\(guest,\s*userId\)/
+        );
+        expect(source).toMatch(/readCommandPaletteRecent/);
+        expect(source).toMatch(/recordCommandPaletteRecent/);
+        expect(source).toMatch(/kind:\s*"destination"/);
+        expect(source).toMatch(/kind:\s*"task"/);
+        expect(source).toMatch(/kind:\s*"project"/);
+        expect(source).toMatch(
+            /normalizedQuery\.length\s*===\s*0\s*\?\s*resolveCommandPaletteRecent/
+        );
+        expect(source).toMatch(/!task\.archivedAt/);
+        expect(source).toMatch(/command:recent/);
+    });
+
+    it("clears Recent on sign out and Leave / Reset demo", () => {
+        const source = readFileSync(
+            path.join(dirname, "../../../widgets/top-bar/ui/user-menu.tsx"),
+            "utf8"
+        );
+
+        expect(source.match(/resetCommandPaletteLocalState\(\{/g)).toHaveLength(
+            3
+        );
+        expect(source).toMatch(/recentOwner:\s*\{\s*kind:\s*"guest"\s*\}/);
+    });
+});
+
 describe("Command palette include-archived search seam", () => {
     it("opts into archived Task search via toggle and fetch options", () => {
         const source = readUi("command-palette.tsx");

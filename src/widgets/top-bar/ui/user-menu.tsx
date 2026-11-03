@@ -22,6 +22,10 @@ import {
     getUserInitials,
 } from "@/features/auth/lib/user-display";
 import {
+    resetCommandPaletteLocalState,
+    resolveCommandPaletteRecentOwner,
+} from "@/features/command-palette";
+import {
     getGuestDisplayIdentity,
     leaveGuestSession,
     resetGuestSession,
@@ -86,6 +90,11 @@ export function UserMenu() {
         setIsLoggingOut(true);
         try {
             await signOut();
+            resetCommandPaletteLocalState({
+                recentOwner:
+                    resolveCommandPaletteRecentOwner(false, user?.id ?? null) ??
+                    undefined,
+            });
             setLogoutDialogOpen(false);
             await navigate({ to: "/sign-in" });
         } catch {
@@ -99,6 +108,7 @@ export function UserMenu() {
         setIsLoggingOut(true);
         try {
             leaveGuestSession();
+            resetCommandPaletteLocalState({ recentOwner: { kind: "guest" } });
             queryClient.clear();
             setLogoutDialogOpen(false);
             await navigate({ to: "/sign-in" });
@@ -111,6 +121,7 @@ export function UserMenu() {
 
     function handleResetDemo() {
         resetGuestSession();
+        resetCommandPaletteLocalState({ recentOwner: { kind: "guest" } });
         void queryClient.invalidateQueries();
         toast.success(t("guest.resetDemoDone"));
     }

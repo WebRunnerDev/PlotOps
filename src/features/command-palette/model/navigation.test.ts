@@ -156,7 +156,19 @@ describe("resolveCommandPaletteGroupOrder", () => {
             "members",
             "projects",
         ]);
-        expect(resolveCommandPaletteGroupOrder("")[0]).toBe("navigation");
+    });
+
+    it("leads with Recent above Navigation on an empty query only", () => {
+        expect(resolveCommandPaletteGroupOrder("  ").slice(0, 2)).toEqual([
+            "recent",
+            "navigation",
+        ]);
+        expect(resolveCommandPaletteGroupOrder("labels")).not.toContain(
+            "recent"
+        );
+        expect(resolveCommandPaletteGroupOrder("PLT-12")).not.toContain(
+            "recent"
+        );
     });
 
     it("lifts Tasks to the top for a Task-key query like PLT-12", () => {

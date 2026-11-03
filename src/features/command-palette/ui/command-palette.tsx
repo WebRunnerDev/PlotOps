@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { useTheme } from "@/app/model/theme";
+import { useAuth } from "@/features/auth";
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { useBoardColumns } from "@/features/boards";
 import { isCommandPaletteShortcut } from "@/features/command-palette/model/command-palette-shortcut";
@@ -28,6 +29,14 @@ import {
     matchDestinations,
     resolveCommandPaletteGroupOrder,
 } from "@/features/command-palette/model/navigation";
+import {
+    type CommandPaletteRecentItem,
+    readCommandPaletteRecent,
+    recordCommandPaletteRecent,
+    resolveCommandPaletteRecent,
+    resolveCommandPaletteRecentOwner,
+    sameDestinationParameters,
+} from "@/features/command-palette/model/recent";
 import { resetCommandPaletteLocalState } from "@/features/command-palette/model/reset-command-palette-local-state";
 import { resolveCreateTaskColumnGate } from "@/features/command-palette/model/resolve-create-task-column-gate";
 import {
@@ -97,6 +106,8 @@ export function CommandPalette() {
     const navigate = useNavigate();
     const parameters = useParams({ strict: false });
     const guest = isGuest();
+    const { user } = useAuth();
+    const userId = user?.id ?? null;
     const projectId =
         typeof parameters.projectId === "string" ? parameters.projectId : null;
     const boardId =
@@ -165,6 +176,9 @@ export function CommandPalette() {
     const open = useCommandPaletteStore((state) => state.open);
     const toggle = useCommandPaletteStore((state) => state.toggle);
     const [query, setQuery] = useState("");
+    const [recentItems, setRecentItems] = useState<CommandPaletteRecentItem[]>(
+        []
+    );
     const [isCreating, setIsCreating] = useState(false);
     const isDark = theme === "dark";
     const themeLabel = isDark ? t("common:themeLight") : t("common:themeDark");
@@ -206,8 +220,9 @@ export function CommandPalette() {
         i18n.getFixedT("en", "command"),
         i18n.getFixedT("ru", "command"),
     ];
+    const visibleDestinations = resolveVisibleDestinations(destinationContext);
     const destinationHits = matchDestinations(
-        resolveVisibleDestinations(destinationContext),
+        visibleDestinations,
         query,
         (destination) => destinationSearchTerms(destination, searchTranslators)
     );
@@ -268,6 +283,42 @@ export function CommandPalette() {
         archiveIntent !== null ||
         createIntents.length > 0 ||
         visibleJumpIntents.length > 0;
+    // Recent re-checks every entry against the current context — no access,
+    // archived/deleted Task or unavailable Project → hidden.
+    const recentHits =
+        normalizedQuery.length === 0
+            ? resolveCommandPaletteRecent(recentItems, {
+                  destination: (item) =>
+                      visibleDestinations.find((destination) => {
+                          if (destination.id !== item.id) return false;
+                          const address = resolveDestinationAddress(
+                              destination,
+                              destinationContext
+                          );
+                          return (
+                              address !== null &&
+                              sameDestinationParameters(
+                                  address.params,
+                                  item.params
+                              )
+                          );
+                      }) ?? null,
+                  project: (item) =>
+                      visibility.switchProject
+                          ? (paletteProjects.find(
+                                (projectItem) =>
+                                    projectItem.id === item.projectId
+                            ) ?? null)
+                          : null,
+                  task: (item) =>
+                      visibility.tasks && item.projectId === projectId
+                          ? (jumpTasks.find(
+                                (task) =>
+                                    task.id === item.taskId && !task.archivedAt
+                            ) ?? null)
+                          : null,
+              })
+            : [];
     const groupOrder = resolveCommandPaletteGroupOrder(query);
     const createColumnGate = resolveCreateTaskColumnGate(
         columnsReady,
@@ -288,6 +339,12 @@ export function CommandPalette() {
             globalThis.removeEventListener("keydown", onKeyDown);
         };
     }, [toggle]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const owner = resolveCommandPaletteRecentOwner(guest, userId);
+        setRecentItems(owner ? readCommandPaletteRecent(owner) : []);
+    }, [guest, isOpen, userId]);
 
     useEffect(() => {
         if (isOpen) return;
@@ -348,10 +405,16 @@ export function CommandPalette() {
             });
     }
 
+    function rememberRecent(item: CommandPaletteRecentItem) {
+        const owner = resolveCommandPaletteRecentOwner(guest, userId);
+        if (owner) recordCommandPaletteRecent(owner, item);
+    }
+
     function runSelectTask(
         intent: Extract<CommandPaletteIntent, { type: "select-task" }>
     ) {
         if (!projectId) return;
+        rememberRecent({ kind: "task", projectId, taskId: intent.taskId });
         selectTask(intent.taskId);
         void navigate({
             params: {
@@ -370,7 +433,24 @@ export function CommandPalette() {
             destinationContext
         );
         if (!address) return;
+        rememberRecent({
+            id: destination.id,
+            kind: "destination",
+            params: address.params,
+        });
         void navigate(address);
+        close();
+    }
+
+    function runSwitchProject(targetProjectId: string) {
+        const intent = switchProjectIntent(targetProjectId);
+        rememberRecent({ kind: "project", projectId: intent.projectId });
+        void navigate({
+            params: {
+                projectId: intent.projectId,
+            },
+            to: "/projects/$projectId",
+        });
         close();
     }
 
@@ -392,6 +472,84 @@ export function CommandPalette() {
         if (destination.group === "project") return project?.name ?? null;
         if (destination.group === "team") return team?.name ?? null;
         return null;
+    }
+
+    function renderDestinationItem(destination: Destination, prefix: string) {
+        const title = t(destination.titleKey);
+        const path = formatDestinationPath({
+            parent:
+                "parentKey" in destination ? t(destination.parentKey) : null,
+            scope: destinationScope(destination),
+            title,
+        });
+        const Icon = destination.icon;
+        return (
+            <CommandItem
+                key={`${prefix}destination-${destination.id}`}
+                onSelect={() => {
+                    runDestination(destination);
+                }}
+                value={`${prefix}destination-${destination.id}`}
+            >
+                <Icon />
+                <span className="min-w-0 truncate">{title}</span>
+                {path ? (
+                    <span className="ml-auto min-w-0 shrink truncate text-xs text-muted-foreground">
+                        {path}
+                    </span>
+                ) : null}
+            </CommandItem>
+        );
+    }
+
+    function renderTaskItem(
+        task: {
+            archivedAt?: null | string;
+            boardId: string;
+            id: string;
+            key: string;
+            title: string;
+        },
+        prefix: string
+    ) {
+        return (
+            <CommandItem
+                key={`${prefix}task-${task.id}`}
+                onSelect={() => {
+                    runSelectTask(selectTaskIntent(task));
+                }}
+                value={`${prefix}task-${task.id}`}
+            >
+                <SquareCheckBigIcon />
+                <span className="font-mono text-xs text-muted-foreground">
+                    {task.key}
+                </span>
+                <span className="min-w-0 truncate">{task.title}</span>
+                {task.archivedAt ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                        {t("command:archivedBadge")}
+                    </span>
+                ) : null}
+            </CommandItem>
+        );
+    }
+
+    function renderProjectItem(
+        projectItem: { id: string; name: string },
+        prefix: string
+    ) {
+        return (
+            <CommandItem
+                key={`${prefix}project-${projectItem.id}`}
+                onSelect={() => {
+                    runSwitchProject(projectItem.id);
+                }}
+                value={`${prefix}project-${projectItem.id}`}
+            >
+                <FolderIcon />
+                <span>{projectItem.name}</span>
+            </CommandItem>
+        );
     }
 
     const groups: Record<CommandPaletteGroup, ReactNode> = {
@@ -497,90 +655,37 @@ export function CommandPalette() {
         navigation:
             destinationHits.length > 0 ? (
                 <CommandGroup heading={t("command:navigation")}>
-                    {destinationHits.map((destination) => {
-                        const title = t(destination.titleKey);
-                        const path = formatDestinationPath({
-                            parent:
-                                "parentKey" in destination
-                                    ? t(destination.parentKey)
-                                    : null,
-                            scope: destinationScope(destination),
-                            title,
-                        });
-                        const Icon = destination.icon;
-                        return (
-                            <CommandItem
-                                key={destination.id}
-                                onSelect={() => {
-                                    runDestination(destination);
-                                }}
-                                value={`destination-${destination.id}`}
-                            >
-                                <Icon />
-                                <span className="min-w-0 truncate">
-                                    {title}
-                                </span>
-                                {path ? (
-                                    <span className="ml-auto min-w-0 shrink truncate text-xs text-muted-foreground">
-                                        {path}
-                                    </span>
-                                ) : null}
-                            </CommandItem>
-                        );
-                    })}
+                    {destinationHits.map((destination) =>
+                        renderDestinationItem(destination, "")
+                    )}
                 </CommandGroup>
             ) : null,
         projects:
             visibility.switchProject && projectHits.length > 0 ? (
                 <CommandGroup heading={t("command:projects")}>
-                    {projectHits.map((projectItem) => (
-                        <CommandItem
-                            key={projectItem.id}
-                            onSelect={() => {
-                                const intent = switchProjectIntent(
-                                    projectItem.id
-                                );
-                                void navigate({
-                                    params: {
-                                        projectId: intent.projectId,
-                                    },
-                                    to: "/projects/$projectId",
-                                });
-                                close();
-                            }}
-                            value={`project-${projectItem.id}`}
-                        >
-                            <FolderIcon />
-                            <span>{projectItem.name}</span>
-                        </CommandItem>
-                    ))}
+                    {projectHits.map((projectItem) =>
+                        renderProjectItem(projectItem, "")
+                    )}
+                </CommandGroup>
+            ) : null,
+        recent:
+            recentHits.length > 0 ? (
+                <CommandGroup heading={t("command:recent")}>
+                    {recentHits.map((hit) => {
+                        if (hit.kind === "destination") {
+                            return renderDestinationItem(hit.item, "recent-");
+                        }
+                        if (hit.kind === "task") {
+                            return renderTaskItem(hit.item, "recent-");
+                        }
+                        return renderProjectItem(hit.item, "recent-");
+                    })}
                 </CommandGroup>
             ) : null,
         tasks:
             visibility.tasks && taskHits.length > 0 ? (
                 <CommandGroup heading={t("command:tasks")}>
-                    {taskHits.map((task) => (
-                        <CommandItem
-                            key={task.id}
-                            onSelect={() => {
-                                runSelectTask(selectTaskIntent(task));
-                            }}
-                            value={`task-${task.id}`}
-                        >
-                            <SquareCheckBigIcon />
-                            <span className="font-mono text-xs text-muted-foreground">
-                                {task.key}
-                            </span>
-                            <span className="min-w-0 truncate">
-                                {task.title}
-                            </span>
-                            {task.archivedAt ? (
-                                <span className="shrink-0 text-xs text-muted-foreground">
-                                    {t("command:archivedBadge")}
-                                </span>
-                            ) : null}
-                        </CommandItem>
-                    ))}
+                    {taskHits.map((task) => renderTaskItem(task, ""))}
                 </CommandGroup>
             ) : null,
     };
