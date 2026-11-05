@@ -37,15 +37,15 @@ The unit of ownership and collaboration. Members, Roles, and Invites belong to a
 _Avoid_: Workspace, Organization, Project (when meaning the access boundary)
 
 **Project**:
-A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, and zero or more linked Repositories (ADR 0034). Does not own Members or Roles — those live on the Team. May be created by connecting one or more GitHub repositories at once, or as a name-only Project without a repo (Git/CI surfaces gated until a Repository is attached); more Repositories can be added later in Project Settings.
+A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, and zero or more linked Repositories (ADR 0035). Does not own Members or Roles — those live on the Team. May be created by connecting one or more GitHub repositories at once, or as a name-only Project without a repo (Git/CI surfaces gated until a Repository is attached); more Repositories can be added later in Project Settings.
 _Avoid_: Team, Workspace, repository (a Repository is linked to the Project, not the same concept)
 
 **Repository**:
-A GitHub repository linked to one Project (`project_repositories`, ADR 0034). A Project holds at most 5 (Repository cap); a GitHub repository belongs to at most one Project per Team, so a webhook delivery resolves to exactly one Project. All Repositories in a Project are equal — there is no primary one. Linking and unlinking are Admin+; unlinking deletes that Repository's Git links on every Task (recorded in Task activity) and touches nothing on GitHub. Project Settings shows per Repository whether the GitHub App is installed.
+A GitHub repository linked to one Project (`project_repositories`, ADR 0035). A Project holds at most 5 (Repository cap); a GitHub repository belongs to at most one Project per Team, so a webhook delivery resolves to exactly one Project. All Repositories in a Project are equal — there is no primary one. Linking and unlinking are Admin+; unlinking deletes that Repository's Git links on every Task (recorded in Task activity) and touches nothing on GitHub. Project Settings shows per Repository whether the GitHub App is installed.
 _Avoid_: repo (UI only), primary repo, main repo (no such concept)
 
 **Repository cap**:
-The ceiling of 5 Repositories per Project (ADR 0034), enforced by a `BEFORE INSERT` trigger on `project_repositories` and mirrored in the app. Does not apply in Guest Mode.
+The ceiling of 5 Repositories per Project (ADR 0035), enforced by a `BEFORE INSERT` trigger on `project_repositories` and mirrored in the app. Does not apply in Guest Mode.
 _Avoid_: repo limit (UI only), quota
 
 **Team cap**:
@@ -65,7 +65,7 @@ A Board with Git branch mapping enabled: a required Base branch for each Reposit
 _Avoid_: git board, engineering board (prefer Development Board)
 
 **Base branch**:
-The Git branch a Development Board treats as the PR target (merge destination) in one Repository — one per Board × Repository (`board_repositories`, ADR 0034). Owned by the Board; seeded from the Repository's default branch when the Repository is added or the Development Board is created, then editable per Board and Repository. A Git link's PR counts as merged for merge sync only when it merges into the Base branch of the Task's Board for that Repository; a merge into any other branch leaves it pending. Absent on regular (non-development) Boards.
+The Git branch a Development Board treats as the PR target (merge destination) in one Repository — one per Board × Repository (`board_repositories`, ADR 0035). Owned by the Board; seeded from the Repository's default branch when the Repository is added or the Development Board is created, then editable per Board and Repository. A Git link's PR counts as merged for merge sync only when it merges into the Base branch of the Task's Board for that Repository; a merge into any other branch leaves it pending. Absent on regular (non-development) Boards.
 _Avoid_: default branch (that term is the Repository's GitHub default), main (a common value, not the concept)
 
 **Allowed head pattern**:
@@ -119,7 +119,7 @@ _Avoid_: Board custom field, property (Notion), custom attribute (generic)
 ### Structure
 
 **Git link**:
-A Task's branch and optional pull request in one Repository (`task_git_links`, ADR 0034); at most one per Task per Repository. Created from the Task drawer or automatically by the webhook when a PR's head branch carries the Task key and the Task has no Git link for that Repository (never overwrites an existing one). Merge sync moves the Task to its Board's merge target column only when every Git link that has a PR is merged into its Base branch; PRs closed without merge and branch-only Git links do not count. The Kanban card shows one aggregate PR badge.
+A Task's branch and optional pull request in one Repository (`task_git_links`, ADR 0035); at most one per Task per Repository. Created from the Task drawer or automatically by the webhook when a PR's head branch carries the Task key and the Task has no Git link for that Repository (never overwrites an existing one). Merge sync moves the Task to its Board's merge target column only when every Git link that has a PR is merged into its Base branch; PRs closed without merge and branch-only Git links do not count. The Kanban card shows one aggregate PR badge.
 _Avoid_: Task Link (Task-to-Task relationship — unrelated), git fields (UI copy only)
 
 **Parent Task**:

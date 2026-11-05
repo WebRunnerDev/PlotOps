@@ -6,7 +6,7 @@ export type CreateProjectInput = {
     description: null | string;
     is_private: boolean;
     name: string;
-    /** Linked in the same transaction (ADR 0034); `[]` for a name-only Project. */
+    /** Linked in the same transaction (ADR 0035); `[]` for a name-only Project. */
     repositories: ProjectRepositoryInput[];
     slug: string;
     team_id: string;

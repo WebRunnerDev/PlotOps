@@ -86,7 +86,7 @@ select is(
   'Viewer is not project owner for delete'
 );
 
--- Unique (team_id, github_repo_id) — now on project_repositories (ADR 0034)
+-- Unique (team_id, github_repo_id) — now on project_repositories (ADR 0035)
 set local role postgres;
 select throws_ok(
   $$
