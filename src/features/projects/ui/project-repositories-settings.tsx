@@ -37,7 +37,10 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 type ProjectRepositoriesSettingsProperties = {
     /** Owner/Admin — link and unlink (ADR 0035). */
     canManage: boolean;
-    /** Guest Mode cannot reach GitHub: no link/unlink, no App status. */
+    /**
+     * Guest Mode links and unlinks in the sandbox, uncapped (ADR 0035), and
+     * has no GitHub App to report on.
+     */
     isGuest: boolean;
     project: Project;
 };
@@ -54,8 +57,8 @@ export function ProjectRepositoriesSettings({
     const { t } = useTranslation("board");
     const repositories = project.repositories;
     const count = repositories.length;
-    const canEdit = canManage && !isGuest;
-    const canAdd = canAddRepositoryToProject(count);
+    const canEdit = canManage;
+    const canAdd = canAddRepositoryToProject(count, { isGuest });
     const [pickerOpen, setPickerOpen] = useState(false);
     const [unlinking, setUnlinking] = useState<null | ProjectRepository>(null);
     const appStatus = useGithubAppStatus(project.id, !isGuest && count > 0);
@@ -80,10 +83,12 @@ export function ProjectRepositoriesSettings({
                         {t("settings.repository.title")}
                     </h2>
                     <span className="font-mono text-meta text-muted-foreground tabular-nums">
-                        {t("settings.repository.capCount", {
-                            cap: PROJECT_REPOSITORIES_CAP,
-                            count,
-                        })}
+                        {isGuest
+                            ? count
+                            : t("settings.repository.capCount", {
+                                  cap: PROJECT_REPOSITORIES_CAP,
+                                  count,
+                              })}
                     </span>
                 </div>
                 {canEdit && count > 0 ? (

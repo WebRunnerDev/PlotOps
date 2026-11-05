@@ -66,6 +66,8 @@
     "createProjectFailed": "Could not connect repository. Try again.",
     "createProjectDuplicate": "This repository is already connected, or the project slug is taken.",
     "createProjectReposSelected": "Selected {{count}} of {{cap}} repositories",
+    "createProjectReposSelectedUncapped_one": "Selected {{count}} repository",
+    "createProjectReposSelectedUncapped_other": "Selected {{count}} repositories",
     "createProjectReposCapHint": "{{cap}} repositories selected — the maximum per Project. Add more later in Project Settings.",
     "createProjectRepoAlreadyLinked": "Already linked to “{{project}}” — a repository belongs to one Project per Team",
     "createProjectReposNamePlaceholder": "Select a repository first",

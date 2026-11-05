@@ -6,7 +6,12 @@ import {
     safeSetItem,
 } from "@/shared/lib/safe-storage";
 
-import type { GuestSandbox } from "../model/types";
+import type {
+    GuestGitLink,
+    GuestPullRequest,
+    GuestRepository,
+    GuestSandbox,
+} from "../model/types";
 
 import { cloneGuestDemoSeed } from "./guest-demo-seed";
 
@@ -64,6 +69,7 @@ export function getGuestSandbox(): GuestSandbox | null {
     }
     ensureGuestDescriptionFields(sandbox);
     migrateGuestTaskTypes(sandbox);
+    migrateGuestRepositories(sandbox);
     return sandbox;
 }
 
@@ -239,6 +245,90 @@ function isStoredGuestSession(value: unknown): value is StoredGuestSession {
         return false;
     }
     return isGuestSandbox(record.sandbox);
+}
+
+/** Id a pre-ADR 0035 session's single Repository gets on migration. */
+function legacyRepositoryId(projectId: string): string {
+    return `${projectId}:repo`;
+}
+
+/**
+ * Sessions saved before multi-repo Projects (ADR 0035) hold one repository
+ * on the Project (`github*`), one Base branch on the Board and one
+ * branch / PR on the Task. Move them into `repositories`,
+ * `repositoryBaseBranches` and `gitLinks`, keyed `<projectId>:repo`.
+ */
+function migrateGuestRepositories(sandbox: GuestSandbox): void {
+    const defaultBranchByProject = new Map<string, string>();
+
+    for (const project of sandbox.projects) {
+        const legacy = project as typeof project & {
+            githubDefaultBranch?: null | string;
+            githubFullName?: null | string;
+            githubHtmlUrl?: null | string;
+            githubRepoId?: null | number;
+        };
+        if (!Array.isArray(project.repositories)) {
+            const repositories: GuestRepository[] = [];
+            if (legacy.githubRepoId != undefined && legacy.githubFullName) {
+                repositories.push({
+                    defaultBranch: legacy.githubDefaultBranch ?? "main",
+                    fullName: legacy.githubFullName,
+                    githubRepoId: legacy.githubRepoId,
+                    htmlUrl:
+                        legacy.githubHtmlUrl ??
+                        `https://github.com/${legacy.githubFullName}`,
+                    id: legacyRepositoryId(project.id),
+                });
+            }
+            project.repositories = repositories;
+        }
+        delete legacy.githubDefaultBranch;
+        delete legacy.githubFullName;
+        delete legacy.githubHtmlUrl;
+        delete legacy.githubRepoId;
+        const [first] = project.repositories;
+        if (first) defaultBranchByProject.set(project.id, first.defaultBranch);
+    }
+
+    for (const board of sandbox.boards) {
+        const legacy = board as typeof board & { baseBranch?: null | string };
+        if (!Array.isArray(board.repositoryBaseBranches)) {
+            const baseBranch = legacy.baseBranch?.trim();
+            if (board.isDevelopment === undefined) {
+                board.isDevelopment = Boolean(baseBranch);
+            }
+            board.repositoryBaseBranches =
+                board.isDevelopment &&
+                baseBranch &&
+                defaultBranchByProject.has(board.projectId)
+                    ? [
+                          {
+                              baseBranch,
+                              repositoryId: legacyRepositoryId(board.projectId),
+                          },
+                      ]
+                    : [];
+        }
+        delete legacy.baseBranch;
+    }
+
+    for (const task of sandbox.tasks) {
+        const legacy = task as typeof task & {
+            branchName?: string;
+            pr?: GuestPullRequest;
+        };
+        if (task.gitLinks === undefined && (legacy.branchName || legacy.pr)) {
+            const link: GuestGitLink = {
+                repositoryId: legacyRepositoryId(task.projectId),
+            };
+            if (legacy.branchName) link.branchName = legacy.branchName;
+            if (legacy.pr) link.pr = legacy.pr;
+            task.gitLinks = [link];
+        }
+        delete legacy.branchName;
+        delete legacy.pr;
+    }
 }
 
 /**

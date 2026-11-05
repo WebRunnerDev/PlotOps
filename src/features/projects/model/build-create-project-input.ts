@@ -26,6 +26,8 @@ export function buildConnectProjectGithubPatch(
  * transaction — all of them or no Project at all.
  */
 export function buildGitHubCreateProjectInput(input: {
+    /** Guest Mode: no Repository cap (ADR 0035). */
+    isGuest?: boolean;
     name?: string;
     repos: readonly GitHubRepo[];
     teamId: string;
@@ -34,7 +36,7 @@ export function buildGitHubCreateProjectInput(input: {
     if (!first) {
         throw new Error("At least one repository is required");
     }
-    if (input.repos.length > PROJECT_REPOSITORIES_CAP) {
+    if (!input.isGuest && input.repos.length > PROJECT_REPOSITORIES_CAP) {
         throw new Error(
             `At most ${PROJECT_REPOSITORIES_CAP} repositories per Project`
         );

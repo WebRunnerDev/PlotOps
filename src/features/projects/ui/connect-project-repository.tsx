@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { GitHubRepo } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
+import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
@@ -39,6 +40,7 @@ export function ConnectProjectRepository({
 }: ConnectProjectRepositoryProperties) {
     const { t } = useTranslation("board");
     const { githubAccessToken, user } = useAuth();
+    const guest = useIsGuest();
     const [search, setSearch] = useState("");
     const connect = useAddProjectRepository(projectId);
     const { data: teamProjects = [] } = useProjectsByTeam(teamId);
@@ -95,7 +97,8 @@ export function ConnectProjectRepository({
     };
 
     const missingRepoScope = error instanceof GitHubMissingRepoScopeError;
-    const hasGitHubToken = Boolean(githubAccessToken);
+    // Guest Mode lists the fake demo account's repositories, no token needed.
+    const hasGitHubToken = guest || Boolean(githubAccessToken);
 
     if (!hasGitHubToken) {
         return (

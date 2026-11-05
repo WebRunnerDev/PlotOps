@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { GitHubRepo, Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub } from "@/features/auth";
+import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import {
@@ -45,7 +46,8 @@ type AddProjectDialogProperties = {
     onOpenChange: (open: boolean) => void;
     open: boolean;
     teamId: string;
-    userId: string;
+    /** Null in Guest Mode, which has no Supabase user. */
+    userId: null | string;
 };
 
 type CreateProjectMode = "github" | "name-only";
@@ -74,6 +76,7 @@ export function AddProjectDialog({
     userId,
 }: AddProjectDialogProperties) {
     const { t } = useTranslation("home");
+    const guest = useIsGuest();
     const [mode, setMode] = useState<CreateProjectMode>("github");
     const [step, setStep] = useState<DialogStep>({ kind: "create" });
     const [search, setSearch] = useState("");
@@ -130,12 +133,16 @@ export function AddProjectDialog({
         () => new Set(selectedRepos.map((repo) => repo.id)),
         [selectedRepos]
     );
-    const repoCapReached = !canAddRepositoryToProject(selectedRepos.length);
+    const repoCapReached = !canAddRepositoryToProject(selectedRepos.length, {
+        isGuest: guest,
+    });
 
     const toggleRepo = (repo: GitHubRepo, checked: boolean) => {
         const next = checked
             ? selectedRepoIds.has(repo.id) ||
-              !canAddRepositoryToProject(selectedRepos.length)
+              !canAddRepositoryToProject(selectedRepos.length, {
+                  isGuest: guest,
+              })
                 ? selectedRepos
                 : [...selectedRepos, repo]
             : selectedRepos.filter((selected) => selected.id !== repo.id);
@@ -215,7 +222,8 @@ export function AddProjectDialog({
     };
 
     const missingRepoScope = error instanceof GitHubMissingRepoScopeError;
-    const hasGitHubToken = Boolean(accessToken);
+    // Guest Mode lists the fake demo account's repositories, no token needed.
+    const hasGitHubToken = guest || Boolean(accessToken);
     const suggesting =
         step.kind === "suggest-collaborators" && Boolean(accessToken);
 
@@ -322,13 +330,20 @@ export function AddProjectDialog({
                                                               cap: PROJECT_REPOSITORIES_CAP,
                                                           }
                                                       )
-                                                    : t(
-                                                          "createProjectReposSelected",
-                                                          {
-                                                              cap: PROJECT_REPOSITORIES_CAP,
-                                                              count: selectedRepos.length,
-                                                          }
-                                                      )}
+                                                    : guest
+                                                      ? t(
+                                                            "createProjectReposSelectedUncapped",
+                                                            {
+                                                                count: selectedRepos.length,
+                                                            }
+                                                        )
+                                                      : t(
+                                                            "createProjectReposSelected",
+                                                            {
+                                                                cap: PROJECT_REPOSITORIES_CAP,
+                                                                count: selectedRepos.length,
+                                                            }
+                                                        )}
                                             </p>
                                         </div>
 
