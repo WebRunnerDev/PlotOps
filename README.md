@@ -40,6 +40,7 @@ Collaboration is scoped to a **Team**; Projects live under a Team ([ADR 0017](do
 | CI/CD dashboard (GitHub Actions — jobs, logs, polling)                              | Done        |
 | GitHub webhooks + Edge Function (PR merge → task column sync)                       | Done        |
 | Git integration (PR link, in-app diff, Open PR + Merge)                             | Done        |
+| MCP connector (OAuth 2.1 Worker — list/create/update Tasks, comments, status)       | Done (v1)   |
 | Deeper Git polish (commits history, UX refinements)                                 | In progress |
 
 ### Roadmap highlights
@@ -240,6 +241,8 @@ With `.env.local` present, the app talks to local Supabase (`127.0.0.1:54321`). 
 | `npm run shadcn:exports`       | Regenerate shadcn barrel exports              |
 | `npm run secrets:scan`         | gitleaks on staged files (same as pre-commit) |
 | `npm run secrets:scan:history` | gitleaks full git history scan                |
+| `npm run mcp:dev`              | Local Cloudflare Worker MCP server            |
+| `npm run mcp:deploy`           | Deploy the MCP Worker (wrangler)              |
 
 Pre-commit (Husky): gitleaks on staged changes, then lint-staged (ESLint `--fix` + Prettier). Hooks install via `npm install` (`prepare`).
 
@@ -256,6 +259,7 @@ Dark, strict, Linear / Neobrutalism-inspired: sharp borders, monospace for git e
 | [`docs/SUPABASE.md`](docs/SUPABASE.md)                                     | Supabase project / CLI; migrate-check + CI secrets; branch ruleset notes |
 | [`docs/adr/0016-migrations-via-ci.md`](docs/adr/0016-migrations-via-ci.md) | Why remote schema applies only via Actions + Deploy Hook                 |
 | [`docs/github-webhook-setup.md`](docs/github-webhook-setup.md)             | GitHub App + webhook Edge Function setup                                 |
+| [`docs/MCP.md`](docs/MCP.md)                                               | Remote MCP server: OAuth 2.1, Worker deploy, connector URL               |
 | [`docs/adr/`](docs/adr/)                                                   | Architecture decision records                                            |
 | [`AGENTS.md`](AGENTS.md) / [`docs/agents/`](docs/agents/)                  | Issue tracker, triage labels, Wayfinder, domain docs for agents          |
 
