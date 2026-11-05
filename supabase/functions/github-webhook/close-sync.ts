@@ -1,4 +1,8 @@
-import type { CandidateTask } from "./match-task.ts";
+import {
+    type GitLinkBinding,
+    planGitLinkBinding,
+    type TaskMatch,
+} from "./match-task.ts";
 
 export type ClosedUnmergedPayload = {
     action?: string;
@@ -9,8 +13,8 @@ export type ClosedUnmergedPayload = {
 };
 
 export type ClosePullRequestPlan =
-    | { reason: string; skip: true }
     | {
+          binding: GitLinkBinding;
           skip: false;
           taskId: string;
           update: {
@@ -18,39 +22,40 @@ export type ClosePullRequestPlan =
               pr_state: "closed";
               pr_url: null | string;
           };
-      };
+      }
+    | { reason: string; skip: true };
 
 /**
- * Decide local Task update for a non-merge PR close.
- * Never changes column/status — merge path owns that.
- * Only updates a task already bound to this PR number (no retarget via
- * branch / task_key fall-through matches).
+ * Decide the Git link update for a non-merge PR close. The column only moves
+ * when the close completes the merge set (handled by the caller).
+ * Never overwrites a Git link holding another PR or branch (`link_conflict`);
+ * a Task matched only by `task_key` without a link gets one (auto-link).
  */
 export function planClosePullRequestSync(
-    matched: CandidateTask | null,
+    match: null | TaskMatch,
     input: { prHtmlUrl: null | string; prNumber: number }
 ): ClosePullRequestPlan {
-    if (!matched) {
+    if (!match) {
         return { reason: "no_task", skip: true };
     }
 
-    // Binding integrity: close must not rewrite pr_number/url onto a task
-    // matched only by branch or task_key when another PR is (or no PR is) linked.
-    if (matched.pr_number !== input.prNumber) {
-        return { reason: "pr_mismatch", skip: true };
+    const binding = planGitLinkBinding(match);
+    if (binding === "link_conflict") {
+        return { reason: "link_conflict", skip: true };
     }
 
-    if (matched.pr_state === "closed") {
+    if (match.task.pr_state === "closed") {
         return { reason: "already_closed", skip: true };
     }
 
-    if (matched.pr_state === "merged") {
+    if (match.task.pr_state === "merged") {
         return { reason: "already_merged", skip: true };
     }
 
     return {
+        binding,
         skip: false,
-        taskId: matched.id,
+        taskId: match.task.id,
         update: {
             pr_number: input.prNumber,
             pr_state: "closed",
