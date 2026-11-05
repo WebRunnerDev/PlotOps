@@ -1,6 +1,7 @@
 import type {
     BuildLogLine,
     BuildsForProject,
+    BuildsRepository,
     BuildsStats,
     GetBuildsStatsOptions,
     ListBuildsOptions,
@@ -19,7 +20,9 @@ import { deriveBuildsStats } from "@/features/ci-cd/model/builds-stats";
  * Spec example: main passed, feature/analytics failed on tests.
  * Selected via `resolveBuildsProvider(true)` when the session is guest.
  */
-const MOCK_BUILDS: ProjectBuild[] = [
+type MockBuild = Omit<ProjectBuild, "repositoryId" | "repositoryName">;
+
+const MOCK_BUILDS: MockBuild[] = [
     {
         branch: "main",
         commitMessage: "chore: bump board filters",
@@ -111,6 +114,18 @@ const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
 
 const STREAM_INTERVAL_MS = 50;
 
+function forRepository(
+    build: MockBuild,
+    repository: BuildsRepository
+): ProjectBuild {
+    return {
+        ...build,
+        jobs: build.jobs?.map((job) => ({ ...job })),
+        repositoryId: repository.id,
+        repositoryName: repository.fullName,
+    };
+}
+
 function streamMockLogLines(
     script: string[],
     onLine: (line: BuildLogLine) => void
@@ -141,10 +156,9 @@ function streamMockLogLines(
 
 export const mockBuildsForProject: BuildsForProject = {
     async getBuildsStats(
-        projectId: string,
+        repository: BuildsRepository,
         options?: GetBuildsStatsOptions
     ): Promise<BuildsStats> {
-        void projectId;
         const defaultBranch = options?.defaultBranch;
         const completed = MOCK_BUILDS.filter(
             (build) => build.status === "failure" || build.status === "success"
@@ -160,27 +174,28 @@ export const mockBuildsForProject: BuildsForProject = {
                 total: MOCK_BUILDS.length,
             }),
             defaultBranchBuild: defaultBranch
-                ? MOCK_BUILDS.find((build) => build.branch === defaultBranch)
+                ? MOCK_BUILDS.filter(
+                      (build) => build.branch === defaultBranch
+                  ).map((build) => forRepository(build, repository))[0]
                 : undefined,
         };
     },
 
-    async listBuildJobs(projectId, buildId) {
-        void projectId;
+    async listBuildJobs(repository, buildId) {
+        void repository;
         const build = MOCK_BUILDS.find((item) => item.id === buildId);
         return build?.jobs?.map((job) => ({ ...job })) ?? [];
     },
 
     async listBuilds(
-        projectId: string,
+        repository: BuildsRepository,
         options?: ListBuildsOptions
     ): Promise<ListBuildsPage> {
-        void projectId;
         const page = Math.max(1, options?.page ?? 1);
         const perPage = Math.max(1, options?.perPage ?? BUILDS_PAGE_SIZE);
         const start = (page - 1) * perPage;
-        const builds = MOCK_BUILDS.slice(start, start + perPage).map(
-            (build) => ({ ...build })
+        const builds = MOCK_BUILDS.slice(start, start + perPage).map((build) =>
+            forRepository(build, repository)
         );
 
         return {
@@ -194,8 +209,8 @@ export const mockBuildsForProject: BuildsForProject = {
         };
     },
 
-    streamBuildLogs(projectId, buildId, onLine) {
-        void projectId;
+    streamBuildLogs(repository, buildId, onLine) {
+        void repository;
         const script = MOCK_LOG_SCRIPTS[buildId];
         if (!script || script.length === 0) {
             // Complete immediately with no lines so UI does not stay “Streaming…”.

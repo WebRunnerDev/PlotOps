@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockBuildsForProject } from "@/features/ci-cd/api/mock-builds";
 
+const REPOSITORY = {
+    defaultBranch: "main",
+    fullName: "org/repo",
+    id: "repo-1",
+};
+
 describe("CI/CD builds-for-Project seam — streamBuildLogs", () => {
     beforeEach(() => {
         vi.useFakeTimers();
@@ -15,7 +21,7 @@ describe("CI/CD builds-for-Project seam — streamBuildLogs", () => {
         const lines: string[] = [];
 
         const stop = mockBuildsForProject.streamBuildLogs(
-            "project-demo",
+            REPOSITORY,
             "build-analytics-1",
             (line) => {
                 lines.push(line.text);
@@ -43,7 +49,7 @@ describe("CI/CD builds-for-Project seam — streamBuildLogs", () => {
         const received: { done: boolean; text: string }[] = [];
 
         const stop = mockBuildsForProject.streamBuildLogs(
-            "project-demo",
+            REPOSITORY,
             "build-invite-1",
             (line) => {
                 received.push({ done: line.done, text: line.text });
@@ -62,7 +68,7 @@ describe("CI/CD builds-for-Project seam — streamBuildLogs", () => {
         const lines: string[] = [];
 
         const stop = mockBuildsForProject.streamBuildLogs(
-            "project-demo",
+            REPOSITORY,
             "build-main-1",
             (line) => {
                 lines.push(line.text);
@@ -83,7 +89,7 @@ describe("CI/CD builds-for-Project seam — streamBuildLogs", () => {
         let done = false;
 
         const stop = mockBuildsForProject.streamBuildLogs(
-            "project-demo",
+            REPOSITORY,
             "build-missing",
             (line) => {
                 if (line.text.length > 0) {

@@ -4,6 +4,7 @@ import type {
     BuildJob,
     BuildLogLine,
     BuildsForProject,
+    BuildsRepository,
     BuildsStats,
     GetBuildsStatsOptions,
     ListBuildsOptions,
@@ -21,7 +22,6 @@ import {
 } from "@/features/ci-cd/model/builds-page";
 import { deriveBuildsStats } from "@/features/ci-cd/model/builds-stats";
 import { mapActionsStatus } from "@/features/ci-cd/model/map-actions-status";
-import { fetchProject } from "@/features/projects/api/projects-api";
 
 const GITHUB_API = "https://api.github.com";
 const STREAM_CHUNK_MS = 16;
@@ -70,13 +70,6 @@ export class CiCdMissingTokenError extends Error {
     }
 }
 
-export class CiCdProjectError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = "CiCdProjectError";
-    }
-}
-
 export class CiCdUnauthorizedError extends Error {
     constructor() {
         super("GitHub access token is invalid or expired");
@@ -85,7 +78,10 @@ export class CiCdUnauthorizedError extends Error {
 }
 
 /** Pure mapper — exported for unit tests. */
-export function mapWorkflowRunToBuild(run: RawWorkflowRun): ProjectBuild {
+export function mapWorkflowRunToBuild(
+    run: RawWorkflowRun,
+    repository: Pick<BuildsRepository, "fullName" | "id">
+): ProjectBuild {
     const commitMessage =
         run.display_title?.trim() ||
         run.name?.trim() ||
@@ -102,6 +98,8 @@ export function mapWorkflowRunToBuild(run: RawWorkflowRun): ProjectBuild {
         finishedAt: run.status === "completed" ? run.updated_at : undefined,
         htmlUrl: run.html_url,
         id: String(run.id),
+        repositoryId: repository.id,
+        repositoryName: repository.fullName,
         startedAt: run.created_at,
         status: mapActionsStatus(run.status, run.conclusion),
         workflowName: run.name?.trim() || "Workflow",
@@ -209,17 +207,17 @@ async function fetchJobLogText(
 }
 
 async function fetchLatestBranchRun(
-    repoFullName: string,
+    repository: BuildsRepository,
     token: string,
     branch: string
 ): Promise<ProjectBuild | undefined> {
     const raw = await githubJson<RawWorkflowRunsResponse>(
-        `/repos/${repoFullName}/actions/runs`,
+        `/repos/${repository.fullName}/actions/runs`,
         token,
         { branch, per_page: "1" }
     );
     const run = raw.workflow_runs[0];
-    return run ? mapWorkflowRunToBuild(run) : undefined;
+    return run ? mapWorkflowRunToBuild(run, repository) : undefined;
 }
 
 /** `total_count` for one run bucket — `per_page=1` keeps the payload tiny. */
@@ -282,29 +280,12 @@ function mapJob(job: RawJob): BuildJob {
     };
 }
 
-async function resolveRepoContext(projectId: string): Promise<{
-    repoFullName: string;
-    token: string;
-}> {
+function requireToken(): string {
     const token = getGitHubAccessToken();
     if (!token) {
         throw new CiCdMissingTokenError();
     }
-
-    const { data: project, error } = await fetchProject(projectId);
-    if (error || !project) {
-        throw new CiCdProjectError(
-            error?.message ?? "Project not found for CI/CD"
-        );
-    }
-
-    if (!project.github_full_name) {
-        throw new CiCdProjectError(
-            "Project has no linked GitHub repository for CI/CD"
-        );
-    }
-
-    return { repoFullName: project.github_full_name, token };
+    return token;
 }
 
 function throwIfUnauthorized(status: number): void {
@@ -315,10 +296,11 @@ function throwIfUnauthorized(status: number): void {
 
 export const githubActionsBuilds: BuildsForProject = {
     async getBuildsStats(
-        projectId: string,
+        repository: BuildsRepository,
         options?: GetBuildsStatsOptions
     ): Promise<BuildsStats> {
-        const { repoFullName, token } = await resolveRepoContext(projectId);
+        const token = requireToken();
+        const repoFullName = repository.fullName;
         const defaultBranch = options?.defaultBranch;
 
         const [total, completed, success, defaultBranchBuild] =
@@ -327,7 +309,7 @@ export const githubActionsBuilds: BuildsForProject = {
                 fetchRunCount(repoFullName, token, "completed"),
                 fetchRunCount(repoFullName, token, "success"),
                 defaultBranch
-                    ? fetchLatestBranchRun(repoFullName, token, defaultBranch)
+                    ? fetchLatestBranchRun(repository, token, defaultBranch)
                     : undefined,
             ]);
 
@@ -338,23 +320,22 @@ export const githubActionsBuilds: BuildsForProject = {
     },
 
     async listBuildJobs(
-        projectId: string,
+        repository: BuildsRepository,
         buildId: string
     ): Promise<BuildJob[]> {
-        const { repoFullName, token } = await resolveRepoContext(projectId);
-        return fetchRunJobs(repoFullName, buildId, token);
+        return fetchRunJobs(repository.fullName, buildId, requireToken());
     },
 
     async listBuilds(
-        projectId: string,
+        repository: BuildsRepository,
         options?: ListBuildsOptions
     ): Promise<ListBuildsPage> {
-        const { repoFullName, token } = await resolveRepoContext(projectId);
+        const token = requireToken();
         const page = Math.max(1, options?.page ?? 1);
         const perPage = Math.max(1, options?.perPage ?? BUILDS_PAGE_SIZE);
 
         const raw = await githubJson<RawWorkflowRunsResponse>(
-            `/repos/${repoFullName}/actions/runs`,
+            `/repos/${repository.fullName}/actions/runs`,
             token,
             {
                 page: String(page),
@@ -363,7 +344,9 @@ export const githubActionsBuilds: BuildsForProject = {
         );
 
         return {
-            builds: raw.workflow_runs.map((run) => mapWorkflowRunToBuild(run)),
+            builds: raw.workflow_runs.map((run) =>
+                mapWorkflowRunToBuild(run, repository)
+            ),
             hasMore: hasMoreBuilds({
                 page,
                 perPage,
@@ -373,15 +356,14 @@ export const githubActionsBuilds: BuildsForProject = {
         };
     },
 
-    streamBuildLogs(projectId, buildId, onLine) {
+    streamBuildLogs(repository, buildId, onLine) {
         let stopProgress: (() => void) | undefined;
         let cancelled = false;
 
         void (async () => {
             try {
-                const { repoFullName, token } =
-                    await resolveRepoContext(projectId);
-                if (cancelled) return;
+                const token = requireToken();
+                const repoFullName = repository.fullName;
 
                 const jobs = await fetchRunJobs(repoFullName, buildId, token);
                 if (cancelled) return;

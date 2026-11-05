@@ -411,7 +411,7 @@
         "title": "CI/CD",
         "eyebrow": "Pipeline",
         "backToBoard": "К доске",
-        "description": "Прогоны GitHub Actions для связанного репозитория проекта. Выберите прогон, чтобы посмотреть jobs и логи.",
+        "description": "Прогоны GitHub Actions по всем репозиториям проекта. Выберите прогон, чтобы посмотреть jobs и логи.",
         "refreshing": "Обновление…",
         "needsToken": "Войдите через GitHub (scope repo), чтобы загрузить прогоны Actions.",
         "connectRepo": "Подключите репозиторий, чтобы видеть прогоны GitHub Actions для этого проекта.",
@@ -425,8 +425,10 @@
         "emptyWorkflows": ".github/workflows",
         "loadingMore": "Загрузка следующих прогонов…",
         "loadFailed": "Не удалось загрузить прогоны из GitHub.",
+        "repoLoadFailed": "Не удалось загрузить прогоны из {{repositories}}. Прогоны остальных репозиториев показаны.",
         "failedOn": "Ошибка: {{reason}}",
         "openLogs": "Открыть детали прогона {{branch}}",
+        "repository": "Репозиторий",
         "sections": {
             "history": "История",
             "live": "Сейчас"
@@ -440,13 +442,18 @@
             "defaultBranch": "{{branch}}",
             "noDefaultRun": "Нет недавнего прогона",
             "failed": "Провалы",
-            "running": "В работе"
+            "running": "В работе",
+            "defaultBranches": "Ветки по умолчанию"
         },
         "filters": {
             "label": "Фильтр прогонов",
             "all": "Все",
             "failed": "Провалы",
             "running": "В работе"
+        },
+        "repoFilters": {
+            "label": "Фильтр по репозиторию",
+            "all": "Все репо"
         },
         "status": {
             "success": "Успех",

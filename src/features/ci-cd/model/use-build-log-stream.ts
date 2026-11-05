@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 
-import type { BuildLogLine, BuildStatus } from "@/features/ci-cd/model/types";
+import type {
+    BuildLogLine,
+    BuildsRepository,
+    BuildStatus,
+} from "@/features/ci-cd/model/types";
 
 import { resolveBuildsProvider } from "@/features/ci-cd/api/resolve-builds-provider";
 import { isGuest } from "@/features/guest-mode";
@@ -15,7 +19,7 @@ const IN_FLIGHT_POLL_MS = 5000;
  * when the new stream finishes (avoids wiping usable output every poll).
  */
 export function useBuildLogStream(
-    projectId: string,
+    repository: BuildsRepository | undefined,
     buildId: string | undefined,
     buildStatus?: BuildStatus
 ): { isStreaming: boolean; lines: BuildLogLine[] } {
@@ -25,7 +29,7 @@ export function useBuildLogStream(
     const [isStreaming, setIsStreaming] = useState(false);
 
     useEffect(() => {
-        if (!buildId) {
+        if (!buildId || !repository) {
             setLines([]);
             setIsStreaming(false);
             return;
@@ -58,7 +62,7 @@ export function useBuildLogStream(
             setIsStreaming(true);
 
             stopCurrent = provider.streamBuildLogs(
-                projectId,
+                repository,
                 buildId,
                 (line) => {
                     if (cancelled) return;
@@ -93,7 +97,7 @@ export function useBuildLogStream(
             stopCurrent?.();
             setIsStreaming(false);
         };
-    }, [buildId, buildStatus, projectId, provider]);
+    }, [buildId, buildStatus, provider, repository]);
 
     return { isStreaming, lines };
 }

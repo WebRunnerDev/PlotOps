@@ -1,21 +1,19 @@
-import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
-
 export type CanFetchProjectBuildsInput = {
     githubAccessToken: null | string;
-    /** Project.github_repo_id — null/absent means name-only (no live Actions). */
-    githubRepoId: null | number | undefined;
     isGuest: boolean;
     projectId: string;
+    /** Linked Repositories — none means there are no Actions runs to show. */
+    repositoryCount: number;
 };
 
 /** Whether the project builds query may run for this session. */
 export function canFetchProjectBuilds({
     githubAccessToken,
-    githubRepoId,
     isGuest,
     projectId,
+    repositoryCount,
 }: CanFetchProjectBuildsInput): boolean {
-    if (!projectId || !projectHasGithubRepo(githubRepoId)) {
+    if (!projectId || repositoryCount === 0) {
         return false;
     }
     return Boolean(githubAccessToken || isGuest);

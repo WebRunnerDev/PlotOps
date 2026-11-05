@@ -409,7 +409,7 @@
         "title": "CI/CD",
         "eyebrow": "Pipeline",
         "backToBoard": "Back to board",
-        "description": "GitHub Actions runs for this project’s linked repository. Select a run to inspect jobs and logs.",
+        "description": "GitHub Actions runs for this project’s linked repositories. Select a run to inspect jobs and logs.",
         "refreshing": "Refreshing…",
         "needsToken": "Sign in with GitHub (repo scope) to load Actions runs for this project.",
         "connectRepo": "Connect a repository to see GitHub Actions runs for this project.",
@@ -423,8 +423,10 @@
         "emptyWorkflows": ".github/workflows",
         "loadingMore": "Loading more runs…",
         "loadFailed": "Could not load workflow runs from GitHub.",
+        "repoLoadFailed": "Could not load runs from {{repositories}}. Runs from the other repositories are shown.",
         "failedOn": "Failed on {{reason}}",
         "openLogs": "Open run details for {{branch}}",
+        "repository": "Repository",
         "sections": {
             "history": "History",
             "live": "In flight"
@@ -438,13 +440,18 @@
             "defaultBranch": "{{branch}}",
             "noDefaultRun": "No recent run",
             "failed": "Failed",
-            "running": "In progress"
+            "running": "In progress",
+            "defaultBranches": "Default branches"
         },
         "filters": {
             "label": "Filter runs",
             "all": "All",
             "failed": "Failed",
             "running": "In progress"
+        },
+        "repoFilters": {
+            "label": "Filter by repository",
+            "all": "All repos"
         },
         "status": {
             "success": "Passed",

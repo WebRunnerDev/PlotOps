@@ -9,7 +9,11 @@ import {
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { BuildStatus, ProjectBuild } from "@/features/ci-cd/model/types";
+import type {
+    BuildsRepository,
+    BuildStatus,
+    ProjectBuild,
+} from "@/features/ci-cd/model/types";
 
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { useBuildJobs } from "@/features/ci-cd/model/use-build-jobs";
@@ -28,10 +32,13 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type BuildLogDialogProperties = {
     build: ProjectBuild | undefined;
-    githubRepoId: null | number | undefined;
     onClose: () => void;
     open: boolean;
     projectId: string;
+    /** The Repository the run belongs to — jobs and logs are read there. */
+    repository: BuildsRepository | undefined;
+    /** Name the Repository in the header (Project has several). */
+    showRepository?: boolean;
 };
 
 const STATUS_BORDER: Record<BuildStatus, string> = {
@@ -43,15 +50,16 @@ const STATUS_BORDER: Record<BuildStatus, string> = {
 
 export function BuildLogDialog({
     build,
-    githubRepoId,
     onClose,
     open,
     projectId,
+    repository,
+    showRepository = false,
 }: BuildLogDialogProperties) {
     const { t } = useTranslation("board");
     const endReference = useRef<HTMLSpanElement>(null);
     const { isStreaming, lines } = useBuildLogStream(
-        projectId,
+        repository,
         open && build ? build.id : undefined,
         build?.status
     );
@@ -60,12 +68,7 @@ export function BuildLogDialog({
         isError: jobsError,
         isLoading: jobsLoading,
         refetch: refetchJobs,
-    } = useBuildJobs(
-        projectId,
-        build?.id,
-        open && Boolean(build),
-        githubRepoId
-    );
+    } = useBuildJobs(projectId, repository, build?.id, open && Boolean(build));
 
     useEffect(() => {
         if (!open || lines.length === 0) return;
@@ -110,6 +113,11 @@ export function BuildLogDialog({
                             <DialogDescription className="flex min-w-0 flex-col gap-1.5 font-mono text-meta text-muted-foreground">
                                 {build ? (
                                     <>
+                                        {showRepository ? (
+                                            <span className="min-w-0 truncate text-primary/80">
+                                                {build.repositoryName}
+                                            </span>
+                                        ) : undefined}
                                         <span className="inline-flex min-w-0 items-center gap-1.5 wrap-break-word">
                                             <GitBranch
                                                 aria-hidden
