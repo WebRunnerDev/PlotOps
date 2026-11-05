@@ -71,6 +71,24 @@ https://ijcelrdcygzyzhcijkhe.supabase.co/functions/v1/github-webhook
 - Confirm the PR base branch equals the Base branch of the Task’s Board for **that** Repository (Project Settings → Boards).
 - Confirm the App is installed on that repository.
 
+## 5. App status
+
+Project Settings → Repositories shows, per Repository, whether the App is installed and links to its install page. The browser cannot ask GitHub this with the user's OAuth token, so the `github-app-status` Edge Function signs an App JWT and calls `GET /repos/{owner}/{repo}/installation`.
+
+1. GitHub App settings → **Private keys → Generate a private key** (`.pem`, PKCS#1 is fine).
+2. Set the secrets (never `VITE_*`):
+
+    ```bash
+    npx supabase secrets set GITHUB_APP_ID="<App ID>" --project-ref ijcelrdcygzyzhcijkhe
+    npx supabase secrets set GITHUB_APP_PRIVATE_KEY="$(cat plotops.private-key.pem)" --project-ref ijcelrdcygzyzhcijkhe
+    # Optional — otherwise read from GET /app:
+    npx supabase secrets set GITHUB_APP_SLUG="<app-slug>" --project-ref ijcelrdcygzyzhcijkhe
+    ```
+
+3. Deploy: `npx supabase functions deploy github-app-status --project-ref ijcelrdcygzyzhcijkhe` (`verify_jwt = true`).
+
+Without the secrets, or when GitHub rejects the App JWT (log `reason: app_auth_failed`), every Repository shows _App status unavailable_; the page keeps working. Callers only see Repositories of Projects in their Teams (RLS); 120 requests per user per hour.
+
 ## Matching
 
 1. **Repository first.** `repository.id` from the payload → `project_repositories.github_repo_id` → Project. The id survives repo renames.

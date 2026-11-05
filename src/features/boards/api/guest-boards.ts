@@ -1,6 +1,7 @@
 import type { BoardsProvider } from "@/features/boards/api/boards-provider";
 import type {
     BoardColumn,
+    BoardRepositoryBaseBranch,
     ProjectBoardRecord,
 } from "@/features/boards/model/types";
 import type { GuestBoard } from "@/features/guest-mode";
@@ -8,6 +9,11 @@ import type { GuestBoard } from "@/features/guest-mode";
 import { normalizeBoardDevelopmentPatch } from "@/features/boards/lib/normalize-board-development-patch";
 import { DEFAULT_KANBAN_COLUMNS } from "@/features/boards/model/constants";
 import { getGuestSandbox, updateGuestSandbox } from "@/features/guest-mode";
+
+/** Guest Projects hold at most one Repository, keyed `<projectId>:repo`. */
+function guestRepositoryId(projectId: string): string {
+    return `${projectId}:repo`;
+}
 
 function mapBoard(board: GuestBoard): ProjectBoardRecord {
     return {
@@ -25,16 +31,26 @@ function mapBoard(board: GuestBoard): ProjectBoardRecord {
         name: board.name,
         position: board.position,
         projectId: board.projectId,
-        // Guest Projects hold at most one Repository (`<projectId>:repo`).
         repositoryBaseBranches: board.baseBranch
             ? [
                   {
                       baseBranch: board.baseBranch,
-                      repositoryId: `${board.projectId}:repo`,
+                      repositoryId: guestRepositoryId(board.projectId),
                   },
               ]
             : [],
     };
+}
+
+/** The Guest Repository's Base branch from a per-Repository list, if given. */
+function pickGuestBaseBranch(
+    projectId: string,
+    entries: readonly BoardRepositoryBaseBranch[] | undefined
+): null | string {
+    const entry = entries?.find(
+        (item) => item.repositoryId === guestRepositoryId(projectId)
+    );
+    return entry?.baseBranch.trim() || null;
 }
 
 function requireBoard(boardId: string): GuestBoard {
@@ -66,11 +82,22 @@ export const guestBoardsProvider: BoardsProvider = {
     async createBoard(projectId, name, input) {
         let created: GuestBoard | undefined;
         const isDevelopment = input.isDevelopment;
-        const baseBranch = isDevelopment
-            ? input.baseBranch?.trim() || null
-            : null;
 
         updateGuestSandbox((sandbox) => {
+            const project = sandbox.projects.find(
+                (item) => item.id === projectId
+            );
+            // Seeded from the Repository's default branch, like the
+            // `boards_sync_repositories` trigger.
+            const baseBranch = isDevelopment
+                ? pickGuestBaseBranch(
+                      projectId,
+                      input.repositoryBaseBranches
+                  ) ||
+                  input.baseBranch?.trim() ||
+                  project?.githubDefaultBranch ||
+                  null
+                : null;
             const projectBoards = sandbox.boards.filter(
                 (board) => board.projectId === projectId
             );
@@ -294,11 +321,26 @@ export const guestBoardsProvider: BoardsProvider = {
             if (patch.name !== undefined) {
                 board.name = patch.name;
             }
+            const wasDevelopment =
+                board.isDevelopment ?? Boolean(board.baseBranch);
             if (normalized.is_development !== undefined) {
+                if (normalized.is_development && !wasDevelopment) {
+                    board.baseBranch =
+                        sandbox.projects.find(
+                            (item) => item.id === board.projectId
+                        )?.githubDefaultBranch ?? null;
+                }
                 board.isDevelopment = normalized.is_development;
+                if (!normalized.is_development) {
+                    board.baseBranch = null;
+                }
             }
-            if (normalized.base_branch !== undefined) {
-                board.baseBranch = normalized.base_branch;
+            const baseBranch = pickGuestBaseBranch(
+                board.projectId,
+                normalized.repository_base_branches
+            );
+            if ((normalized.is_development ?? wasDevelopment) && baseBranch) {
+                board.baseBranch = baseBranch;
             }
             if (normalized.allowed_head_patterns !== undefined) {
                 board.allowedHeadPatterns = [

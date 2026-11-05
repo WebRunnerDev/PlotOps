@@ -11,15 +11,19 @@ function read(relativePath: string) {
 }
 
 describe("ConnectProjectRepository seam", () => {
-    it("settings mounts connect UI for name-only Projects when Owner/Admin", () => {
+    it("Repositories settings mount the picker for Owner/Admin only", () => {
         const settings = read(
             "src/routes/(main)/projects/$projectId/settings.tsx"
         );
+        const section = read(
+            "src/features/projects/ui/project-repositories-settings.tsx"
+        );
 
-        expect(settings).toMatch(/ConnectProjectRepository/);
-        expect(settings).toMatch(/canManageSettings/);
-        expect(settings).toMatch(/projectHasGithubRepo/);
-        expect(settings).not.toMatch(/connectHint/);
+        expect(settings).toMatch(/ProjectRepositoriesSettings/);
+        expect(settings).toMatch(/canManage=\{[\s\S]*canManageSettings/);
+        expect(section).toMatch(/ConnectProjectRepository/);
+        expect(section).toMatch(/canAddRepositoryToProject/);
+        expect(section).not.toMatch(/connectHint/);
     });
 
     it("picker connects via mutation and surfaces duplicate-repo errors", () => {
@@ -27,7 +31,7 @@ describe("ConnectProjectRepository seam", () => {
             "src/features/projects/ui/connect-project-repository.tsx"
         );
 
-        expect(ui).toMatch(/useConnectProjectGithub/);
+        expect(ui).toMatch(/useAddProjectRepository/);
         expect(ui).toMatch(/useGitHubRepos/);
         expect(ui).toMatch(/isUniqueViolation/);
         expect(ui).toMatch(/connectDuplicate/);

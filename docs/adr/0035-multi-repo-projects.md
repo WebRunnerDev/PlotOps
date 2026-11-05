@@ -25,7 +25,7 @@ A Project used to hold at most one GitHub repository (`projects.github_repo_id` 
     - It asks for confirmation and shows how many Tasks hold Git links to that Repository.
     - It then deletes those Git links and writes an `activity_log` row on each affected Task.
     - Nothing on GitHub is touched.
-- **GitHub App status per Repository.** Project Settings → Repositories shows whether the GitHub App is installed on each Repository, using the installation API, and links to the install page. Without the App, the webhook stays silent for that Repository and merge sync would wait forever.
+- **GitHub App status per Repository.** Project Settings → Repositories shows whether the GitHub App is installed on each Repository, using the installation API, and links to the install page. The lookup runs in the `github-app-status` Edge Function, because it needs an App JWT that must stay server-side; when it fails, the page shows the status as unavailable and keeps working. Without the App, the webhook stays silent for that Repository and merge sync would wait forever.
 - **UI**
     - **Create Project** accepts several Repositories at once, up to the cap. More can be added later in Project Settings.
     - **Kanban card** shows one aggregate PR badge, for example "2 PR · 1 merged", with a per-Repository breakdown in the tooltip. A Task with a single Git link looks exactly as before.

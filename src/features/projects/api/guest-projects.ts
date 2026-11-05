@@ -46,13 +46,17 @@ function resolveOwnerId(
 
 /** Guest Mode Projects adapter — reads the local sandbox; never calls Supabase. */
 export const guestProjectsProvider: ProjectsProvider = {
-    async connectProjectGithub() {
+    async addProjectRepository() {
         return {
             data: null,
             error: new Error(
-                "Connecting a repository is not available in Guest Mode"
+                "Linking a repository is not available in Guest Mode"
             ),
         };
+    },
+
+    async countRepositoryGitLinks() {
+        return { data: 0, error: null };
     },
 
     async createProject() {
@@ -116,5 +120,14 @@ export const guestProjectsProvider: ProjectsProvider = {
             )
             .map((project) => mapProject(project, ownerId));
         return { data: projects, error: null };
+    },
+
+    async removeProjectRepository() {
+        return {
+            data: null,
+            error: new Error(
+                "Unlinking a repository is not available in Guest Mode"
+            ),
+        };
     },
 };
