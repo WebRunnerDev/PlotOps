@@ -26,6 +26,7 @@ describe("TaskGitTab dedupe seam", () => {
 
         expect(tab).toMatch(/linkedPrNumber/);
         expect(tab).toMatch(/showBranchPrs/);
-        expect(drawer).toMatch(/linkedPrNumber=\{\s*task\.pr\?\.number/);
+        // Per Repository: the Git link PR of that Repository (ADR 0035).
+        expect(drawer).toMatch(/linkedPrNumber=\{\s*link\?\.pr\s*\?\.number/);
     });
 });

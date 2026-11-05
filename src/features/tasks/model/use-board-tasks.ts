@@ -68,6 +68,10 @@ import {
     type TaskMoveUpdate,
 } from "@/features/tasks/lib/reorder-tasks-in-memory";
 import {
+    applyGitLinkDetails,
+    gitLinkActivityView,
+} from "@/features/tasks/lib/task-git-links";
+import {
     assertParentArchiveLegal,
     assertParentDeleteLegal,
     orderTaskIdsChildrenFirst,
@@ -143,6 +147,11 @@ type TaskDetailsUpdate = {
     pr?: null | TaskPullRequest;
     /** Pass `null` to clear priority (“None”). */
     priority?: null | TaskPriority;
+    /**
+     * Repository whose Git link `branchName` / `pr` change (ADR 0035).
+     * Optional while the Project holds exactly one Repository.
+     */
+    repositoryId?: string;
 } & Partial<
     Omit<
         Task,
@@ -323,6 +332,12 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     patch.pr_state = details.pr.state;
                     patch.pr_url = details.pr.url;
                 }
+            }
+            if (
+                details.repositoryId !== undefined &&
+                (details.branchName !== undefined || details.pr !== undefined)
+            ) {
+                patch.repository_id = details.repositoryId;
             }
             if (details.type !== undefined) {
                 patch.task_type = details.type;
@@ -1440,16 +1455,19 @@ export function useBoardTasks(projectId: string, boardId: string) {
             let authorChange: AuthorNotificationChange | null = null;
 
             if (previous && snapshot) {
-                const before = toTaskActivitySnapshot(previous, {
-                    labelNames: resolveLabelNames(
-                        snapshot.labels,
-                        previous.labelIds
-                    ),
-                    statusName: resolveStatusName(
-                        snapshot.columns,
-                        previous.status
-                    ),
-                });
+                const before = toTaskActivitySnapshot(
+                    gitLinkActivityView(previous, details.repositoryId),
+                    {
+                        labelNames: resolveLabelNames(
+                            snapshot.labels,
+                            previous.labelIds
+                        ),
+                        statusName: resolveStatusName(
+                            snapshot.columns,
+                            previous.status
+                        ),
+                    }
+                );
                 const epics = queryClient.getQueryData<ProjectEpic[]>(
                     taskKeys.epics(projectId)
                 );
@@ -1504,6 +1522,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         linkedCommitSha: nextLinkedCommit,
                         pr: nextPr,
                         priority: nextPriority,
+                        repositoryId: nextRepositoryId,
                         ...rest
                     } = details;
                     // Mirror the server's silent clears (assert_task_epic_rules).
@@ -1535,9 +1554,10 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         ...(nextAuthor === undefined
                             ? {}
                             : { author: nextAuthor ?? undefined }),
-                        ...(nextBranch === undefined
-                            ? {}
-                            : { branchName: nextBranch ?? undefined }),
+                        ...applyGitLinkDetails(task, nextRepositoryId, {
+                            branchName: nextBranch,
+                            pr: nextPr,
+                        }),
                         ...(nextLinkedCommit === undefined
                             ? {}
                             : {
@@ -1563,9 +1583,6 @@ export function useBoardTasks(projectId: string, boardId: string) {
                                           ? nextLabelIds
                                           : undefined,
                               }),
-                        ...(nextPr === undefined
-                            ? {}
-                            : { pr: nextPr ?? undefined }),
                         ...(nextPriority === undefined
                             ? {}
                             : { priority: nextPriority ?? undefined }),

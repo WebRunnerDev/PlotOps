@@ -17,6 +17,8 @@ import { Plus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { ProjectRepository } from "@/features/projects/model/types";
+
 import { type BoardColumn, useBoardColumns } from "@/features/boards";
 import { type ProjectLabel, useProjectLabels } from "@/features/labels";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
@@ -49,6 +51,7 @@ import {
     TaskCard,
     type TaskCardEpic,
     TaskDrawer,
+    TaskRepositoryNamesProvider,
     useBoardCompletedVisibilityStore,
     useBoardSortStore,
     useBoardSubtaskVisibilityStore,
@@ -93,7 +96,8 @@ type KanbanBoardProperties = {
     /** Increments when Board chrome + New Task should open create on the first column. */
     openCreateTaskRequestKey?: number;
     projectId: string;
-    repoFullName: string | undefined;
+    /** The Project's Repositories (ADR 0035). */
+    repositories: readonly ProjectRepository[];
 };
 
 export function KanbanBoard({
@@ -101,7 +105,7 @@ export function KanbanBoard({
     githubToken,
     openCreateTaskRequestKey = 0,
     projectId,
-    repoFullName,
+    repositories,
 }: KanbanBoardProperties) {
     const { t } = useTranslation("board");
     const columnsApi = useBoardColumns(projectId, boardId);
@@ -582,137 +586,144 @@ export function KanbanBoard({
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="sticky left-0 z-5 w-[calc(100cqw-1.5rem)] shrink-0 sm:w-[calc(100cqw-6rem)]">
-                <BoardTaskToolbar
-                    epics={epicFilterOptions}
-                    filters={filters}
-                    hideCompleted={hideCompleted}
-                    hideSubtasks={hideSubtasks}
-                    labels={projectLabels}
-                    onChange={setFilters}
-                    onHideCompletedChange={(next) => {
-                        setHideCompleted(boardId, next);
-                    }}
-                    onHideSubtasksChange={(next) => {
-                        setHideSubtasks(boardId, next);
-                    }}
-                    onSearchQueryChange={setSearchQuery}
-                    onSortChange={(sort) => {
-                        setBoardSort(boardId, sort);
-                    }}
-                    people={people}
-                    searchQuery={searchQuery}
-                    showSubtaskVisibility
-                    sort={boardSort}
-                />
-            </div>
+        <TaskRepositoryNamesProvider repositories={repositories}>
+            <div className="flex h-full min-h-0 flex-col gap-3">
+                <div className="sticky left-0 z-5 w-[calc(100cqw-1.5rem)] shrink-0 sm:w-[calc(100cqw-6rem)]">
+                    <BoardTaskToolbar
+                        epics={epicFilterOptions}
+                        filters={filters}
+                        hideCompleted={hideCompleted}
+                        hideSubtasks={hideSubtasks}
+                        labels={projectLabels}
+                        onChange={setFilters}
+                        onHideCompletedChange={(next) => {
+                            setHideCompleted(boardId, next);
+                        }}
+                        onHideSubtasksChange={(next) => {
+                            setHideSubtasks(boardId, next);
+                        }}
+                        onSearchQueryChange={setSearchQuery}
+                        onSortChange={(sort) => {
+                            setBoardSort(boardId, sort);
+                        }}
+                        people={people}
+                        searchQuery={searchQuery}
+                        showSubtaskVisibility
+                        sort={boardSort}
+                    />
+                </div>
 
-            <DndContext
-                collisionDetection={boardCollisionDetection}
-                onDragCancel={handleDragCancel}
-                onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
-                onDragStart={handleDragStart}
-                sensors={sensors}
-            >
-                <SortableContext
-                    items={columnIds}
-                    strategy={horizontalListSortingStrategy}
+                <DndContext
+                    collisionDetection={boardCollisionDetection}
+                    onDragCancel={handleDragCancel}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
+                    onDragStart={handleDragStart}
+                    sensors={sensors}
                 >
-                    <div className="flex min-h-0 min-w-full w-max flex-1 items-stretch gap-1">
-                        {columns.map((column) => (
-                            <KanbanColumn
-                                boardId={boardId}
-                                createSprintChoices={createSprintChoices}
-                                createSprintId={createSprintId}
-                                epicByTaskId={epicByTaskId}
-                                key={column.id}
-                                labelsByTaskId={labelsByTaskId}
-                                name={column.name}
-                                projectId={projectId}
-                                showSprintBadge={showSprintBadge}
-                                sprintNameById={sprintNameById}
-                                startAddingTask={
-                                    focusAddTaskColumnId === column.id
-                                }
-                                startEditing={focusColumnId === column.id}
-                                status={column.id}
-                                subtaskProgressByTaskId={
-                                    subtaskProgressByTaskId
-                                }
-                                tasks={displayedTasks.filter(
-                                    (task) => task.status === column.id
-                                )}
-                                withinColumnDragEnabled={
-                                    withinColumnDragEnabled
-                                }
-                            />
-                        ))}
+                    <SortableContext
+                        items={columnIds}
+                        strategy={horizontalListSortingStrategy}
+                    >
+                        <div className="flex min-h-0 min-w-full w-max flex-1 items-stretch gap-1">
+                            {columns.map((column) => (
+                                <KanbanColumn
+                                    boardId={boardId}
+                                    createSprintChoices={createSprintChoices}
+                                    createSprintId={createSprintId}
+                                    epicByTaskId={epicByTaskId}
+                                    key={column.id}
+                                    labelsByTaskId={labelsByTaskId}
+                                    name={column.name}
+                                    projectId={projectId}
+                                    showSprintBadge={showSprintBadge}
+                                    sprintNameById={sprintNameById}
+                                    startAddingTask={
+                                        focusAddTaskColumnId === column.id
+                                    }
+                                    startEditing={focusColumnId === column.id}
+                                    status={column.id}
+                                    subtaskProgressByTaskId={
+                                        subtaskProgressByTaskId
+                                    }
+                                    tasks={displayedTasks.filter(
+                                        (task) => task.status === column.id
+                                    )}
+                                    withinColumnDragEnabled={
+                                        withinColumnDragEnabled
+                                    }
+                                />
+                            ))}
 
-                        {canManage ? (
-                            <div className="flex w-48 shrink-0 flex-col pt-0.5">
-                                <Button
-                                    className="justify-start gap-2 rounded-none text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary"
-                                    onClick={handleAddColumn}
-                                    type="button"
-                                    variant="ghost"
-                                >
-                                    <Plus className="size-4" />
-                                    {t("columns.add")}
-                                </Button>
-                            </div>
-                        ) : undefined}
-                    </div>
-                </SortableContext>
-
-                <DragOverlay dropAnimation={dropAnimation}>
-                    {activeTask ? (
-                        <div className="relative rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
-                            <TaskCard
-                                epic={epicByTaskId.get(activeTask.id)}
-                                labels={labelsByTaskId.get(activeTask.id) ?? []}
-                                sprintBadge={
-                                    showSprintBadge && activeTask.sprintId
-                                        ? sprintNameById.get(
-                                              activeTask.sprintId
-                                          )
-                                        : undefined
-                                }
-                                subtaskProgress={subtaskProgressByTaskId.get(
-                                    activeTask.id
-                                )}
-                                task={activeTask}
-                            />
-                            {activeDragCount > 1 ? (
-                                <span
-                                    aria-label={t("selection.dragCount", {
-                                        count: activeDragCount,
-                                    })}
-                                    className="absolute -top-2 -right-2 inline-flex min-w-5 items-center justify-center rounded-md border border-border bg-primary px-1.5 py-0.5 text-meta font-semibold text-primary-foreground shadow-sm"
-                                >
-                                    {activeDragCount}
-                                </span>
+                            {canManage ? (
+                                <div className="flex w-48 shrink-0 flex-col pt-0.5">
+                                    <Button
+                                        className="justify-start gap-2 rounded-none text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-primary/10 hover:text-primary"
+                                        onClick={handleAddColumn}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Plus className="size-4" />
+                                        {t("columns.add")}
+                                    </Button>
+                                </div>
                             ) : undefined}
                         </div>
-                    ) : undefined}
-                    {activeColumn ? (
-                        <div className="flex h-40 w-72 items-start border border-border bg-card/95 p-3 opacity-95 shadow-lg ring-1 ring-primary/40">
-                            <p className="text-meta font-medium">
-                                {activeColumn.name}
-                            </p>
-                        </div>
-                    ) : undefined}
-                </DragOverlay>
-            </DndContext>
+                    </SortableContext>
 
-            <TaskDrawer
-                boardId={boardId}
-                githubToken={githubToken}
-                projectId={projectId}
-                repoFullName={repoFullName}
-            />
-            <BoardTaskSelectionBar boardId={boardId} projectId={projectId} />
-        </div>
+                    <DragOverlay dropAnimation={dropAnimation}>
+                        {activeTask ? (
+                            <div className="relative rotate-2 scale-[1.03] cursor-grabbing shadow-2xl shadow-primary/20 duration-150 ease-out animate-in zoom-in-95">
+                                <TaskCard
+                                    epic={epicByTaskId.get(activeTask.id)}
+                                    labels={
+                                        labelsByTaskId.get(activeTask.id) ?? []
+                                    }
+                                    sprintBadge={
+                                        showSprintBadge && activeTask.sprintId
+                                            ? sprintNameById.get(
+                                                  activeTask.sprintId
+                                              )
+                                            : undefined
+                                    }
+                                    subtaskProgress={subtaskProgressByTaskId.get(
+                                        activeTask.id
+                                    )}
+                                    task={activeTask}
+                                />
+                                {activeDragCount > 1 ? (
+                                    <span
+                                        aria-label={t("selection.dragCount", {
+                                            count: activeDragCount,
+                                        })}
+                                        className="absolute -top-2 -right-2 inline-flex min-w-5 items-center justify-center rounded-md border border-border bg-primary px-1.5 py-0.5 text-meta font-semibold text-primary-foreground shadow-sm"
+                                    >
+                                        {activeDragCount}
+                                    </span>
+                                ) : undefined}
+                            </div>
+                        ) : undefined}
+                        {activeColumn ? (
+                            <div className="flex h-40 w-72 items-start border border-border bg-card/95 p-3 opacity-95 shadow-lg ring-1 ring-primary/40">
+                                <p className="text-meta font-medium">
+                                    {activeColumn.name}
+                                </p>
+                            </div>
+                        ) : undefined}
+                    </DragOverlay>
+                </DndContext>
+
+                <TaskDrawer
+                    boardId={boardId}
+                    githubToken={githubToken}
+                    projectId={projectId}
+                    repositories={repositories}
+                />
+                <BoardTaskSelectionBar
+                    boardId={boardId}
+                    projectId={projectId}
+                />
+            </div>
+        </TaskRepositoryNamesProvider>
     );
 }

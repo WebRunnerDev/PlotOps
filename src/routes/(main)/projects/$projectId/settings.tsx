@@ -350,9 +350,7 @@ function ProjectSettingsRoute() {
                                 boardId={defaultBoardId}
                                 githubToken={githubAccessToken}
                                 projectId={projectId}
-                                repoFullName={
-                                    project.github_full_name ?? undefined
-                                }
+                                repositories={project.repositories}
                             />
                         ) : undefined}
                     </div>

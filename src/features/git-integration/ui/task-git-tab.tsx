@@ -35,6 +35,8 @@ type TaskGitTabProperties = {
      */
     linkedPrNumber?: number;
     repoFullName: string;
+    /** Repository caption when the Project holds several Repositories. */
+    repositoryLabel?: string;
     taskKey: string;
     /** Null for guest demos (fixtures load when session is guest). */
     token: null | string;
@@ -52,6 +54,7 @@ export function TaskGitTab({
     linkedCommitSha,
     linkedPrNumber,
     repoFullName,
+    repositoryLabel,
     taskKey,
     token,
 }: TaskGitTabProperties) {
@@ -126,6 +129,11 @@ export function TaskGitTab({
 
     return (
         <div className="flex flex-col gap-5">
+            {repositoryLabel ? (
+                <p className="truncate font-mono text-code text-foreground">
+                    {repositoryLabel}
+                </p>
+            ) : undefined}
             {isShared ? (
                 <Alert>
                     <AlertTitle>{t("git.sharedBranchTitle")}</AlertTitle>

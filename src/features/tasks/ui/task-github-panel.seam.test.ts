@@ -40,7 +40,7 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
         expect(gate).toBeDefined();
         expect(gate).toMatch(/canWritePr/);
         expect(gate).toMatch(/canFetchGithub/);
-        expect(gate).toMatch(/task\.pr\?\.state === "closed"/);
+        expect(gate).toMatch(/(?<!\w)pr\?\.state === "closed"/);
         expect(gate).not.toMatch(/merged/);
     });
 
@@ -75,7 +75,7 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
         expect(gate).toBeDefined();
         expect(gate).toMatch(/canReviewPr/);
         expect(gate).toMatch(/canFetchGithub/);
-        expect(gate).toMatch(/task\.pr\?\.state === "open"/);
+        expect(gate).toMatch(/(?<!\w)pr\?\.state === "open"/);
         expect(gate).not.toMatch(/canWritePr/);
         expect(panel).toMatch(/useRequestPullRequestReviewers/);
         expect(panel).toMatch(/RequestReviewDialog/);

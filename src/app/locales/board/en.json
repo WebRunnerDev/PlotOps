@@ -942,7 +942,12 @@
             "validation": "GitHub rejected the request (rules, existing review, or invalid state)",
             "rate_limit": "GitHub rate limit hit — wait a moment and try again",
             "unknown": "GitHub request failed — try again"
-        }
+        },
+        "noPrTag": "no PR",
+        "unlinkGitLink": "Unlink {{repository}}",
+        "addGitLink": "Link another repository",
+        "repository": "Repository",
+        "unknownRepository": "Unlinked repository"
     },
     "git": {
         "branchLabel": "Branch:",
@@ -1316,5 +1321,9 @@
             "submit": "Create Task",
             "failed": "Could not create the Task."
         }
-    }
+    },
+    "prAggregate": "{{count}} PR",
+    "prAggregateMerged": "{{count}} PR · {{merged}} merged",
+    "prBreakdownLine": "{{repository}}: PR #{{number}} · {{state}}",
+    "prBreakdownNoPr": "{{repository}}: no PR"
 }

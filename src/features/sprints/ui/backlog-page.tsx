@@ -1006,7 +1006,7 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         boardId={boardId}
                         githubToken={githubAccessToken}
                         projectId={projectId}
-                        repoFullName={project?.github_full_name ?? undefined}
+                        repositories={project?.repositories ?? []}
                     />
                 </>
             )}
