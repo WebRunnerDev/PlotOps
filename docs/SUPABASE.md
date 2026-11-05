@@ -15,6 +15,8 @@ Migrations live in `supabase/migrations/`. They are **not** applied by `npm run 
 
 Decision record: [`docs/adr/0016-migrations-via-ci.md`](adr/0016-migrations-via-ci.md).
 
+**MCP / Auth OAuth 2.1 server:** local Docker enables `[auth.oauth_server]` in `config.toml` (consent path `/oauth/consent`, dynamic client registration). Hosted PlotOps must enable the same toggle in the Auth dashboard — see [`docs/MCP.md`](MCP.md). Do not enable this against any other Supabase project.
+
 ## Local stack (default for schema work)
 
 Requires [Docker Desktop](https://docs.docker.com/desktop/) running.

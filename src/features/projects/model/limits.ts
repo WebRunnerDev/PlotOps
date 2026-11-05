@@ -5,7 +5,7 @@ export function canAddProjectToTeam(projectCount: number): boolean {
     return projectCount < TEAM_PROJECTS_CAP;
 }
 
-/** Max Repositories per Project — matches `project_repositories_cap()` (ADR 0034). */
+/** Max Repositories per Project — matches `project_repositories_cap()` (ADR 0035). */
 export const PROJECT_REPOSITORIES_CAP = 5;
 
 export function canAddRepositoryToProject(repositoryCount: number): boolean {

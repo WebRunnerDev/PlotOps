@@ -8,7 +8,7 @@
         "dev": "vite",
         "build": "tsc -b && vite build && vite build --config vite.config.ssg.ts && node scripts/ssg.mjs",
         "ssg": "node scripts/ssg.mjs",
-        "typecheck": "tsc -b --pretty false",
+        "typecheck": "tsc -b --pretty false && tsc --noEmit -p tsconfig.mcp.json --pretty false",
         "lint": "eslint .",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
@@ -36,7 +36,9 @@
         "test:e2e:dev": "E2E_USE_DEV=true playwright test",
         "test:e2e:install": "playwright install --with-deps chromium firefox webkit",
         "test:e2e:ui": "playwright test --ui",
-        "test:e2e:report": "playwright show-report"
+        "test:e2e:report": "playwright show-report",
+        "mcp:dev": "npx wrangler dev --config workers/mcp/wrangler.toml",
+        "mcp:deploy": "npx wrangler deploy --config workers/mcp/wrangler.toml"
     },
     "dependencies": {
         "@base-ui/react": "^1.6.0",

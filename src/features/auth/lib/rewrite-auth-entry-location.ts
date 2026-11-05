@@ -1,3 +1,8 @@
+import {
+    isOAuthConsentRedirect,
+    parseSafeAppRedirect,
+} from "./safe-app-redirect";
+
 /**
  * Before RouterProvider's first `load()`, move authenticated entry URLs off
  * `/` and `/sign-in` so LoginForm is never the first matched route.
@@ -10,6 +15,7 @@ export function resolvePostBootEntryHref(input: {
     hash: string;
     hasUser: boolean;
     pathname: string;
+    pendingConsentPath?: null | string;
     pendingInviteToken?: null | string;
     search: string;
 }): null | string {
@@ -23,6 +29,17 @@ export function resolvePostBootEntryHref(input: {
         return `/invite/${encodeURIComponent(token)}`;
     }
 
+    const pendingConsent = parseSafeAppRedirect(input.pendingConsentPath);
+    if (pendingConsent && isOAuthConsentRedirect(pendingConsent)) {
+        return pendingConsent;
+    }
+
+    const redirectParameter = new URLSearchParams(input.search).get("redirect");
+    const safeRedirect = parseSafeAppRedirect(redirectParameter);
+    if (safeRedirect) {
+        return safeRedirect;
+    }
+
     return `/home${input.search}${input.hash}`;
 }
 
@@ -30,6 +47,7 @@ export function rewriteAuthEntryLocation(input: {
     hasUser: boolean;
     history?: Pick<History, "replaceState" | "state">;
     location?: Pick<Location, "hash" | "pathname" | "search">;
+    pendingConsentPath?: null | string;
     pendingInviteToken?: null | string;
 }): boolean {
     const location_ = input.location ?? globalThis.location;
@@ -40,6 +58,7 @@ export function rewriteAuthEntryLocation(input: {
         hash: location_.hash,
         hasUser: input.hasUser,
         pathname: location_.pathname,
+        pendingConsentPath: input.pendingConsentPath,
         pendingInviteToken: input.pendingInviteToken,
         search: location_.search,
     });

@@ -13,6 +13,7 @@ export default defineConfig({
             "src/**/*.test.ts",
             "supabase/functions/**/*.test.ts",
             "config/**/*.test.ts",
+            "workers/mcp/src/**/*.test.ts",
         ],
     },
 });

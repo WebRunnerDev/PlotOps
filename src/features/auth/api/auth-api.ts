@@ -3,6 +3,12 @@ import type { AuthError, UserIdentity } from "@supabase/supabase-js";
 import { supabase } from "@/shared/api/supabase";
 import { safeGetItem } from "@/shared/lib/safe-storage";
 
+import {
+    isOAuthConsentRedirect,
+    parseSafeAppRedirect,
+    PENDING_OAUTH_CONSENT_KEY,
+} from "../lib/safe-app-redirect";
+
 /** Shared with sign-in and Settings link — PlotOps needs repo + read:user for in-app Git. */
 export const GITHUB_OAUTH_SCOPES = "repo read:user";
 
@@ -221,6 +227,12 @@ function postAuthRedirectTo(): string {
     const pendingInvite = safeGetItem("sessionStorage", PENDING_INVITE_KEY);
     if (pendingInvite) {
         return `${origin}/invite/${pendingInvite}`;
+    }
+    const pendingConsent = parseSafeAppRedirect(
+        safeGetItem("sessionStorage", PENDING_OAUTH_CONSENT_KEY)
+    );
+    if (pendingConsent && isOAuthConsentRedirect(pendingConsent)) {
+        return `${origin}${pendingConsent}`;
     }
     // Root URL matches Supabase `site_url` / redirect allow-list; `/` route
     // sends authenticated users to `/home` once Auth boot finishes.

@@ -1,4 +1,4 @@
--- Multi-repo schema (ADR 0034): Repository cap, Git link uniqueness,
+-- Multi-repo schema (ADR 0035): Repository cap, Git link uniqueness,
 -- Board × Repository seeding, unlink cascade + activity, RLS writes.
 begin;
 create extension if not exists pgtap with schema extensions;

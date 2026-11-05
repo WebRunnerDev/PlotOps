@@ -1,0 +1,26 @@
+name = "plotops-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-10-11"
+compatibility_flags = ["nodejs_compat"]
+
+# Cloudflare Rate Limiting bindings (counters per Cloudflare location, no DB
+# round-trip). `period` must be 10 or 60; keep RATE_LIMIT_PERIOD_SECONDS and
+# the in-memory fallbacks in src/index.ts in sync. namespace_id is any
+# account-unique positive integer.
+[[ratelimits]]
+name = "MCP_IP_LIMITER"
+namespace_id = "3401"
+simple = { limit = 120, period = 60 }
+
+[[ratelimits]]
+name = "MCP_USER_LIMITER"
+namespace_id = "3402"
+simple = { limit = 60, period = 60 }
+
+# Secrets (npx wrangler secret put NAME --config workers/mcp/wrangler.toml):
+#   SUPABASE_URL                — PlotOps project URL only
+#   SUPABASE_PUBLISHABLE_KEY    — same anon/publishable key as the SPA
+# Never store the service_role key. RLS is the authorization layer.
+#
+# Optional public override for the advertised MCP resource URL:
+#   MCP_RESOURCE_URL = "https://plotops-mcp.<account>.workers.dev/mcp"

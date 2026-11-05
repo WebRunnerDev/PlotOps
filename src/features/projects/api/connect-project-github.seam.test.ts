@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("connectProjectGithub seam", () => {
-    it("links a Repository only to a Project without one (ADR 0034)", () => {
+    it("links a Repository only to a Project without one (ADR 0035)", () => {
         const source = readFileSync(
             path.join(dirname, "projects-api.ts"),
             "utf8"

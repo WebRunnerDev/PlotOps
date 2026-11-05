@@ -43,6 +43,10 @@ export function AppRouter() {
 
         rewriteAuthEntryLocation({
             hasUser: true,
+            pendingConsentPath: safeGetItem(
+                "sessionStorage",
+                "plotops_pending_oauth_consent"
+            ),
             pendingInviteToken: safeGetItem(
                 "sessionStorage",
                 "plotops_pending_invite"
@@ -81,6 +85,10 @@ export function AppRouter() {
     if (mountApp && auth.user && !authEntryResolved) {
         rewriteAuthEntryLocation({
             hasUser: true,
+            pendingConsentPath: safeGetItem(
+                "sessionStorage",
+                "plotops_pending_oauth_consent"
+            ),
             pendingInviteToken: safeGetItem(
                 "sessionStorage",
                 "plotops_pending_invite"

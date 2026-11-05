@@ -1,4 +1,4 @@
--- Multi-repo Projects: Repositories, Git links, Base branch per Board × Repository (ADR 0034).
+-- Multi-repo Projects: Repositories, Git links, Base branch per Board × Repository (ADR 0035).
 --
 --   project_repositories  0..N GitHub repositories per Project (cap 5)
 --   task_git_links        ≤1 branch / PR per Task per Repository
