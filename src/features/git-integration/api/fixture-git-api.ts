@@ -9,12 +9,20 @@ import type {
 
 import { textReferencesTaskKey } from "@/features/git-integration/lib/extract-task-key";
 import { mapCheckRollup } from "@/features/git-integration/lib/map-check-rollup";
+import { getGuestSandbox } from "@/features/guest-mode";
 
 const FIXTURE_AUTHOR = {
     avatar_url: null as null | string,
     login: "demo-guest",
     name: "Demo Guest",
 };
+
+/**
+ * Which canned dataset a repository gets. «Web + API» (ADR 0035) has a
+ * frontend and a backend Repository, so every fixture below reads per
+ * Repository: a `…/api` repo serves backend commits, files and checks.
+ */
+type FixtureFlavor = "api" | "web";
 
 /**
  * Canned GitHub-shaped data for Guest Mode.
@@ -25,6 +33,29 @@ export async function fetchFixtureBranchCommits(
     branchName: string
 ): Promise<GitCommit[]> {
     const short = branchSlug(branchName);
+
+    if (fixtureFlavor(repoFullName) === "api") {
+        return [
+            {
+                author: {
+                    ...FIXTURE_AUTHOR,
+                    date: "2026-07-28T11:48:00.000Z",
+                },
+                message: `feat(api): RPC and RLS policy for ${short}`,
+                sha: "a91f0c3e5b7d9f1a3c5e7091b2d4f6a8c0e2f4a6",
+                url: `https://github.com/${repoFullName}/commit/a91f0c3e5b7d9f1a3c5e7091b2d4f6a8c0e2f4a6`,
+            },
+            {
+                author: {
+                    ...FIXTURE_AUTHOR,
+                    date: "2026-07-27T15:12:00.000Z",
+                },
+                message: `test(api): pgTAP coverage for ${short}`,
+                sha: "5eed5eed0a1b2c3d4e5f60718293a4b5c6d7e8f9",
+                url: `https://github.com/${repoFullName}/commit/5eed5eed0a1b2c3d4e5f60718293a4b5c6d7e8f9`,
+            },
+        ];
+    }
 
     return [
         {
@@ -61,6 +92,29 @@ export async function fetchFixtureBranchPullRequests(
     repoFullName: string,
     branchName: string
 ): Promise<GitPullRequest[]> {
+    // A seeded Git link in this Repository answers for its branch: its PR,
+    // or none at all for a branch that has no PR yet.
+    const linked = findSandboxGitLink(repoFullName, { branchName });
+    if (linked) {
+        if (!linked.pr) return [];
+        const merged = linked.pr.state === "merged";
+        return [
+            {
+                body: "Canned pull request for the Guest Mode walkthrough. No GitHub API calls.",
+                created_at: "2026-07-27T10:00:00.000Z",
+                draft: false,
+                head_ref: branchName,
+                mergeable: linked.pr.state === "open" ? true : null,
+                merged_at: merged ? "2026-07-29T09:30:00.000Z" : null,
+                number: linked.pr.number,
+                state: linked.pr.state === "open" ? "open" : "closed",
+                title: `${linked.taskKey}: ${branchSlug(branchName)}`,
+                updated_at: "2026-07-28T14:30:00.000Z",
+                url: linked.pr.url,
+            },
+        ];
+    }
+
     const number = fixturePrNumber(branchName);
     const title = `Demo: ${branchName}`;
 
@@ -86,7 +140,10 @@ export async function fetchFixtureCommitBySha(
     sha: string
 ): Promise<GitCommit> {
     const normalized = sha.toLowerCase();
-    const branchCommits = await fetchFixtureBranchCommits(repoFullName, "main");
+    const branchCommits = await fetchFixtureBranchCommits(
+        repoFullName,
+        fixtureFlavor(repoFullName) === "api" ? "develop" : "main"
+    );
     const match = branchCommits.find((commit) =>
         commit.sha.startsWith(normalized)
     );
@@ -113,6 +170,17 @@ export async function fetchFixtureCommitFiles(
     const normalized = sha.toLowerCase();
     const all = await fetchFixturePullRequestFiles(repoFullName, 1);
 
+    if (fixtureFlavor(repoFullName) === "api") {
+        return {
+            files: all.files.filter((file) =>
+                normalized.startsWith("5eed")
+                    ? file.filename.startsWith("supabase/tests")
+                    : !file.filename.startsWith("supabase/tests")
+            ),
+            truncated: false,
+        };
+    }
+
     if (normalized.startsWith("bada55")) {
         return {
             files: all.files.filter((file) =>
@@ -134,15 +202,24 @@ export async function fetchFixtureCommitFiles(
 
 /**
  * Canned check runs for Guest Mode — mix of CI + a fake agent check.
- * Odd PR numbers include a failing lint check so rollup demos failure.
+ * Odd PR numbers include a failing lint check so rollup demos failure,
+ * unless the sandbox says that PR is merged.
  */
 export async function fetchFixturePullRequestChecks(
     repoFullName: string,
     prNumber: number
 ): Promise<PullRequestChecksResult> {
-    const sha = "c0ffee1a2b3c4d5e6f708192a3b4c5d6e7f8091a";
+    const api = fixtureFlavor(repoFullName) === "api";
+    const sha = api
+        ? "a91f0c3e5b7d9f1a3c5e7091b2d4f6a8c0e2f4a6"
+        : "c0ffee1a2b3c4d5e6f708192a3b4c5d6e7f8091a";
     const base = `https://github.com/${repoFullName}`;
-    const failing = prNumber % 2 === 1;
+    // A merged PR passed its checks; otherwise odd numbers demo a failure.
+    const merged =
+        findSandboxGitLink(repoFullName, { prNumber })?.pr?.state === "merged";
+    const failing = !merged && prNumber % 2 === 1;
+    const testName = api ? "API / pgTAP" : "CI / test";
+    const lintName = api ? "API / deno check" : "CI / lint";
 
     const checks = [
         {
@@ -151,18 +228,20 @@ export async function fetchFixturePullRequestChecks(
             detailsUrl: `${base}/actions/runs/1`,
             htmlUrl: `${base}/runs/1`,
             id: 1,
-            name: "CI / test",
+            name: testName,
             startedAt: "2026-07-28T14:22:00.000Z",
             status: "completed" as const,
         },
-        failing
+        failing || merged
             ? {
                   completedAt: "2026-07-28T14:24:00.000Z",
-                  conclusion: "failure" as const,
+                  conclusion: failing
+                      ? ("failure" as const)
+                      : ("success" as const),
                   detailsUrl: `${base}/actions/runs/2`,
                   htmlUrl: `${base}/runs/2`,
                   id: 2,
-                  name: "CI / lint",
+                  name: lintName,
                   startedAt: "2026-07-28T14:22:30.000Z",
                   status: "completed" as const,
               }
@@ -172,7 +251,7 @@ export async function fetchFixturePullRequestChecks(
                   detailsUrl: `${base}/actions/runs/2`,
                   htmlUrl: `${base}/runs/2`,
                   id: 2,
-                  name: "CI / lint",
+                  name: lintName,
                   startedAt: "2026-07-28T14:22:30.000Z",
                   status: "in_progress" as const,
               },
@@ -219,8 +298,11 @@ export async function fetchFixturePullRequestFiles(
     repoFullName: string,
     prNumber: number
 ): Promise<PullRequestFilesResult> {
-    void repoFullName;
     void prNumber;
+
+    if (fixtureFlavor(repoFullName) === "api") {
+        return { files: apiFixtureFiles(repoFullName), truncated: false };
+    }
 
     const files: GitPrFile[] = [
         {
@@ -297,9 +379,92 @@ export async function fetchFixtureTaskKeyCommits(
           ];
 }
 
+function apiFixtureFiles(repoFullName: string): GitPrFile[] {
+    const blob = `https://github.com/${repoFullName}/blob/demo`;
+    return [
+        {
+            additions: 14,
+            blob_url: `${blob}/supabase/migrations/20260727_guest_demo.sql`,
+            deletions: 2,
+            filename: "supabase/migrations/20260727_guest_demo.sql",
+            patch: [
+                "@@ -0,0 +1,14 @@",
+                "+create function public.guest_demo_builds(p_project_id uuid)",
+                "+returns setof public.builds",
+                "+language sql",
+                "+stable",
+                "+as $$",
+                "+  select * from public.builds where project_id = p_project_id;",
+                "+$$;",
+            ].join("\n"),
+            previous_filename: undefined,
+            status: "added",
+        },
+        {
+            additions: 9,
+            blob_url: `${blob}/supabase/tests/guest_demo_test.sql`,
+            deletions: 0,
+            filename: "supabase/tests/guest_demo_test.sql",
+            patch: [
+                "@@ -0,0 +1,9 @@",
+                "+select plan(2);",
+                "+select has_function('public', 'guest_demo_builds', array['uuid']);",
+                "+select is_empty($$ select * from public.guest_demo_builds(gen_random_uuid()) $$);",
+                "+select * from finish();",
+            ].join("\n"),
+            previous_filename: undefined,
+            status: "added",
+        },
+    ];
+}
+
 function branchSlug(branchName: string): string {
     const last = branchName.split("/").at(-1);
     return last && last.length > 0 ? last : branchName;
+}
+
+/**
+ * The Guest sandbox Git link in this Repository that matches — by branch or
+ * by PR number — if a Task holds one, so seeded links show their real PR.
+ */
+function findSandboxGitLink(
+    repoFullName: string,
+    match: { branchName: string } | { prNumber: number }
+):
+    | undefined
+    | {
+          pr?: {
+              number: number;
+              state: "closed" | "merged" | "open";
+              url: string;
+          };
+          taskKey: string;
+      } {
+    const sandbox = getGuestSandbox();
+    if (!sandbox) return undefined;
+    const repositoryIds = new Set(
+        sandbox.projects.flatMap((project) =>
+            project.repositories
+                .filter((repo) => repo.fullName === repoFullName)
+                .map((repo) => repo.id)
+        )
+    );
+    if (repositoryIds.size === 0) return undefined;
+    for (const task of sandbox.tasks) {
+        const link = task.gitLinks?.find(
+            (item) =>
+                repositoryIds.has(item.repositoryId) &&
+                ("branchName" in match
+                    ? item.branchName === match.branchName
+                    : item.pr?.number === match.prNumber)
+        );
+        if (link) return { pr: link.pr, taskKey: task.key };
+    }
+    return undefined;
+}
+
+function fixtureFlavor(repoFullName: string): FixtureFlavor {
+    return repoFullName.toLowerCase().endsWith("/api") ? "api" : "web";
 }
 
 /** Stable fake PR number from branch name — same branch ⇒ same PR. */

@@ -5,13 +5,10 @@ import { cloneGuestDemoSeed, GUEST_DEMO_SEED } from "./guest-demo-seed";
 describe("GUEST_DEMO_SEED name-only project", () => {
     it("includes a project without GitHub fields and a board that spans every column", () => {
         const nameOnly = GUEST_DEMO_SEED.projects.find(
-            (project) => project.githubRepoId == undefined
+            (project) => project.repositories.length === 0
         );
 
         expect(nameOnly).toBeDefined();
-        expect(nameOnly!.githubFullName).toBeNull();
-        expect(nameOnly!.githubHtmlUrl).toBeNull();
-        expect(nameOnly!.githubDefaultBranch).toBeNull();
 
         const board = GUEST_DEMO_SEED.boards.find(
             (item) => item.projectId === nameOnly!.id
@@ -31,11 +28,9 @@ describe("GUEST_DEMO_SEED name-only project", () => {
             expect(statuses.has(columnId)).toBe(true);
         }
 
-        expect(
-            boardTasks.every(
-                (task) => task.branchName == undefined && task.pr == undefined
-            )
-        ).toBe(true);
+        expect(boardTasks.every((task) => task.gitLinks == undefined)).toBe(
+            true
+        );
 
         expect(boardTasks.some((task) => task.sprintId == undefined)).toBe(
             true
@@ -45,13 +40,13 @@ describe("GUEST_DEMO_SEED name-only project", () => {
     it("cloneGuestDemoSeed keeps the name-only project independent of mutation", () => {
         const clone = cloneGuestDemoSeed();
         const nameOnly = clone.projects.find(
-            (project) => project.githubRepoId == undefined
+            (project) => project.repositories.length === 0
         );
         expect(nameOnly).toBeDefined();
 
         nameOnly!.name = "Mutated";
         const canonical = GUEST_DEMO_SEED.projects.find(
-            (project) => project.githubRepoId == undefined
+            (project) => project.repositories.length === 0
         );
         expect(canonical!.name).not.toBe("Mutated");
     });

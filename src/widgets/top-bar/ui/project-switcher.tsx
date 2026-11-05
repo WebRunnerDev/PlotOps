@@ -44,7 +44,8 @@ export function ProjectSwitcher({
         (project) => project.team_id === teamId
     );
     const isProjectCapReached = !canAddProjectToTeam(teamProjects.length);
-    const canAddProject = Boolean(!guest && canCreateProject && user);
+    // Guest Mode creates Projects in the sandbox (no Supabase user).
+    const canAddProject = Boolean(canCreateProject && (guest || user));
 
     const goToProject = (nextProjectId: string) => {
         const intent = switchProjectIntent(nextProjectId);
@@ -118,14 +119,14 @@ export function ProjectSwitcher({
             </DropdownMenu>
 
             {/* Mounted only while open — the dialog loads GitHub repos on mount. */}
-            {user && canAddProject && !isProjectCapReached && isAddOpen ? (
+            {canAddProject && !isProjectCapReached && isAddOpen ? (
                 <AddProjectDialog
                     accessToken={githubAccessToken}
                     connectedProjects={teamProjects}
                     onOpenChange={setIsAddOpen}
                     open={isAddOpen}
                     teamId={teamId}
-                    userId={user.id}
+                    userId={user?.id ?? null}
                 />
             ) : null}
         </>

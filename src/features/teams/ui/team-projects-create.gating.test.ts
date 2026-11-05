@@ -21,10 +21,14 @@ describe("Team projects create affordance seam", () => {
         expect(page).toMatch(/teamId=\{teamId\}/);
         expect(page).toMatch(/addProject/);
         expect(page).toMatch(
-            /user\s*&&\s*canCreateProject\s*&&\s*!isProjectCapReached\s*\?\s*\(\s*<AddProjectDialog/
+            /canAddProject\s*&&\s*!isProjectCapReached\s*\?\s*\(\s*<AddProjectDialog/
         );
         expect(page).not.toMatch(
             /user\s*&&\s*githubAccessToken\s*&&\s*canCreateProject/
+        );
+        // Guest Mode creates Projects in the sandbox (ADR 0035, #333).
+        expect(page).toMatch(
+            /canAddProject = Boolean\(canCreateProject && \(guest \|\| user\)\)/
         );
     });
 

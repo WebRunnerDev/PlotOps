@@ -64,6 +64,7 @@ export function useCreateProject() {
             const payload =
                 input.mode === "github"
                     ? buildGitHubCreateProjectInput({
+                          isGuest: isGuest(),
                           name: input.name,
                           repos: input.repos,
                           teamId: input.teamId,

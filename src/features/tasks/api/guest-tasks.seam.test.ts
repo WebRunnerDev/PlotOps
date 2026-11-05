@@ -909,7 +909,6 @@ describe("guest tasks provider happy path", () => {
         updateGuestSandbox((current) => {
             current.boards.push({
                 allowedHeadPatterns: [],
-                baseBranch: "main",
                 columns: board.columns.map((column) => ({ ...column })),
                 defaultTaskType: "task",
                 id: extraBoardId,
@@ -917,6 +916,9 @@ describe("guest tasks provider happy path", () => {
                 name: "Frontend",
                 position: 1,
                 projectId: board.projectId,
+                repositoryBaseBranches: board.repositoryBaseBranches.map(
+                    (entry) => ({ ...entry })
+                ),
             });
         });
 
@@ -955,7 +957,6 @@ describe("guest tasks provider happy path", () => {
         updateGuestSandbox((current) => {
             current.boards.push({
                 allowedHeadPatterns: [],
-                baseBranch: "main",
                 columns: sourceBoard.columns.map((column) => ({ ...column })),
                 defaultTaskType: "task",
                 id: targetBoardId,
@@ -963,6 +964,7 @@ describe("guest tasks provider happy path", () => {
                 name: "Ops",
                 position: 2,
                 projectId: sourceBoard.projectId,
+                repositoryBaseBranches: [],
             });
         });
 
@@ -1006,7 +1008,6 @@ describe("guest tasks provider happy path", () => {
         updateGuestSandbox((current) => {
             current.boards.push({
                 allowedHeadPatterns: [],
-                baseBranch: "main",
                 columns: sourceBoard.columns.map((column) => ({ ...column })),
                 defaultTaskType: "task",
                 id: targetBoardId,
@@ -1014,6 +1015,7 @@ describe("guest tasks provider happy path", () => {
                 name: "Platform",
                 position: 3,
                 projectId: sourceBoard.projectId,
+                repositoryBaseBranches: [],
             });
         });
 
@@ -1053,7 +1055,6 @@ describe("guest tasks provider happy path", () => {
         updateGuestSandbox((current) => {
             current.boards.push({
                 allowedHeadPatterns: [],
-                baseBranch: "main",
                 columns: sourceBoard.columns.map((column) => ({ ...column })),
                 defaultTaskType: "task",
                 id: targetBoardId,
@@ -1061,6 +1062,7 @@ describe("guest tasks provider happy path", () => {
                 name: "Support",
                 position: 4,
                 projectId: sourceBoard.projectId,
+                repositoryBaseBranches: [],
             });
         });
 

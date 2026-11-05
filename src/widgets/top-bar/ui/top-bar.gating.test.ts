@@ -55,7 +55,7 @@ describe("Top bar narrow viewport seam", () => {
     it("Project switcher gates Create project to Owner/Admin and the Project cap", () => {
         const switcher = readUi("project-switcher.tsx");
         expect(switcher).toMatch(
-            /canAddProject = Boolean\(!guest && canCreateProject && user\)/
+            /canAddProject = Boolean\(canCreateProject && \(guest \|\| user\)\)/
         );
         expect(switcher).toMatch(
             /\{canAddProject \? \(\s*<>\s*<DropdownMenuItem[^>]*disabled=\{isProjectCapReached\}/
