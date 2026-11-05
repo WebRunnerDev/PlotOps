@@ -1,12 +1,16 @@
 import type {
     BoardDefaultTaskType,
     BoardMergeTargetMode,
+    BoardRepositoryBaseBranch,
     CreateBoardInput,
     ProjectBoardRecord,
     UpdateBoardPatch,
 } from "@/features/boards/model/types";
 
-import { normalizeBoardDevelopmentPatch } from "@/features/boards/lib/normalize-board-development-patch";
+import {
+    normalizeBoardDevelopmentPatch,
+    normalizeRepositoryBaseBranches,
+} from "@/features/boards/lib/normalize-board-development-patch";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseBoard = {
@@ -68,6 +72,10 @@ export async function createBoard(
         throw new Error("create_board_with_columns returned no board");
     }
 
+    if (isDevelopment && input.repositoryBaseBranches) {
+        await writeRepositoryBaseBranches(row.id, input.repositoryBaseBranches);
+    }
+
     return fetchBoard(row.id);
 }
 
@@ -101,26 +109,24 @@ export async function fetchProjectBoards(
 }
 
 export async function updateBoard(boardId: string, patch: UpdateBoardPatch) {
-    const { base_branch: baseBranch, ...boardPatch } = {
+    const { repository_base_branches: baseBranches, ...boardPatch } = {
         ...patch,
         ...normalizeBoardDevelopmentPatch(patch),
     };
 
-    const { error } = await supabase
-        .from("boards")
-        .update(boardPatch)
-        .eq("id", boardId);
+    if (Object.keys(boardPatch).length > 0) {
+        const { error } = await supabase
+            .from("boards")
+            .update(boardPatch)
+            .eq("id", boardId);
 
-    if (error) throw error;
+        if (error) throw error;
+    }
 
-    // Rows exist only on a Development Board (seeded by trigger on enable).
-    if (baseBranch) {
-        const { error: baseError } = await supabase
-            .from("board_repositories")
-            .update({ base_branch: baseBranch })
-            .eq("board_id", boardId);
-
-        if (baseError) throw baseError;
+    // Turning Development off already cleared the rows (trigger); turning it
+    // on seeded one per Repository, so the values below land on those rows.
+    if (patch.is_development !== false && baseBranches) {
+        await writeRepositoryBaseBranches(boardId, baseBranches);
     }
 
     return fetchBoard(boardId);
@@ -173,4 +179,23 @@ function toMergeTarget(
         mergeTargetColumnId: mode === "column" ? columnId : null,
         mergeTargetMode: mode as BoardMergeTargetMode,
     };
+}
+
+/** Sets the Base branch of each listed Board × Repository row. */
+async function writeRepositoryBaseBranches(
+    boardId: string,
+    entries: readonly BoardRepositoryBaseBranch[]
+) {
+    const results = await Promise.all(
+        normalizeRepositoryBaseBranches(entries).map((entry) =>
+            supabase
+                .from("board_repositories")
+                .update({ base_branch: entry.baseBranch })
+                .eq("board_id", boardId)
+                .eq("repository_id", entry.repositoryId)
+        )
+    );
+
+    const failed = results.find((result) => result.error);
+    if (failed?.error) throw failed.error;
 }

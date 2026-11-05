@@ -30,8 +30,12 @@ describe("CI/CD no-repo gate seam (#176)", () => {
         const settings = read(
             "src/routes/(main)/projects/$projectId/settings.tsx"
         );
-        expect(settings).toMatch(/resolveProjectConnectHash/);
-        expect(settings).toMatch(/settings\.repository\.connect/);
+        const repositories = read(
+            "src/features/projects/ui/project-repositories-settings.tsx"
+        );
+        expect(settings).toMatch(/ProjectRepositoriesSettings/);
         expect(settings).toMatch(/projectHasGithubRepo/);
+        expect(repositories).toMatch(/resolveProjectConnectHash/);
+        expect(repositories).toMatch(/settings\.repository\.connect/);
     });
 });

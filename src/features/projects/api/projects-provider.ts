@@ -6,14 +6,20 @@ import type {
 
 /**
  * Narrow Projects data seam for Guest vs Supabase resolution.
- * Happy-path reads for board navigation; Guest create/delete/connect stay blocked.
+ * Happy-path reads for board navigation; Guest create/delete and Repository
+ * link/unlink stay blocked.
  */
 export type ProjectsProvider = {
-    connectProjectGithub(
+    addProjectRepository(
         projectId: string,
         patch: ConnectProjectGithubPatch
     ): Promise<{
         data: null | Project;
+        error: Error | null;
+    }>;
+    /** Tasks with a Git link to this Repository — shown before unlinking. */
+    countRepositoryGitLinks(repositoryId: string): Promise<{
+        data: null | number;
         error: Error | null;
     }>;
     createProject(input: CreateProjectInput): Promise<{
@@ -34,6 +40,10 @@ export type ProjectsProvider = {
     }>;
     fetchProjectsByTeam(teamId: string): Promise<{
         data: null | Project[];
+        error: Error | null;
+    }>;
+    removeProjectRepository(repositoryId: string): Promise<{
+        data: null | { id: string };
         error: Error | null;
     }>;
 };

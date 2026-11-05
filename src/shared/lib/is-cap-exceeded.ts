@@ -1,5 +1,9 @@
-/** Hints raised by the cap triggers in `*_membership_and_project_caps.sql`. */
+/**
+ * Hints raised by the cap triggers in `*_membership_and_project_caps.sql`
+ * and `*_multi_repo_schema.sql` (Repository cap, ADR 0035).
+ */
 const CAP_HINTS = [
+    "project_repositories_cap",
     "team_memberships_cap",
     "team_projects_cap",
     "teams_owned_cap",

@@ -121,8 +121,10 @@ describe("guest boards provider happy path", () => {
         expect(board.allowedHeadPatterns).toEqual([]);
 
         await provider.updateBoard(board.id, {
-            base_branch: "main",
             is_development: true,
+            repository_base_branches: [
+                { baseBranch: "main", repositoryId: `${projectId}:repo` },
+            ],
         });
         const asDevelopment = await provider.fetchBoard(board.id);
         expect(asDevelopment.isDevelopment).toBe(true);

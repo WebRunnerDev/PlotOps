@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, ExternalLink, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
     BoardDefaultTaskType,
     BoardMergeTargetMode,
+    BoardRepositoryBaseBranch,
+    BoardSettingsRepository,
     UpdateBoardPatch,
 } from "@/features/boards/model/types";
 
@@ -59,21 +61,25 @@ import {
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 import { Textarea } from "@/shared/shadcn/ui/textarea";
 
+type BaseBranchDraft = Record<string, string>;
+
 type ProjectBoardsSettingsProperties = {
-    defaultBaseBranch?: string;
     projectId: string;
+    /**
+     * The Project's Repositories, oldest first. Development settings (Base
+     * branch per Repository + Allowed head patterns) show only when non-empty.
+     */
+    repositories?: readonly BoardSettingsRepository[];
     showAutoAssignToCreator?: boolean;
-    /** Base branch + allowed head patterns — only meaningful with a linked GitHub repo. */
-    showGitBranchSettings?: boolean;
 };
 
 export function ProjectBoardsSettings({
-    defaultBaseBranch = "main",
     projectId,
+    repositories = [],
     showAutoAssignToCreator = false,
-    showGitBranchSettings = false,
 }: ProjectBoardsSettingsProperties) {
     const { t } = useTranslation("board");
+    const showGitBranchSettings = repositories.length > 0;
     const navigate = useNavigate();
     const {
         data: boards = [],
@@ -95,7 +101,9 @@ export function ProjectBoardsSettings({
     const [newIsDevelopment, setNewIsDevelopment] = useState(
         showGitBranchSettings
     );
-    const [newBaseBranch, setNewBaseBranch] = useState(defaultBaseBranch);
+    const [newBaseBranches, setNewBaseBranches] = useState<BaseBranchDraft>(
+        () => toBaseBranchDraft(repositories, [])
+    );
     const [expandedId, setExpandedId] = useState<null | string>(null);
 
     const { data: hasTasks, isLoading: isCheckingTasks } = useQuery({
@@ -116,20 +124,22 @@ export function ProjectBoardsSettings({
     const openCreate = () => {
         setNewName("");
         setNewIsDevelopment(showGitBranchSettings);
-        setNewBaseBranch(defaultBaseBranch);
+        setNewBaseBranches(toBaseBranchDraft(repositories, []));
         setCreateOpen(true);
     };
 
     const handleCreate = async () => {
         const isDevelopment = showGitBranchSettings && newIsDevelopment;
         await createBoard(newName.trim() || t("boards.defaultNewName"), {
-            baseBranch: isDevelopment ? newBaseBranch.trim() : undefined,
             isDevelopment,
+            repositoryBaseBranches: isDevelopment
+                ? fromBaseBranchDraft(repositories, newBaseBranches)
+                : undefined,
         });
         setCreateOpen(false);
         setNewName("");
         setNewIsDevelopment(showGitBranchSettings);
-        setNewBaseBranch(defaultBaseBranch);
+        setNewBaseBranches(toBaseBranchDraft(repositories, []));
         toast.success(t("boards.created"));
     };
 
@@ -183,7 +193,7 @@ export function ProjectBoardsSettings({
                             initialAutoAssignToCreator={
                                 board.autoAssignToCreator
                             }
-                            initialBase={board.baseBranch ?? ""}
+                            initialBaseBranches={board.repositoryBaseBranches}
                             initialDefaultTaskType={board.defaultTaskType}
                             initialIsDevelopment={board.isDevelopment}
                             initialMergeTargetColumnId={
@@ -202,8 +212,8 @@ export function ProjectBoardsSettings({
                                 toast.success(t("boards.saved"));
                             }}
                             projectId={projectId}
+                            repositories={repositories}
                             showAutoAssignToCreator={showAutoAssignToCreator}
-                            showGitBranchSettings={showGitBranchSettings}
                         />
                     ))}
                 </ul>
@@ -257,25 +267,17 @@ export function ProjectBoardsSettings({
                                     </div>
                                 </div>
                                 {newIsDevelopment ? (
-                                    <div className="flex flex-col gap-1.5">
-                                        <Label htmlFor="settings-board-base">
-                                            {t("boards.baseBranch")}
-                                        </Label>
-                                        <Input
-                                            className="font-mono text-sm"
-                                            id="settings-board-base"
-                                            onChange={(event) =>
-                                                setNewBaseBranch(
-                                                    event.target.value
-                                                )
-                                            }
-                                            placeholder="main"
-                                            value={newBaseBranch}
-                                        />
-                                        <p className="text-meta text-muted-foreground">
-                                            {t("boards.baseBranchHint")}
-                                        </p>
-                                    </div>
+                                    <RepositoryBaseBranchFields
+                                        idPrefix="settings-board-base"
+                                        onChange={(repositoryId, value) =>
+                                            setNewBaseBranches((current) => ({
+                                                ...current,
+                                                [repositoryId]: value,
+                                            }))
+                                        }
+                                        repositories={repositories}
+                                        values={newBaseBranches}
+                                    />
                                 ) : undefined}
                             </>
                         ) : undefined}
@@ -292,7 +294,10 @@ export function ProjectBoardsSettings({
                                 isCreating ||
                                 (showGitBranchSettings &&
                                     newIsDevelopment &&
-                                    !newBaseBranch.trim())
+                                    hasBlankBaseBranch(
+                                        repositories,
+                                        newBaseBranches
+                                    ))
                             }
                             onClick={() => void handleCreate()}
                             type="button"
@@ -382,7 +387,7 @@ function BoardSettingsCard({
     expanded,
     initialAllowed,
     initialAutoAssignToCreator,
-    initialBase,
+    initialBaseBranches,
     initialDefaultTaskType,
     initialIsDevelopment,
     initialMergeTargetColumnId,
@@ -393,15 +398,15 @@ function BoardSettingsCard({
     onExpandedChange,
     onSave,
     projectId,
+    repositories,
     showAutoAssignToCreator,
-    showGitBranchSettings,
 }: {
     boardId: string;
     canDelete: boolean;
     expanded: boolean;
     initialAllowed: string;
     initialAutoAssignToCreator: boolean;
-    initialBase: string;
+    initialBaseBranches: readonly BoardRepositoryBaseBranch[];
     initialDefaultTaskType: BoardDefaultTaskType;
     initialIsDevelopment: boolean;
     initialMergeTargetColumnId: null | string;
@@ -412,13 +417,23 @@ function BoardSettingsCard({
     onExpandedChange: (open: boolean) => void;
     onSave: (patch: UpdateBoardPatch) => Promise<void>;
     projectId: string;
+    repositories: readonly BoardSettingsRepository[];
     showAutoAssignToCreator: boolean;
-    showGitBranchSettings: boolean;
 }) {
     const { t } = useTranslation("board");
+    const showGitBranchSettings = repositories.length > 0;
+    // Keyed by value, not identity: a Board refetch must not reset the draft.
+    const initialBaseKey = JSON.stringify(
+        toBaseBranchDraft(repositories, initialBaseBranches)
+    );
+    const initialBase = useMemo(
+        () => JSON.parse(initialBaseKey) as BaseBranchDraft,
+        [initialBaseKey]
+    );
     const [name, setName] = useState(initialName);
     const [isDevelopment, setIsDevelopment] = useState(initialIsDevelopment);
-    const [baseBranch, setBaseBranch] = useState(initialBase);
+    const [baseBranches, setBaseBranches] =
+        useState<BaseBranchDraft>(initialBase);
     const [defaultTaskType, setDefaultTaskType] = useState(
         initialDefaultTaskType
     );
@@ -435,7 +450,7 @@ function BoardSettingsCard({
     useEffect(() => {
         setName(initialName);
         setIsDevelopment(initialIsDevelopment);
-        setBaseBranch(initialBase);
+        setBaseBranches(initialBase);
         setDefaultTaskType(initialDefaultTaskType);
         setAutoAssignToCreator(initialAutoAssignToCreator);
         setAllowedRaw(initialAllowed);
@@ -475,7 +490,12 @@ function BoardSettingsCard({
     const dirty =
         name.trim() !== initialName ||
         (showGitBranchSettings && isDevelopment !== initialIsDevelopment) ||
-        (showDevelopmentFields && baseBranch.trim() !== initialBase) ||
+        (showDevelopmentFields &&
+            repositories.some(
+                (repository) =>
+                    (baseBranches[repository.id] ?? "").trim() !==
+                    (initialBase[repository.id] ?? "")
+            )) ||
         defaultTaskType !== initialDefaultTaskType ||
         (showAutoAssignToCreator &&
             autoAssignToCreator !== initialAutoAssignToCreator) ||
@@ -484,8 +504,9 @@ function BoardSettingsCard({
                 parseAllowedHeadPatterns(initialAllowed).join("\n")) ||
         (showDevelopmentFields && mergeTarget !== initialMergeTarget);
 
+    const branchSummary = summarizeBaseBranches(repositories, baseBranches);
     const branchTone =
-        baseBranch.trim() === "main" || baseBranch.trim() === "master"
+        branchSummary === "main" || branchSummary === "master"
             ? "border-transparent bg-emerald-500/20 text-emerald-400"
             : "border-transparent bg-sky-500/20 text-sky-400";
 
@@ -526,20 +547,15 @@ function BoardSettingsCard({
                                 )}
                                 variant="secondary"
                             >
-                                {baseBranch.trim() || "—"}
+                                {branchSummary || "—"}
                             </Badge>
                         ) : undefined}
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
                         <div className="flex flex-col gap-4 border-t border-border px-3.5 py-4">
-                            <div
-                                className={cn(
-                                    "grid gap-3",
-                                    showDevelopmentFields && "sm:grid-cols-2"
-                                )}
-                            >
-                                <div className="flex flex-col gap-1.5">
+                            <div className="grid gap-3">
+                                <div className="flex flex-col gap-1.5 sm:max-w-sm">
                                     <Label htmlFor={`board-name-${boardId}`}>
                                         {t("boards.name")}
                                     </Label>
@@ -552,26 +568,17 @@ function BoardSettingsCard({
                                     />
                                 </div>
                                 {showDevelopmentFields ? (
-                                    <div className="flex flex-col gap-1.5">
-                                        <Label
-                                            htmlFor={`board-base-${boardId}`}
-                                        >
-                                            {t("boards.baseBranch")}
-                                        </Label>
-                                        <Input
-                                            className="font-mono text-sm"
-                                            id={`board-base-${boardId}`}
-                                            onChange={(event) =>
-                                                setBaseBranch(
-                                                    event.target.value
-                                                )
-                                            }
-                                            value={baseBranch}
-                                        />
-                                        <p className="text-meta text-muted-foreground">
-                                            {t("boards.baseBranchHint")}
-                                        </p>
-                                    </div>
+                                    <RepositoryBaseBranchFields
+                                        idPrefix={`board-base-${boardId}`}
+                                        onChange={(repositoryId, value) =>
+                                            setBaseBranches((current) => ({
+                                                ...current,
+                                                [repositoryId]: value,
+                                            }))
+                                        }
+                                        repositories={repositories}
+                                        values={baseBranches}
+                                    />
                                 ) : undefined}
                             </div>
 
@@ -584,9 +591,12 @@ function BoardSettingsCard({
                                         onCheckedChange={(checked) => {
                                             const next = checked === true;
                                             setIsDevelopment(next);
-                                            if (next && !baseBranch.trim()) {
-                                                setBaseBranch(
-                                                    initialBase || "main"
+                                            if (next) {
+                                                setBaseBranches((current) =>
+                                                    fillBlankBaseBranches(
+                                                        repositories,
+                                                        current
+                                                    )
                                                 );
                                             }
                                         }}
@@ -766,7 +776,10 @@ function BoardSettingsCard({
                                         isSaving ||
                                         !name.trim() ||
                                         (showDevelopmentFields &&
-                                            !baseBranch.trim())
+                                            hasBlankBaseBranch(
+                                                repositories,
+                                                baseBranches
+                                            ))
                                     }
                                     onClick={() =>
                                         void onSave({
@@ -777,9 +790,12 @@ function BoardSettingsCard({
                                                               parseAllowedHeadPatterns(
                                                                   allowedRaw
                                                               ),
-                                                          base_branch:
-                                                              baseBranch.trim(),
                                                           is_development: true,
+                                                          repository_base_branches:
+                                                              fromBaseBranchDraft(
+                                                                  repositories,
+                                                                  baseBranches
+                                                              ),
                                                           ...fromMergeTargetValue(
                                                               mergeTarget
                                                           ),
@@ -809,6 +825,135 @@ function BoardSettingsCard({
                 </div>
             </Collapsible>
         </li>
+    );
+}
+
+function fillBlankBaseBranches(
+    repositories: readonly BoardSettingsRepository[],
+    draft: BaseBranchDraft
+): BaseBranchDraft {
+    return Object.fromEntries(
+        repositories.map((repository) => [
+            repository.id,
+            draft[repository.id]?.trim() || repository.defaultBranch,
+        ])
+    );
+}
+
+function fromBaseBranchDraft(
+    repositories: readonly BoardSettingsRepository[],
+    draft: BaseBranchDraft
+): BoardRepositoryBaseBranch[] {
+    return repositories.map((repository) => ({
+        baseBranch: (draft[repository.id] ?? "").trim(),
+        repositoryId: repository.id,
+    }));
+}
+
+function hasBlankBaseBranch(
+    repositories: readonly BoardSettingsRepository[],
+    draft: BaseBranchDraft
+): boolean {
+    return repositories.some(
+        (repository) => !(draft[repository.id] ?? "").trim()
+    );
+}
+
+/**
+ * Base branch inputs, one per Repository. A single Repository keeps the
+ * one-field look; several get the Repository name as each field's label.
+ */
+function RepositoryBaseBranchFields({
+    idPrefix,
+    onChange,
+    repositories,
+    values,
+}: {
+    idPrefix: string;
+    onChange: (repositoryId: string, value: string) => void;
+    repositories: readonly BoardSettingsRepository[];
+    values: BaseBranchDraft;
+}) {
+    const { t } = useTranslation("board");
+    const single = repositories.length === 1;
+
+    return (
+        <fieldset className="flex min-w-0 flex-col gap-1.5">
+            <legend className="mb-1.5 text-sm leading-none font-medium">
+                {t("boards.baseBranch")}
+            </legend>
+            <div className={cn("grid gap-2", !single && "sm:grid-cols-2")}>
+                {repositories.map((repository) => {
+                    const id = `${idPrefix}-${repository.id}`;
+                    return (
+                        <div
+                            className="flex min-w-0 flex-col gap-1"
+                            key={repository.id}
+                        >
+                            {single ? undefined : (
+                                <Label
+                                    className="min-w-0 truncate font-mono text-meta font-normal normal-case text-muted-foreground"
+                                    htmlFor={id}
+                                >
+                                    {repository.fullName}
+                                </Label>
+                            )}
+                            <Input
+                                aria-label={
+                                    single
+                                        ? t("boards.baseBranch")
+                                        : t("boards.baseBranchFor", {
+                                              repository: repository.fullName,
+                                          })
+                                }
+                                className="font-mono text-sm"
+                                id={id}
+                                onChange={(event) =>
+                                    onChange(repository.id, event.target.value)
+                                }
+                                placeholder={repository.defaultBranch}
+                                value={values[repository.id] ?? ""}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+            <p className="text-meta text-muted-foreground">
+                {single
+                    ? t("boards.baseBranchHint")
+                    : t("boards.baseBranchPerRepositoryHint")}
+            </p>
+        </fieldset>
+    );
+}
+
+/** Distinct Base branches in Repository order, e.g. `main · develop`. */
+function summarizeBaseBranches(
+    repositories: readonly BoardSettingsRepository[],
+    draft: BaseBranchDraft
+): string {
+    const branches = repositories
+        .map((repository) => (draft[repository.id] ?? "").trim())
+        .filter(Boolean);
+    return [...new Set(branches)].join(" · ");
+}
+
+/**
+ * Draft per Repository: the stored Base branch, else the Repository's default
+ * branch (what the trigger seeds when the Board becomes a Development Board).
+ */
+function toBaseBranchDraft(
+    repositories: readonly BoardSettingsRepository[],
+    stored: readonly BoardRepositoryBaseBranch[]
+): BaseBranchDraft {
+    const byRepository = new Map(
+        stored.map((entry) => [entry.repositoryId, entry.baseBranch])
+    );
+    return Object.fromEntries(
+        repositories.map((repository) => [
+            repository.id,
+            byRepository.get(repository.id) ?? repository.defaultBranch,
+        ])
     );
 }
 

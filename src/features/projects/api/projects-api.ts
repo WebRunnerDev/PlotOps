@@ -45,8 +45,12 @@ const PROJECT_SELECT = `
   )
 `;
 
-/** Attach a GitHub repo to a name-only Project (no Repository linked yet). */
-export async function connectProjectGithub(
+/**
+ * Link a GitHub repository to a Project (Admin+, ADR 0035). The cap and the
+ * Team-wide uniqueness are enforced in Postgres; the first Repository also
+ * sets the Project's visibility, as creating a Project from a repo does.
+ */
+export async function addProjectRepository(
     projectId: string,
     patch: ConnectProjectGithubPatch
 ) {
@@ -54,12 +58,10 @@ export async function connectProjectGithub(
 
     const existing = await fetchProject(projectId);
     if (existing.error) return { data: null, error: existing.error };
-    if (!existing.data || existing.data.repositories.length > 0) {
+    if (!existing.data) {
         return {
             data: null,
-            error: new Error(
-                "Project not found, already connected, or update not permitted"
-            ),
+            error: new Error("Project not found or update not permitted"),
         };
     }
 
@@ -73,11 +75,13 @@ export async function connectProjectGithub(
         });
     if (insertError) return { data: null, error: insertError };
 
-    const { error: updateError } = await supabase
-        .from("projects")
-        .update({ is_private: isPrivate })
-        .eq("id", projectId);
-    if (updateError) return { data: null, error: updateError };
+    if (existing.data.repositories.length === 0) {
+        const { error: updateError } = await supabase
+            .from("projects")
+            .update({ is_private: isPrivate })
+            .eq("id", projectId);
+        if (updateError) return { data: null, error: updateError };
+    }
 
     const result = await fetchProject(projectId);
     if (result.error) return { data: null, error: result.error };
@@ -85,6 +89,17 @@ export async function connectProjectGithub(
         return { data: null, error: new Error("Project not found") };
     }
     return { data: result.data, error: null };
+}
+
+/** Tasks holding a Git link to this Repository (≤1 Git link per Task per Repository). */
+export async function countRepositoryGitLinks(repositoryId: string) {
+    const { count, error } = await supabase
+        .from("task_git_links")
+        .select("task_id", { count: "exact", head: true })
+        .eq("repository_id", repositoryId);
+
+    if (error) return { data: null, error };
+    return { data: count ?? 0, error: null };
 }
 
 export async function createProject(input: CreateProjectInput) {
@@ -184,6 +199,28 @@ export async function fetchProjectsByTeam(teamId: string) {
             ? result.data.map((row) => mapProject(row as ProjectRow))
             : result.data,
     };
+}
+
+/**
+ * Unlink a Repository (Admin+). Its Git links cascade, and a trigger records
+ * the loss in each affected Task's activity. Nothing on GitHub is touched.
+ */
+export async function removeProjectRepository(repositoryId: string) {
+    const { data, error } = await supabase
+        .from("project_repositories")
+        .delete()
+        .eq("id", repositoryId)
+        .select("id")
+        .maybeSingle();
+
+    if (error) return { data: null, error };
+    if (!data) {
+        return {
+            data: null,
+            error: new Error("Repository not found or unlink not permitted"),
+        };
+    }
+    return { data, error: null };
 }
 
 export function slugifyRepoName(name: string): string {

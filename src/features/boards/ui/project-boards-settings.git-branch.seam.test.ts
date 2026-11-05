@@ -11,7 +11,7 @@ function read(relativePath: string) {
 }
 
 describe("ProjectBoardsSettings git-branch gate", () => {
-    it("hides base branch and allowed patterns unless GitHub repo is linked", () => {
+    it("hides Base branches and allowed patterns unless the Project has a Repository", () => {
         const settingsUi = read(
             "features/boards/ui/project-boards-settings.tsx"
         );
@@ -19,7 +19,9 @@ describe("ProjectBoardsSettings git-branch gate", () => {
             "routes/(main)/projects/$projectId/settings.tsx"
         );
 
-        expect(settingsUi).toMatch(/showGitBranchSettings/);
+        expect(settingsUi).toMatch(
+            /showGitBranchSettings\s*=\s*repositories\.length\s*>\s*0/
+        );
         expect(settingsUi).toMatch(
             /showGitBranchSettings\s*\?\s*[\s\S]*boards\.baseBranch/
         );
@@ -29,7 +31,7 @@ describe("ProjectBoardsSettings git-branch gate", () => {
 
         expect(settingsRoute).toMatch(/projectHasGithubRepo/);
         expect(settingsRoute).toMatch(
-            /showGitBranchSettings=\{[\s\S]*repoLinked/
+            /repositories=\{\s*repoLinked\s*\?\s*boardRepositories\s*:\s*\[\]/
         );
     });
 });

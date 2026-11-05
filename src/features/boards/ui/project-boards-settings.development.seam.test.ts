@@ -20,7 +20,7 @@ describe("ProjectBoardsSettings Development Board", () => {
         expect(source).toMatch(/is_development:\s*true/);
         expect(source).toMatch(/is_development:\s*false/);
         expect(source).toMatch(
-            /showDevelopmentFields\s*&&\s*!baseBranch\.trim\(\)/
+            /showDevelopmentFields\s*&&\s*hasBlankBaseBranch\(/
         );
         expect(en).toMatch(/"isDevelopment"/);
         expect(en).toMatch(/"isDevelopmentHint"/);
