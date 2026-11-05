@@ -7,9 +7,9 @@ describe("canFetchProjectBuilds", () => {
         expect(
             canFetchProjectBuilds({
                 githubAccessToken: null,
-                githubRepoId: 999_000_001,
                 isGuest: true,
                 projectId: "proj-demo",
+                repositoryCount: 1,
             })
         ).toBe(true);
     });
@@ -18,18 +18,18 @@ describe("canFetchProjectBuilds", () => {
         expect(
             canFetchProjectBuilds({
                 githubAccessToken: null,
-                githubRepoId: 1,
                 isGuest: false,
                 projectId: "proj-demo",
+                repositoryCount: 1,
             })
         ).toBe(false);
 
         expect(
             canFetchProjectBuilds({
                 githubAccessToken: "ghp_test",
-                githubRepoId: 1,
                 isGuest: false,
                 projectId: "proj-demo",
+                repositoryCount: 1,
             })
         ).toBe(true);
     });
@@ -38,29 +38,29 @@ describe("canFetchProjectBuilds", () => {
         expect(
             canFetchProjectBuilds({
                 githubAccessToken: "ghp_test",
-                githubRepoId: 1,
                 isGuest: true,
                 projectId: "",
+                repositoryCount: 1,
             })
         ).toBe(false);
     });
 
-    it("stays off when the Project has no github_repo_id (name-only)", () => {
+    it("stays off when the Project has no Repository (name-only)", () => {
         expect(
             canFetchProjectBuilds({
                 githubAccessToken: "ghp_test",
-                githubRepoId: null,
                 isGuest: false,
                 projectId: "proj-plain",
+                repositoryCount: 0,
             })
         ).toBe(false);
 
         expect(
             canFetchProjectBuilds({
                 githubAccessToken: null,
-                githubRepoId: undefined,
                 isGuest: true,
                 projectId: "proj-plain",
+                repositoryCount: 0,
             })
         ).toBe(false);
     });

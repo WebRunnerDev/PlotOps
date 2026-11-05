@@ -11,19 +11,20 @@ function read(relativePath: string) {
 }
 
 describe("CI/CD no-repo gate seam (#176)", () => {
-    it("passes github_repo_id into canFetchProjectBuilds and useProjectBuilds", () => {
+    it("gates CI/CD on the Project's Repositories, not github_repo_id", () => {
         const page = read("src/features/ci-cd/ui/ci-cd-page.tsx");
         const hook = read("src/features/ci-cd/model/use-project-builds.ts");
 
-        expect(page).toMatch(/projectHasGithubRepo/);
+        expect(page).toMatch(/hasRepositories/);
+        expect(page).toMatch(/project\?\.repositories/);
         expect(page).toMatch(/cicd\.connectRepo/);
         expect(page).toMatch(/resolveProjectConnectHash/);
         expect(page).toMatch(/to=["']\/projects\/\$projectId\/settings["']/);
-        expect(page).toMatch(
-            /useProjectBuilds\(\s*projectId,\s*project\?\.github_repo_id/
+        expect(page).toMatch(/useProjectBuilds\(\s*projectId,\s*repositories/);
+        expect(page).not.toMatch(/github_repo_id/);
+        expect(hook).toMatch(
+            /canFetchProjectBuilds\(\{[\s\S]*repositoryCount: repositories\.length/
         );
-        expect(hook).toMatch(/githubRepoId/);
-        expect(hook).toMatch(/canFetchProjectBuilds\(\{[\s\S]*githubRepoId/);
     });
 
     it("anchors project settings connect section for Git/CI deep-links", () => {

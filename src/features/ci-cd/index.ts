@@ -1,6 +1,5 @@
 export {
     CiCdMissingTokenError,
-    CiCdProjectError,
     CiCdUnauthorizedError,
     githubActionsBuilds,
 } from "./api/github-actions-builds";
