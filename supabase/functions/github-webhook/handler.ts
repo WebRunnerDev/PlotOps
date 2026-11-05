@@ -17,6 +17,7 @@ import { createSlidingWindowRateLimiter } from "../_shared/sliding-window-rate-l
 import {
     syncClosedPullRequest,
     syncMergedPullRequest,
+    syncOpenedPullRequest,
     syncReopenedPullRequest,
 } from "./sync.ts";
 import { verifyGitHubSignature } from "./verify-signature.ts";
@@ -195,7 +196,19 @@ export function createWebhookHandler(
                 payload,
                 log
             );
-            return json(reopenResult);
+            if (
+                !reopenResult.skipped ||
+                reopenResult.reason !== "not_reopened_pr"
+            ) {
+                return json(reopenResult);
+            }
+
+            const openResult = await syncOpenedPullRequest(
+                supabase,
+                payload,
+                log
+            );
+            return json(openResult);
         } catch (error) {
             console.error(
                 JSON.stringify({

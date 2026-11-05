@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
     type CandidateTask,
     extractTaskKeyFromBranch,
-    isAlreadySynced,
     matchTask,
     normalizeBranchName,
     pickLastColumnId,
+    planGitLinkBinding,
 } from "./match-task";
 
 function task(
@@ -65,8 +65,8 @@ describe("matchTask", () => {
             matchTask(tasks, {
                 headRef: "feature/TASK-9-other",
                 prNumber: 7,
-            })?.id
-        ).toBe("a");
+            })
+        ).toMatchObject({ by: "pr", task: { id: "a" } });
     });
 
     it("matches by branch_name when pr is unset", () => {
@@ -74,8 +74,8 @@ describe("matchTask", () => {
             matchTask(tasks, {
                 headRef: "feature/TASK-8-auth",
                 prNumber: 99,
-            })?.id
-        ).toBe("b");
+            })
+        ).toMatchObject({ by: "branch", task: { id: "b" } });
     });
 
     it("matches by task_key in head as last resort", () => {
@@ -83,8 +83,8 @@ describe("matchTask", () => {
             matchTask(tasks, {
                 headRef: "feature/TASK-9-slug",
                 prNumber: 99,
-            })?.id
-        ).toBe("c");
+            })
+        ).toMatchObject({ by: "task_key", task: { id: "c" } });
     });
 
     it("ignores archived tasks", () => {
@@ -118,19 +118,72 @@ describe("pickLastColumnId", () => {
     });
 });
 
-describe("isAlreadySynced", () => {
-    it("is true when status is last column and pr is merged", () => {
+describe("matchTask across Repositories", () => {
+    // Candidates carry only the Git link to the delivering Repository, so the
+    // same PR number in another Repository is invisible here.
+    const webTasks = [
+        task({ id: "web-task", pr_number: 12, task_key: "TASK-1" }),
+        task({ id: "api-task", task_key: "TASK-2" }),
+    ];
+    const apiTasks = [
+        task({ id: "web-task", task_key: "TASK-1" }),
+        task({ id: "api-task", pr_number: 12, task_key: "TASK-2" }),
+    ];
+
+    it("maps equal PR numbers in two Repositories to different Tasks", () => {
+        const input = { headRef: "feature/no-key", prNumber: 12 };
+        expect(matchTask(webTasks, input)?.task.id).toBe("web-task");
+        expect(matchTask(apiTasks, input)?.task.id).toBe("api-task");
+    });
+});
+
+describe("planGitLinkBinding", () => {
+    it("is linked when the PR number matched", () => {
         expect(
-            isAlreadySynced(
-                task({ id: "x", pr_state: "merged", status: "done" }),
-                "done"
-            )
-        ).toBe(true);
+            planGitLinkBinding({
+                by: "pr",
+                task: task({ id: "x", pr_number: 7 }),
+            })
+        ).toBe("linked");
+    });
+
+    it("binds a branch-only Git link on the head branch", () => {
         expect(
-            isAlreadySynced(
-                task({ id: "x", pr_state: "open", status: "done" }),
-                "done"
-            )
-        ).toBe(false);
+            planGitLinkBinding({
+                by: "branch",
+                task: task({ branch_name: "feature/TASK-1", id: "x" }),
+            })
+        ).toBe("bind");
+    });
+
+    it("never rebinds a Git link holding another PR", () => {
+        expect(
+            planGitLinkBinding({
+                by: "branch",
+                task: task({
+                    branch_name: "feature/TASK-1",
+                    id: "x",
+                    pr_number: 3,
+                }),
+            })
+        ).toBe("link_conflict");
+        expect(
+            planGitLinkBinding({
+                by: "task_key",
+                task: task({ id: "x", pr_number: 3 }),
+            })
+        ).toBe("link_conflict");
+        expect(
+            planGitLinkBinding({
+                by: "task_key",
+                task: task({ branch_name: "feature/TASK-1-old", id: "x" }),
+            })
+        ).toBe("link_conflict");
+    });
+
+    it("auto-links a task_key match without a Git link", () => {
+        expect(
+            planGitLinkBinding({ by: "task_key", task: task({ id: "x" }) })
+        ).toBe("auto_link");
     });
 });

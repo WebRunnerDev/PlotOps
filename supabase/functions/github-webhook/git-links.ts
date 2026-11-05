@@ -2,6 +2,12 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1
 
 import type { CandidateTask } from "./match-task.ts";
 
+export type GitLinkPrRow = {
+    pr_number: null | number;
+    pr_state: null | string;
+    repository_id: string;
+};
+
 /** A `project_repositories` row a delivery resolved to. */
 export type RepositoryReference = { id: string; project_id: string };
 
@@ -38,15 +44,35 @@ export async function fetchBoardBaseBranch(
     return (data?.base_branch as string | undefined) ?? null;
 }
 
-/** Repositories linked under this full name (one per Team). */
+/**
+ * Every Task Git link with its PR fields — the set merge sync counts
+ * (ADR 0035 «Merge sync waits for all PRs»).
+ */
+export async function fetchTaskGitLinks(
+    supabase: SupabaseClient,
+    taskId: string
+): Promise<GitLinkPrRow[]> {
+    const { data, error } = await supabase
+        .from("task_git_links")
+        .select("repository_id, pr_number, pr_state")
+        .eq("task_id", taskId);
+
+    if (error) throw error;
+    return (data ?? []) as GitLinkPrRow[];
+}
+
+/**
+ * Repositories linked to this GitHub repository id (at most one per Team).
+ * The id survives renames and transfers, unlike `full_name`.
+ */
 export async function findRepositories(
     supabase: SupabaseClient,
-    repoFullName: string
+    githubRepoId: number
 ): Promise<RepositoryReference[]> {
     const { data, error } = await supabase
         .from("project_repositories")
         .select("id, project_id")
-        .eq("github_full_name", repoFullName);
+        .eq("github_repo_id", githubRepoId);
 
     if (error) throw error;
     return (data ?? []) as RepositoryReference[];
@@ -83,7 +109,11 @@ export async function loadCandidateTasks(
     );
 }
 
-/** Create or update the Task's Git link to `repository` with PR fields. */
+/**
+ * Create or update the Task's Git link to `repository` with PR fields.
+ * `branchName` is set only when auto-linking (the link does not exist yet);
+ * an existing link keeps its branch.
+ */
 export async function writeGitLink(
     supabase: SupabaseClient,
     taskId: string,
@@ -92,11 +122,13 @@ export async function writeGitLink(
         pr_number: number;
         pr_state: string;
         pr_url: null | string;
-    }
+    },
+    branchName?: string
 ): Promise<void> {
     const { error } = await supabase.from("task_git_links").upsert(
         {
             ...update,
+            ...(branchName === undefined ? {} : { branch_name: branchName }),
             project_id: repository.project_id,
             repository_id: repository.id,
             task_id: taskId,
