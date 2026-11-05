@@ -25,6 +25,25 @@ describe("AddProjectDialog name-only seam", () => {
     });
 });
 
+describe("AddProjectDialog multi-repo seam (ADR 0035)", () => {
+    it("selects several repos up to the Repository cap in one create call", () => {
+        const dialog = readUi("add-project-dialog.tsx");
+
+        expect(dialog).toMatch(/Checkbox/);
+        expect(dialog).toMatch(/repos:\s*selectedRepos/);
+        expect(dialog).toMatch(/canAddRepositoryToProject/);
+        expect(dialog).toMatch(/PROJECT_REPOSITORIES_CAP/);
+        expect(dialog).toMatch(/defaultProjectNameFromRepos/);
+    });
+
+    it("shows repos already linked in the Team as disabled with a reason", () => {
+        const dialog = readUi("add-project-dialog.tsx");
+
+        expect(dialog).toMatch(/createProjectRepoAlreadyLinked/);
+        expect(dialog).toMatch(/linkedProjectByRepoId/);
+    });
+});
+
 describe("AddProjectDialog collaborator suggest seam", () => {
     it("after GitHub connect with token, opens skippable collaborator suggest step", () => {
         const dialog = readUi("add-project-dialog.tsx");

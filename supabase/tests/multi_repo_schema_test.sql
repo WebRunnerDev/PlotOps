@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(20);
+select plan(24);
 
 select set_config('test.owner', 'f1000000-0000-0000-0000-000000000001', true);
 select set_config('test.contributor', 'f1000000-0000-0000-0000-000000000002', true);
@@ -91,6 +91,50 @@ select is(
   (select team_id from public.project_repositories where github_repo_id = 5001),
   current_setting('test.team')::uuid,
   'team_id is set from the Project'
+);
+
+-- ---------------------------------------------------------------------------
+-- Create Project is atomic: one bad Repository leaves no half-created Project.
+-- ---------------------------------------------------------------------------
+
+select throws_ok(
+  $$select public.create_project_with_repositories(
+      current_setting('test.team')::uuid, 'Half', 'half', null, false,
+      '[
+        {"github_repo_id": 5101, "github_full_name": "o/fresh", "github_html_url": "https://github.com/o/fresh", "github_default_branch": "main"},
+        {"github_repo_id": 5001, "github_full_name": "o/web", "github_html_url": "https://github.com/o/web", "github_default_branch": "main"}
+      ]'::jsonb)$$,
+  '23505',
+  null,
+  'a Repository already linked in the Team rejects the whole create'
+);
+
+select is(
+  (select count(*)::integer from public.projects where team_id = current_setting('test.team')::uuid and slug = 'half')
+  + (select count(*)::integer from public.project_repositories where github_repo_id = 5101),
+  0,
+  'the rejected create leaves neither the Project nor its other Repositories'
+);
+
+select throws_ok(
+  $$select public.create_project_with_repositories(
+      current_setting('test.team')::uuid, 'Too many', 'too-many', null, false,
+      (select jsonb_agg(jsonb_build_object(
+         'github_repo_id', 6000 + n,
+         'github_full_name', 'o/many' || n,
+         'github_html_url', 'https://github.com/o/many' || n,
+         'github_default_branch', 'main'))
+       from generate_series(1, 6) as n))$$,
+  'P0001',
+  null,
+  'creating a Project with more Repositories than the cap is rejected'
+);
+
+select is(
+  (select count(*)::integer from public.projects where team_id = current_setting('test.team')::uuid and slug = 'too-many')
+  + (select count(*)::integer from public.project_repositories where github_repo_id between 6001 and 6006),
+  0,
+  'the over-cap create leaves nothing behind'
 );
 
 -- ---------------------------------------------------------------------------
