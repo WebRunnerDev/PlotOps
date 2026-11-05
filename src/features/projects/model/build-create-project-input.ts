@@ -6,6 +6,7 @@ import type {
 } from "@/features/projects/model/types";
 
 import { slugifyRepoName } from "@/features/projects/api/projects-api";
+import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -18,17 +19,38 @@ export function buildConnectProjectGithubPatch(
     };
 }
 
-export function buildGitHubCreateProjectInput(
-    repo: GitHubRepo,
-    teamId: string
-): CreateProjectInput {
+/**
+ * Create Project from one or more GitHub repos (ADR 0035). The first selected
+ * repo supplies the default name, slug and description; the Project is
+ * private when any selected repo is. The RPC links every Repository in one
+ * transaction — all of them or no Project at all.
+ */
+export function buildGitHubCreateProjectInput(input: {
+    name?: string;
+    repos: readonly GitHubRepo[];
+    teamId: string;
+}): CreateProjectInput {
+    const [first] = input.repos;
+    if (!first) {
+        throw new Error("At least one repository is required");
+    }
+    if (input.repos.length > PROJECT_REPOSITORIES_CAP) {
+        throw new Error(
+            `At most ${PROJECT_REPOSITORIES_CAP} repositories per Project`
+        );
+    }
+
+    const name = input.name?.trim() || first.name;
+
     return {
-        description: repo.description,
-        is_private: repo.private,
-        name: repo.name,
-        repositories: [buildProjectRepositoryInput(repo)],
-        slug: slugifyRepoName(repo.full_name),
-        team_id: teamId,
+        description: first.description,
+        is_private: input.repos.some((repo) => repo.private),
+        name,
+        repositories: input.repos.map((repo) =>
+            buildProjectRepositoryInput(repo)
+        ),
+        slug: slugifyRepoName(first.full_name),
+        team_id: input.teamId,
     };
 }
 
@@ -56,6 +78,13 @@ export function buildProjectRepositoryInput(
         github_html_url: repo.html_url,
         github_repo_id: repo.id,
     };
+}
+
+/** Default Project name for a GitHub create: the first selected repo's name. */
+export function defaultProjectNameFromRepos(
+    repos: readonly GitHubRepo[]
+): string {
+    return repos[0]?.name ?? "";
 }
 
 export function isValidProjectName(name: string): boolean {

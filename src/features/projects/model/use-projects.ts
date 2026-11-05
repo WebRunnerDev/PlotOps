@@ -23,7 +23,9 @@ import { projectKeys } from "./query-keys";
 export type CreateProjectMutationInput =
     | {
           mode: "github";
-          repo: GitHubRepo;
+          /** Overrides the default name taken from `repos[0]`. */
+          name?: string;
+          repos: GitHubRepo[];
           teamId: string;
       }
     | {
@@ -61,7 +63,11 @@ export function useCreateProject() {
         mutationFn: async (input: CreateProjectMutationInput) => {
             const payload =
                 input.mode === "github"
-                    ? buildGitHubCreateProjectInput(input.repo, input.teamId)
+                    ? buildGitHubCreateProjectInput({
+                          name: input.name,
+                          repos: input.repos,
+                          teamId: input.teamId,
+                      })
                     : buildNameOnlyCreateProjectInput({
                           name: input.name,
                           slug: input.slug,
