@@ -952,7 +952,12 @@
             "validation": "GitHub отклонил запрос (правила, существующий review или недопустимое состояние)",
             "rate_limit": "Лимит GitHub — подождите и повторите",
             "unknown": "Запрос к GitHub не удался — попробуйте снова"
-        }
+        },
+        "noPrTag": "нет PR",
+        "unlinkGitLink": "Отвязать {{repository}}",
+        "addGitLink": "Привязать ещё репозиторий",
+        "repository": "Репозиторий",
+        "unknownRepository": "Отвязанный репозиторий"
     },
     "git": {
         "branchLabel": "Ветка:",
@@ -1328,5 +1333,9 @@
             "submit": "Создать задачу",
             "failed": "Не удалось создать задачу."
         }
-    }
+    },
+    "prAggregate": "{{count}} PR",
+    "prAggregateMerged": "{{count}} PR · {{merged}} merged",
+    "prBreakdownLine": "{{repository}}: PR #{{number}} · {{state}}",
+    "prBreakdownNoPr": "{{repository}}: нет PR"
 }

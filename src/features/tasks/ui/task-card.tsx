@@ -26,11 +26,16 @@ import {
     isDeadlineOverdue,
 } from "@/features/tasks/lib/format-deadline";
 import {
+    type TaskPrBadge,
+    taskPrBadge,
+} from "@/features/tasks/lib/task-git-links";
+import {
     PRIORITY_CLASS,
     PRIORITY_RAIL_CLASS,
     TASK_TYPE_ICON_CLASS,
 } from "@/features/tasks/model/constants";
 import { EpicBadge } from "@/features/tasks/ui/epic-badge";
+import { useTaskRepositoryNames } from "@/features/tasks/ui/task-repository-names";
 import { TASK_TYPE_ICON } from "@/features/tasks/ui/task-type-icon";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
@@ -93,7 +98,14 @@ export function TaskCard({
     const shared = task.branchName ? isSharedBranch(task.branchName) : false;
     const TypeIcon = TASK_TYPE_ICON[task.type];
     const typeLabel = t(`taskType.${task.type}`);
-    const PrIcon = task.pr ? PR_STATE_ICON[task.pr.state] : undefined;
+    const prBadge = taskPrBadge(task);
+    const PrIcon =
+        prBadge?.kind === "single"
+            ? PR_STATE_ICON[prBadge.pr.state]
+            : undefined;
+    const branchCount = (task.gitLinks ?? []).filter(
+        (link) => link.branchName
+    ).length;
     const showSelectionControl =
         selection !== undefined &&
         (selection.forceVisible || selection.checked);
@@ -211,23 +223,23 @@ export function TaskCard({
                             </span>
                         )}
                     </span>
-                    {task.pr && PrIcon ? (
+                    {prBadge?.kind === "single" && PrIcon ? (
                         <TooltipProvider delay={200}>
                             <Tooltip>
                                 <TooltipTrigger
                                     render={
                                         <a
                                             aria-label={t("prLink", {
-                                                number: task.pr.number,
+                                                number: prBadge.pr.number,
                                                 state: t(
-                                                    `prState.${task.pr.state}`
+                                                    `prState.${prBadge.pr.state}`
                                                 ),
                                             })}
                                             className={cn(
                                                 "inline-flex shrink-0 cursor-pointer items-center gap-1 text-code outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring",
-                                                PR_STATE_CLASS[task.pr.state]
+                                                PR_STATE_CLASS[prBadge.pr.state]
                                             )}
-                                            href={task.pr.url}
+                                            href={prBadge.pr.url}
                                             onClick={(event) => {
                                                 event.stopPropagation();
                                             }}
@@ -243,16 +255,18 @@ export function TaskCard({
                                         aria-hidden
                                         className="size-3 shrink-0"
                                     />
-                                    #{task.pr.number}
+                                    #{prBadge.pr.number}
                                 </TooltipTrigger>
                                 <TooltipContent side="top">
                                     {t("prTooltip", {
-                                        number: task.pr.number,
-                                        state: t(`prState.${task.pr.state}`),
+                                        number: prBadge.pr.number,
+                                        state: t(`prState.${prBadge.pr.state}`),
                                     })}
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
+                    ) : prBadge?.kind === "aggregate" ? (
+                        <AggregatePrBadge badge={prBadge} />
                     ) : undefined}
                 </div>
 
@@ -279,11 +293,24 @@ export function TaskCard({
                                 <span className="truncate">
                                     {formatBranchName(task.branchName)}
                                 </span>
+                                {branchCount > 1 ? (
+                                    <span className="shrink-0">
+                                        +{branchCount - 1}
+                                    </span>
+                                ) : undefined}
                             </TooltipTrigger>
                             <TooltipContent side="top">
-                                {shared
-                                    ? `${task.branchName} · ${t("github.sharedBranchTitle")}`
-                                    : task.branchName}
+                                {branchCount > 1
+                                    ? (task.gitLinks ?? [])
+                                          .flatMap((link) =>
+                                              link.branchName
+                                                  ? [link.branchName]
+                                                  : []
+                                          )
+                                          .join(", ")
+                                    : shared
+                                      ? `${task.branchName} · ${t("github.sharedBranchTitle")}`
+                                      : task.branchName}
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -362,6 +389,66 @@ export function TaskCard({
                 </Avatar>
             </CardContent>
         </Card>
+    );
+}
+
+/** One badge for several Git links: "2 PR · 1 merged", breakdown per Repository in the tooltip. */
+function AggregatePrBadge({
+    badge,
+}: {
+    badge: Extract<TaskPrBadge, { kind: "aggregate" }>;
+}) {
+    const { t } = useTranslation("board");
+    const repositoryNames = useTaskRepositoryNames();
+    const Icon = PR_STATE_ICON[badge.state];
+    const label =
+        badge.mergedCount > 0
+            ? t("prAggregateMerged", {
+                  count: badge.prCount,
+                  merged: badge.mergedCount,
+              })
+            : t("prAggregate", { count: badge.prCount });
+
+    return (
+        <TooltipProvider delay={200}>
+            <Tooltip>
+                <TooltipTrigger
+                    aria-label={label}
+                    className={cn(
+                        "inline-flex shrink-0 cursor-default items-center gap-1 text-code outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        PR_STATE_CLASS[badge.state]
+                    )}
+                    render={<span tabIndex={0} />}
+                >
+                    <Icon aria-hidden className="size-3 shrink-0" />
+                    {label}
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                    <ul className="flex flex-col gap-0.5">
+                        {badge.entries.map((entry) => {
+                            const repository =
+                                repositoryNames.get(entry.repositoryId) ??
+                                t("github.unknownRepository");
+                            return (
+                                <li key={entry.repositoryId}>
+                                    {entry.pr
+                                        ? t("prBreakdownLine", {
+                                              number: entry.pr.number,
+                                              repository,
+                                              state: t(
+                                                  `prState.${entry.pr.state}`
+                                              ),
+                                          })
+                                        : t("prBreakdownNoPr", {
+                                              repository,
+                                          })}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 }
 

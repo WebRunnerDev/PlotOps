@@ -15,6 +15,8 @@ import { enUS, ru } from "react-day-picker/locale";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { ProjectRepository } from "@/features/projects/model/types";
+import type { GitLinkRepository } from "@/features/tasks/lib/task-git-links";
 import type { TaskPriority, TaskStatus } from "@/features/tasks/model/types";
 import type {
     MentionCandidate,
@@ -63,6 +65,7 @@ import { remapTaskStatusForBoard } from "@/features/tasks/lib/remap-task-status-
 import { resolveCachedTaskBoardId } from "@/features/tasks/lib/resolve-cached-task-board-id";
 import { resolveTaskDrawerPlacement } from "@/features/tasks/lib/resolve-task-drawer-placement";
 import { TASK_ESTIMATE_VALUES } from "@/features/tasks/lib/task-estimate";
+import { gitTabRepositories } from "@/features/tasks/lib/task-git-links";
 import {
     PARENT_GATE_TOAST_KEY,
     parentGateRefusalFromError,
@@ -168,14 +171,15 @@ type TaskDrawerProperties = {
     boardId: string;
     githubToken: null | string;
     projectId: string;
-    repoFullName: string | undefined;
+    /** The Project's Repositories (ADR 0035); `[]` when none is linked. */
+    repositories: readonly ProjectRepository[];
 };
 
 export function TaskDrawer({
     boardId,
     githubToken,
     projectId,
-    repoFullName,
+    repositories,
 }: TaskDrawerProperties) {
     useSyncTaskUrl();
     const { i18n, t } = useTranslation("board");
@@ -291,6 +295,25 @@ export function TaskDrawer({
         [mentionProjectTasks, task?.id]
     );
     const currentBoard = boards.find((board) => board.id === task?.boardId);
+    const gitRepositories = useMemo<GitLinkRepository[]>(
+        () =>
+            repositories.map((repository) => ({
+                fullName: repository.github_full_name,
+                id: repository.id,
+            })),
+        [repositories]
+    );
+    const baseBranchFor = (repositoryId: string): null | string => {
+        if (!currentBoard?.isDevelopment) return null;
+        const entry = currentBoard.repositoryBaseBranches.find(
+            (item) => item.repositoryId === repositoryId
+        );
+        if (entry) return entry.baseBranch.trim() || null;
+        // Single-repo view kept for Boards seeded before per-Repository rows.
+        return gitRepositories.length === 1
+            ? (currentBoard.baseBranch ?? null)
+            : null;
+    };
     const isArchived = Boolean(task?.archivedAt);
     const canEdit = isSettled && canEditTasks && !isArchived;
     const canSetEstimate = isSettled && canEditEstimate && !isArchived;
@@ -1666,7 +1689,25 @@ export function TaskDrawer({
                                             </div>
 
                                             {isEpic ? undefined : isArchived ? (
-                                                task.branchName || task.pr ? (
+                                                (task.gitLinks?.length ?? 0) >
+                                                1 ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        {task.gitLinks?.map(
+                                                            (link) => (
+                                                                <GithubTaskMeta
+                                                                    branchName={
+                                                                        link.branchName
+                                                                    }
+                                                                    key={
+                                                                        link.repositoryId
+                                                                    }
+                                                                    pr={link.pr}
+                                                                />
+                                                            )
+                                                        )}
+                                                    </div>
+                                                ) : task.branchName ||
+                                                  task.pr ? (
                                                     <GithubTaskMeta
                                                         branchName={
                                                             task.branchName
@@ -1680,21 +1721,21 @@ export function TaskDrawer({
                                                         currentBoard?.allowedHeadPatterns ??
                                                         []
                                                     }
-                                                    baseBranch={
-                                                        currentBoard?.isDevelopment
-                                                            ? (currentBoard.baseBranch ??
-                                                              null)
-                                                            : null
+                                                    baseBranchFor={
+                                                        baseBranchFor
                                                     }
+                                                    boardId={task.boardId}
                                                     canEdit={canEdit}
                                                     githubToken={githubToken}
-                                                    onBranchChange={(
-                                                        branchName
+                                                    onGitLinkChange={(
+                                                        repositoryId,
+                                                        change
                                                     ) => {
                                                         updateTaskDetails(
                                                             task.id,
                                                             {
-                                                                branchName,
+                                                                ...change,
+                                                                repositoryId,
                                                             }
                                                         );
                                                     }}
@@ -1708,49 +1749,69 @@ export function TaskDrawer({
                                                             }
                                                         );
                                                     }}
-                                                    onPrChange={(pr) => {
-                                                        updateTaskDetails(
-                                                            task.id,
-                                                            {
-                                                                pr,
-                                                            }
-                                                        );
-                                                    }}
                                                     projectId={projectId}
-                                                    repoFullName={repoFullName}
+                                                    repositories={
+                                                        gitRepositories
+                                                    }
                                                     task={task}
                                                 />
                                             )}
 
-                                            {/* Live / fixture Git data — token or guest session */}
-                                            {!isEpic &&
-                                            repoFullName &&
-                                            canFetchTaskGitTab({
-                                                isGuest: isGuestSessionActive,
-                                                repoFullName,
-                                                taskKey: task.key,
-                                                token: githubToken,
-                                            }) ? (
-                                                <TaskGitTab
-                                                    branchName={task.branchName}
-                                                    isShared={
-                                                        task.branchName
-                                                            ? isSharedBranch(
-                                                                  task.branchName
-                                                              )
-                                                            : false
-                                                    }
-                                                    linkedCommitSha={
-                                                        task.linkedCommitSha
-                                                    }
-                                                    linkedPrNumber={
-                                                        task.pr?.number
-                                                    }
-                                                    repoFullName={repoFullName}
-                                                    taskKey={task.key}
-                                                    token={githubToken}
-                                                />
-                                            ) : undefined}
+                                            {/* Live / fixture Git data per Repository — token or guest session */}
+                                            {isEpic
+                                                ? undefined
+                                                : gitTabRepositories(
+                                                      gitRepositories,
+                                                      task.gitLinks
+                                                  ).map(
+                                                      ({ link, repository }) =>
+                                                          canFetchTaskGitTab({
+                                                              isGuest:
+                                                                  isGuestSessionActive,
+                                                              repoFullName:
+                                                                  repository.fullName,
+                                                              taskKey: task.key,
+                                                              token: githubToken,
+                                                          }) ? (
+                                                              <TaskGitTab
+                                                                  branchName={
+                                                                      link?.branchName
+                                                                  }
+                                                                  isShared={
+                                                                      link?.branchName
+                                                                          ? isSharedBranch(
+                                                                                link.branchName
+                                                                            )
+                                                                          : false
+                                                                  }
+                                                                  key={
+                                                                      repository.id
+                                                                  }
+                                                                  linkedCommitSha={
+                                                                      task.linkedCommitSha
+                                                                  }
+                                                                  linkedPrNumber={
+                                                                      link?.pr
+                                                                          ?.number
+                                                                  }
+                                                                  repoFullName={
+                                                                      repository.fullName
+                                                                  }
+                                                                  repositoryLabel={
+                                                                      gitRepositories.length >
+                                                                      1
+                                                                          ? repository.fullName
+                                                                          : undefined
+                                                                  }
+                                                                  taskKey={
+                                                                      task.key
+                                                                  }
+                                                                  token={
+                                                                      githubToken
+                                                                  }
+                                                              />
+                                                          ) : undefined
+                                                  )}
 
                                             <div className="mt-auto flex flex-col gap-2 border-t border-primary/20 pt-4">
                                                 {canDelete && !isArchived ? (
