@@ -1,0 +1,101 @@
+# Gate for every PR and for pushes to dev/main. Git hooks can be skipped with
+# --no-verify, so these jobs are the real check. Jobs run in parallel: tests are
+# the slowest, and the fast checks should not wait for them.
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches: [main, dev]
+    workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+    contents: read
+
+env:
+    # `.env` is not in git and `src/shared/api` throws on import without these,
+    # in vitest and in the built app alike. Placeholders are enough: unit tests
+    # and the public/guest e2e never call Supabase.
+    VITE_SUPABASE_URL: https://ci-build-placeholder.supabase.co
+    VITE_SUPABASE_PUBLISHABLE_KEY: ci_build_placeholder_publishable_key
+
+jobs:
+    check:
+        name: audit · types · lint · format
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: 22
+                  cache: npm
+            - run: npm ci
+            # Gate on shipped (production) deps only; dev-tool advisories are
+            # surfaced by Dependabot alerts instead of blocking every PR.
+            - run: npm audit --audit-level=high --omit=dev
+            - run: npm run typecheck
+            # Errors gate the PR; warnings are reported but do not fail the job.
+            - run: npm run lint
+            - run: npm run format:check
+
+    # Vitest shards split the test files evenly and run in parallel; together they
+    # cover exactly what `npm test` does. fail-fast is off so one failing shard does
+    # not cancel the others and the PR shows every failure at once.
+    test:
+        name: vitest (${{ matrix.shard }}/4)
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1, 2, 3, 4]
+        steps:
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: 22
+                  cache: npm
+            - run: npm ci
+            - run: npm test -- --shard=${{ matrix.shard }}/4
+
+    # One stable check named `vitest` on top of the shards: branch protection can
+    # require it without listing shards, and the shard count can change without
+    # touching branch rules.
+    vitest:
+        name: vitest
+        if: always()
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - run: test "${{ needs.test.result }}" = success
+
+    # Guest-mode e2e against the built app. PRs and pushes to dev run chromium only
+    # (about 2 minutes); pushes to main and manual runs cover all three browsers
+    # (about 6 minutes). Auth specs skip here: they need local Supabase (E2E_AUTH=1).
+    browser-compat:
+        name: e2e (${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && 'all browsers' || 'chromium' }})
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        env:
+            BROWSERS: ${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && 'chromium firefox webkit' || 'chromium' }}
+        steps:
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: 22
+                  cache: npm
+            - run: npm ci
+            - run: npx playwright install --with-deps $BROWSERS
+            - run: npm run build
+            - run: npm run test:e2e -- $(printf -- '--project=%s ' $BROWSERS)
+            - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+              if: failure()
+              with:
+                  name: playwright-report
+                  path: playwright-report/
+                  retention-days: 7

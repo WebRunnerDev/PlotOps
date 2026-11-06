@@ -3,7 +3,10 @@ import { useTranslation } from "react-i18next";
 
 import type { TaskPullRequest } from "@/features/tasks/model/types";
 
-import { formatBranchName, isSharedBranch } from "@/features/tasks/lib/format-branch";
+import {
+    formatBranchName,
+    isSharedBranch,
+} from "@/features/tasks/lib/format-branch";
 import { cn } from "@/shared/lib/utils";
 import {
     Tooltip,
@@ -41,11 +44,14 @@ export function GithubTaskMeta({ branchName, pr }: GithubTaskMetaProperties) {
                                 "inline-flex min-w-0 max-w-38 cursor-default items-center gap-1 text-code",
                                 shared
                                     ? "text-muted-foreground/70"
-                                    : "text-muted-foreground",
+                                    : "text-muted-foreground"
                             )}
                             render={<span />}
                         >
-                            <GitBranch aria-hidden className="size-3 shrink-0" />
+                            <GitBranch
+                                aria-hidden
+                                className="size-3 shrink-0"
+                            />
                             <span className="truncate">
                                 {formatBranchName(branchName)}
                             </span>
@@ -69,7 +75,7 @@ export function GithubTaskMeta({ branchName, pr }: GithubTaskMetaProperties) {
                                     })}
                                     className={cn(
                                         "inline-flex shrink-0 cursor-pointer rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                        PR_STATE_CLASS[pr.state],
+                                        PR_STATE_CLASS[pr.state]
                                     )}
                                     href={pr.url}
                                     onClick={(event) => {

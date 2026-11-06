@@ -6,8 +6,8 @@ export type RateLimitAllowed = {
 
 export type RateLimitBlocked = {
     allowed: false;
-    retryAfterSec: number;
     resetAtMs: number;
+    retryAfterSec: number;
 };
 
 export type RateLimitResult = RateLimitAllowed | RateLimitBlocked;
@@ -36,11 +36,11 @@ export function createSlidingWindowRateLimiter(options: {
                 const resetAtMs = oldest + windowMs;
                 return {
                     allowed: false,
+                    resetAtMs,
                     retryAfterSec: Math.max(
                         1,
                         Math.ceil((resetAtMs - nowMs) / 1000)
                     ),
-                    resetAtMs,
                 };
             }
 

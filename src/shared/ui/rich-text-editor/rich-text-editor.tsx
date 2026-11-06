@@ -85,7 +85,7 @@ import { shouldApplyExternalContent } from "@/shared/ui/rich-text-editor/externa
 import {
     filterImageFiles,
     ImageUpload,
-    type ImageUploadFn,
+    type ImageUploadFunction,
     insertImageFiles,
 } from "@/shared/ui/rich-text-editor/image-upload";
 import {
@@ -174,7 +174,7 @@ type RichTextEditorProperties = {
     /** Ctrl/⌘+Enter — submit from a compact composer (comments, etc.). */
     onModEnter?: () => void;
     onTaskMentionClick?: (taskId: string) => void;
-    onUploadImage?: ImageUploadFn;
+    onUploadImage?: ImageUploadFunction;
     placeholder?: string;
     readOnly?: boolean;
     /** Project Tasks for the `#` task reference picker. */

@@ -3,288 +3,288 @@ version: alpha
 name: PlotOps
 description: Dark project tracker with sharp corners, a cyan primary, and mono type for git data.
 x-zsd:
-  profile: "0.1"
-  kind: project
-  source:
-    method: hybrid
-    captured: 2026-10-13
-    paths:
-      - src/app/styles/index.css
-      - src/app/model/theme.ts
-      - src/shared/shadcn/ui/button.tsx
-      - src/shared/shadcn/ui/input.tsx
-      - src/shared/shadcn/ui/card.tsx
-      - src/shared/shadcn/ui/badge.tsx
-      - src/shared/shadcn/ui/alert.tsx
-      - src/shared/shadcn/ui/dialog.tsx
-      - src/shared/shadcn/ui/dropdown-menu.tsx
-      - src/shared/shadcn/ui/select.tsx
-      - src/widgets/main-layout/ui/main-layout.tsx
-      - src/widgets/top-bar/ui/top-bar.tsx
-      - components.json
-      - docs/adr/0007-figma-make-skin-redesign.md
-  review:
-    status: draft
-  intent:
-    audience: People who track project work and git status.
-    primary-task: Move tasks on a board and read git, CI, and task detail.
-    character: Dark surfaces, sharp corners, cyan primary, and mono git data.
-    density: compact
-    theme: dark
-    references:
-      - docs/adr/0007-figma-make-skin-redesign.md
-  preferences:
-    must-use:
-      - Dark theme as the default.
-      - Radius token none on controls, cards, and dialogs.
-      - Space Grotesk for headings, IBM Plex Sans for body text, and JetBrains Mono for code and meta.
-      - A status color with an icon or a text label.
-    must-avoid:
-      - A font outside the three recorded families.
-      - A solid error fill with light text.
-      - Gradients on app pages. The auth atmosphere is the exception.
-    preserve:
-      - Font families Space Grotesk, IBM Plex Sans, and JetBrains Mono.
-      - Feature structure when the skin changes. See docs/adr/0007-figma-make-skin-redesign.md.
-      - Audience, primary task, and character in intent.
-  implementation:
-    token-source: src/app/styles/index.css
-    component-sources:
-      - src/shared/shadcn/ui
-    style-sources:
-      - src/app/styles/index.css
-    font-assets:
-      - "@fontsource/space-grotesk"
-      - "@fontsource/ibm-plex-sans"
-      - "@fontsource/jetbrains-mono"
-    image-assets: []
-    icon-assets:
-      - lucide-react
-  unresolved:
-    - Computed styles were measured at http://127.0.0.1:5173/ on 2026-10-13. Viewport was 1569 by 914. Dark and light classes were both measured.
-    - Light primary text in source is #F8FAFC at 3.91:1. That text is rejected. Light on-primary is #0A0F1D, a decision, at 4.67:1.
-    - Light muted text in source is #64748B at 3.86:1 on the muted fill and 4.34:1 on the page. That text is rejected. Light on-surface-muted is #475569, a decision.
-    - Light success #238636 on the light page is 4.23:1. It is not in the light mode.
-    - Light warning #9A6700 on the light page is 4.44:1. It is not in the light mode.
-    - Light error text #DA3633 on the light page surface is 4.21:1. The same text on a white card is 4.61:1.
-    - Light border and light sidebar border measure #C5DCEF. Dark sidebar border measures #191A1F and is not a separate token.
-    - Light sidebar surface is #F8FAFC. It is not a separate token.
-    - Dark menu highlight uses accent #2BB8E8 with text #F0F2F5 at 2.05:1. No on-accent token is recorded.
-    - Dark error fill #F85149 with text #F0F2F5 is 2.99:1. No on-error token is recorded.
-    - Dark success fill text is #08090E. Components use success as text, not as a solid fill.
-    - Display type uses clamp. No headline-display token is recorded.
-    - Primary hover is primary at 80 percent. No separate hex is recorded.
-    - The dark focus ring measures primary at half strength. The brand link uses a 2px ring and a 2px offset.
-    - The light focus ring measures #0EA5E9 at half strength. It is not the light primary.
-    - Button, input, and card primitives do not define loading, empty, or success states.
-    - The minimum viewport width is not set in source.
-    - Epic and priority colors use Tailwind palette classes, not these tokens.
-    - Chart scale colors use oklch, not hex.
-    - Grid line color is #141820 in dark and #CBD5E1 in light. Input border in dark matches outline. Light input border is #E2E8F0.
-    - Auth page insets differ from the app spacing scale.
-    - Toast padding is 12px on the block axis, 14px at the start, and 32px at the end. No single padding token records all three.
-    - Alert padding is 10px inline and 8px on the block axis. The alert token records the inline value.
-    - Icon stroke width is the Lucide default. The project does not set it.
-  layout:
-    content-max: 1152px
-  breakpoints:
-    sm: 640px
-    md: 768px
-  border:
-    width-default: 1px
-    width-status: 3px
-    color-default: "{colors.outline}"
-  elevation:
-    toast: 3px 3px 0 0
-    mix: 10%
-  motion:
-    duration-fast: 100ms
-    duration-section: 300ms
-    duration-page: 420ms
-    duration-reveal: 800ms
-    duration-scan: 2400ms
-    duration-breathe: 2000ms
-    press-offset: 1px
-    easing-standard: cubic-bezier(0.16, 1, 0.3, 1)
-    easing-quart: cubic-bezier(0.25, 1, 0.5, 1)
-  accessibility:
-    target-min: "{spacing.control-height}"
-    focus-width: 3px
-    focus-offset: 0px
-    focus-color: "{colors.primary}"
-  modes:
-    light:
-      colors:
-        surface: "#F1F5F9"
-        on-surface: "#0A0F1D"
-        surface-raised: "#FFFFFF"
-        on-surface-raised: "#0A0F1D"
-        surface-secondary: "#E2E8F0"
-        on-surface-secondary: "#0A0F1D"
-        primary: "#0284C7"
-        on-primary: "#0A0F1D"
-        surface-muted: "#E2E8F0"
-        on-surface-muted: "#475569"
-        outline: "#C5DCEF"
-        error: "#DA3633"
+    profile: "0.1"
+    kind: project
+    source:
+        method: hybrid
+        captured: 2026-10-13
+        paths:
+            - src/app/styles/index.css
+            - src/app/model/theme.ts
+            - src/shared/shadcn/ui/button.tsx
+            - src/shared/shadcn/ui/input.tsx
+            - src/shared/shadcn/ui/card.tsx
+            - src/shared/shadcn/ui/badge.tsx
+            - src/shared/shadcn/ui/alert.tsx
+            - src/shared/shadcn/ui/dialog.tsx
+            - src/shared/shadcn/ui/dropdown-menu.tsx
+            - src/shared/shadcn/ui/select.tsx
+            - src/widgets/main-layout/ui/main-layout.tsx
+            - src/widgets/top-bar/ui/top-bar.tsx
+            - components.json
+            - docs/adr/0007-figma-make-skin-redesign.md
+    review:
+        status: draft
+    intent:
+        audience: People who track project work and git status.
+        primary-task: Move tasks on a board and read git, CI, and task detail.
+        character: Dark surfaces, sharp corners, cyan primary, and mono git data.
+        density: compact
+        theme: dark
+        references:
+            - docs/adr/0007-figma-make-skin-redesign.md
+    preferences:
+        must-use:
+            - Dark theme as the default.
+            - Radius token none on controls, cards, and dialogs.
+            - Space Grotesk for headings, IBM Plex Sans for body text, and JetBrains Mono for code and meta.
+            - A status color with an icon or a text label.
+        must-avoid:
+            - A font outside the three recorded families.
+            - A solid error fill with light text.
+            - Gradients on app pages. The auth atmosphere is the exception.
+        preserve:
+            - Font families Space Grotesk, IBM Plex Sans, and JetBrains Mono.
+            - Feature structure when the skin changes. See docs/adr/0007-figma-make-skin-redesign.md.
+            - Audience, primary task, and character in intent.
+    implementation:
+        token-source: src/app/styles/index.css
+        component-sources:
+            - src/shared/shadcn/ui
+        style-sources:
+            - src/app/styles/index.css
+        font-assets:
+            - "@fontsource/space-grotesk"
+            - "@fontsource/ibm-plex-sans"
+            - "@fontsource/jetbrains-mono"
+        image-assets: []
+        icon-assets:
+            - lucide-react
+    unresolved:
+        - Computed styles were measured at http://127.0.0.1:5173/ on 2026-10-13. Viewport was 1569 by 914. Dark and light classes were both measured.
+        - Light primary text in source is #F8FAFC at 3.91:1. That text is rejected. Light on-primary is #0A0F1D, a decision, at 4.67:1.
+        - Light muted text in source is #64748B at 3.86:1 on the muted fill and 4.34:1 on the page. That text is rejected. Light on-surface-muted is #475569, a decision.
+        - Light success #238636 on the light page is 4.23:1. It is not in the light mode.
+        - Light warning #9A6700 on the light page is 4.44:1. It is not in the light mode.
+        - Light error text #DA3633 on the light page surface is 4.21:1. The same text on a white card is 4.61:1.
+        - Light border and light sidebar border measure #C5DCEF. Dark sidebar border measures #191A1F and is not a separate token.
+        - Light sidebar surface is #F8FAFC. It is not a separate token.
+        - Dark menu highlight uses accent #2BB8E8 with text #F0F2F5 at 2.05:1. No on-accent token is recorded.
+        - Dark error fill #F85149 with text #F0F2F5 is 2.99:1. No on-error token is recorded.
+        - Dark success fill text is #08090E. Components use success as text, not as a solid fill.
+        - Display type uses clamp. No headline-display token is recorded.
+        - Primary hover is primary at 80 percent. No separate hex is recorded.
+        - The dark focus ring measures primary at half strength. The brand link uses a 2px ring and a 2px offset.
+        - The light focus ring measures #0EA5E9 at half strength. It is not the light primary.
+        - Button, input, and card primitives do not define loading, empty, or success states.
+        - The minimum viewport width is not set in source.
+        - Epic and priority colors use Tailwind palette classes, not these tokens.
+        - Chart scale colors use oklch, not hex.
+        - Grid line color is #141820 in dark and #CBD5E1 in light. Input border in dark matches outline. Light input border is #E2E8F0.
+        - Auth page insets differ from the app spacing scale.
+        - Toast padding is 12px on the block axis, 14px at the start, and 32px at the end. No single padding token records all three.
+        - Alert padding is 10px inline and 8px on the block axis. The alert token records the inline value.
+        - Icon stroke width is the Lucide default. The project does not set it.
+    layout:
+        content-max: 1152px
+    breakpoints:
+        sm: 640px
+        md: 768px
+    border:
+        width-default: 1px
+        width-status: 3px
+        color-default: "{colors.outline}"
+    elevation:
+        toast: 3px 3px 0 0
+        mix: 10%
+    motion:
+        duration-fast: 100ms
+        duration-section: 300ms
+        duration-page: 420ms
+        duration-reveal: 800ms
+        duration-scan: 2400ms
+        duration-breathe: 2000ms
+        press-offset: 1px
+        easing-standard: cubic-bezier(0.16, 1, 0.3, 1)
+        easing-quart: cubic-bezier(0.25, 1, 0.5, 1)
+    accessibility:
+        target-min: "{spacing.control-height}"
+        focus-width: 3px
+        focus-offset: 0px
+        focus-color: "{colors.primary}"
+    modes:
+        light:
+            colors:
+                surface: "#F1F5F9"
+                on-surface: "#0A0F1D"
+                surface-raised: "#FFFFFF"
+                on-surface-raised: "#0A0F1D"
+                surface-secondary: "#E2E8F0"
+                on-surface-secondary: "#0A0F1D"
+                primary: "#0284C7"
+                on-primary: "#0A0F1D"
+                surface-muted: "#E2E8F0"
+                on-surface-muted: "#475569"
+                outline: "#C5DCEF"
+                error: "#DA3633"
 colors:
-  primary: "#3ECFFF"
-  on-primary: "#08090E"
-  surface: "#08090E"
-  on-surface: "#F0F2F5"
-  surface-raised: "#12151C"
-  on-surface-raised: "#F0F2F5"
-  surface-muted: "#161A22"
-  on-surface-muted: "#8B929E"
-  surface-secondary: "#181C24"
-  on-surface-secondary: "#F0F2F5"
-  outline: "#1E2535"
-  error: "#F85149"
-  success: "#3FB950"
-  warning: "#D29922"
-  on-warning: "#08090E"
+    primary: "#3ECFFF"
+    on-primary: "#08090E"
+    surface: "#08090E"
+    on-surface: "#F0F2F5"
+    surface-raised: "#12151C"
+    on-surface-raised: "#F0F2F5"
+    surface-muted: "#161A22"
+    on-surface-muted: "#8B929E"
+    surface-secondary: "#181C24"
+    on-surface-secondary: "#F0F2F5"
+    outline: "#1E2535"
+    error: "#F85149"
+    success: "#3FB950"
+    warning: "#D29922"
+    on-warning: "#08090E"
 typography:
-  headline-lg:
-    fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 33px
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "-0.02em"
-  headline-md:
-    fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 28px
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "-0.02em"
-  headline-sm:
-    fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 24px
-    fontWeight: 600
-    lineHeight: 1.3
-    letterSpacing: "-0.015em"
-  headline-xs:
-    fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 19px
-    fontWeight: 600
-    lineHeight: 1.3
-    letterSpacing: 0px
-  body-md:
-    fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 16px
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: 0px
-  body-sm:
-    fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.428571
-    letterSpacing: 0px
-  label-md:
-    fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 14px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: 0px
-  label-sm:
-    fontFamily: '"JetBrains Mono", ui-monospace, monospace'
-    fontSize: 11px
-    fontWeight: 500
-    lineHeight: 1.2
-    letterSpacing: 0.04em
-  label-xs:
-    fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
-    fontSize: 12px
-    fontWeight: 500
-    lineHeight: 1.333333
-    letterSpacing: 0px
-  code-md:
-    fontFamily: '"JetBrains Mono", ui-monospace, monospace'
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.4
-    letterSpacing: 0px
+    headline-lg:
+        fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 33px
+        fontWeight: 700
+        lineHeight: 1.2
+        letterSpacing: "-0.02em"
+    headline-md:
+        fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 28px
+        fontWeight: 700
+        lineHeight: 1.2
+        letterSpacing: "-0.02em"
+    headline-sm:
+        fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 24px
+        fontWeight: 600
+        lineHeight: 1.3
+        letterSpacing: "-0.015em"
+    headline-xs:
+        fontFamily: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 19px
+        fontWeight: 600
+        lineHeight: 1.3
+        letterSpacing: 0px
+    body-md:
+        fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 16px
+        fontWeight: 400
+        lineHeight: 1.5
+        letterSpacing: 0px
+    body-sm:
+        fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 14px
+        fontWeight: 400
+        lineHeight: 1.428571
+        letterSpacing: 0px
+    label-md:
+        fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 14px
+        fontWeight: 500
+        lineHeight: 1.4
+        letterSpacing: 0px
+    label-sm:
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace'
+        fontSize: 11px
+        fontWeight: 500
+        lineHeight: 1.2
+        letterSpacing: 0.04em
+    label-xs:
+        fontFamily: '"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
+        fontSize: 12px
+        fontWeight: 500
+        lineHeight: 1.333333
+        letterSpacing: 0px
+    code-md:
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace'
+        fontSize: 13px
+        fontWeight: 400
+        lineHeight: 1.4
+        letterSpacing: 0px
 spacing:
-  xs: 4px
-  sm: 8px
-  md: 12px
-  lg: 16px
-  xl: 24px
-  section: 32px
-  grid: 20px
-  control-pad: 10px
-  control-height: 32px
-  top-bar: 48px
-  icon: 16px
-  icon-sm: 12px
+    xs: 4px
+    sm: 8px
+    md: 12px
+    lg: 16px
+    xl: 24px
+    section: 32px
+    grid: 20px
+    control-pad: 10px
+    control-height: 32px
+    top-bar: 48px
+    icon: 16px
+    icon-sm: 12px
 rounded:
-  none: 0px
-  full: 9999px
+    none: 0px
+    full: 9999px
 components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.control-pad}"
-    height: "{spacing.control-height}"
-  button-secondary:
-    backgroundColor: "{colors.surface-secondary}"
-    textColor: "{colors.on-surface-secondary}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.control-pad}"
-    height: "{spacing.control-height}"
-  button-muted:
-    backgroundColor: "{colors.surface-muted}"
-    textColor: "{colors.on-surface-muted}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.control-pad}"
-    height: "{spacing.control-height}"
-  input:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.on-surface}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.control-pad}"
-    height: "{spacing.control-height}"
-  card:
-    backgroundColor: "{colors.surface-raised}"
-    textColor: "{colors.on-surface-raised}"
-    typography: "{typography.body-sm}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.lg}"
-  badge:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.label-xs}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.sm}"
-  alert:
-    backgroundColor: "{colors.surface-raised}"
-    textColor: "{colors.on-surface-raised}"
-    typography: "{typography.body-sm}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.control-pad}"
-  alert-error:
-    backgroundColor: "{colors.surface-raised}"
-    textColor: "{colors.error}"
-    typography: "{typography.body-sm}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.control-pad}"
-  status-success:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.success}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.sm}"
-  status-warning:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.warning}"
-    typography: "{typography.label-md}"
-    rounded: "{rounded.none}"
-    padding: "{spacing.sm}"
+    button-primary:
+        backgroundColor: "{colors.primary}"
+        textColor: "{colors.on-primary}"
+        typography: "{typography.label-md}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.control-pad}"
+        height: "{spacing.control-height}"
+    button-secondary:
+        backgroundColor: "{colors.surface-secondary}"
+        textColor: "{colors.on-surface-secondary}"
+        typography: "{typography.label-md}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.control-pad}"
+        height: "{spacing.control-height}"
+    button-muted:
+        backgroundColor: "{colors.surface-muted}"
+        textColor: "{colors.on-surface-muted}"
+        typography: "{typography.label-md}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.control-pad}"
+        height: "{spacing.control-height}"
+    input:
+        backgroundColor: "{colors.surface}"
+        textColor: "{colors.on-surface}"
+        typography: "{typography.body-md}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.control-pad}"
+        height: "{spacing.control-height}"
+    card:
+        backgroundColor: "{colors.surface-raised}"
+        textColor: "{colors.on-surface-raised}"
+        typography: "{typography.body-sm}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.lg}"
+    badge:
+        backgroundColor: "{colors.primary}"
+        textColor: "{colors.on-primary}"
+        typography: "{typography.label-xs}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.sm}"
+    alert:
+        backgroundColor: "{colors.surface-raised}"
+        textColor: "{colors.on-surface-raised}"
+        typography: "{typography.body-sm}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.control-pad}"
+    alert-error:
+        backgroundColor: "{colors.surface-raised}"
+        textColor: "{colors.error}"
+        typography: "{typography.body-sm}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.control-pad}"
+    status-success:
+        backgroundColor: "{colors.surface}"
+        textColor: "{colors.success}"
+        typography: "{typography.label-md}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.sm}"
+    status-warning:
+        backgroundColor: "{colors.surface}"
+        textColor: "{colors.warning}"
+        typography: "{typography.label-md}"
+        rounded: "{rounded.none}"
+        padding: "{spacing.sm}"
 ---
 
 # PlotOps

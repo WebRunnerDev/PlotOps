@@ -63,6 +63,18 @@ export default config(
         },
     },
     {
+        files: ["scripts/**/*.mjs"],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+        rules: {
+            // These are CLI entry points run by npm scripts: exit codes are the API
+            "unicorn/no-process-exit": "off",
+        },
+    },
+    {
         files: ["workers/**/*.ts"],
         rules: {
             // Cloudflare Workers call the bindings bag `env`

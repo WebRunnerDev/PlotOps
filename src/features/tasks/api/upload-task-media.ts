@@ -11,57 +11,9 @@ export class TaskMediaUploadError extends Error {
     }
 }
 
-function extensionForFile(file: File): string {
-    const fromName = file.name.split(".").pop()?.toLowerCase();
-    if (fromName && /^[a-z0-9]{1,5}$/.test(fromName)) {
-        return fromName === "jpeg" ? "jpg" : fromName;
-    }
-
-    switch (file.type) {
-        case "image/jpeg":
-        case "image/jpg": {
-            return "jpg";
-        }
-        case "image/png": {
-            return "png";
-        }
-        case "image/gif": {
-            return "gif";
-        }
-        case "image/webp": {
-            return "webp";
-        }
-        default: {
-            return "png";
-        }
-    }
-}
-
-function contentTypeForFile(file: File): string {
-    if (file.type && file.type.startsWith("image/")) {
-        return file.type === "image/jpg" ? "image/jpeg" : file.type;
-    }
-
-    switch (extensionForFile(file)) {
-        case "jpg":
-        case "jpeg": {
-            return "image/jpeg";
-        }
-        case "gif": {
-            return "image/gif";
-        }
-        case "webp": {
-            return "image/webp";
-        }
-        default: {
-            return "image/png";
-        }
-    }
-}
-
 export async function uploadTaskMedia(
     file: File,
-    taskId: string,
+    taskId: string
 ): Promise<string> {
     if (!isImageFile(file)) {
         throw new TaskMediaUploadError("unsupportedType");
@@ -100,4 +52,52 @@ export async function uploadTaskMedia(
         .getPublicUrl(path);
 
     return data.publicUrl;
+}
+
+function contentTypeForFile(file: File): string {
+    if (file.type && file.type.startsWith("image/")) {
+        return file.type === "image/jpg" ? "image/jpeg" : file.type;
+    }
+
+    switch (extensionForFile(file)) {
+        case "gif": {
+            return "image/gif";
+        }
+        case "jpeg":
+        case "jpg": {
+            return "image/jpeg";
+        }
+        case "webp": {
+            return "image/webp";
+        }
+        default: {
+            return "image/png";
+        }
+    }
+}
+
+function extensionForFile(file: File): string {
+    const fromName = file.name.split(".").pop()?.toLowerCase();
+    if (fromName && /^[a-z0-9]{1,5}$/.test(fromName)) {
+        return fromName === "jpeg" ? "jpg" : fromName;
+    }
+
+    switch (file.type) {
+        case "image/gif": {
+            return "gif";
+        }
+        case "image/jpeg":
+        case "image/jpg": {
+            return "jpg";
+        }
+        case "image/png": {
+            return "png";
+        }
+        case "image/webp": {
+            return "webp";
+        }
+        default: {
+            return "png";
+        }
+    }
 }

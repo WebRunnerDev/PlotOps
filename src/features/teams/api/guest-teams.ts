@@ -35,6 +35,31 @@ export const guestTeamsProvider: TeamsProvider = {
         };
     },
 
+    async fetchTeam(teamId) {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            return { data: null, error: new Error("No Guest Session") };
+        }
+        const team = sandbox.teams.find((item) => item.id === teamId);
+        if (!team) {
+            return { data: null, error: new Error("Team not found") };
+        }
+        return { data: mapTeam(team), error: null };
+    },
+
+    async fetchTeams() {
+        const sandbox = getGuestSandbox();
+        if (!sandbox) {
+            return { data: null, error: new Error("No Guest Session") };
+        }
+        const teams = [...sandbox.teams]
+            .toSorted(
+                (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+            )
+            .map((team) => mapTeam(team));
+        return { data: teams, error: null };
+    },
+
     async updateTeam(teamId, name) {
         const sandbox = getGuestSandbox();
         if (!sandbox) {
@@ -60,30 +85,5 @@ export const guestTeamsProvider: TeamsProvider = {
         };
         writeGuestSandbox(updated);
         return { data: mapTeam(updated.teams[index]!), error: null };
-    },
-
-    async fetchTeam(teamId) {
-        const sandbox = getGuestSandbox();
-        if (!sandbox) {
-            return { data: null, error: new Error("No Guest Session") };
-        }
-        const team = sandbox.teams.find((item) => item.id === teamId);
-        if (!team) {
-            return { data: null, error: new Error("Team not found") };
-        }
-        return { data: mapTeam(team), error: null };
-    },
-
-    async fetchTeams() {
-        const sandbox = getGuestSandbox();
-        if (!sandbox) {
-            return { data: null, error: new Error("No Guest Session") };
-        }
-        const teams = [...sandbox.teams]
-            .toSorted(
-                (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
-            )
-            .map((team) => mapTeam(team));
-        return { data: teams, error: null };
     },
 };
