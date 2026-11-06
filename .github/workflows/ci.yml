@@ -25,7 +25,7 @@ env:
 
 jobs:
     check:
-        name: audit · types · lint
+        name: audit · types · lint · format
         runs-on: ubuntu-latest
         timeout-minutes: 15
         steps:
@@ -41,6 +41,7 @@ jobs:
             - run: npm run typecheck
             # Errors gate the PR; warnings are reported but do not fail the job.
             - run: npm run lint
+            - run: npm run format:check
 
     # Vitest shards split the test files evenly and run in parallel; together they
     # cover exactly what `npm test` does. fail-fast is off so one failing shard does
