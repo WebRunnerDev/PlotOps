@@ -27,9 +27,8 @@ export type ReopenPullRequestPlan =
 /**
  * Decide the Git link update for a PR open or reopen.
  * Never changes column/status — merge path owns that.
- * Never overwrites a Git link holding another PR or branch (`link_conflict`)
- * nor brings back a PR / branch a person unlinked (`dismissed`); a Task
- * matched only by task key without a link gets one (auto-link).
+ * Never brings back a PR / branch a person unlinked (`dismissed`); a PR no
+ * Git link of the Task holds yet gets a new one (auto-link, ADR 0036).
  */
 export function planReopenPullRequestSync(
     match: null | TaskMatch,
@@ -40,16 +39,20 @@ export function planReopenPullRequestSync(
     }
 
     const binding = planGitLinkBinding(match, input);
-    if (binding === "link_conflict" || binding === "dismissed") {
+    if (binding === "dismissed") {
         return { reason: binding, skip: true };
     }
 
-    if (match.task.pr_state === "open") {
+    // Only a Git link that already holds this PR has a state to compare.
+    const currentState =
+        binding === "linked" ? (match.link?.pr_state ?? null) : null;
+
+    if (currentState === "open") {
         return { reason: "already_open", skip: true };
     }
 
     // GitHub never reopens a merged PR; guard against stale/out-of-order deliveries.
-    if (match.task.pr_state === "merged") {
+    if (currentState === "merged") {
         return { reason: "already_merged", skip: true };
     }
 

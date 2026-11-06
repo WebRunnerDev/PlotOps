@@ -320,43 +320,49 @@ export const guestProjectsProvider: ProjectsProvider = {
                 }
                 const now = new Date().toISOString();
                 for (const task of sandbox.tasks) {
-                    const link = task.gitLinks?.find(
+                    const removed = (task.gitLinks ?? []).filter(
                         (item) => item.repositoryId === repositoryId
                     );
-                    if (!link) continue;
+                    if (removed.length === 0) continue;
                     task.gitLinks = task.gitLinks!.filter(
-                        (item) => item !== link
+                        (item) => item.repositoryId !== repositoryId
                     );
                     if (task.gitLinks.length === 0) delete task.gitLinks;
-                    // `project_repositories_log_unlink`: one row per Task.
-                    const changes: GuestActivityEvent["metadata"]["changes"] =
-                        [];
-                    if (link.branchName) {
-                        changes.push({
-                            field: "branch",
-                            from: link.branchName,
-                            to: null,
+                    // `project_repositories_log_unlink`: one row per Git link.
+                    for (const link of removed) {
+                        const changes: GuestActivityEvent["metadata"]["changes"] =
+                            [];
+                        if (link.branchName) {
+                            changes.push({
+                                field: "branch",
+                                from: link.branchName,
+                                to: null,
+                            });
+                        }
+                        if (link.pr) {
+                            changes.push({
+                                field: "pr",
+                                from: link.pr,
+                                to: null,
+                            });
+                        }
+                        sandbox.activity.unshift({
+                            action: "updated",
+                            createdAt: now,
+                            id: crypto.randomUUID(),
+                            metadata: {
+                                changes,
+                                reason: "repository_unlinked",
+                                repository: repository.fullName,
+                            },
+                            projectId: project.id,
+                            taskId: task.id,
+                            user: {
+                                id: GUEST_SEED_ACTOR_ID,
+                                name: "Demo Guest",
+                            },
                         });
                     }
-                    if (link.pr) {
-                        changes.push({ field: "pr", from: link.pr, to: null });
-                    }
-                    sandbox.activity.unshift({
-                        action: "updated",
-                        createdAt: now,
-                        id: crypto.randomUUID(),
-                        metadata: {
-                            changes,
-                            reason: "repository_unlinked",
-                            repository: repository.fullName,
-                        },
-                        projectId: project.id,
-                        taskId: task.id,
-                        user: {
-                            id: GUEST_SEED_ACTOR_ID,
-                            name: "Demo Guest",
-                        },
-                    });
                 }
             });
             return { id: repositoryId };

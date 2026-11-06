@@ -862,6 +862,8 @@
         "prRateLimited": "Лимит GitHub — подождите и попробуйте снова",
         "prLinkFailed": "Не удалось привязать pull request #{{number}}",
         "prLinkedToast": "Привязан PR #{{number}}",
+        "prAlreadyLinked": "PR #{{number}} уже привязан к задаче",
+        "branchAlreadyLinked": "Ветка «{{branch}}» уже привязана к задаче",
         "prLink": "PR #{{number}} · {{state}}",
         "openPr": "Открыть pull request",
         "openPrToast": "Открыт PR #{{number}}",
@@ -958,7 +960,7 @@
             "rate_limit": "Лимит GitHub — подождите и повторите",
             "unknown": "Запрос к GitHub не удался — попробуйте снова"
         },
-        "unlinkGitLink": "Отвязать репозиторий",
+        "unlinkGitLink": "Отвязать ветку и PR",
         "repository": "Репозиторий",
         "unknownRepository": "Отвязанный репозиторий",
         "attach": "Привязать",

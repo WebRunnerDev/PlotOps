@@ -1699,7 +1699,7 @@ export function TaskDrawer({
                                                                         link.branchName
                                                                     }
                                                                     key={
-                                                                        link.repositoryId
+                                                                        link.id
                                                                     }
                                                                     pr={link.pr}
                                                                 />
@@ -1728,14 +1728,14 @@ export function TaskDrawer({
                                                     canEdit={canEdit}
                                                     githubToken={githubToken}
                                                     onGitLinkChange={(
-                                                        repositoryId,
+                                                        gitLink,
                                                         change
                                                     ) => {
                                                         updateTaskDetails(
                                                             task.id,
                                                             {
                                                                 ...change,
-                                                                repositoryId,
+                                                                gitLink,
                                                             }
                                                         );
                                                     }}
@@ -1764,15 +1764,24 @@ export function TaskDrawer({
                                                       gitRepositories,
                                                       task.gitLinks
                                                   ).map(
-                                                      ({ link, repository }) =>
-                                                          canFetchTaskGitTab({
-                                                              isGuest:
-                                                                  isGuestSessionActive,
-                                                              repoFullName:
-                                                                  repository.fullName,
-                                                              taskKey: task.key,
-                                                              token: githubToken,
-                                                          }) ? (
+                                                      ({
+                                                          links,
+                                                          repository,
+                                                      }) => {
+                                                          // Several Git links in one Repository: the Git tab follows the newest.
+                                                          const link =
+                                                              links.at(-1);
+                                                          return canFetchTaskGitTab(
+                                                              {
+                                                                  isGuest:
+                                                                      isGuestSessionActive,
+                                                                  repoFullName:
+                                                                      repository.fullName,
+                                                                  taskKey:
+                                                                      task.key,
+                                                                  token: githubToken,
+                                                              }
+                                                          ) ? (
                                                               <TaskGitTab
                                                                   branchName={
                                                                       link?.branchName
@@ -1804,7 +1813,8 @@ export function TaskDrawer({
                                                                       githubToken
                                                                   }
                                                               />
-                                                          ) : undefined
+                                                          ) : undefined;
+                                                      }
                                                   )}
 
                                             <div className="mt-auto flex flex-col gap-2 border-t border-primary/20 pt-4">

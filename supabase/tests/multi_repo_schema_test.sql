@@ -198,16 +198,18 @@ select lives_ok(
     select current_setting('test.task')::uuid, r.id, current_setting('test.project')::uuid,
       'feature/TASK-1-api', 12, 'https://github.com/o/api/pull/12', 'open'
     from public.project_repositories as r where r.github_repo_id = 5002$$,
-  'a Task holds one Git link per Repository (same PR number in another Repository)'
+  'the same PR number in another Repository is a separate Git link'
 );
 
+-- ADR 0036: several Git links per Repository, but one row per PR.
 select throws_ok(
-  $$insert into public.task_git_links (task_id, repository_id, project_id, branch_name)
-    select current_setting('test.task')::uuid, r.id, current_setting('test.project')::uuid, 'feature/TASK-1-web-2'
+  $$insert into public.task_git_links (task_id, repository_id, project_id, branch_name, pr_number, pr_url, pr_state)
+    select current_setting('test.task')::uuid, r.id, current_setting('test.project')::uuid,
+      'feature/TASK-1-web-2', 12, 'https://github.com/o/web/pull/12', 'open'
     from public.project_repositories as r where r.github_repo_id = 5001$$,
   '23505',
   null,
-  'a second Git link to the same Repository is rejected'
+  'the same PR twice on one Task in one Repository is rejected'
 );
 
 select throws_ok(

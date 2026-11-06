@@ -10,9 +10,7 @@ function task(
     return {
         archived_at: null,
         board_id: "board-1",
-        branch_name: null,
-        pr_number: null,
-        pr_state: null,
+        git_links: [],
         status: "todo",
         ...partial,
     };
@@ -30,9 +28,15 @@ describe("planBackfill", () => {
     const tasks = [
         task({ id: "t1", task_key: "TASK-1" }),
         task({
-            branch_name: "wip",
+            git_links: [
+                {
+                    branch_name: "wip",
+                    id: "l2",
+                    pr_number: 5,
+                    pr_state: "open",
+                },
+            ],
             id: "t2",
-            pr_number: 5,
             task_key: "TASK-2",
         }),
     ];

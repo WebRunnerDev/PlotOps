@@ -2,16 +2,31 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1
 
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
+type QueryResult = { data: unknown; error: null | { code: string } };
 
 /**
  * In-memory stand-in for the PostgREST calls sync.ts makes: select / eq /
  * order / limit / maybeSingle, the embedded `task_git_links (...)` select,
- * insert, update, upsert on `task_id,repository_id`, and rpc.
+ * insert, update, upsert on `task_id,repository_id,pr_number`, and rpc.
+ * `task_git_links` rows get an id, and a second branch-only row for the same
+ * Task × Repository × branch fails with 23505 like the unique index.
  */
 export function createFakeSupabase(tables: Tables) {
     const rpcCalls: { args: Row; name: string }[] = [];
+    let nextLinkId = 1;
+    const withLinkDefaults = (table: string, payload: Row): Row =>
+        table === "task_git_links"
+            ? {
+                  branch_name: null,
+                  id: `link-${nextLinkId++}`,
+                  pr_number: null,
+                  pr_state: null,
+                  pr_url: null,
+                  ...payload,
+              }
+            : { ...payload };
 
-    class Query implements PromiseLike<{ data: unknown; error: null }> {
+    class Query implements PromiseLike<QueryResult> {
         private filters: [string, unknown][] = [];
         private limitTo: null | number = null;
         private op: "insert" | "select" | "update" | "upsert" = "select";
@@ -54,10 +69,8 @@ export function createFakeSupabase(tables: Tables) {
         }
 
         // eslint-disable-next-line unicorn/no-thenable -- PostgREST builders are awaited
-        then: PromiseLike<{ data: unknown; error: null }>["then"] = (
-            onFulfilled,
-            onRejected
-        ) => Promise.resolve(this.run()).then(onFulfilled, onRejected);
+        then: PromiseLike<QueryResult>["then"] = (onFulfilled, onRejected) =>
+            Promise.resolve(this.run()).then(onFulfilled, onRejected);
 
         update(payload: Row) {
             this.op = "update";
@@ -80,11 +93,25 @@ export function createFakeSupabase(tables: Tables) {
             );
         }
 
-        private run(): { data: unknown; error: null } {
+        private run(): QueryResult {
             const table = (tables[this.table] ??= []);
 
             if (this.op === "insert") {
-                table.push({ ...this.payload });
+                const row = withLinkDefaults(this.table, this.payload);
+                const duplicateBranchOnly =
+                    this.table === "task_git_links" &&
+                    row.pr_number == undefined &&
+                    table.some(
+                        (other) =>
+                            other.pr_number == undefined &&
+                            other.task_id === row.task_id &&
+                            other.repository_id === row.repository_id &&
+                            other.branch_name === row.branch_name
+                    );
+                if (duplicateBranchOnly) {
+                    return { data: null, error: { code: "23505" } };
+                }
+                table.push(row);
                 return { data: null, error: null };
             }
 
@@ -97,18 +124,13 @@ export function createFakeSupabase(tables: Tables) {
                 const existing = table.find(
                     (row) =>
                         row.task_id === this.payload.task_id &&
-                        row.repository_id === this.payload.repository_id
+                        row.repository_id === this.payload.repository_id &&
+                        row.pr_number === this.payload.pr_number
                 );
                 if (existing) {
                     Object.assign(existing, this.payload);
                 } else {
-                    table.push({
-                        branch_name: null,
-                        pr_number: null,
-                        pr_state: null,
-                        pr_url: null,
-                        ...this.payload,
-                    });
+                    table.push(withLinkDefaults(this.table, this.payload));
                 }
                 return { data: null, error: null };
             }

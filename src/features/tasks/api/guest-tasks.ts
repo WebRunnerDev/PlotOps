@@ -18,6 +18,7 @@ import { shouldAutoAssignToCreator } from "@/features/boards";
 import {
     getGuestSandbox,
     GUEST_SEED_ACTOR_ID,
+    guestGitLinkId,
     updateGuestSandbox,
 } from "@/features/guest-mode";
 import { applyGuestStakeWatchEnrollment } from "@/features/notifications/api/guest-task-watchers";
@@ -110,9 +111,11 @@ function appendTaskLinkActivity(
 }
 
 /**
- * Mirror `update_task_details`: Git fields write the Task's Git link for
- * `repository_id` (optional while the Project has exactly one Repository);
- * a link left with neither branch nor PR is removed.
+ * Mirror `update_task_details` (ADR 0036): Git fields write the Git link
+ * `git_link_id` — an id the Task does not hold adds one with that id. Without
+ * an id, the single Git link in `repository_id` (optional while the Project
+ * has exactly one Repository). A link left with neither branch nor PR is
+ * removed.
  */
 function applyGitLinkPatch(
     sandbox: GuestSandbox,
@@ -126,10 +129,22 @@ function applyGitLinkPatch(
         patch.pr_url !== undefined;
     if (!touchesBranch && !touchesPr) return;
 
+    const links = task.gitLinks ?? [];
+    let current = patch.git_link_id
+        ? links.find((link) => link.id === patch.git_link_id)
+        : undefined;
+    if (
+        current &&
+        patch.repository_id &&
+        patch.repository_id !== current.repositoryId
+    ) {
+        throw new Error("Git link belongs to another Repository");
+    }
+
     const repositories =
         sandbox.projects.find((project) => project.id === task.projectId)
             ?.repositories ?? [];
-    let repositoryId = patch.repository_id;
+    let repositoryId = current?.repositoryId ?? patch.repository_id;
     if (!repositoryId) {
         if (repositories.length !== 1) {
             throw new Error(
@@ -141,8 +156,18 @@ function applyGitLinkPatch(
         throw new Error("Repository not found in this Project");
     }
 
-    const links = task.gitLinks ?? [];
-    const current = links.find((link) => link.repositoryId === repositoryId);
+    if (!patch.git_link_id) {
+        const inRepository = links.filter(
+            (link) => link.repositoryId === repositoryId
+        );
+        if (inRepository.length > 1) {
+            throw new Error(
+                `git_link_id is required when the Task has ${inRepository.length} Git links in this Repository`
+            );
+        }
+        current = inRepository[0];
+    }
+
     const branchName = touchesBranch
         ? patch.branch_name?.trim() || undefined
         : current?.branchName;
@@ -168,7 +193,22 @@ function applyGitLinkPatch(
         else delete task.gitLinks;
         return;
     }
-    const next: GuestGitLink = { repositoryId };
+    // Same uniqueness as `task_git_links`: one row per PR, one branch-only
+    // row per branch, per Task × Repository.
+    const duplicate = others.some(
+        (link) =>
+            link.repositoryId === repositoryId &&
+            (pr
+                ? link.pr?.number === pr.number
+                : !link.pr && link.branchName === branchName)
+    );
+    if (duplicate) {
+        throw new Error("This branch or PR is already linked to the Task");
+    }
+    const next: GuestGitLink = {
+        id: current?.id ?? patch.git_link_id ?? crypto.randomUUID(),
+        repositoryId,
+    };
     if (branchName) next.branchName = branchName;
     if (pr) next.pr = pr;
     task.gitLinks = current
@@ -355,8 +395,9 @@ function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
     const parent = task.parentId
         ? sandbox.tasks.find((item) => item.id === task.parentId)
         : undefined;
-    const gitLinks = (task.gitLinks ?? []).map((link) => ({
+    const gitLinks = (task.gitLinks ?? []).map((link, index) => ({
         branchName: link.branchName,
+        id: link.id ?? guestGitLinkId(task.id, index),
         pr: link.pr ? { ...link.pr } : undefined,
         repositoryId: link.repositoryId,
     }));

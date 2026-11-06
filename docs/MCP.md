@@ -29,17 +29,17 @@ Unauthenticated `/mcp` requests return `401` with `WWW-Authenticate: Bearer … 
 
 ## Tools
 
-| Tool            | Notes                                                                                                                                                                                                              |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `whoami`        | Signed-in user id, email, OAuth `client_id`                                                                                                                                                                        |
-| `list_projects` | Projects the JWT can view                                                                                                                                                                                          |
-| `list_boards`   | Boards in a Project, including columns (`id`, `name`, `is_done`)                                                                                                                                                   |
-| `list_tasks`    | Filters: `project_id` / `board_id`, `status` (column id), `assignee_id` (`me` / `unassigned` / UUID), `q`                                                                                                          |
-| `get_task`      | Task + comments + labels (`task_id` or `task_key`); `task.git_links[]` — one per Repository: `repository_id`, `repository { github_full_name, github_html_url }`, `branch_name`, `pr_number`, `pr_state`, `pr_url` |
-| `create_task`   | RPC: position, default type, auto-assign, `author_id = auth.uid()`; returns the task like `get_task`                                                                                                               |
-| `update_task`   | Whitelisted fields via `update_task_details` (no author / git / PR)                                                                                                                                                |
-| `change_status` | Move to a column via `persist_task_moves` (Done-column gates apply)                                                                                                                                                |
-| `add_comment`   | Optional `parent_id` reply; author is the caller                                                                                                                                                                   |
+| Tool            | Notes                                                                                                                                                                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `whoami`        | Signed-in user id, email, OAuth `client_id`                                                                                                                                                                                                                           |
+| `list_projects` | Projects the JWT can view                                                                                                                                                                                                                                             |
+| `list_boards`   | Boards in a Project, including columns (`id`, `name`, `is_done`)                                                                                                                                                                                                      |
+| `list_tasks`    | Filters: `project_id` / `board_id`, `status` (column id), `assignee_id` (`me` / `unassigned` / UUID), `q`                                                                                                                                                             |
+| `get_task`      | Task + comments + labels (`task_id` or `task_key`); `task.git_links[]` — one per branch / PR, several per Repository possible (ADR 0036): `id`, `repository_id`, `repository { github_full_name, github_html_url }`, `branch_name`, `pr_number`, `pr_state`, `pr_url` |
+| `create_task`   | RPC: position, default type, auto-assign, `author_id = auth.uid()`; returns the task like `get_task`                                                                                                                                                                  |
+| `update_task`   | Whitelisted fields via `update_task_details` (no author / git / PR)                                                                                                                                                                                                   |
+| `change_status` | Move to a column via `persist_task_moves` (Done-column gates apply)                                                                                                                                                                                                   |
+| `add_comment`   | Optional `parent_id` reply; author is the caller                                                                                                                                                                                                                      |
 
 ## What you must configure (hosted)
 
@@ -132,7 +132,7 @@ After changing it: `npm run db:stop && npm run db:start` (or `db:reset` when tes
 - **Audit log:** tool calls are logged via `log_mcp_action` into `mcp_action_log`; pg_cron job `mcp-action-log-retention` deletes rows older than 30 days nightly (03:17 UTC).
 - **Body cap:** 256 KiB. List tools cap at 100 rows.
 - **CORS:** reflects `Origin` (Bearer tokens, not cookies).
-- **Task UPDATE:** `tasks_protect_system_columns` blocks `id` / `project_id` / `task_key` / `created_at`. Column-level `GRANT UPDATE` matches that whitelist. Git/PR data is not on `tasks` (multi-repo): it lives in `task_git_links`, one row per Task × Repository. Editors can still change `author_id` and Git links through the SPA (`update_task_details`); MCP `update_task` does not send those fields.
+- **Task UPDATE:** `tasks_protect_system_columns` blocks `id` / `project_id` / `task_key` / `created_at`. Column-level `GRANT UPDATE` matches that whitelist. Git/PR data is not on `tasks` (multi-repo): it lives in `task_git_links`, one row per branch / PR of a Task in a Repository (ADR 0036). Editors can still change `author_id` and Git links through the SPA (`update_task_details`); MCP `update_task` does not send those fields.
 - The access token is a normal user JWT. A malicious MCP client that extracts it can call PostgREST directly; RLS still applies. Do not treat MCP as a narrower grant than “this user”.
 
 ## Fallback if the OAuth server cannot be enabled

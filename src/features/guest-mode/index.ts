@@ -10,6 +10,7 @@ export {
 export {
     getGuestDisplayIdentity,
     getGuestSandbox,
+    guestGitLinkId,
     isGuest,
     leaveGuestSession,
     resetGuestSession,

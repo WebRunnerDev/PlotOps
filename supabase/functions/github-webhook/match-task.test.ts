@@ -7,15 +7,34 @@ import {
     planGitLinkBinding,
 } from "./match-task";
 
-function task(
-    partial: Partial<CandidateTask> & Pick<CandidateTask, "id">
-): CandidateTask {
+type TaskFixture = Partial<CandidateTask> &
+    Pick<CandidateTask, "id"> & {
+        /** Shorthand for a single Git link in this Repository. */
+        branch_name?: null | string;
+        pr_number?: null | number;
+        pr_state?: null | string;
+    };
+
+function task({
+    branch_name = null,
+    pr_number = null,
+    pr_state = null,
+    ...partial
+}: TaskFixture): CandidateTask {
     return {
         archived_at: null,
         board_id: "board-1",
-        branch_name: null,
-        pr_number: null,
-        pr_state: null,
+        git_links:
+            branch_name != undefined || pr_number != undefined
+                ? [
+                      {
+                          branch_name,
+                          id: `${partial.id}-link`,
+                          pr_number,
+                          pr_state,
+                      },
+                  ]
+                : [],
         status: "todo",
         task_key: "TASK-1",
         ...partial,
@@ -153,25 +172,71 @@ describe("matchTasks across Repositories", () => {
     });
 });
 
+describe("matchTasks with several Git links in one Repository", () => {
+    const candidate = task({
+        git_links: [
+            {
+                branch_name: "feature/TASK-1-a",
+                id: "a",
+                pr_number: 5,
+                pr_state: "open",
+            },
+            {
+                branch_name: "hotfix/TASK-1",
+                id: "b",
+                pr_number: 6,
+                pr_state: "open",
+            },
+            {
+                branch_name: "hotfix/TASK-1",
+                id: "c",
+                pr_number: null,
+                pr_state: null,
+            },
+        ],
+        id: "x",
+    });
+
+    it("matches the Git link holding the PR", () => {
+        expect(
+            matchTasks([candidate], { headRef: "whatever", prNumber: 6 })[0]
+                ?.link?.id
+        ).toBe("b");
+    });
+
+    it("prefers a branch-only Git link on the head branch", () => {
+        expect(
+            matchTasks([candidate], {
+                headRef: "hotfix/TASK-1",
+                prNumber: 9,
+            })[0]?.link?.id
+        ).toBe("c");
+    });
+});
+
+/** A match on the fixture's single Git link (none for a task key match). */
+function m(by: "branch" | "pr" | "task_key", fixture: TaskFixture) {
+    const candidate = task(fixture);
+    return {
+        by,
+        link: by === "task_key" ? undefined : candidate.git_links[0],
+        task: candidate,
+    };
+}
+
 describe("planGitLinkBinding", () => {
     const pr = { headRef: "feature/TASK-1", prNumber: 7 };
 
     it("is linked when the PR number matched", () => {
-        expect(
-            planGitLinkBinding(
-                { by: "pr", task: task({ id: "x", pr_number: 7 }) },
-                pr
-            )
-        ).toBe("linked");
+        expect(planGitLinkBinding(m("pr", { id: "x", pr_number: 7 }), pr)).toBe(
+            "linked"
+        );
     });
 
     it("binds a branch-only Git link on the head branch", () => {
         expect(
             planGitLinkBinding(
-                {
-                    by: "branch",
-                    task: task({ branch_name: "feature/TASK-1", id: "x" }),
-                },
+                m("branch", { branch_name: "feature/TASK-1", id: "x" }),
                 pr
             )
         ).toBe("bind");
@@ -180,87 +245,69 @@ describe("planGitLinkBinding", () => {
     it("is linked when a branch event finds its own branch", () => {
         expect(
             planGitLinkBinding(
-                {
-                    by: "branch",
-                    task: task({ branch_name: "feature/TASK-1", id: "x" }),
-                },
+                m("branch", { branch_name: "feature/TASK-1", id: "x" }),
                 { headRef: "feature/TASK-1" }
             )
         ).toBe("linked");
     });
 
-    it("never rebinds a Git link holding another PR or branch", () => {
+    it("adds a new Git link next to links holding another PR or branch", () => {
         expect(
             planGitLinkBinding(
-                {
-                    by: "branch",
-                    task: task({
-                        branch_name: "feature/TASK-1",
-                        id: "x",
-                        pr_number: 3,
-                    }),
-                },
+                m("branch", {
+                    branch_name: "feature/TASK-1",
+                    id: "x",
+                    pr_number: 3,
+                }),
                 pr
             )
-        ).toBe("link_conflict");
+        ).toBe("auto_link");
+        expect(
+            planGitLinkBinding(m("task_key", { id: "x", pr_number: 3 }), pr)
+        ).toBe("auto_link");
         expect(
             planGitLinkBinding(
-                { by: "task_key", task: task({ id: "x", pr_number: 3 }) },
-                pr
-            )
-        ).toBe("link_conflict");
-        expect(
-            planGitLinkBinding(
-                {
-                    by: "task_key",
-                    task: task({ branch_name: "feature/TASK-1-old", id: "x" }),
-                },
+                m("task_key", { branch_name: "feature/TASK-1-old", id: "x" }),
                 { headRef: "TASK-1-new" }
             )
-        ).toBe("link_conflict");
+        ).toBe("auto_link");
     });
 
     it("auto-links a task key match without a Git link", () => {
-        expect(
-            planGitLinkBinding({ by: "task_key", task: task({ id: "x" }) }, pr)
-        ).toBe("auto_link");
+        expect(planGitLinkBinding(m("task_key", { id: "x" }), pr)).toBe(
+            "auto_link"
+        );
     });
 
     it("never brings back a PR or branch a person unlinked", () => {
         expect(
             planGitLinkBinding(
-                { by: "task_key", task: task({ dismissed_prs: [7], id: "x" }) },
+                m("task_key", { dismissed_prs: [7], id: "x" }),
                 pr
             )
         ).toBe("dismissed");
         expect(
             planGitLinkBinding(
-                {
-                    by: "task_key",
-                    task: task({
-                        dismissed_branches: ["feature/TASK-1"],
-                        id: "x",
-                    }),
-                },
+                m("task_key", {
+                    dismissed_branches: ["feature/TASK-1"],
+                    id: "x",
+                }),
                 { headRef: "refs/heads/feature/TASK-1" }
             )
         ).toBe("dismissed");
         expect(
             planGitLinkBinding(
-                {
-                    by: "branch",
-                    task: task({
-                        branch_name: "feature/TASK-1",
-                        dismissed_prs: [7],
-                        id: "x",
-                    }),
-                },
+                m("branch", {
+                    branch_name: "feature/TASK-1",
+                    dismissed_prs: [7],
+                    id: "x",
+                }),
                 pr
             )
         ).toBe("dismissed");
         expect(
             planGitLinkBinding(
-                { by: "task_key", task: task({ dismissed_prs: [8], id: "x" }) },
+                m("task_key", { dismissed_prs: [8], id: "x" }),
                 pr
             )
         ).toBe("auto_link");

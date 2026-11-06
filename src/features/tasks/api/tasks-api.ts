@@ -131,6 +131,7 @@ const TASK_SELECT = `
     label_id
   ),
   git_links:task_git_links (
+    id,
     repository_id,
     branch_name,
     pr_number,
@@ -221,6 +222,11 @@ export type TaskRecordPatch = {
     epic_id?: null | string;
     /** Pass `null` to clear estimate (unestimated). Manager+ only. */
     estimate?: null | TaskEstimate;
+    /**
+     * Git link `branch_name` / `pr_*` write (ADR 0036). An id the Task does
+     * not hold yet adds a Git link with that id.
+     */
+    git_link_id?: string;
     linked_commit_sha?: null | string;
     position?: number;
     pr_number?: null | number;
@@ -240,7 +246,12 @@ export type TaskRecordPatch = {
 /** `tasks` columns only — Git fields go through `updateTaskDetails`. */
 export type TaskRowPatch = Omit<
     TaskRecordPatch,
-    "branch_name" | "pr_number" | "pr_state" | "pr_url" | "repository_id"
+    | "branch_name"
+    | "git_link_id"
+    | "pr_number"
+    | "pr_state"
+    | "pr_url"
+    | "repository_id"
 >;
 
 /** Signal archive; DB trigger sets `archived_at` / `archived_by`. */

@@ -850,6 +850,8 @@
         "prRateLimited": "GitHub rate limit hit — wait a moment and try again",
         "prLinkFailed": "Could not link pull request #{{number}}",
         "prLinkedToast": "Linked PR #{{number}}",
+        "prAlreadyLinked": "PR #{{number}} is already linked to this task",
+        "branchAlreadyLinked": "Branch “{{branch}}” is already linked to this task",
         "prLink": "PR #{{number}} · {{state}}",
         "openPr": "Open pull request",
         "openPrToast": "Opened PR #{{number}}",
@@ -946,7 +948,7 @@
             "rate_limit": "GitHub rate limit hit — wait a moment and try again",
             "unknown": "GitHub request failed — try again"
         },
-        "unlinkGitLink": "Unlink repository",
+        "unlinkGitLink": "Unlink branch and PR",
         "repository": "Repository",
         "unknownRepository": "Unlinked repository",
         "attach": "Link",

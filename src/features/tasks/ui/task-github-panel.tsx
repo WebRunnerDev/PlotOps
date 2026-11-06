@@ -20,6 +20,7 @@ import type {
     GitLinkAttachKind,
     GitLinkChange,
     GitLinkRepository,
+    GitLinkTarget,
 } from "@/features/tasks/lib/task-git-links";
 import type {
     Task,
@@ -67,11 +68,13 @@ import {
 import { parseCommitSha } from "@/features/tasks/lib/parse-commit-sha";
 import { parsePrNumber } from "@/features/tasks/lib/parse-pr";
 import {
+    findGitLink,
     gitLinkRestoreChange,
     gitTabRepositories,
-    groupGitLinksByRepository,
+    linkedGitLinks,
+    newGitLinkId,
     pickDefaultRepositoryId,
-    repositoriesAcceptingGitLink,
+    planAttachPr,
 } from "@/features/tasks/lib/task-git-links";
 import { useGitLinkRepositoryStore } from "@/features/tasks/model/git-link-repository-store";
 import { useBackfillGitLinks } from "@/features/tasks/model/use-backfill-git-links";
@@ -120,6 +123,11 @@ type GitLinkRowProperties = {
     baseBranch: null | string;
     canEdit: boolean;
     githubToken: null | string;
+    /**
+     * Accessible name of the row: the Repository, plus the branch / PR when
+     * the Repository holds several Git links of the Task (ADR 0036).
+     */
+    label: string;
     link: TaskGitLink;
     onChange: (change: GitLinkChange) => void;
     /** Unlink with an "Unlinked · Undo" toast. */
@@ -140,7 +148,8 @@ type TaskGithubPanelProperties = {
     /** Drawer edit gate (`canEditTasks && !archived`) — same Role seam as Board. */
     canEdit: boolean;
     githubToken: null | string;
-    onGitLinkChange: (repositoryId: string, change: GitLinkChange) => void;
+    /** Write one Git link; a new `linkId` adds one (ADR 0036). */
+    onGitLinkChange: (target: GitLinkTarget, change: GitLinkChange) => void;
     onLinkedCommitChange: (linkedCommitSha: null | string) => void;
     /** Project id for connect deep-link when no Repository is linked. */
     projectId: string;
@@ -150,9 +159,10 @@ type TaskGithubPanelProperties = {
 };
 
 /**
- * Drawer GitHub block (ADR 0035): one row per Git link — branch, then PR
- * status or Open PR, then a `⋯` menu — the Task's Commits, and a single
- * "+ Link" menu for adding a branch, PR or commit.
+ * Drawer GitHub block (ADR 0035, 0036): one row per Git link — a Repository
+ * may hold several — with branch, then PR status or Open PR (from that row's
+ * branch), then a `⋯` menu; the Task's Commits; and a single "+ Link" menu
+ * that adds a branch, PR or commit.
  */
 export function TaskGithubPanel({
     allowedHeadPatterns,
@@ -253,27 +263,10 @@ export function TaskGithubPanel({
     }
 
     const multiRepository = repositories.length > 1;
-    const linked = groupGitLinksByRepository(
-        repositories,
-        task.gitLinks
-    ).flatMap(({ link, repository }) => (link ? [{ link, repository }] : []));
+    const linked = linkedGitLinks(repositories, task.gitLinks);
     const canFetchGithub = Boolean(githubToken);
-    const branchOptions = repositoriesAcceptingGitLink(
-        repositories,
-        task.gitLinks,
-        "branch"
-    );
-    const prOptions = repositoriesAcceptingGitLink(
-        repositories,
-        task.gitLinks,
-        "pr"
-    );
-    const attachOptions =
-        attach === "branch"
-            ? branchOptions
-            : attach === "pr"
-              ? prOptions
-              : repositories;
+    // Any Repository takes another branch / PR (ADR 0036); commits search all.
+    const attachOptions = repositories;
     const attachRepositoryId = pickDefaultRepositoryId(
         attachOptions,
         chosenRepositoryId ?? lastRepositoryId
@@ -282,35 +275,39 @@ export function TaskGithubPanel({
         (repository) => repository.id === attachRepositoryId
     );
 
-    const changeGitLink = (repositoryId: string, change: GitLinkChange) => {
-        if (!linked.some((entry) => entry.repository.id === repositoryId)) {
-            setLastRepositoryId(user?.id, boardId, repositoryId);
+    const changeGitLink = (target: GitLinkTarget, change: GitLinkChange) => {
+        if (!task.gitLinks?.some((link) => link.id === target.linkId)) {
+            setLastRepositoryId(user?.id, boardId, target.repositoryId);
         }
-        onGitLinkChange(repositoryId, change);
+        onGitLinkChange(target, change);
     };
 
     /** Unlink right away; the toast's Undo puts the previous Git link back. */
-    const unlinkGitLink = (repositoryId: string, change: GitLinkChange) => {
+    const unlinkGitLink = (target: GitLinkTarget, change: GitLinkChange) => {
         if (!canEdit) return;
         const previous = task.gitLinks?.find(
-            (link) => link.repositoryId === repositoryId
+            (link) => link.id === target.linkId
         );
-        onGitLinkChange(repositoryId, change);
+        onGitLinkChange(target, change);
         toast(t("github.unlinkedToast"), {
             action: {
                 label: t("github.undo"),
                 onClick: () => {
-                    onGitLinkChange(
-                        repositoryId,
-                        gitLinkRestoreChange(previous)
-                    );
+                    onGitLinkChange(target, gitLinkRestoreChange(previous));
                 },
             },
         });
     };
 
+    /** A branch is a new Git link unless this Repository already holds it. */
     const linkBranch = (repositoryId: string, branchName: string) => {
-        changeGitLink(repositoryId, { branchName });
+        if (findGitLink(task.gitLinks, repositoryId, { branchName })) {
+            toast.message(
+                t("github.branchAlreadyLinked", { branch: branchName })
+            );
+            return;
+        }
+        changeGitLink({ linkId: newGitLinkId(), repositoryId }, { branchName });
         if (isSharedBranch(branchName)) {
             toast.message(
                 t("github.sharedLinkedToast", { branch: branchName })
@@ -378,7 +375,26 @@ export function TaskGithubPanel({
                 state: remote.merged_at ? "merged" : remote.state,
                 url: remote.url,
             };
-            changeGitLink(repository.id, { pr: nextPr });
+            const plan = planAttachPr(task.gitLinks, repository.id, {
+                headRef: remote.head_ref,
+                number: nextPr.number,
+            });
+            if (plan.kind === "duplicate") {
+                closeAttach();
+                toast.message(
+                    t("github.prAlreadyLinked", { number: nextPr.number })
+                );
+                return;
+            }
+            // The PR joins the branch-only Git link on its head, else adds one.
+            changeGitLink(
+                {
+                    linkId:
+                        plan.kind === "join" ? plan.link.id : newGitLinkId(),
+                    repositoryId: repository.id,
+                },
+                { pr: nextPr }
+            );
             closeAttach();
             toast.success(t("github.prLinkedToast", { number: nextPr.number }));
         } catch (error) {
@@ -563,14 +579,18 @@ export function TaskGithubPanel({
     };
     const canRefreshLinks = canEdit && !isGuest();
 
+    // Several Git links in one Repository: commits follow the newest own branch.
     const commitRepositories = gitTabRepositories(
         repositories,
         task.gitLinks
-    ).map(({ link, repository }) => ({
-        branchName:
-            link?.branchName && !isSharedBranch(link.branchName)
-                ? link.branchName
-                : undefined,
+    ).map(({ links, repository }) => ({
+        branchName: links
+            .flatMap((link) =>
+                link.branchName && !isSharedBranch(link.branchName)
+                    ? [link.branchName]
+                    : []
+            )
+            .at(-1),
         fullName: repository.fullName,
         id: repository.id,
     }));
@@ -625,17 +645,13 @@ export function TaskGithubPanel({
                                     className="w-auto min-w-48"
                                 >
                                     <DropdownMenuItem
-                                        disabled={branchOptions.length === 0}
                                         onClick={() => openAttach("branch")}
                                     >
                                         <GitBranch aria-hidden />
                                         {t("github.attachBranch")}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        disabled={
-                                            prOptions.length === 0 ||
-                                            !canFetchGithub
-                                        }
+                                        disabled={!canFetchGithub}
                                         onClick={() => openAttach("pr")}
                                         title={
                                             canFetchGithub
@@ -790,13 +806,26 @@ export function TaskGithubPanel({
                         baseBranch={baseBranchFor(repository.id)}
                         canEdit={canEdit}
                         githubToken={githubToken}
-                        key={repository.id}
+                        key={link.id}
+                        label={gitLinkRowLabel(link, repository, linked)}
                         link={link}
                         onChange={(change) =>
-                            changeGitLink(repository.id, change)
+                            changeGitLink(
+                                {
+                                    linkId: link.id,
+                                    repositoryId: repository.id,
+                                },
+                                change
+                            )
                         }
                         onUnlink={(change) =>
-                            unlinkGitLink(repository.id, change)
+                            unlinkGitLink(
+                                {
+                                    linkId: link.id,
+                                    repositoryId: repository.id,
+                                },
+                                change
+                            )
                         }
                         projectId={projectId}
                         repository={repository}
@@ -889,6 +918,7 @@ function GitLinkRow({
     baseBranch,
     canEdit,
     githubToken,
+    label,
     link,
     onChange,
     onUnlink,
@@ -943,7 +973,7 @@ function GitLinkRow({
         setCloseOpen(false);
         setRequestReviewOpen(false);
         setMergeMethod("squash");
-    }, [task.id, repository.id]);
+    }, [task.id, repository.id, link.id]);
 
     const checkoutCommand = branchName
         ? `git checkout ${branchName}`
@@ -1223,7 +1253,7 @@ function GitLinkRow({
     return (
         <>
             <section
-                aria-label={repoFullName}
+                aria-label={label}
                 className="flex min-w-0 flex-col gap-1.5 border-t border-primary/15 pt-3"
                 data-testid="github-git-link"
             >
@@ -1237,7 +1267,7 @@ function GitLinkRow({
                                 render={
                                     <Button
                                         aria-label={t("github.rowActions", {
-                                            repository: repoFullName,
+                                            repository: label,
                                         })}
                                         className="shrink-0"
                                         size="icon-xs"
@@ -1600,4 +1630,22 @@ function GitLinkRow({
             </AlertDialog>
         </>
     );
+}
+
+/**
+ * Row name: the Repository alone while it holds one Git link of the Task,
+ * else the Repository with that row's branch (or PR) to tell rows apart.
+ */
+function gitLinkRowLabel(
+    link: TaskGitLink,
+    repository: GitLinkRepository,
+    linked: readonly { repository: GitLinkRepository }[]
+): string {
+    const siblings = linked.filter(
+        (entry) => entry.repository.id === repository.id
+    ).length;
+    if (siblings <= 1) return repository.fullName;
+    const detail =
+        link.branchName ?? (link.pr ? `PR #${link.pr.number}` : undefined);
+    return detail ? `${repository.fullName} · ${detail}` : repository.fullName;
 }

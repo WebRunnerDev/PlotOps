@@ -142,6 +142,11 @@ describe("guest Projects with several Repositories (ADR 0035)", () => {
 
         const { data: count } = await provider.countRepositoryGitLinks(apiId);
         expect(count).toBeGreaterThan(0);
+        const apiLinks = guestMode
+            .getGuestSandbox()!
+            .tasks.flatMap((task) => task.gitLinks ?? [])
+            .filter((link) => link.repositoryId === apiId).length;
+        expect(apiLinks).toBeGreaterThanOrEqual(count!);
 
         const { error } = await provider.removeProjectRepository(apiId);
         expect(error).toBeNull();
@@ -164,6 +169,6 @@ describe("guest Projects with several Repositories (ADR 0035)", () => {
             sandbox.activity.filter(
                 (event) => event.metadata.reason === "repository_unlinked"
             )
-        ).toHaveLength(count!);
+        ).toHaveLength(apiLinks);
     });
 });

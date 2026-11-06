@@ -99,9 +99,14 @@ export type GuestGitHubRepo = {
     name: string;
 };
 
-/** A Task's branch / PR in one Repository (`task_git_links`). */
+/** A Task's branch / PR in one Repository (`task_git_links`, ADR 0036). */
 export type GuestGitLink = {
     branchName?: string;
+    /**
+     * Stable id (`task_git_links.id`). Seeded and older links get one on read
+     * (`guestGitLinkId`); links added in the session keep the app's id.
+     */
+    id?: string;
     pr?: GuestPullRequest;
     repositoryId: string;
 };

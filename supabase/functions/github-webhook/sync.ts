@@ -166,8 +166,9 @@ export async function syncClosedPullRequest(
 
 /**
  * Branch pushed (`create`, ref_type=branch) — every Task whose key is in the
- * branch name and that has no Git link to this Repository gets a branch-only
- * one. A PR opened from it later joins that link (`bind`).
+ * branch name and that has no Git link with this branch gets a new
+ * branch-only one (ADR 0036). A PR opened from it later joins that link
+ * (`bind`).
  */
 export async function syncCreatedBranch(
     supabase: SupabaseClient,
@@ -211,11 +212,7 @@ export async function syncCreatedBranch(
                 if (binding !== "auto_link") {
                     const reason =
                         binding === "linked" ? "already_linked" : binding;
-                    if (binding === "link_conflict") {
-                        logLinkConflict(log, match, { ref: branchName });
-                    } else {
-                        log({ reason, taskId: match.task.id });
-                    }
+                    log({ reason, taskId: match.task.id });
                     return { ok: true, reason, skipped: true };
                 }
 
@@ -374,13 +371,16 @@ async function applyPrEvent(
     const autoLinked = input.binding === "auto_link";
     const projectId = repository.project_id;
 
-    // Every Git link as it stands after this event: this Repository's link
-    // takes the incoming PR state.
+    // Every Git link of the Task (all Repositories) as it stands after this
+    // event: the matched link takes the incoming PR state, a new one is added.
+    const existingLink = autoLinked ? undefined : match.link;
     const storedLinks = await fetchTaskGitLinks(supabase, task.id);
-    const links: GitLinkPrState[] = [
-        ...storedLinks.filter((link) => link.repository_id !== repository.id),
-        prUpdate ?? { pr_number: task.pr_number, pr_state: task.pr_state },
-    ];
+    const links: GitLinkPrState[] = prUpdate
+        ? [
+              ...storedLinks.filter((link) => link.id !== existingLink?.id),
+              prUpdate,
+          ]
+        : storedLinks;
 
     const move = await planMove(supabase, task, links, log);
 
@@ -398,7 +398,9 @@ async function applyPrEvent(
             task.id,
             repository,
             prUpdate,
-            autoLinked ? input.headRef : undefined
+            existingLink
+                ? { linkId: existingLink.id }
+                : { branchName: input.headRef }
         );
     }
 
@@ -422,10 +424,10 @@ async function applyPrEvent(
             ? [
                   {
                       field: "pr",
-                      from: task.pr_number
+                      from: existingLink?.pr_number
                           ? {
-                                number: task.pr_number,
-                                state: task.pr_state ?? "open",
+                                number: existingLink.pr_number,
+                                state: existingLink.pr_state ?? "open",
                             }
                           : null,
                       to: {
@@ -593,23 +595,6 @@ async function forEachRepository(
     return { ok: true, reason: "no_task", skipped: true };
 }
 
-function logLinkConflict(
-    log: Log,
-    match: TaskMatch,
-    event: { prNumber?: number; ref?: string }
-) {
-    log({
-        linkedBranch: match.task.branch_name,
-        linkedPr: match.task.pr_number,
-        matchedBy: match.by,
-        ...(event.prNumber === undefined
-            ? { ref: event.ref }
-            : { pr: event.prNumber }),
-        reason: "link_conflict",
-        taskId: match.task.id,
-    });
-}
-
 /**
  * `Move` when the merge set is complete and the Task is off its merge target
  * column; `null` when complete but staying put; `undefined` while pending.
@@ -726,10 +711,6 @@ async function syncMergedInRepository(
 
     return applyEach(matches, async (match) => {
         const binding = planGitLinkBinding(match, event);
-        if (binding === "link_conflict") {
-            logLinkConflict(log, match, event);
-            return { ok: true, reason: "link_conflict", skipped: true };
-        }
         if (binding === "dismissed") {
             log({ reason: "dismissed", taskId: match.task.id });
             return { ok: true, reason: "dismissed", skipped: true };
@@ -759,7 +740,7 @@ async function syncMergedInRepository(
             log,
             match,
             prUpdate:
-                task.pr_state === "merged"
+                binding === "linked" && match.link?.pr_state === "merged"
                     ? null
                     : {
                           pr_number: event.prNumber,
@@ -804,11 +785,7 @@ async function syncPrState(
                 });
 
                 if (plan.skip) {
-                    if (plan.reason === "link_conflict") {
-                        logLinkConflict(log, match, event);
-                    } else {
-                        log({ reason: plan.reason, taskId: match.task.id });
-                    }
+                    log({ reason: plan.reason, taskId: match.task.id });
                     return { ok: true, reason: plan.reason, skipped: true };
                 }
 

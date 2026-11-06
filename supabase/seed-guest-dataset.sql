@@ -399,6 +399,16 @@ begin
   from _seed_tasks
   where branch_name is not null or pr_number is not null;
 
+  -- A second PR of BUG-11 in the same Repository (ADR 0036).
+  insert into public.task_git_links (
+    task_id, repository_id, project_id, branch_name, pr_number, pr_state, pr_url
+  )
+  values (
+    t11, repo_git_id, proj_git_id,
+    'hotfix/BUG-11-reconnect-backoff',
+    40, 'merged', 'https://github.com/plotops-demo/plotops/pull/40'
+  );
+
   drop table _seed_tasks;
 
   update public.sprints

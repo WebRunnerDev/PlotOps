@@ -47,7 +47,8 @@ describe("Project Repositories seam (ADR 0035)", () => {
             /\.from\(\s*["']project_repositories["']\s*\)\s*\.delete\(\)/
         );
         expect(count).toMatch(/\.from\(\s*["']task_git_links["']\s*\)/);
-        expect(count).toMatch(/count:\s*["']exact["']/);
+        // Several Git links per Task (ADR 0036): count distinct Tasks.
+        expect(count).toMatch(/new Set\(/);
         expect(count).toMatch(/\.eq\(\s*["']repository_id["']/);
     });
 

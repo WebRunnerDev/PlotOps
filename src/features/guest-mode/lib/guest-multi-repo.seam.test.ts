@@ -55,6 +55,7 @@ describe("«Web + API» demo Project (ADR 0035)", () => {
             const links = task.gitLinks ?? [];
             return (
                 links.length === 2 &&
+                new Set(links.map((link) => link.repositoryId)).size === 2 &&
                 links.some((link) => link.pr?.state === "merged") &&
                 links.some((link) => link.pr?.state === "open")
             );
@@ -68,6 +69,19 @@ describe("«Web + API» demo Project (ADR 0035)", () => {
                 GUEST_DEMO_WEB_REPOSITORY_ID,
             ].toSorted()
         );
+    });
+
+    it("has a Task with two PRs in one Repository (ADR 0036)", () => {
+        expect(
+            tasks.some((task) => {
+                const prs = (task.gitLinks ?? []).filter(
+                    (link) =>
+                        link.repositoryId === GUEST_DEMO_WEB_REPOSITORY_ID &&
+                        link.pr
+                );
+                return prs.length === 2;
+            })
+        ).toBe(true);
     });
 
     it("has a Task with a branch but no PR", () => {
@@ -177,6 +191,7 @@ describe("single-repo Guest Sessions saved before ADR 0035", () => {
         expect(task.gitLinks).toEqual([
             {
                 branchName: "feature/legacy",
+                id: `${target.id}:git:0`,
                 pr: {
                     number: 7,
                     state: "open",

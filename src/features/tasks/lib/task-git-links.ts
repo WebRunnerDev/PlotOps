@@ -4,10 +4,10 @@ import type {
     TaskPullRequest,
 } from "@/features/tasks/model/types";
 
-/** What the drawer's "+ Link" menu attaches to a Repository's Git link. */
+/** What the drawer's "+ Link" menu attaches as a Git link. */
 export type GitLinkAttachKind = "branch" | "pr";
 
-/** Branch / PR change for one Repository's Git link; `null` clears a field. */
+/** Branch / PR change for one Git link; `null` clears a field. */
 export type GitLinkChange = {
     branchName?: null | string;
     pr?: null | TaskPullRequest;
@@ -19,9 +19,22 @@ export type GitLinkRepository = {
     id: string;
 };
 
-/** One Repository row in the drawer: the Repository and its Git link, if any. */
-export type RepositoryGitLink = {
-    link: TaskGitLink | undefined;
+/**
+ * Which Git link a change writes (ADR 0036). A `linkId` the Task does not
+ * hold yet adds a Git link with that id, so the optimistic row, the server
+ * row and an Undo share it.
+ */
+export type GitLinkTarget = { linkId: string; repositoryId: string };
+
+/** A linked Git link with its Repository — one drawer row. */
+export type LinkedGitLink = {
+    link: TaskGitLink;
+    repository: GitLinkRepository;
+};
+
+/** One Repository and the Task's Git links to it (oldest first). */
+export type RepositoryGitLinks = {
+    links: TaskGitLink[];
     repository: GitLinkRepository;
 };
 
@@ -38,26 +51,33 @@ export type TaskPrBadge =
     | { kind: "single"; pr: TaskPullRequest };
 
 /**
- * Apply a branch / PR change to the Git link for `repositoryId`. Mirrors
+ * Apply a branch / PR change to the Git link `target.linkId`. Mirrors
  * `update_task_details`: a Git link left with neither branch nor PR is
- * removed, a new one is appended (Git links are ordered oldest first).
+ * removed, an unknown id is appended as a new one (oldest first).
  */
 export function applyGitLinkChange(
     links: readonly TaskGitLink[] | undefined,
-    repositoryId: string,
+    target: GitLinkTarget,
     change: GitLinkChange
 ): TaskGitLink[] {
     const list = links ?? [];
-    const index = list.findIndex((link) => link.repositoryId === repositoryId);
+    const index = list.findIndex((link) => link.id === target.linkId);
     const current: TaskGitLink =
-        index === -1 ? { repositoryId } : (list[index] as TaskGitLink);
+        index === -1
+            ? { id: target.linkId, repositoryId: target.repositoryId }
+            : (list[index] as TaskGitLink);
     const branchName =
         change.branchName === undefined
             ? current.branchName
             : change.branchName?.trim() || undefined;
     const pr = change.pr === undefined ? current.pr : (change.pr ?? undefined);
     const empty = !branchName && !pr;
-    const next: TaskGitLink = { branchName, pr, repositoryId };
+    const next: TaskGitLink = {
+        branchName,
+        id: current.id,
+        pr,
+        repositoryId: current.repositoryId,
+    };
 
     if (index === -1) {
         return empty ? [...list] : [...list, next];
@@ -68,27 +88,22 @@ export function applyGitLinkChange(
 }
 
 /**
- * Optimistic cache fields for a branch / PR change. Updates the Git link of
- * `repositoryId` (or the only Git link when it is omitted) and re-derives the
- * single-repo `branchName` / `pr` view. Returns `{}` when nothing Git changed.
+ * Optimistic cache fields for a branch / PR change to `target` and the
+ * re-derived single-repo `branchName` / `pr` view. Returns `{}` when nothing
+ * Git changed.
  */
 export function applyGitLinkDetails(
     task: Pick<Task, "branchName" | "gitLinks" | "pr">,
-    repositoryId: string | undefined,
+    target: GitLinkTarget | undefined,
     change: GitLinkChange
 ): Partial<Pick<Task, "branchName" | "gitLinks" | "pr">> {
     if (change.branchName === undefined && change.pr === undefined) {
         return {};
     }
-    const targetId =
-        repositoryId ??
-        (task.gitLinks?.length === 1
-            ? task.gitLinks[0]?.repositoryId
-            : undefined);
 
-    if (!targetId) {
-        // Repository unknown client-side (single-repo Project, no Git link yet):
-        // patch the single-repo view; the refetch brings the Git link.
+    if (!target) {
+        // Git link unknown client-side: patch the single-repo view; the
+        // refetch brings the Git link.
         return {
             ...(change.branchName === undefined
                 ? {}
@@ -98,28 +113,45 @@ export function applyGitLinkDetails(
     }
 
     return gitLinksLegacyView(
-        applyGitLinkChange(task.gitLinks, targetId, change)
+        applyGitLinkChange(task.gitLinks, target, change)
+    );
+}
+
+/**
+ * Git link that already holds this branch (`branchName`) or PR (`prNumber`)
+ * in the Repository — attaching it again would duplicate it.
+ */
+export function findGitLink(
+    links: readonly TaskGitLink[] | undefined,
+    repositoryId: string,
+    match: { branchName: string } | { prNumber: number }
+): TaskGitLink | undefined {
+    return (links ?? []).find(
+        (link) =>
+            link.repositoryId === repositoryId &&
+            ("branchName" in match
+                ? link.branchName === match.branchName
+                : link.pr?.number === match.prNumber)
     );
 }
 
 /**
  * The Task as activity diffing should see it for a Git change: `branchName` /
- * `pr` read from the Git link of `repositoryId` rather than `gitLinks[0]`.
+ * `pr` read from the Git link `linkId` (empty for a new one) rather than
+ * `gitLinks[0]`.
  */
 export function gitLinkActivityView<
     T extends Pick<Task, "branchName" | "gitLinks" | "pr">,
->(task: T, repositoryId?: string): T {
-    if (!repositoryId) return task;
-    const link = task.gitLinks?.find(
-        (item) => item.repositoryId === repositoryId
-    );
+>(task: T, linkId?: string): T {
+    if (!linkId) return task;
+    const link = task.gitLinks?.find((item) => item.id === linkId);
     return { ...task, branchName: link?.branchName, pr: link?.pr };
 }
 
 /**
- * The change that puts a Repository's Git link back as it was before an
- * unlink — what the "Unlinked · Undo" toast applies. `undefined` (there was
- * no Git link) clears both fields.
+ * The change that puts a Git link back as it was before an unlink — what
+ * the "Unlinked · Undo" toast applies to the same link id. `undefined` (there
+ * was no Git link) clears both fields.
  */
 export function gitLinkRestoreChange(previous?: TaskGitLink): GitLinkChange {
     return {
@@ -150,24 +182,42 @@ export function gitLinksLegacyView(links: readonly TaskGitLink[]): {
 export function gitTabRepositories(
     repositories: readonly GitLinkRepository[],
     links?: readonly TaskGitLink[]
-): RepositoryGitLink[] {
+): RepositoryGitLinks[] {
     const grouped = groupGitLinksByRepository(repositories, links);
-    const linked = grouped.filter((entry) => entry.link !== undefined);
+    const linked = grouped.filter((entry) => entry.links.length > 0);
     return linked.length > 0 ? linked : grouped;
 }
 
 /**
- * Repositories in Project order, each with the Task's Git link when it has
- * one. Git links to a Repository the Project no longer holds are dropped.
+ * Repositories in Project order, each with the Task's Git links to it.
+ * Git links to a Repository the Project no longer holds are dropped.
  */
 export function groupGitLinksByRepository(
     repositories: readonly GitLinkRepository[],
     links: readonly TaskGitLink[] | undefined
-): RepositoryGitLink[] {
+): RepositoryGitLinks[] {
     return repositories.map((repository) => ({
-        link: links?.find((link) => link.repositoryId === repository.id),
+        links: (links ?? []).filter(
+            (link) => link.repositoryId === repository.id
+        ),
         repository,
     }));
+}
+
+/** Every Git link with its Repository: Project order, then oldest first. */
+export function linkedGitLinks(
+    repositories: readonly GitLinkRepository[],
+    links: readonly TaskGitLink[] | undefined
+): LinkedGitLink[] {
+    return groupGitLinksByRepository(repositories, links).flatMap(
+        ({ links: repositoryLinks, repository }) =>
+            repositoryLinks.map((link) => ({ link, repository }))
+    );
+}
+
+/** Id for a Git link the app is about to add (`update_task_details` keeps it). */
+export function newGitLinkId(): string {
+    return crypto.randomUUID();
 }
 
 /**
@@ -185,29 +235,31 @@ export function pickDefaultRepositoryId(
 }
 
 /**
- * Repositories a branch / PR can be attached to from the "+ Link" menu:
- * those whose Git link has no such field yet (no Git link counts too).
- * Replacing a linked branch / PR is an explicit unlink first.
+ * Where a PR attached from the "+ Link" menu goes (ADR 0036): nowhere when
+ * the Task already holds it in that Repository, into the branch-only Git
+ * link on its head branch, else a new Git link.
  */
-export function repositoriesAcceptingGitLink(
-    repositories: readonly GitLinkRepository[],
+export function planAttachPr(
     links: readonly TaskGitLink[] | undefined,
-    kind: GitLinkAttachKind
-): GitLinkRepository[] {
-    return groupGitLinksByRepository(repositories, links)
-        .filter(({ link }) =>
-            kind === "branch" ? !link?.branchName : !link?.pr
-        )
-        .map(({ repository }) => repository);
-}
-
-/** Repositories the Task has no Git link for yet — the only ones Create branch / PR offers. */
-export function repositoriesWithoutGitLink(
-    repositories: readonly GitLinkRepository[],
-    links?: readonly TaskGitLink[]
-): GitLinkRepository[] {
-    const linked = new Set((links ?? []).map((link) => link.repositoryId));
-    return repositories.filter((repository) => !linked.has(repository.id));
+    repositoryId: string,
+    pr: { headRef?: string; number: number }
+):
+    | { kind: "duplicate"; link: TaskGitLink }
+    | { kind: "join"; link: TaskGitLink }
+    | { kind: "new" } {
+    const duplicate = findGitLink(links, repositoryId, {
+        prNumber: pr.number,
+    });
+    if (duplicate) return { kind: "duplicate", link: duplicate };
+    const branchOnly = pr.headRef
+        ? (links ?? []).find(
+              (link) =>
+                  link.repositoryId === repositoryId &&
+                  !link.pr &&
+                  link.branchName === pr.headRef
+          )
+        : undefined;
+    return branchOnly ? { kind: "join", link: branchOnly } : { kind: "new" };
 }
 
 /**

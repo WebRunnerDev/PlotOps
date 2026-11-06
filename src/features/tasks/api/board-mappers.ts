@@ -83,6 +83,7 @@ export type DatabaseTask = {
 export type DatabaseTaskGitLink = {
     branch_name: null | string;
     created_at?: string;
+    id: string;
     pr_number: null | number;
     pr_state: null | string;
     pr_url: null | string;
@@ -339,10 +340,12 @@ function toGitLinks(
             (a, b) =>
                 Date.parse(a.created_at ?? "") -
                     Date.parse(b.created_at ?? "") ||
-                a.repository_id.localeCompare(b.repository_id)
+                a.repository_id.localeCompare(b.repository_id) ||
+                a.id.localeCompare(b.id)
         )
         .map((row) => ({
             branchName: row.branch_name ?? undefined,
+            id: row.id,
             pr: toPullRequest(row),
             repositoryId: row.repository_id,
         }));

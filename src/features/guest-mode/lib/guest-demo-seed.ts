@@ -665,6 +665,16 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
                     },
                     repositoryId: REPO_WEB.id,
                 },
+                // A hotfix PR in the same Repository (ADR 0036).
+                {
+                    branchName: "hotfix/FEAT-1-cta-contrast",
+                    pr: {
+                        number: 44,
+                        state: "merged",
+                        url: "https://github.com/plotops-demo/web/pull/44",
+                    },
+                    repositoryId: REPO_WEB.id,
+                },
             ],
             id: T01,
             key: "FEAT-1",
