@@ -9,8 +9,8 @@ describe("createSlidingWindowRateLimiter", () => {
             windowMs: 60_000,
         });
 
-        expect(limiter.check("user:1", 1_000).allowed).toBe(true);
-        expect(limiter.check("user:1", 2_000).allowed).toBe(true);
+        expect(limiter.check("user:1", 1000).allowed).toBe(true);
+        expect(limiter.check("user:1", 2000).allowed).toBe(true);
     });
 
     it("blocks when the window is full", () => {
@@ -19,9 +19,9 @@ describe("createSlidingWindowRateLimiter", () => {
             windowMs: 60_000,
         });
 
-        limiter.check("user:1", 1_000);
-        limiter.check("user:1", 2_000);
-        const blocked = limiter.check("user:1", 3_000);
+        limiter.check("user:1", 1000);
+        limiter.check("user:1", 2000);
+        const blocked = limiter.check("user:1", 3000);
 
         expect(blocked.allowed).toBe(false);
         if (!blocked.allowed) {
@@ -35,8 +35,8 @@ describe("createSlidingWindowRateLimiter", () => {
             windowMs: 60_000,
         });
 
-        limiter.check("user:a", 1_000);
-        expect(limiter.check("user:b", 1_100).allowed).toBe(true);
+        limiter.check("user:a", 1000);
+        expect(limiter.check("user:b", 1100).allowed).toBe(true);
     });
 
     it("expires timestamps outside the window", () => {
@@ -45,7 +45,7 @@ describe("createSlidingWindowRateLimiter", () => {
             windowMs: 10_000,
         });
 
-        limiter.check("user:1", 1_000);
+        limiter.check("user:1", 1000);
         expect(limiter.check("user:1", 12_000).allowed).toBe(true);
     });
 });

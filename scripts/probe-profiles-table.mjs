@@ -40,8 +40,8 @@ let response;
 try {
     response = await fetch(`${url}/rest/v1/profiles?select=id&limit=0`, {
         headers: {
-            Authorization: `Bearer ${key}`,
             apikey: key,
+            Authorization: `Bearer ${key}`,
         },
     });
 } catch (error) {

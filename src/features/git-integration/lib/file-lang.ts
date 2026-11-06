@@ -7,9 +7,7 @@ export function langFromFilename(filename: string): string {
     if (lower === "makefile") return "makefile";
     if (lower.endsWith(".d.ts")) return "typescript";
 
-    const ext = lower.includes(".")
-        ? (lower.split(".").pop() ?? "")
-        : "";
+    const extension = lower.includes(".") ? (lower.split(".").pop() ?? "") : "";
 
     const map: Record<string, string> = {
         c: "c",
@@ -43,5 +41,5 @@ export function langFromFilename(filename: string): string {
         yml: "yaml",
     };
 
-    return map[ext] ?? (ext || "plaintext");
+    return map[extension] ?? (extension || "plaintext");
 }

@@ -25,7 +25,7 @@ env:
 
 jobs:
     check:
-        name: audit · types
+        name: audit · types · lint
         runs-on: ubuntu-latest
         timeout-minutes: 15
         steps:
@@ -39,6 +39,8 @@ jobs:
             # surfaced by Dependabot alerts instead of blocking every PR.
             - run: npm audit --audit-level=high --omit=dev
             - run: npm run typecheck
+            # Errors gate the PR; warnings are reported but do not fail the job.
+            - run: npm run lint
 
     # Vitest shards split the test files evenly and run in parallel; together they
     # cover exactly what `npm test` does. fail-fast is off so one failing shard does

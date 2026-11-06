@@ -26,14 +26,6 @@ export const supabaseTeamsProvider: TeamsProvider = {
         };
     },
 
-    async updateTeam(teamId, name) {
-        const result = await updateTeam(teamId, name);
-        return {
-            data: result.data,
-            error: result.error ? new Error(result.error.message) : null,
-        };
-    },
-
     async fetchTeam(teamId) {
         const result = await fetchTeam(teamId);
         return {
@@ -44,6 +36,14 @@ export const supabaseTeamsProvider: TeamsProvider = {
 
     async fetchTeams() {
         const result = await fetchTeams();
+        return {
+            data: result.data,
+            error: result.error ? new Error(result.error.message) : null,
+        };
+    },
+
+    async updateTeam(teamId, name) {
+        const result = await updateTeam(teamId, name);
         return {
             data: result.data,
             error: result.error ? new Error(result.error.message) : null,

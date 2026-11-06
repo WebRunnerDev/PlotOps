@@ -8,7 +8,10 @@ export const BOOT_MIN_VISIBLE_MS = 1100;
  * window elapsed — so a fast session restore never skips the signature reveal.
  * Boot errors bypass the hold and show immediately.
  */
-export function useBootVisible(isLoading: boolean, bootError: boolean): boolean {
+export function useBootVisible(
+    isLoading: boolean,
+    bootError: boolean
+): boolean {
     const [hold, setHold] = useState(true);
     const startedAtReference = useRef(
         typeof performance === "undefined" ? Date.now() : performance.now()
@@ -34,12 +37,12 @@ export function useBootVisible(isLoading: boolean, bootError: boolean): boolean 
         const elapsed = now - startedAtReference.current;
         const remaining = Math.max(0, BOOT_MIN_VISIBLE_MS - elapsed);
 
-        const timeoutId = window.setTimeout(() => {
+        const timeoutId = globalThis.setTimeout(() => {
             setHold(false);
         }, remaining);
 
         return () => {
-            window.clearTimeout(timeoutId);
+            globalThis.clearTimeout(timeoutId);
         };
     }, [bootError, isLoading]);
 
