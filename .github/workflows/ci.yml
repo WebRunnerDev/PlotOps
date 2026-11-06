@@ -74,12 +74,15 @@ jobs:
         steps:
             - run: test "${{ needs.test.result }}" = success
 
-    # TODO(session 4): bring e2e back into the PR gate. Until its state is checked
-    # it only runs on manual dispatch so it cannot turn the new gate red.
+    # Guest-mode e2e against the built app. PRs and pushes to dev run chromium only
+    # (about 2 minutes); pushes to main and manual runs cover all three browsers
+    # (about 6 minutes). Auth specs skip here: they need local Supabase (E2E_AUTH=1).
     browser-compat:
-        if: github.event_name == 'workflow_dispatch'
+        name: e2e (${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && 'all browsers' || 'chromium' }})
         runs-on: ubuntu-latest
         timeout-minutes: 30
+        env:
+            BROWSERS: ${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && 'chromium firefox webkit' || 'chromium' }}
         steps:
             - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
             - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -87,9 +90,9 @@ jobs:
                   node-version: 22
                   cache: npm
             - run: npm ci
-            - run: npx playwright install --with-deps chromium firefox webkit
+            - run: npx playwright install --with-deps $BROWSERS
             - run: npm run build
-            - run: npm run test:e2e
+            - run: npm run test:e2e -- $(printf -- '--project=%s ' $BROWSERS)
             - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
               if: failure()
               with:

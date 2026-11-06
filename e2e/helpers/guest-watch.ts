@@ -82,6 +82,9 @@ export async function goToNotificationsFromBell(page: Page): Promise<void> {
     await page.getByTestId("notifications-view-all").click();
     await expect(page).toHaveURL(/\/notifications/, { timeout: 15_000 });
     await expect(page.getByTestId("notifications-search")).toBeVisible();
+    // The drawer lists the same notifications as the page, so text lookups on
+    // the page match twice until its close animation finishes.
+    await expect(page.getByTestId("notifications-preview")).toBeHidden();
 }
 
 /** Read whether the self Watch toggle currently shows Watching state. */
