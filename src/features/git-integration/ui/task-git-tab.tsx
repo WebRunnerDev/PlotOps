@@ -1,21 +1,10 @@
-import {
-    ExternalLink,
-    GitCommit,
-    GitPullRequest,
-    RefreshCw,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { ExternalLink, GitPullRequest, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { GitPullRequest as GitPR } from "@/features/git-integration/api/github-git-api";
 
-import { mergeCommitsBySha } from "@/features/git-integration/lib/merge-commits";
-import {
-    useBranchCommits,
-    useBranchPullRequests,
-    useLinkedCommit,
-    useTaskKeyCommits,
-} from "@/features/git-integration/model/use-git-data";
+import { useBranchPullRequests } from "@/features/git-integration/model/use-git-data";
 import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/shadcn/ui/alert";
@@ -27,8 +16,6 @@ type TaskGitTabProperties = {
     branchName?: string;
     /** Shared/base branch — hide noisy branch commit/PR lists. */
     isShared?: boolean;
-    /** Manually linked commit SHA (optional). */
-    linkedCommitSha?: string;
     /**
      * Task-linked PR number from the GitHub panel.
      * When set, the branch PR list is hidden (panel is the single PR surface).
@@ -37,7 +24,6 @@ type TaskGitTabProperties = {
     repoFullName: string;
     /** Repository caption when the Project holds several Repositories. */
     repositoryLabel?: string;
-    taskKey: string;
     /** Null for guest demos (fixtures load when session is guest). */
     token: null | string;
 };
@@ -48,14 +34,17 @@ const PR_STATE_CLASS: Record<"merged" | GitPR["state"], string> = {
     open: "border-emerald-500/40 text-emerald-400",
 };
 
+/**
+ * Per-Repository Git extras under the drawer GitHub panel: the shared-branch
+ * notice and PRs found on the branch while no PR is linked. Commits live in
+ * the panel's Commits section, across every Repository.
+ */
 export function TaskGitTab({
     branchName,
     isShared = false,
-    linkedCommitSha,
     linkedPrNumber,
     repoFullName,
     repositoryLabel,
-    taskKey,
     token,
 }: TaskGitTabProperties) {
     const { t } = useTranslation("board");
@@ -76,56 +65,7 @@ export function TaskGitTab({
         token,
     });
 
-    const {
-        data: branchCommits = [],
-        isError: branchCommitsError,
-        isLoading: branchCommitsLoading,
-        refetch: refetchBranchCommits,
-    } = useBranchCommits({
-        branchName: branchEnabled ? branchName : undefined,
-        repoFullName,
-        token,
-    });
-
-    const {
-        data: taskKeyCommits = [],
-        isError: taskKeyCommitsError,
-        isLoading: taskKeyCommitsLoading,
-        refetch: refetchTaskKeyCommits,
-    } = useTaskKeyCommits({
-        repoFullName,
-        taskKey,
-        token,
-    });
-
-    const { data: linkedCommit } = useLinkedCommit(
-        repoFullName,
-        linkedCommitSha,
-        token
-    );
-
-    const commits = useMemo(
-        () =>
-            mergeCommitsBySha(
-                linkedCommit ? [linkedCommit] : [],
-                taskKeyCommits,
-                branchCommits
-            ),
-        [branchCommits, linkedCommit, taskKeyCommits]
-    );
-
-    const commitsLoading = branchCommitsLoading || taskKeyCommitsLoading;
-    const commitsError = branchCommitsError || taskKeyCommitsError;
-
-    const handleRefresh = () => {
-        void refetchTaskKeyCommits();
-        if (branchEnabled) {
-            void refetchBranchCommits();
-        }
-        if (showBranchPrs) {
-            void refetchPrs();
-        }
-    };
+    if (!isShared && !showBranchPrs) return;
 
     return (
         <div className="flex flex-col gap-5">
@@ -145,10 +85,21 @@ export function TaskGitTab({
 
             {showBranchPrs ? (
                 <section className="flex flex-col gap-2">
-                    <p className="flex items-center gap-1.5 text-meta font-medium tracking-[0.06em] text-muted-foreground">
-                        <GitPullRequest aria-hidden className="size-3.5" />
-                        {t("git.pullRequests")}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                        <p className="flex min-w-0 items-center gap-1.5 text-meta font-medium tracking-[0.06em] text-muted-foreground">
+                            <GitPullRequest aria-hidden className="size-3.5" />
+                            {t("git.pullRequests")}
+                        </p>
+                        <Button
+                            aria-label={t("git.refresh")}
+                            onClick={() => void refetchPrs()}
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                        >
+                            <RefreshCw className="size-3.5" />
+                        </Button>
+                    </div>
 
                     {prsLoading ? (
                         <div className="flex items-center gap-2 text-ui text-muted-foreground">
@@ -242,69 +193,6 @@ export function TaskGitTab({
                     )}
                 </section>
             ) : undefined}
-
-            <section className="flex flex-col gap-2">
-                <div className="flex items-center justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1.5 text-meta font-medium tracking-[0.06em] text-muted-foreground">
-                        <GitCommit aria-hidden className="size-3.5" />
-                        {t("git.commits")}
-                    </p>
-                    <Button
-                        aria-label={t("git.refresh")}
-                        onClick={handleRefresh}
-                        size="icon-sm"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <RefreshCw className="size-3.5" />
-                    </Button>
-                </div>
-
-                {commitsLoading ? (
-                    <div className="flex items-center gap-2 text-ui text-muted-foreground">
-                        <Spinner className="size-3.5" />
-                        {t("git.loading")}
-                    </div>
-                ) : commitsError ? (
-                    <div className="flex flex-col items-start gap-2">
-                        <p className="text-ui text-destructive">
-                            {t("git.loadFailed")}
-                        </p>
-                        <Button
-                            onClick={handleRefresh}
-                            size="xs"
-                            type="button"
-                            variant="outline"
-                        >
-                            {t("git.retry")}
-                        </Button>
-                    </div>
-                ) : commits.length === 0 ? (
-                    <p className="text-ui text-muted-foreground">
-                        {t("git.noCommitsForTask", { key: taskKey })}
-                    </p>
-                ) : (
-                    <ul className="flex flex-col gap-1.5">
-                        {commits.map((commit) => (
-                            <li key={commit.sha}>
-                                <a
-                                    className="group flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/60"
-                                    href={commit.url}
-                                    rel="noreferrer"
-                                    target="_blank"
-                                >
-                                    <span className="mt-0.5 shrink-0 font-mono text-meta text-muted-foreground group-hover:text-primary">
-                                        {commit.sha.slice(0, 7)}
-                                    </span>
-                                    <span className="min-w-0 flex-1 truncate text-ui">
-                                        {commit.message}
-                                    </span>
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </section>
 
             {diffPr ? (
                 <PrDiffDialog
