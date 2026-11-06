@@ -1787,9 +1787,6 @@ export function TaskDrawer({
                                                                   key={
                                                                       repository.id
                                                                   }
-                                                                  linkedCommitSha={
-                                                                      task.linkedCommitSha
-                                                                  }
                                                                   linkedPrNumber={
                                                                       link?.pr
                                                                           ?.number
@@ -1802,9 +1799,6 @@ export function TaskDrawer({
                                                                       1
                                                                           ? repository.fullName
                                                                           : undefined
-                                                                  }
-                                                                  taskKey={
-                                                                      task.key
                                                                   }
                                                                   token={
                                                                       githubToken

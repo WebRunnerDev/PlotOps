@@ -6,9 +6,9 @@ import {
     GitBranch,
     GitCommit,
     GitPullRequest,
-    Link2,
+    MoreHorizontal,
+    Plus,
     Sparkles,
-    Unlink,
     X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type {
+    GitLinkAttachKind,
     GitLinkChange,
     GitLinkRepository,
 } from "@/features/tasks/lib/task-git-links";
@@ -65,11 +66,14 @@ import {
 import { parseCommitSha } from "@/features/tasks/lib/parse-commit-sha";
 import { parsePrNumber } from "@/features/tasks/lib/parse-pr";
 import {
+    gitLinkRestoreChange,
+    gitTabRepositories,
     groupGitLinksByRepository,
     pickDefaultRepositoryId,
-    repositoriesWithoutGitLink,
+    repositoriesAcceptingGitLink,
 } from "@/features/tasks/lib/task-git-links";
 import { useGitLinkRepositoryStore } from "@/features/tasks/model/git-link-repository-store";
+import { TaskGithubCommits } from "@/features/tasks/ui/task-github-commits";
 import { cn } from "@/shared/lib/utils";
 import {
     AlertDialog,
@@ -82,6 +86,13 @@ import {
     AlertDialogTitle,
 } from "@/shared/shadcn/ui/alert-dialog";
 import { Button } from "@/shared/shadcn/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/shared/shadcn/ui/dropdown-menu";
 import { Input } from "@/shared/shadcn/ui/input";
 import {
     Select,
@@ -99,23 +110,24 @@ const PR_STATE_CLASS: Record<NonNullable<Task["pr"]>["state"], string> = {
 
 const MERGE_METHODS: GitMergeMethod[] = ["squash", "merge", "rebase"];
 
-type PendingBranch = { branchName: string; repositoryId: string };
+/** What the "+ Link" menu opened: a branch, a PR or a commit form. */
+type AttachKind = "commit" | GitLinkAttachKind;
 
-type RepositoryGitLinkSectionProperties = {
+type GitLinkRowProperties = {
     /** Base branch of this Repository on the Board; null unless Development Board. */
     baseBranch: null | string;
     canEdit: boolean;
     githubToken: null | string;
-    link: TaskGitLink | undefined;
+    link: TaskGitLink;
     onChange: (change: GitLinkChange) => void;
-    /** Branch picked in the section — the panel checks Allowed head patterns first. */
-    onRequestBranch: (branchName: string) => void;
+    /** Unlink with an "Unlinked · Undo" toast. */
+    onUnlink: (change: GitLinkChange) => void;
     projectId: string;
     repository: GitLinkRepository;
-    /** Several Repositories in the Project: show the Repository header. */
-    showRepositoryHeader: boolean;
     task: Task;
 };
+
+type PendingBranch = { branchName: string; repositoryId: string };
 
 type TaskGithubPanelProperties = {
     /** Board-level Allowed head patterns — shared by every Repository. */
@@ -136,8 +148,9 @@ type TaskGithubPanelProperties = {
 };
 
 /**
- * Drawer GitHub block (ADR 0035): Git links grouped by Repository, then one
- * Create branch / PR section for a Repository the Task has no Git link for.
+ * Drawer GitHub block (ADR 0035): one row per Git link — branch, then PR
+ * status or Open PR, then a `⋯` menu — the Task's Commits, and a single
+ * "+ Link" menu for adding a branch, PR or commit.
  */
 export function TaskGithubPanel({
     allowedHeadPatterns,
@@ -160,27 +173,37 @@ export function TaskGithubPanel({
         (state) => state.setLastRepositoryId
     );
 
+    const [attach, setAttach] = useState<AttachKind | null>(null);
     const [chosenRepositoryId, setChosenRepositoryId] = useState<
         string | undefined
     >();
+    const [draft, setDraft] = useState("");
+    const [attachLoading, setAttachLoading] = useState(false);
     const [pendingBranch, setPendingBranch] = useState<null | PendingBranch>(
         null
     );
-    const [linkingCommit, setLinkingCommit] = useState(false);
-    const [commitDraft, setCommitDraft] = useState("");
-    const [commitLoading, setCommitLoading] = useState(false);
-    const commitLinkAbort = useRef<AbortController | undefined>(undefined);
-    const commitLinkGeneration = useRef(0);
+    const lookupAbort = useRef<AbortController | undefined>(undefined);
+    const lookupGeneration = useRef(0);
+
+    const closeAttach = () => {
+        lookupAbort.current?.abort();
+        lookupAbort.current = undefined;
+        lookupGeneration.current += 1;
+        setAttach(null);
+        setChosenRepositoryId(undefined);
+        setDraft("");
+        setAttachLoading(false);
+    };
 
     useEffect(() => {
-        commitLinkAbort.current?.abort();
-        commitLinkAbort.current = undefined;
-        commitLinkGeneration.current += 1;
+        lookupAbort.current?.abort();
+        lookupAbort.current = undefined;
+        lookupGeneration.current += 1;
+        setAttach(null);
         setChosenRepositoryId(undefined);
+        setDraft("");
+        setAttachLoading(false);
         setPendingBranch(null);
-        setLinkingCommit(false);
-        setCommitDraft("");
-        setCommitLoading(false);
     }, [task.id]);
 
     if (githubPanelNeedsRepo(repositories)) {
@@ -230,22 +253,57 @@ export function TaskGithubPanel({
     const linked = groupGitLinksByRepository(
         repositories,
         task.gitLinks
-    ).filter((entry) => entry.link !== undefined);
-    const unlinked = repositoriesWithoutGitLink(repositories, task.gitLinks);
-    const newLinkRepositoryId = pickDefaultRepositoryId(
-        unlinked,
+    ).flatMap(({ link, repository }) => (link ? [{ link, repository }] : []));
+    const canFetchGithub = Boolean(githubToken);
+    const branchOptions = repositoriesAcceptingGitLink(
+        repositories,
+        task.gitLinks,
+        "branch"
+    );
+    const prOptions = repositoriesAcceptingGitLink(
+        repositories,
+        task.gitLinks,
+        "pr"
+    );
+    const attachOptions =
+        attach === "branch"
+            ? branchOptions
+            : attach === "pr"
+              ? prOptions
+              : repositories;
+    const attachRepositoryId = pickDefaultRepositoryId(
+        attachOptions,
         chosenRepositoryId ?? lastRepositoryId
     );
-    const newLinkRepository = unlinked.find(
-        (repository) => repository.id === newLinkRepositoryId
+    const attachRepository = attachOptions.find(
+        (repository) => repository.id === attachRepositoryId
     );
-    const canFetchGithub = Boolean(githubToken);
 
     const changeGitLink = (repositoryId: string, change: GitLinkChange) => {
         if (!linked.some((entry) => entry.repository.id === repositoryId)) {
             setLastRepositoryId(user?.id, boardId, repositoryId);
         }
         onGitLinkChange(repositoryId, change);
+    };
+
+    /** Unlink right away; the toast's Undo puts the previous Git link back. */
+    const unlinkGitLink = (repositoryId: string, change: GitLinkChange) => {
+        if (!canEdit) return;
+        const previous = task.gitLinks?.find(
+            (link) => link.repositoryId === repositoryId
+        );
+        onGitLinkChange(repositoryId, change);
+        toast(t("github.unlinkedToast"), {
+            action: {
+                label: t("github.undo"),
+                onClick: () => {
+                    onGitLinkChange(
+                        repositoryId,
+                        gitLinkRestoreChange(previous)
+                    );
+                },
+            },
+        });
     };
 
     const linkBranch = (repositoryId: string, branchName: string) => {
@@ -267,9 +325,98 @@ export function TaskGithubPanel({
         linkBranch(repositoryId, branchName);
     };
 
+    const openAttach = (kind: AttachKind) => {
+        closeAttach();
+        setAttach(kind);
+    };
+
+    const handleLinkBranchConfirm = () => {
+        if (!canEdit || !attachRepository) return;
+        const next = normalizeBranchName(draft);
+        if (!next) {
+            toast.error(t("github.branchRequired"));
+            return;
+        }
+        const repositoryId = attachRepository.id;
+        closeAttach();
+        requestBranch(repositoryId, next);
+    };
+
+    const handleLinkPrConfirm = async () => {
+        if (!canEdit || !attachRepository) return;
+        const number = parsePrNumber(draft);
+        if (number == undefined) {
+            toast.error(t("github.prRequired"));
+            return;
+        }
+        if (!githubToken) {
+            toast.error(t("github.prNeedsGithub"));
+            return;
+        }
+
+        lookupAbort.current?.abort();
+        const controller = new AbortController();
+        lookupAbort.current = controller;
+        const generation = ++lookupGeneration.current;
+        const repository = attachRepository;
+
+        setAttachLoading(true);
+        try {
+            const remote = await fetchPullRequest(
+                repository.fullName,
+                number,
+                githubToken,
+                controller.signal
+            );
+            if (generation !== lookupGeneration.current) return;
+
+            const nextPr: TaskPullRequest = {
+                number: remote.number,
+                state: remote.merged_at ? "merged" : remote.state,
+                url: remote.url,
+            };
+            changeGitLink(repository.id, { pr: nextPr });
+            closeAttach();
+            toast.success(t("github.prLinkedToast", { number: nextPr.number }));
+        } catch (error) {
+            if (generation !== lookupGeneration.current) return;
+            if (controller.signal.aborted) return;
+
+            if (isGitHubApiError(error)) {
+                switch (error.status) {
+                    case 401:
+                    case 403: {
+                        toast.error(t("github.prAuthFailed"));
+
+                        break;
+                    }
+                    case 404: {
+                        toast.error(t("github.prNotFound", { number }));
+
+                        break;
+                    }
+                    case 429: {
+                        toast.error(t("github.prRateLimited"));
+
+                        break;
+                    }
+                    default: {
+                        toast.error(t("github.prLinkFailed", { number }));
+                    }
+                }
+            } else {
+                toast.error(t("github.prLinkFailed", { number }));
+            }
+        } finally {
+            if (generation === lookupGeneration.current) {
+                setAttachLoading(false);
+            }
+        }
+    };
+
     const handleLinkCommitConfirm = async () => {
         if (!canEdit) return;
-        const sha = parseCommitSha(commitDraft);
+        const sha = parseCommitSha(draft);
         if (!sha) {
             toast.error(t("github.commitRequired"));
             return;
@@ -279,12 +426,12 @@ export function TaskGithubPanel({
             return;
         }
 
-        commitLinkAbort.current?.abort();
+        lookupAbort.current?.abort();
         const controller = new AbortController();
-        commitLinkAbort.current = controller;
-        const generation = ++commitLinkGeneration.current;
+        lookupAbort.current = controller;
+        const generation = ++lookupGeneration.current;
 
-        setCommitLoading(true);
+        setAttachLoading(true);
         try {
             const remote = await findCommitInRepositories(
                 repositories,
@@ -292,18 +439,17 @@ export function TaskGithubPanel({
                 githubToken,
                 controller.signal
             );
-            if (generation !== commitLinkGeneration.current) return;
+            if (generation !== lookupGeneration.current) return;
 
             onLinkedCommitChange(remote.sha);
-            setLinkingCommit(false);
-            setCommitDraft("");
+            closeAttach();
             toast.success(
                 t("github.commitLinkedToast", {
                     sha: remote.sha.slice(0, 7),
                 })
             );
         } catch (error) {
-            if (generation !== commitLinkGeneration.current) return;
+            if (generation !== lookupGeneration.current) return;
             if (controller.signal.aborted) return;
 
             if (isGitHubApiError(error)) {
@@ -332,229 +478,253 @@ export function TaskGithubPanel({
                 toast.error(t("github.commitLinkFailed", { sha }));
             }
         } finally {
-            if (generation === commitLinkGeneration.current) {
-                setCommitLoading(false);
+            if (generation === lookupGeneration.current) {
+                setAttachLoading(false);
             }
         }
     };
 
     const handleUnlinkCommit = () => {
         if (!canEdit) return;
+        const previous = task.linkedCommitSha;
         onLinkedCommitChange(null);
-        setLinkingCommit(false);
-        setCommitDraft("");
+        if (!previous) return;
+        toast(t("github.unlinkedToast"), {
+            action: {
+                label: t("github.undo"),
+                onClick: () => onLinkedCommitChange(previous),
+            },
+        });
     };
 
-    const singleBaseBranch =
-        multiRepository || !repositories[0]
-            ? null
-            : baseBranchFor(repositories[0].id);
+    const handleAttachConfirm = () => {
+        switch (attach) {
+            case "branch": {
+                handleLinkBranchConfirm();
+                break;
+            }
+            case "commit": {
+                void handleLinkCommitConfirm();
+                break;
+            }
+            case null: {
+                break;
+            }
+            case "pr": {
+                void handleLinkPrConfirm();
+                break;
+            }
+        }
+    };
+
+    const attachHint =
+        attach === "branch"
+            ? t("github.linkBranchHint")
+            : attach === "pr"
+              ? t("github.linkPrHint")
+              : t("github.linkCommitHint");
+    const attachPlaceholder =
+        attach === "branch"
+            ? t("github.linkBranchPlaceholder")
+            : attach === "pr"
+              ? t("github.linkPrPlaceholder")
+              : t("github.linkCommitPlaceholder");
+    const attachConfirmLabel =
+        attach === "branch"
+            ? t("github.linkConfirm")
+            : attach === "pr"
+              ? t("github.linkPrConfirm")
+              : t("github.linkCommitConfirm");
+
+    const commitRepositories = gitTabRepositories(
+        repositories,
+        task.gitLinks
+    ).map(({ link, repository }) => ({
+        branchName:
+            link?.branchName && !isSharedBranch(link.branchName)
+                ? link.branchName
+                : undefined,
+        fullName: repository.fullName,
+        id: repository.id,
+    }));
 
     return (
         <>
-            <div className="flex min-w-0 flex-col gap-3 rounded-none bg-muted/40 p-3 ring-1 ring-primary/20">
-                <div className="flex flex-col gap-0.5">
+            <div
+                className="flex min-w-0 flex-col gap-3 rounded-none bg-muted/40 p-3 ring-1 ring-primary/20"
+                data-testid="task-github-panel"
+            >
+                <div className="flex min-w-0 items-center justify-between gap-2">
                     <p className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         {t("github.title")}
                     </p>
-                    {multiRepository ? undefined : (
-                        <p className="text-meta font-mono text-muted-foreground">
-                            {singleBaseBranch
-                                ? t("github.prTarget", {
-                                      branch: singleBaseBranch,
-                                  })
-                                : t("github.noBaseBranch")}
-                        </p>
-                    )}
+                    {canEdit ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={
+                                    <Button
+                                        size="xs"
+                                        type="button"
+                                        variant="outline"
+                                    />
+                                }
+                            >
+                                <Plus aria-hidden className="size-3.5" />
+                                {t("github.attach")}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-auto min-w-48"
+                            >
+                                <DropdownMenuItem
+                                    disabled={branchOptions.length === 0}
+                                    onClick={() => openAttach("branch")}
+                                >
+                                    <GitBranch aria-hidden />
+                                    {t("github.attachBranch")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    disabled={
+                                        prOptions.length === 0 ||
+                                        !canFetchGithub
+                                    }
+                                    onClick={() => openAttach("pr")}
+                                    title={
+                                        canFetchGithub
+                                            ? undefined
+                                            : t("github.prNeedsGithub")
+                                    }
+                                >
+                                    <GitPullRequest aria-hidden />
+                                    {t("github.attachPr")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    disabled={
+                                        Boolean(task.linkedCommitSha) ||
+                                        !canFetchGithub
+                                    }
+                                    onClick={() => openAttach("commit")}
+                                    title={
+                                        canFetchGithub
+                                            ? undefined
+                                            : t("github.commitNeedsGithub")
+                                    }
+                                >
+                                    <GitCommit aria-hidden />
+                                    {t("github.attachCommit")}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : undefined}
                 </div>
 
-                {linked.map(({ link, repository }) => (
-                    <RepositoryGitLinkSection
-                        baseBranch={baseBranchFor(repository.id)}
-                        canEdit={canEdit}
-                        githubToken={githubToken}
-                        key={repository.id}
-                        link={link}
-                        onChange={(change) =>
-                            changeGitLink(repository.id, change)
-                        }
-                        onRequestBranch={(branchName) =>
-                            requestBranch(repository.id, branchName)
-                        }
-                        projectId={projectId}
-                        repository={repository}
-                        showRepositoryHeader={multiRepository}
-                        task={task}
-                    />
-                ))}
-
-                {newLinkRepository && (canEdit || linked.length === 0) ? (
+                {attach && canEdit ? (
                     <div
-                        className={cn(
-                            "flex min-w-0 flex-col gap-3",
-                            multiRepository &&
-                                linked.length > 0 &&
-                                "border-t border-primary/15 pt-3"
-                        )}
+                        className="flex min-w-0 flex-col gap-2"
+                        data-testid="github-attach-form"
                     >
-                        {multiRepository && canEdit ? (
-                            <div className="flex min-w-0 flex-col gap-1.5">
-                                <p className="text-meta text-muted-foreground">
-                                    {linked.length > 0
-                                        ? t("github.addGitLink")
-                                        : t("github.repository")}
-                                </p>
-                                {unlinked.length > 1 ? (
-                                    <Select
-                                        onValueChange={(value) => {
-                                            if (typeof value !== "string") {
-                                                return;
-                                            }
-                                            setChosenRepositoryId(value);
-                                            setLastRepositoryId(
-                                                user?.id,
-                                                boardId,
-                                                value
-                                            );
-                                        }}
-                                        value={newLinkRepository.id}
-                                    >
-                                        <SelectTrigger
-                                            aria-label={t("github.repository")}
-                                            className="w-full font-mono text-code"
-                                        >
-                                            <span className="truncate">
-                                                {newLinkRepository.fullName}
-                                            </span>
-                                        </SelectTrigger>
-                                        <SelectContent
-                                            alignItemWithTrigger={false}
-                                        >
-                                            {unlinked.map((repository) => (
-                                                <SelectItem
-                                                    key={repository.id}
-                                                    value={repository.id}
-                                                >
-                                                    {repository.fullName}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                ) : (
-                                    <p className="truncate font-mono text-code text-foreground">
-                                        {newLinkRepository.fullName}
-                                    </p>
-                                )}
-                                <p className="text-meta font-mono text-muted-foreground">
-                                    {baseBranchFor(newLinkRepository.id)
-                                        ? t("github.prTarget", {
-                                              branch: baseBranchFor(
-                                                  newLinkRepository.id
-                                              ),
-                                          })
-                                        : t("github.noBaseBranch")}
-                                </p>
-                            </div>
-                        ) : undefined}
-                        <RepositoryGitLinkSection
-                            baseBranch={baseBranchFor(newLinkRepository.id)}
-                            canEdit={canEdit}
-                            githubToken={githubToken}
-                            key={`new:${newLinkRepository.id}`}
-                            link={undefined}
-                            onChange={(change) =>
-                                changeGitLink(newLinkRepository.id, change)
-                            }
-                            onRequestBranch={(branchName) =>
-                                requestBranch(newLinkRepository.id, branchName)
-                            }
-                            projectId={projectId}
-                            repository={newLinkRepository}
-                            showRepositoryHeader={false}
-                            task={task}
-                        />
-                    </div>
-                ) : undefined}
-
-                <div className="flex flex-col gap-2 border-t border-primary/15 pt-3">
-                    <p className="text-ui text-muted-foreground">
-                        {t("github.smartCommitsHint", { key: task.key })}
-                    </p>
-
-                    {task.linkedCommitSha ? (
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="inline-flex min-w-0 items-center gap-1.5 font-mono text-code text-muted-foreground">
-                                <GitCommit
-                                    aria-hidden
-                                    className="size-3.5 shrink-0"
-                                />
-                                {task.linkedCommitSha.slice(0, 7)}
-                            </span>
-                            {canEdit ? (
-                                <Button
-                                    aria-label={t("github.unlinkCommit")}
-                                    onClick={handleUnlinkCommit}
-                                    size="icon-xs"
-                                    type="button"
-                                    variant="ghost"
+                        <p className="text-ui text-muted-foreground">
+                            {attachHint}
+                        </p>
+                        {attach !== "commit" && attachOptions.length > 1 ? (
+                            <Select
+                                onValueChange={(value) => {
+                                    if (typeof value !== "string") return;
+                                    setChosenRepositoryId(value);
+                                    setLastRepositoryId(
+                                        user?.id,
+                                        boardId,
+                                        value
+                                    );
+                                }}
+                                value={attachRepository?.id}
+                            >
+                                <SelectTrigger
+                                    aria-label={t("github.repository")}
+                                    className="w-full font-mono text-code"
                                 >
-                                    <Unlink className="size-3.5" />
-                                </Button>
-                            ) : undefined}
-                        </div>
-                    ) : linkingCommit && canEdit ? (
-                        <div className="flex flex-col gap-2">
-                            <p className="text-ui text-muted-foreground">
-                                {t("github.linkCommitHint")}
+                                    <span className="truncate">
+                                        {attachRepository?.fullName}
+                                    </span>
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                    {attachOptions.map((repository) => (
+                                        <SelectItem
+                                            key={repository.id}
+                                            value={repository.id}
+                                        >
+                                            {repository.fullName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : attach !== "commit" &&
+                          multiRepository &&
+                          attachRepository ? (
+                            <p className="truncate font-mono text-code text-foreground">
+                                {attachRepository.fullName}
                             </p>
-                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                                <Input
-                                    aria-label={t(
-                                        "github.linkCommitPlaceholder"
-                                    )}
-                                    autoFocus
-                                    className="min-w-0 font-mono text-code"
-                                    disabled={commitLoading}
-                                    onChange={(event) =>
-                                        setCommitDraft(event.target.value)
+                        ) : undefined}
+                        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                            <Input
+                                aria-label={attachPlaceholder}
+                                autoFocus
+                                className="min-w-0 font-mono text-code"
+                                disabled={attachLoading}
+                                onChange={(event) =>
+                                    setDraft(event.target.value)
+                                }
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        handleAttachConfirm();
                                     }
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            event.preventDefault();
-                                            void handleLinkCommitConfirm();
+                                    if (
+                                        event.key === "Escape" &&
+                                        !attachLoading
+                                    ) {
+                                        event.stopPropagation();
+                                        closeAttach();
+                                    }
+                                }}
+                                placeholder={attachPlaceholder}
+                                value={draft}
+                            />
+                            <div className="flex shrink-0 items-center gap-2">
+                                {attach === "branch" ? (
+                                    <Button
+                                        aria-label={t("github.generateBranch")}
+                                        onClick={() =>
+                                            setDraft(
+                                                generateBranchName(
+                                                    task.key,
+                                                    task.title,
+                                                    task.type
+                                                )
+                                            )
                                         }
-                                        if (
-                                            event.key === "Escape" &&
-                                            !commitLoading
-                                        ) {
-                                            setLinkingCommit(false);
-                                            setCommitDraft("");
-                                        }
-                                    }}
-                                    placeholder={t(
-                                        "github.linkCommitPlaceholder"
-                                    )}
-                                    value={commitDraft}
-                                />
+                                        size="icon-sm"
+                                        title={t("github.generateBranch")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Sparkles aria-hidden />
+                                    </Button>
+                                ) : undefined}
                                 <Button
-                                    aria-label={t("github.linkCommitConfirm")}
-                                    disabled={commitLoading}
-                                    onClick={() => {
-                                        void handleLinkCommitConfirm();
-                                    }}
+                                    aria-label={attachConfirmLabel}
+                                    disabled={attachLoading}
+                                    onClick={handleAttachConfirm}
                                     size="icon-sm"
                                     type="button"
                                     variant="outline"
                                 >
-                                    {commitLoading ? <Spinner /> : <Check />}
+                                    {attachLoading ? <Spinner /> : <Check />}
                                 </Button>
                                 <Button
                                     aria-label={t("github.linkCancel")}
-                                    disabled={commitLoading}
-                                    onClick={() => {
-                                        setLinkingCommit(false);
-                                        setCommitDraft("");
-                                    }}
+                                    disabled={attachLoading}
+                                    onClick={closeAttach}
                                     size="icon-sm"
                                     type="button"
                                     variant="ghost"
@@ -563,24 +733,37 @@ export function TaskGithubPanel({
                                 </Button>
                             </div>
                         </div>
-                    ) : canEdit ? (
-                        <Button
-                            disabled={!canFetchGithub}
-                            onClick={() => setLinkingCommit(true)}
-                            size="xs"
-                            title={
-                                canFetchGithub
-                                    ? undefined
-                                    : t("github.commitNeedsGithub")
-                            }
-                            type="button"
-                            variant="outline"
-                        >
-                            <Link2 aria-hidden className="size-4" />
-                            {t("github.linkCommit")}
-                        </Button>
-                    ) : undefined}
-                </div>
+                    </div>
+                ) : undefined}
+
+                {linked.map(({ link, repository }) => (
+                    <GitLinkRow
+                        baseBranch={baseBranchFor(repository.id)}
+                        canEdit={canEdit}
+                        githubToken={githubToken}
+                        key={repository.id}
+                        link={link}
+                        onChange={(change) =>
+                            changeGitLink(repository.id, change)
+                        }
+                        onUnlink={(change) =>
+                            unlinkGitLink(repository.id, change)
+                        }
+                        projectId={projectId}
+                        repository={repository}
+                        task={task}
+                    />
+                ))}
+
+                <TaskGithubCommits
+                    canEdit={canEdit}
+                    githubToken={githubToken}
+                    linkedCommitSha={task.linkedCommitSha}
+                    onUnlinkCommit={handleUnlinkCommit}
+                    repositories={commitRepositories}
+                    showRepository={multiRepository}
+                    taskKey={task.key}
+                />
             </div>
 
             <AlertDialog
@@ -649,19 +832,21 @@ async function findCommitInRepositories(
     throw lastError ?? new Error("Commit not found");
 }
 
-/** Branch, PR and PR actions for one Repository's Git link (ADR 0035). */
-function RepositoryGitLinkSection({
+/**
+ * One Git link (ADR 0035): Repository, branch, then the one main action —
+ * PR status with checks, or Open PR — and every other action in `⋯`.
+ */
+function GitLinkRow({
     baseBranch,
     canEdit,
     githubToken,
     link,
     onChange,
-    onRequestBranch,
+    onUnlink,
     projectId,
     repository,
-    showRepositoryHeader,
     task,
-}: RepositoryGitLinkSectionProperties) {
+}: GitLinkRowProperties) {
     const { t } = useTranslation("board");
     const { user } = useAuth();
     const { isSettled, role } = useProjectAccess(projectId);
@@ -673,23 +858,16 @@ function RepositoryGitLinkSection({
     const requestReview = useRequestPullRequestReviewers();
 
     const [copied, setCopied] = useState(false);
-    const [linkingBranch, setLinkingBranch] = useState(false);
-    const [branchDraft, setBranchDraft] = useState("");
-    const [linkingPr, setLinkingPr] = useState(false);
-    const [prDraft, setPrDraft] = useState("");
-    const [prLoading, setPrLoading] = useState(false);
     const [diffOpen, setDiffOpen] = useState(false);
     const [approveOpen, setApproveOpen] = useState(false);
     const [mergeOpen, setMergeOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [requestReviewOpen, setRequestReviewOpen] = useState(false);
     const [mergeMethod, setMergeMethod] = useState<GitMergeMethod>("squash");
-    const prLinkAbort = useRef<AbortController | undefined>(undefined);
-    const prLinkGeneration = useRef(0);
 
     const repoFullName = repository.fullName;
-    const branchName = link?.branchName;
-    const pr = link?.pr;
+    const branchName = link.branchName;
+    const pr = link.pr;
 
     const canWritePr =
         isSettled &&
@@ -709,16 +887,9 @@ function RepositoryGitLinkSection({
         });
 
     useEffect(() => {
-        prLinkAbort.current?.abort();
-        prLinkAbort.current = undefined;
-        prLinkGeneration.current += 1;
         setCopied(false);
-        setLinkingBranch(false);
-        setBranchDraft("");
-        setLinkingPr(false);
-        setPrDraft("");
-        setPrLoading(false);
         setDiffOpen(false);
+        setApproveOpen(false);
         setMergeOpen(false);
         setCloseOpen(false);
         setRequestReviewOpen(false);
@@ -796,31 +967,6 @@ function RepositoryGitLinkSection({
         } catch {
             toast.error(t("copyFailed"));
         }
-    };
-
-    const handleGenerate = () => {
-        if (!canEdit) return;
-        const generated = generateBranchName(task.key, task.title, task.type);
-        setLinkingBranch(false);
-        onRequestBranch(generated);
-    };
-
-    const handleLinkBranchConfirm = () => {
-        if (!canEdit) return;
-        const next = normalizeBranchName(branchDraft);
-        if (!next) {
-            toast.error(t("github.branchRequired"));
-            return;
-        }
-        setLinkingBranch(false);
-        setBranchDraft("");
-        onRequestBranch(next);
-    };
-
-    const handleUnlinkBranch = () => {
-        if (!canEdit) return;
-        setLinkingBranch(false);
-        onChange({ branchName: null });
     };
 
     const handleOpenPr = async () => {
@@ -978,95 +1124,21 @@ function RepositoryGitLinkSection({
         }
     };
 
-    const handleUnlinkGitLink = () => {
+    const handleUnlinkBranch = () => {
         if (!canEdit) return;
-        prLinkAbort.current?.abort();
-        prLinkGeneration.current += 1;
-        setLinkingBranch(false);
-        setLinkingPr(false);
-        setPrDraft("");
-        setDiffOpen(false);
-        onChange({ branchName: null, pr: null });
-    };
-
-    const handleLinkPrConfirm = async () => {
-        if (!canEdit) return;
-        const number = parsePrNumber(prDraft);
-        if (number == undefined) {
-            toast.error(t("github.prRequired"));
-            return;
-        }
-        if (!githubToken || !repoFullName) {
-            toast.error(t("github.prNeedsGithub"));
-            return;
-        }
-
-        prLinkAbort.current?.abort();
-        const controller = new AbortController();
-        prLinkAbort.current = controller;
-        const generation = ++prLinkGeneration.current;
-
-        setPrLoading(true);
-        try {
-            const remote = await fetchPullRequest(
-                repoFullName,
-                number,
-                githubToken,
-                controller.signal
-            );
-            if (generation !== prLinkGeneration.current) return;
-
-            const nextPr: TaskPullRequest = {
-                number: remote.number,
-                state: remote.merged_at ? "merged" : remote.state,
-                url: remote.url,
-            };
-            onChange({ pr: nextPr });
-            setLinkingPr(false);
-            setPrDraft("");
-            toast.success(t("github.prLinkedToast", { number: nextPr.number }));
-        } catch (error) {
-            if (generation !== prLinkGeneration.current) return;
-            if (controller.signal.aborted) return;
-
-            if (isGitHubApiError(error)) {
-                switch (error.status) {
-                    case 401:
-                    case 403: {
-                        toast.error(t("github.prAuthFailed"));
-
-                        break;
-                    }
-                    case 404: {
-                        toast.error(t("github.prNotFound", { number }));
-
-                        break;
-                    }
-                    case 429: {
-                        toast.error(t("github.prRateLimited"));
-
-                        break;
-                    }
-                    default: {
-                        toast.error(t("github.prLinkFailed", { number }));
-                    }
-                }
-            } else {
-                toast.error(t("github.prLinkFailed", { number }));
-            }
-        } finally {
-            if (generation === prLinkGeneration.current) {
-                setPrLoading(false);
-            }
-        }
+        onUnlink({ branchName: null });
     };
 
     const handleUnlinkPr = () => {
         if (!canEdit) return;
-        onChange({ pr: null });
-        setLinkingPr(false);
-        setPrDraft("");
         setDiffOpen(false);
+        onUnlink({ pr: null });
+    };
+
+    const handleUnlinkGitLink = () => {
+        if (!canEdit) return;
+        setDiffOpen(false);
+        onUnlink({ branchName: null, pr: null });
     };
 
     const mergeMethodLabel = (method: GitMergeMethod) => {
@@ -1083,445 +1155,237 @@ function RepositoryGitLinkSection({
         }
     };
 
-    const prSection = pr ? (
-        <div className="flex flex-col gap-2">
-            <div className="flex min-w-0 items-center justify-between gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <a
-                        className={cn(
-                            "inline-flex min-w-0 items-center gap-1.5 text-ui underline-offset-4 hover:underline",
-                            PR_STATE_CLASS[pr.state]
-                        )}
-                        href={pr.url}
-                        rel="noreferrer"
-                        target="_blank"
-                    >
-                        <GitPullRequest
-                            aria-hidden
-                            className="size-3.5 shrink-0"
-                        />
-                        <span className="truncate">
-                            {t("github.prLink", {
-                                number: pr.number,
-                                state: t(`prState.${pr.state}`),
-                            })}
-                        </span>
-                        <ExternalLink aria-hidden className="size-3 shrink-0" />
-                    </a>
-                    {canViewDiff ? (
-                        <button
-                            className="shrink-0 rounded-sm text-meta text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                            onClick={() => setDiffOpen(true)}
-                            type="button"
-                        >
-                            {t("git.viewDiff")}
-                        </button>
-                    ) : undefined}
-                </div>
-                {canEdit ? (
-                    <Button
-                        aria-label={t("github.unlinkPr")}
-                        className="shrink-0"
-                        onClick={handleUnlinkPr}
-                        size="icon-xs"
-                        type="button"
-                        variant="ghost"
-                    >
-                        <Unlink className="size-3.5" />
-                    </Button>
-                ) : undefined}
-            </div>
-            <PrChecksSummary
-                githubToken={githubToken}
-                prNumber={pr.number}
-                repoFullName={repoFullName}
-            />
-            {canApprovePr ||
-            canRequestReview ||
-            canMergePr ||
-            canClosePr ||
-            canReopenPr ? (
-                <div className="flex flex-wrap items-center gap-2">
-                    {canApprovePr ? (
-                        <Button
-                            disabled={writeActionPending}
-                            onClick={() => setApproveOpen(true)}
-                            size="xs"
-                            type="button"
-                            variant="outline"
-                        >
-                            {approvePr.isPending ? (
-                                <Spinner className="size-3.5" />
-                            ) : undefined}
-                            {t("github.approvePr")}
-                        </Button>
-                    ) : undefined}
-                    {canRequestReview ? (
-                        <Button
-                            disabled={writeActionPending}
-                            onClick={() => setRequestReviewOpen(true)}
-                            size="xs"
-                            type="button"
-                            variant="outline"
-                        >
-                            {requestReview.isPending ? (
-                                <Spinner className="size-3.5" />
-                            ) : undefined}
-                            {t("github.requestReview")}
-                        </Button>
-                    ) : undefined}
-                    {canMergePr ? (
-                        <Button
-                            disabled={writeActionPending}
-                            onClick={() => setMergeOpen(true)}
-                            size="xs"
-                            type="button"
-                            variant="default"
-                        >
-                            {mergePr.isPending ? (
-                                <Spinner className="size-3.5" />
-                            ) : undefined}
-                            {t("github.mergePr")}
-                        </Button>
-                    ) : undefined}
-                    {canClosePr ? (
-                        <Button
-                            disabled={writeActionPending}
-                            onClick={() => setCloseOpen(true)}
-                            size="xs"
-                            type="button"
-                            variant="outline"
-                        >
-                            {closePr.isPending ? (
-                                <Spinner className="size-3.5" />
-                            ) : undefined}
-                            {t("github.closePr")}
-                        </Button>
-                    ) : undefined}
-                    {canReopenPr ? (
-                        <Button
-                            disabled={writeActionPending}
-                            onClick={() => {
-                                void handleReopenPr();
-                            }}
-                            size="xs"
-                            type="button"
-                            variant="outline"
-                        >
-                            {reopenPr.isPending ? (
-                                <Spinner className="size-3.5" />
-                            ) : undefined}
-                            {t("github.reopenPr")}
-                        </Button>
-                    ) : undefined}
-                </div>
-            ) : undefined}
-        </div>
-    ) : linkingPr && canEdit ? (
-        <div className="flex flex-col gap-2">
-            <p className="text-ui text-muted-foreground">
-                {t("github.linkPrHint")}
-            </p>
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                <Input
-                    aria-label={t("github.linkPrPlaceholder")}
-                    autoFocus
-                    className="min-w-0 font-mono text-code"
-                    disabled={prLoading}
-                    onChange={(event) => setPrDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            event.preventDefault();
-                            void handleLinkPrConfirm();
-                        }
-                        if (event.key === "Escape" && !prLoading) {
-                            setLinkingPr(false);
-                            setPrDraft("");
-                        }
-                    }}
-                    placeholder={t("github.linkPrPlaceholder")}
-                    value={prDraft}
-                />
-                <Button
-                    aria-label={t("github.linkPrConfirm")}
-                    disabled={prLoading}
-                    onClick={() => {
-                        void handleLinkPrConfirm();
-                    }}
-                    size="icon-sm"
-                    type="button"
-                    variant="outline"
-                >
-                    {prLoading ? <Spinner /> : <Check />}
-                </Button>
-                <Button
-                    aria-label={t("github.linkCancel")}
-                    disabled={prLoading}
-                    onClick={() => {
-                        setLinkingPr(false);
-                        setPrDraft("");
-                    }}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                >
-                    <X />
-                </Button>
-            </div>
-        </div>
-    ) : (
-        <div className="flex flex-col gap-2">
-            <p className="text-ui text-muted-foreground">
-                {branchName ? t("github.noPr") : t("github.noPrSkipped")}
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-                {canOpenPr ? (
-                    <Button
-                        disabled={createPr.isPending}
-                        onClick={() => {
-                            void handleOpenPr();
-                        }}
-                        size="xs"
-                        type="button"
-                        variant="default"
-                    >
-                        {createPr.isPending ? (
-                            <Spinner className="size-3.5" />
-                        ) : (
-                            <GitPullRequest aria-hidden className="size-4" />
-                        )}
-                        {t("github.openPr")}
-                    </Button>
-                ) : undefined}
-                {canEdit ? (
-                    <Button
-                        disabled={!canFetchGithub}
-                        onClick={() => setLinkingPr(true)}
-                        size="xs"
-                        title={
-                            canFetchGithub
-                                ? undefined
-                                : t("github.prNeedsGithub")
-                        }
-                        type="button"
-                        variant="outline"
-                    >
-                        <Link2 aria-hidden className="size-4" />
-                        {t("github.linkPr")}
-                    </Button>
-                ) : undefined}
-            </div>
-        </div>
-    );
+    const prTitle = pr
+        ? t("github.prLink", {
+              number: pr.number,
+              state: t(`prState.${pr.state}`),
+          })
+        : "";
+    const hasPrActions =
+        canViewDiff ||
+        canApprovePr ||
+        canRequestReview ||
+        canMergePr ||
+        canClosePr ||
+        canReopenPr;
+    const hasUnlinkActions = canEdit;
+    const hasMenu = Boolean(checkoutCommand) || hasPrActions || canEdit;
 
     return (
         <>
             <section
-                aria-label={showRepositoryHeader ? repoFullName : undefined}
-                className={cn(
-                    "flex min-w-0 flex-col gap-3",
-                    showRepositoryHeader &&
-                        "border-t border-primary/15 pt-3 first:border-t-0 first:pt-0"
-                )}
+                aria-label={repoFullName}
+                className="flex min-w-0 flex-col gap-1.5 border-t border-primary/15 pt-3"
+                data-testid="github-git-link"
             >
-                {showRepositoryHeader ? (
-                    <div className="flex min-w-0 items-start justify-between gap-2">
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                            <p className="inline-flex min-w-0 items-center gap-1.5 text-ui font-medium text-foreground">
-                                <span className="truncate font-mono text-code">
-                                    {repoFullName}
-                                </span>
-                                {branchName && !pr ? (
-                                    <span className="shrink-0 border border-primary/15 px-1 text-meta font-normal text-muted-foreground">
-                                        {t("github.noPrTag")}
-                                    </span>
-                                ) : undefined}
-                            </p>
-                            <p className="text-meta font-mono text-muted-foreground">
-                                {baseBranch
-                                    ? t("github.prTarget", {
-                                          branch: baseBranch,
-                                      })
-                                    : t("github.noBaseBranch")}
-                            </p>
-                        </div>
-                        {link && canEdit ? (
-                            <Button
-                                aria-label={t("github.unlinkGitLink", {
-                                    repository: repoFullName,
-                                })}
-                                className="shrink-0"
-                                onClick={handleUnlinkGitLink}
-                                size="icon-xs"
-                                title={t("github.unlinkGitLink", {
-                                    repository: repoFullName,
-                                })}
-                                type="button"
-                                variant="ghost"
-                            >
-                                <Unlink className="size-3.5" />
-                            </Button>
-                        ) : undefined}
-                    </div>
-                ) : undefined}
-
-                {branchName ? (
-                    <>
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
-                                    <GitBranch
-                                        aria-hidden
-                                        className="size-3.5 shrink-0"
-                                    />
-                                    {t("github.checkout")}
-                                </span>
-                                {canEdit ? (
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                    <p className="min-w-0 truncate font-mono text-code font-medium text-foreground">
+                        {repoFullName}
+                    </p>
+                    {hasMenu ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={
                                     <Button
-                                        aria-label={t("github.unlinkBranch")}
-                                        onClick={handleUnlinkBranch}
+                                        aria-label={t("github.rowActions", {
+                                            repository: repoFullName,
+                                        })}
+                                        className="shrink-0"
                                         size="icon-xs"
                                         type="button"
                                         variant="ghost"
-                                    >
-                                        <Unlink className="size-3.5" />
-                                    </Button>
-                                ) : undefined}
-                            </div>
-                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                                <code className="min-w-0 flex-1 truncate rounded-none bg-background px-2.5 py-1.5 font-mono text-code ring-1 ring-primary/15">
-                                    {checkoutCommand}
-                                </code>
-                                <Button
-                                    aria-label={t("github.copy")}
-                                    onClick={() => {
-                                        void handleCopyCheckout();
-                                    }}
-                                    size="icon-sm"
-                                    type="button"
-                                    variant="outline"
-                                >
-                                    {copied ? (
-                                        <Check className="text-emerald-500" />
-                                    ) : (
-                                        <Copy />
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-
-                        {prSection}
-                    </>
-                ) : (
-                    <>
-                        {prSection}
-
-                        {linkingBranch && canEdit ? (
-                            <div className="flex flex-col gap-2">
-                                <p className="text-ui text-muted-foreground">
-                                    {t("github.linkBranchHint")}
-                                </p>
-                                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                                    <Input
-                                        aria-label={t(
-                                            "github.linkBranchPlaceholder"
-                                        )}
-                                        autoFocus
-                                        className="min-w-0 font-mono text-code"
-                                        onChange={(event) =>
-                                            setBranchDraft(event.target.value)
-                                        }
-                                        onKeyDown={(event) => {
-                                            if (event.key === "Enter") {
-                                                event.preventDefault();
-                                                handleLinkBranchConfirm();
-                                            }
-                                            if (event.key === "Escape") {
-                                                setLinkingBranch(false);
-                                                setBranchDraft("");
-                                            }
-                                        }}
-                                        placeholder={t(
-                                            "github.linkBranchPlaceholder"
-                                        )}
-                                        value={branchDraft}
                                     />
-                                    <Button
-                                        aria-label={t("github.linkConfirm")}
-                                        onClick={handleLinkBranchConfirm}
-                                        size="icon-sm"
-                                        type="button"
-                                        variant="outline"
-                                    >
-                                        <Check />
-                                    </Button>
-                                    <Button
-                                        aria-label={t("github.linkCancel")}
+                                }
+                            >
+                                <MoreHorizontal className="size-3.5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-auto min-w-52"
+                            >
+                                {checkoutCommand ? (
+                                    <DropdownMenuItem
                                         onClick={() => {
-                                            setLinkingBranch(false);
-                                            setBranchDraft("");
+                                            void handleCopyCheckout();
                                         }}
-                                        size="icon-sm"
-                                        type="button"
-                                        variant="ghost"
                                     >
-                                        <X />
-                                    </Button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between gap-2 rounded-none border border-primary/15 px-2.5 py-1.5">
-                                <span className="inline-flex min-w-0 items-center gap-1.5 text-ui text-muted-foreground">
-                                    <GitBranch
-                                        aria-hidden
-                                        className="size-3.5 shrink-0"
-                                    />
-                                    {t("github.skipBranch")}
-                                </span>
-                                {canEdit ? (
-                                    <div className="flex shrink-0 gap-1">
-                                        <Button
-                                            onClick={handleGenerate}
-                                            size="icon-xs"
-                                            title={t("github.generateBranch")}
-                                            type="button"
-                                            variant="ghost"
-                                        >
-                                            <Sparkles
-                                                aria-hidden
-                                                className="size-3.5"
-                                            />
-                                        </Button>
-                                        <Button
-                                            onClick={() =>
-                                                setLinkingBranch(true)
-                                            }
-                                            size="icon-xs"
-                                            title={t("github.linkBranch")}
-                                            type="button"
-                                            variant="ghost"
-                                        >
-                                            <Link2
-                                                aria-hidden
-                                                className="size-3.5"
-                                            />
-                                        </Button>
-                                    </div>
+                                        {t("github.copy")}
+                                    </DropdownMenuItem>
                                 ) : undefined}
-                            </div>
-                        )}
-                    </>
-                )}
+                                {canViewDiff ? (
+                                    <DropdownMenuItem
+                                        onClick={() => setDiffOpen(true)}
+                                    >
+                                        {t("git.viewDiff")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {canRequestReview ? (
+                                    <DropdownMenuItem
+                                        disabled={writeActionPending}
+                                        onClick={() =>
+                                            setRequestReviewOpen(true)
+                                        }
+                                    >
+                                        {t("github.requestReview")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {canApprovePr ? (
+                                    <DropdownMenuItem
+                                        disabled={writeActionPending}
+                                        onClick={() => setApproveOpen(true)}
+                                    >
+                                        {t("github.approvePr")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {canMergePr ? (
+                                    <DropdownMenuItem
+                                        disabled={writeActionPending}
+                                        onClick={() => setMergeOpen(true)}
+                                    >
+                                        {t("github.mergePr")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {canClosePr ? (
+                                    <DropdownMenuItem
+                                        disabled={writeActionPending}
+                                        onClick={() => setCloseOpen(true)}
+                                    >
+                                        {t("github.closePr")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {canReopenPr ? (
+                                    <DropdownMenuItem
+                                        disabled={writeActionPending}
+                                        onClick={() => {
+                                            void handleReopenPr();
+                                        }}
+                                    >
+                                        {t("github.reopenPr")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {hasUnlinkActions &&
+                                (checkoutCommand || hasPrActions) ? (
+                                    <DropdownMenuSeparator />
+                                ) : undefined}
+                                {canEdit && branchName ? (
+                                    <DropdownMenuItem
+                                        onClick={handleUnlinkBranch}
+                                    >
+                                        {t("github.unlinkBranch")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {canEdit && pr ? (
+                                    <DropdownMenuItem onClick={handleUnlinkPr}>
+                                        {t("github.unlinkPr")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                                {/* Both fields linked: one more item clears the whole Git link. */}
+                                {canEdit && branchName && pr ? (
+                                    <DropdownMenuItem
+                                        onClick={handleUnlinkGitLink}
+                                        variant="destructive"
+                                    >
+                                        {t("github.unlinkGitLink")}
+                                    </DropdownMenuItem>
+                                ) : undefined}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : undefined}
+                </div>
+
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                    {branchName ? (
+                        <span className="inline-flex min-w-0 max-w-full items-center gap-1">
+                            <GitBranch
+                                aria-hidden
+                                className="size-3.5 shrink-0 text-muted-foreground"
+                            />
+                            <code
+                                className="min-w-0 truncate font-mono text-code text-foreground"
+                                title={checkoutCommand}
+                            >
+                                {branchName}
+                            </code>
+                            <Button
+                                aria-label={t("github.copy")}
+                                className="shrink-0"
+                                onClick={() => {
+                                    void handleCopyCheckout();
+                                }}
+                                size="icon-xs"
+                                title={t("github.copy")}
+                                type="button"
+                                variant="ghost"
+                            >
+                                {copied ? (
+                                    <Check className="size-3.5 text-emerald-500" />
+                                ) : (
+                                    <Copy className="size-3.5" />
+                                )}
+                            </Button>
+                        </span>
+                    ) : undefined}
+
+                    {pr ? (
+                        <a
+                            className={cn(
+                                "inline-flex min-w-0 items-center gap-1.5 rounded-sm text-ui underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring",
+                                PR_STATE_CLASS[pr.state]
+                            )}
+                            href={pr.url}
+                            rel="noreferrer"
+                            target="_blank"
+                        >
+                            <GitPullRequest
+                                aria-hidden
+                                className="size-3.5 shrink-0"
+                            />
+                            <span className="truncate">{prTitle}</span>
+                            <ExternalLink
+                                aria-hidden
+                                className="size-3 shrink-0"
+                            />
+                        </a>
+                    ) : canOpenPr ? (
+                        <Button
+                            disabled={createPr.isPending}
+                            onClick={() => {
+                                void handleOpenPr();
+                            }}
+                            size="xs"
+                            title={t("github.prTarget", {
+                                branch: baseBranch,
+                            })}
+                            type="button"
+                            variant="default"
+                        >
+                            {createPr.isPending ? (
+                                <Spinner className="size-3.5" />
+                            ) : (
+                                <GitPullRequest
+                                    aria-hidden
+                                    className="size-3.5"
+                                />
+                            )}
+                            {t("github.openPr")}
+                        </Button>
+                    ) : undefined}
+                </div>
+
+                {pr ? (
+                    <PrChecksSummary
+                        githubToken={githubToken}
+                        prNumber={pr.number}
+                        repoFullName={repoFullName}
+                    />
+                ) : undefined}
 
                 {diffOpen && pr && canViewDiff && repoFullName ? (
                     <PrDiffDialog
                         onClose={() => setDiffOpen(false)}
                         open
                         prNumber={pr.number}
-                        prTitle={t("github.prLink", {
-                            number: pr.number,
-                            state: t(`prState.${pr.state}`),
-                        })}
+                        prTitle={prTitle}
                         repoFullName={repoFullName}
                         token={githubToken}
                     />
@@ -1614,7 +1478,10 @@ function RepositoryGitLinkSection({
                             }}
                             value={mergeMethod}
                         >
-                            <SelectTrigger className="w-full font-mono text-code">
+                            <SelectTrigger
+                                aria-label={t("github.mergeMethod")}
+                                className="w-full font-mono text-code"
+                            >
                                 <span>{mergeMethodLabel(mergeMethod)}</span>
                             </SelectTrigger>
                             <SelectContent alignItemWithTrigger={false}>

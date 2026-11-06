@@ -9,9 +9,11 @@ import {
     applyGitLinkChange,
     applyGitLinkDetails,
     gitLinkActivityView,
+    gitLinkRestoreChange,
     gitTabRepositories,
     groupGitLinksByRepository,
     pickDefaultRepositoryId,
+    repositoriesAcceptingGitLink,
     repositoriesWithoutGitLink,
     taskPrBadge,
 } from "./task-git-links";
@@ -238,5 +240,66 @@ describe("gitTabRepositories", () => {
         expect(
             gitTabRepositories([WEB, API]).map((entry) => entry.repository.id)
         ).toEqual([WEB.id, API.id]);
+    });
+});
+
+describe("repositoriesAcceptingGitLink (+ Link menu)", () => {
+    const branchOnly: TaskGitLink = {
+        branchName: "feature/TASK-1-api",
+        repositoryId: API.id,
+    };
+
+    it("offers a branch only where the Git link has none", () => {
+        expect(
+            repositoriesAcceptingGitLink(
+                [WEB, API, DOCS],
+                [webLink, branchOnly],
+                "branch"
+            )
+        ).toEqual([DOCS]);
+    });
+
+    it("offers a PR only where the Git link has none, in Project order", () => {
+        expect(
+            repositoriesAcceptingGitLink(
+                [WEB, API, DOCS],
+                [webLink, branchOnly],
+                "pr"
+            )
+        ).toEqual([API, DOCS]);
+    });
+
+    it("offers every Repository while the Task has no Git link", () => {
+        expect(
+            repositoriesAcceptingGitLink([WEB, API], undefined, "branch")
+        ).toEqual([WEB, API]);
+    });
+});
+
+describe("Undo after unlink", () => {
+    it.each([
+        ["the whole Git link", { branchName: null, pr: null }],
+        ["the branch", { branchName: null }],
+        ["the PR", { pr: null }],
+    ] as const)(
+        "unlinking %s then Undo restores branch and PR",
+        (_, change) => {
+            const before = [webLink];
+            const unlinked = applyGitLinkChange(before, WEB.id, change);
+            const restored = applyGitLinkChange(
+                unlinked,
+                WEB.id,
+                gitLinkRestoreChange(before[0])
+            );
+
+            expect(restored).toEqual(before);
+        }
+    );
+
+    it("no previous Git link clears both fields", () => {
+        expect(gitLinkRestoreChange()).toEqual({
+            branchName: null,
+            pr: null,
+        });
     });
 });

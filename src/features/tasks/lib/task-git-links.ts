@@ -4,6 +4,9 @@ import type {
     TaskPullRequest,
 } from "@/features/tasks/model/types";
 
+/** What the drawer's "+ Link" menu attaches to a Repository's Git link. */
+export type GitLinkAttachKind = "branch" | "pr";
+
 /** Branch / PR change for one Repository's Git link; `null` clears a field. */
 export type GitLinkChange = {
     branchName?: null | string;
@@ -113,6 +116,18 @@ export function gitLinkActivityView<
     return { ...task, branchName: link?.branchName, pr: link?.pr };
 }
 
+/**
+ * The change that puts a Repository's Git link back as it was before an
+ * unlink — what the "Unlinked · Undo" toast applies. `undefined` (there was
+ * no Git link) clears both fields.
+ */
+export function gitLinkRestoreChange(previous?: TaskGitLink): GitLinkChange {
+    return {
+        branchName: previous?.branchName ?? null,
+        pr: previous?.pr ?? null,
+    };
+}
+
 /** Single-repo view of a Task's Git links (`gitLinks[0]`), as the mappers build it. */
 export function gitLinksLegacyView(links: readonly TaskGitLink[]): {
     branchName: string | undefined;
@@ -167,6 +182,23 @@ export function pickDefaultRepositoryId(
         return lastChosenId;
     }
     return options[0]?.id;
+}
+
+/**
+ * Repositories a branch / PR can be attached to from the "+ Link" menu:
+ * those whose Git link has no such field yet (no Git link counts too).
+ * Replacing a linked branch / PR is an explicit unlink first.
+ */
+export function repositoriesAcceptingGitLink(
+    repositories: readonly GitLinkRepository[],
+    links: readonly TaskGitLink[] | undefined,
+    kind: GitLinkAttachKind
+): GitLinkRepository[] {
+    return groupGitLinksByRepository(repositories, links)
+        .filter(({ link }) =>
+            kind === "branch" ? !link?.branchName : !link?.pr
+        )
+        .map(({ repository }) => repository);
 }
 
 /** Repositories the Task has no Git link for yet — the only ones Create branch / PR offers. */
