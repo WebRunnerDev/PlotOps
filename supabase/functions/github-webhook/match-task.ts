@@ -1,3 +1,8 @@
+import {
+    extractTaskKeysFromText,
+    normalizeGitReference,
+} from "../_shared/task-key.ts";
+
 export type BoardColumnRow = {
     id: string;
     is_done?: boolean | null;
@@ -8,6 +13,10 @@ export type CandidateTask = {
     archived_at: null | string;
     board_id: string;
     branch_name: null | string;
+    /** Branches a person unlinked from this Task in this Repository. */
+    dismissed_branches?: string[];
+    /** PR numbers a person unlinked from this Task in this Repository. */
+    dismissed_prs?: number[];
     id: string;
     parent_id?: null | string;
     pr_number: null | number;
@@ -17,74 +26,76 @@ export type CandidateTask = {
 };
 
 /**
- * What a PR event may do with the matched Task's Git link to this Repository
- * (ADR 0035 «Auto-link»):
- * - `linked`: the link already holds this PR;
+ * What a GitHub event may do with the matched Task's Git link to this
+ * Repository (ADR 0035 «Auto-link»):
+ * - `linked`: the link already holds this PR (or, for a branch event, this
+ *   branch);
  * - `bind`: the link holds this branch but no PR yet;
- * - `auto_link`: matched only by `task_key` and no link exists → create one;
+ * - `auto_link`: matched only by task key and no link exists → create one;
+ * - `dismissed`: a person unlinked this PR / branch from the Task before;
  * - `link_conflict`: the link holds something else — never overwritten.
  */
-export type GitLinkBinding = "auto_link" | "bind" | "link_conflict" | "linked";
+export type GitLinkBinding =
+    "auto_link" | "bind" | "dismissed" | "link_conflict" | "linked";
 
-/** How `matchTask` found the Task, which decides what the event may write. */
+/** What a webhook event carries for matching. `prNumber` absent = branch event. */
+export type GitReferenceEvent = {
+    body?: null | string;
+    headRef: string;
+    prNumber?: number;
+    title?: null | string;
+};
+
+/** How `matchTasks` found the Task, which decides what the event may write. */
 export type MatchedBy = "branch" | "pr" | "task_key";
 
-export type TaskMatch = { by: MatchedBy; task: CandidateTask };
+/** `key` is the task key found in the event when `by` is `task_key`. */
+export type TaskMatch = { by: MatchedBy; key?: string; task: CandidateTask };
 
 /**
- * Extract PlotOps task key from a head branch like `feature/TASK-12-login`
- * or `fix/BUG-5-crash`.
+ * Every Task the event refers to inside one Repository, strongest match per
+ * Task: pr_number → branch_name → a task key anywhere in the head branch, PR
+ * title or PR body (case-insensitive). `tasks` carry the Git link to that
+ * Repository only, so equal PR numbers from different Repositories never
+ * collide. Skips archived tasks.
  */
-export function extractTaskKeyFromBranch(branchName: string): null | string {
-    const normalized = normalizeBranchName(branchName);
-    const match = /\/([A-Za-z]+-\d+)(?:-|$)/.exec(normalized);
-    return match?.[1] ?? null;
-}
-
-/**
- * Match order inside one Repository: pr_number → branch_name → task_key in
- * head. `tasks` carry the Git link to that Repository only, so equal PR
- * numbers from different Repositories never collide. Skips archived tasks.
- */
-export function matchTask(
+export function matchTasks(
     tasks: CandidateTask[],
-    input: { headRef: string; prNumber: number }
-): null | TaskMatch {
+    event: GitReferenceEvent
+): TaskMatch[] {
     const active = tasks.filter((task) => task.archived_at == undefined);
+    const matches = new Map<string, TaskMatch>();
+    const add = (match: TaskMatch) => {
+        if (!matches.has(match.task.id)) matches.set(match.task.id, match);
+    };
 
-    const byPr = active.find((task) => task.pr_number === input.prNumber);
-    if (byPr) {
-        return { by: "pr", task: byPr };
+    if (event.prNumber !== undefined) {
+        for (const task of active) {
+            if (task.pr_number === event.prNumber) add({ by: "pr", task });
+        }
     }
 
-    const head = normalizeBranchName(input.headRef);
-    const byBranch = active.find(
-        (task) =>
+    const head = normalizeGitReference(event.headRef);
+    for (const task of active) {
+        if (
             task.branch_name != undefined &&
-            normalizeBranchName(task.branch_name) === head
-    );
-    if (byBranch) {
-        return { by: "branch", task: byBranch };
+            normalizeGitReference(task.branch_name) === head
+        ) {
+            add({ by: "branch", task });
+        }
     }
 
-    const key = extractTaskKeyFromBranch(head);
-    if (!key) {
-        return null;
+    const text = [head, event.title, event.body].filter(Boolean).join("\n");
+    for (const key of extractTaskKeysFromText(text)) {
+        const keyUpper = key.toUpperCase();
+        for (const task of active) {
+            if (task.task_key.toUpperCase() === keyUpper) {
+                add({ by: "task_key", key, task });
+            }
+        }
     }
 
-    const keyUpper = key.toUpperCase();
-    const byKey = active.find(
-        (task) => task.task_key.toUpperCase() === keyUpper
-    );
-    return byKey ? { by: "task_key", task: byKey } : null;
-}
-
-/** Trim and strip common remotes/refs prefixes. */
-export function normalizeBranchName(raw: string): string {
-    return raw
-        .trim()
-        .replace(/^refs\/heads\//i, "")
-        .replace(/^origin\//i, "");
+    return [...matches.values()];
 }
 
 /** Column id with the highest position (Board “Done” end of workflow). */
@@ -103,17 +114,34 @@ export function pickLastColumnId(columns: BoardColumnRow[]): null | string {
     return best.id;
 }
 
-export function planGitLinkBinding(match: TaskMatch): GitLinkBinding {
+export function planGitLinkBinding(
+    match: TaskMatch,
+    event: Pick<GitReferenceEvent, "headRef" | "prNumber">
+): GitLinkBinding {
     if (match.by === "pr") {
         return "linked";
     }
 
     const { task } = match;
+    const prDismissed =
+        event.prNumber !== undefined &&
+        (task.dismissed_prs ?? []).includes(event.prNumber);
+
     if (match.by === "branch") {
-        return task.pr_number == undefined ? "bind" : "link_conflict";
+        if (event.prNumber === undefined) return "linked";
+        if (task.pr_number != undefined) return "link_conflict";
+        return prDismissed ? "dismissed" : "bind";
     }
 
     const hasLink =
         task.branch_name != undefined || task.pr_number != undefined;
-    return hasLink ? "link_conflict" : "auto_link";
+    if (hasLink) {
+        return "link_conflict";
+    }
+
+    const head = normalizeGitReference(event.headRef);
+    const branchDismissed = (task.dismissed_branches ?? []).some(
+        (branch) => normalizeGitReference(branch) === head
+    );
+    return prDismissed || branchDismissed ? "dismissed" : "auto_link";
 }

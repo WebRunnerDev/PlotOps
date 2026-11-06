@@ -320,6 +320,7 @@
         "empty": "No activity yet.",
         "updated": "updated this task",
         "githubActor": "GitHub",
+        "autoLinked": "Linked automatically by key {{key}}",
         "none": "None",
         "change": {
             "fromTo": "{{field}}: {{from}} → {{to}}",
@@ -814,6 +815,13 @@
     },
     "github": {
         "title": "GitHub",
+        "refreshLinks": "Find branches and PRs by task key",
+        "refreshLinksHint": "Look on GitHub for open branches and pull requests that carry a task key and link them",
+        "refreshLinksLinked_one": "Linked {{count}} Task by key",
+        "refreshLinksLinked_other": "Linked {{count}} Tasks by key",
+        "refreshLinksNone": "No new branches or pull requests with a task key",
+        "refreshLinksUnavailable": "Some repositories could not be read. Check that the GitHub App is installed.",
+        "refreshLinksFailed": "Could not check GitHub. Try again later.",
         "connectRepo": "Connect a repository to link branches and pull requests.",
         "connectRepoAction": "Connect a repository",
         "copy": "Copy checkout command",

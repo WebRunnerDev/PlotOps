@@ -16,6 +16,7 @@ import {
 import { createSlidingWindowRateLimiter } from "../_shared/sliding-window-rate-limit.ts";
 import {
     syncClosedPullRequest,
+    syncCreatedBranch,
     syncMergedPullRequest,
     syncOpenedPullRequest,
     syncReopenedPullRequest,
@@ -31,6 +32,8 @@ export const pullRequestPayloadSchema = z.object({
     pull_request: z
         .object({
             base: z.object({ ref: z.string().max(255).optional() }).optional(),
+            // Task keys are read from the title and body too (auto-link).
+            body: z.string().max(65_536).nullish(),
             head: z.object({ ref: z.string().max(255).optional() }).optional(),
             html_url: z.string().max(2048).optional(),
             // GitHub documents `merged` as boolean | null.
@@ -40,8 +43,21 @@ export const pullRequestPayloadSchema = z.object({
                 .transform((value) => value ?? undefined),
             number: z.number().int().positive().optional(),
             state: z.string().max(32).optional(),
+            title: z.string().max(1024).optional(),
         })
         .optional(),
+    repository: z
+        .object({
+            full_name: z.string().max(255).optional(),
+            id: z.number().int().optional(),
+        })
+        .optional(),
+});
+
+/** `create` event: a branch or tag was pushed. Only the fields sync.ts reads. */
+export const createEventPayloadSchema = z.object({
+    ref: z.string().max(255).optional(),
+    ref_type: z.string().max(32).optional(),
     repository: z
         .object({
             full_name: z.string().max(255).optional(),
@@ -148,9 +164,48 @@ export function createWebhookHandler(
             return json({ ok: true, reason: "push_noop", skipped: true });
         }
 
-        if (eventName !== "pull_request") {
+        if (eventName !== "pull_request" && eventName !== "create") {
             log({ reason: "ignored_event", skipped: true });
             return json({ ok: true, reason: "ignored_event", skipped: true });
+        }
+
+        const syncFailed = (error: unknown) => {
+            console.error(
+                JSON.stringify({
+                    deliveryId,
+                    error: describeError(error),
+                    reason: "sync_failed",
+                })
+            );
+            // 500 only for unexpected failures — GitHub may retry, which is OK.
+            return json({ error: "sync_failed" }, 500);
+        };
+
+        if (eventName === "create") {
+            const parsedCreate = parseJsonBody(
+                rawBody,
+                createEventPayloadSchema
+            );
+            if (!parsedCreate.ok) {
+                log({ reason: parsedCreate.error });
+                return json({ error: parsedCreate.error }, parsedCreate.status);
+            }
+
+            const supabase = deps.createServiceClient();
+            if (!supabase) {
+                console.error(
+                    JSON.stringify({ reason: "missing_supabase_env" })
+                );
+                return json({ error: "server_misconfigured" }, 500);
+            }
+
+            try {
+                return json(
+                    await syncCreatedBranch(supabase, parsedCreate.data, log)
+                );
+            } catch (error) {
+                return syncFailed(error);
+            }
         }
 
         const parsed = parseJsonBody(rawBody, pullRequestPayloadSchema);
@@ -210,16 +265,16 @@ export function createWebhookHandler(
             );
             return json(openResult);
         } catch (error) {
-            console.error(
-                JSON.stringify({
-                    deliveryId,
-                    error:
-                        error instanceof Error ? error.message : String(error),
-                    reason: "sync_failed",
-                })
-            );
-            // 500 only for unexpected failures — GitHub may retry, which is OK.
-            return json({ error: "sync_failed" }, 500);
+            return syncFailed(error);
         }
     }, headersFor);
+}
+
+/** PostgREST errors are plain objects, not `Error`s — keep their message. */
+function describeError(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (error && typeof error === "object" && "message" in error) {
+        return String((error as { message: unknown }).message);
+    }
+    return String(error);
 }

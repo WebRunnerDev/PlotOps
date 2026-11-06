@@ -11,9 +11,15 @@ export type GitLinkPrRow = {
 /** A `project_repositories` row a delivery resolved to. */
 export type RepositoryReference = { id: string; project_id: string };
 
+type DismissalRow = { kind: string; task_id: string; value: string };
+
 type TaskWithGitLinkRow = Omit<
     CandidateTask,
-    "branch_name" | "pr_number" | "pr_state"
+    | "branch_name"
+    | "dismissed_branches"
+    | "dismissed_prs"
+    | "pr_number"
+    | "pr_state"
 > & {
     task_git_links:
         | null
@@ -79,8 +85,9 @@ export async function findRepositories(
 }
 
 /**
- * Project Tasks shaped for `matchTask`, with branch / PR taken from the Git
- * link to `repositoryId` (null when the Task has none there).
+ * Project Tasks shaped for `matchTasks`, with branch / PR taken from the Git
+ * link to `repositoryId` (null when the Task has none there) and the branches
+ * / PRs people unlinked from the Task in that Repository.
  */
 export async function loadCandidateTasks(
     supabase: SupabaseClient,
@@ -96,17 +103,66 @@ export async function loadCandidateTasks(
 
     if (error) throw error;
 
+    const { data: dismissals, error: dismissalsError } = await supabase
+        .from("task_git_link_dismissals")
+        .select("task_id, kind, value")
+        .eq("repository_id", repository.id);
+
+    if (dismissalsError) throw dismissalsError;
+
+    const branchesByTask = new Map<string, string[]>();
+    const prsByTask = new Map<string, number[]>();
+    for (const row of (dismissals ?? []) as DismissalRow[]) {
+        if (row.kind === "branch") {
+            branchesByTask.set(row.task_id, [
+                ...(branchesByTask.get(row.task_id) ?? []),
+                row.value,
+            ]);
+        } else if (row.kind === "pr" && /^\d+$/.test(row.value)) {
+            prsByTask.set(row.task_id, [
+                ...(prsByTask.get(row.task_id) ?? []),
+                Number(row.value),
+            ]);
+        }
+    }
+
     return ((data ?? []) as TaskWithGitLinkRow[]).map(
         ({ task_git_links: links, ...task }) => {
             const link = links?.[0];
             return {
                 ...task,
                 branch_name: link?.branch_name ?? null,
+                dismissed_branches: branchesByTask.get(task.id) ?? [],
+                dismissed_prs: prsByTask.get(task.id) ?? [],
                 pr_number: link?.pr_number ?? null,
                 pr_state: link?.pr_state ?? null,
             };
         }
     );
+}
+
+/**
+ * Create a branch-only Git link (auto-link from a pushed branch). Never
+ * touches an existing link: the caller checked there is none, and a race
+ * with another delivery leaves the first writer's link in place.
+ */
+export async function writeBranchLink(
+    supabase: SupabaseClient,
+    taskId: string,
+    repository: RepositoryReference,
+    branchName: string
+): Promise<void> {
+    const { error } = await supabase.from("task_git_links").upsert(
+        {
+            branch_name: branchName,
+            project_id: repository.project_id,
+            repository_id: repository.id,
+            task_id: taskId,
+        },
+        { ignoreDuplicates: true, onConflict: "task_id,repository_id" }
+    );
+
+    if (error) throw error;
 }
 
 /**

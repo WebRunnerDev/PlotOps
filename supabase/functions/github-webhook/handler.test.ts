@@ -129,6 +129,38 @@ describe("github-webhook handler", () => {
         });
     });
 
+    it("routes a signed branch create event to sync", async () => {
+        const { createServiceClient, handler } = setup();
+        const created = JSON.stringify({
+            ref: "TASK-1-login",
+            ref_type: "branch",
+            repository: { full_name: "acme/web", id: 101 },
+        });
+        const response = await handler(
+            delivery(created, {
+                "X-GitHub-Event": "create",
+                "X-Hub-Signature-256": sign(created),
+            })
+        );
+
+        expect(createServiceClient).toHaveBeenCalledOnce();
+        expect(response.status).toBe(500);
+    });
+
+    it("returns 400 for a create event that fails the schema", async () => {
+        const { createServiceClient, handler } = setup();
+        const invalid = JSON.stringify({ ref: 42, ref_type: "branch" });
+        const response = await handler(
+            delivery(invalid, {
+                "X-GitHub-Event": "create",
+                "X-Hub-Signature-256": sign(invalid),
+            })
+        );
+
+        expect(response.status).toBe(400);
+        expect(createServiceClient).not.toHaveBeenCalled();
+    });
+
     it("sends no CORS allow-origin to a foreign Origin", async () => {
         const { handler } = setup();
         const response = await handler(

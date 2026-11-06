@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
     type CandidateTask,
-    extractTaskKeyFromBranch,
-    matchTask,
-    normalizeBranchName,
+    matchTasks,
     pickLastColumnId,
     planGitLinkBinding,
 } from "./match-task";
@@ -24,26 +22,10 @@ function task(
     };
 }
 
-describe("normalizeBranchName", () => {
-    it("strips refs and origin prefixes", () => {
-        expect(normalizeBranchName("refs/heads/feature/TASK-1")).toBe(
-            "feature/TASK-1"
-        );
-        expect(normalizeBranchName("origin/fix/BUG-2")).toBe("fix/BUG-2");
-    });
-});
+const ids = (matches: ReturnType<typeof matchTasks>) =>
+    matches.map((match) => [match.by, match.task.id]);
 
-describe("extractTaskKeyFromBranch", () => {
-    it("reads key from feature/fix branch names", () => {
-        expect(extractTaskKeyFromBranch("feature/TASK-12-login")).toBe(
-            "TASK-12"
-        );
-        expect(extractTaskKeyFromBranch("fix/BUG-5")).toBe("BUG-5");
-        expect(extractTaskKeyFromBranch("main")).toBeNull();
-    });
-});
-
-describe("matchTask", () => {
+describe("matchTasks", () => {
     const tasks = [
         task({ id: "a", pr_number: 7, task_key: "TASK-7" }),
         task({
@@ -62,29 +44,63 @@ describe("matchTask", () => {
 
     it("matches by pr_number first", () => {
         expect(
-            matchTask(tasks, {
-                headRef: "feature/TASK-9-other",
-                prNumber: 7,
-            })
+            matchTasks(tasks, { headRef: "feature/x", prNumber: 7 })[0]
         ).toMatchObject({ by: "pr", task: { id: "a" } });
     });
 
-    it("matches by branch_name when pr is unset", () => {
+    it("matches by branch_name when the PR is not linked", () => {
         expect(
-            matchTask(tasks, {
-                headRef: "feature/TASK-8-auth",
-                prNumber: 99,
-            })
-        ).toMatchObject({ by: "branch", task: { id: "b" } });
+            ids(
+                matchTasks(tasks, {
+                    headRef: "feature/TASK-8-auth",
+                    prNumber: 99,
+                })
+            )
+        ).toEqual([["branch", "b"]]);
     });
 
-    it("matches by task_key in head as last resort", () => {
+    it("keeps the strongest match per Task", () => {
         expect(
-            matchTask(tasks, {
-                headRef: "feature/TASK-9-slug",
-                prNumber: 99,
-            })
-        ).toMatchObject({ by: "task_key", task: { id: "c" } });
+            ids(matchTasks(tasks, { headRef: "feature/TASK-7-x", prNumber: 7 }))
+        ).toEqual([["pr", "a"]]);
+    });
+
+    it("finds a task key anywhere in the head branch", () => {
+        for (const headReference of [
+            "feature/TASK-9-slug",
+            "TASK-9-login",
+            "user/foo-task-9",
+        ]) {
+            expect(
+                matchTasks(tasks, { headRef: headReference, prNumber: 99 })[0]
+            ).toMatchObject({
+                by: "task_key",
+                key: expect.any(String),
+                task: { id: "c" },
+            });
+        }
+    });
+
+    it("finds task keys in the PR title and body", () => {
+        expect(
+            ids(
+                matchTasks(tasks, {
+                    body: "Also closes task-8.",
+                    headRef: "fix-login",
+                    prNumber: 99,
+                    title: "TASK-9: Fix login",
+                })
+            )
+        ).toEqual([
+            ["task_key", "c"],
+            ["task_key", "b"],
+        ]);
+    });
+
+    it("matches a branch event without a PR number", () => {
+        expect(ids(matchTasks(tasks, { headRef: "TASK-9-login" }))).toEqual([
+            ["task_key", "c"],
+        ]);
     });
 
     it("ignores archived tasks", () => {
@@ -97,8 +113,8 @@ describe("matchTask", () => {
             }),
         ];
         expect(
-            matchTask(onlyArchived, { headRef: "x", prNumber: 3 })
-        ).toBeNull();
+            matchTasks(onlyArchived, { headRef: "TASK-3", prNumber: 3 })
+        ).toEqual([]);
     });
 });
 
@@ -118,7 +134,7 @@ describe("pickLastColumnId", () => {
     });
 });
 
-describe("matchTask across Repositories", () => {
+describe("matchTasks across Repositories", () => {
     // Candidates carry only the Git link to the delivering Repository, so the
     // same PR number in another Repository is invisible here.
     const webTasks = [
@@ -132,58 +148,121 @@ describe("matchTask across Repositories", () => {
 
     it("maps equal PR numbers in two Repositories to different Tasks", () => {
         const input = { headRef: "feature/no-key", prNumber: 12 };
-        expect(matchTask(webTasks, input)?.task.id).toBe("web-task");
-        expect(matchTask(apiTasks, input)?.task.id).toBe("api-task");
+        expect(ids(matchTasks(webTasks, input))).toEqual([["pr", "web-task"]]);
+        expect(ids(matchTasks(apiTasks, input))).toEqual([["pr", "api-task"]]);
     });
 });
 
 describe("planGitLinkBinding", () => {
+    const pr = { headRef: "feature/TASK-1", prNumber: 7 };
+
     it("is linked when the PR number matched", () => {
         expect(
-            planGitLinkBinding({
-                by: "pr",
-                task: task({ id: "x", pr_number: 7 }),
-            })
+            planGitLinkBinding(
+                { by: "pr", task: task({ id: "x", pr_number: 7 }) },
+                pr
+            )
         ).toBe("linked");
     });
 
     it("binds a branch-only Git link on the head branch", () => {
         expect(
-            planGitLinkBinding({
-                by: "branch",
-                task: task({ branch_name: "feature/TASK-1", id: "x" }),
-            })
+            planGitLinkBinding(
+                {
+                    by: "branch",
+                    task: task({ branch_name: "feature/TASK-1", id: "x" }),
+                },
+                pr
+            )
         ).toBe("bind");
     });
 
-    it("never rebinds a Git link holding another PR", () => {
+    it("is linked when a branch event finds its own branch", () => {
         expect(
-            planGitLinkBinding({
-                by: "branch",
-                task: task({
-                    branch_name: "feature/TASK-1",
-                    id: "x",
-                    pr_number: 3,
-                }),
-            })
+            planGitLinkBinding(
+                {
+                    by: "branch",
+                    task: task({ branch_name: "feature/TASK-1", id: "x" }),
+                },
+                { headRef: "feature/TASK-1" }
+            )
+        ).toBe("linked");
+    });
+
+    it("never rebinds a Git link holding another PR or branch", () => {
+        expect(
+            planGitLinkBinding(
+                {
+                    by: "branch",
+                    task: task({
+                        branch_name: "feature/TASK-1",
+                        id: "x",
+                        pr_number: 3,
+                    }),
+                },
+                pr
+            )
         ).toBe("link_conflict");
         expect(
-            planGitLinkBinding({
-                by: "task_key",
-                task: task({ id: "x", pr_number: 3 }),
-            })
+            planGitLinkBinding(
+                { by: "task_key", task: task({ id: "x", pr_number: 3 }) },
+                pr
+            )
         ).toBe("link_conflict");
         expect(
-            planGitLinkBinding({
-                by: "task_key",
-                task: task({ branch_name: "feature/TASK-1-old", id: "x" }),
-            })
+            planGitLinkBinding(
+                {
+                    by: "task_key",
+                    task: task({ branch_name: "feature/TASK-1-old", id: "x" }),
+                },
+                { headRef: "TASK-1-new" }
+            )
         ).toBe("link_conflict");
     });
 
-    it("auto-links a task_key match without a Git link", () => {
+    it("auto-links a task key match without a Git link", () => {
         expect(
-            planGitLinkBinding({ by: "task_key", task: task({ id: "x" }) })
+            planGitLinkBinding({ by: "task_key", task: task({ id: "x" }) }, pr)
+        ).toBe("auto_link");
+    });
+
+    it("never brings back a PR or branch a person unlinked", () => {
+        expect(
+            planGitLinkBinding(
+                { by: "task_key", task: task({ dismissed_prs: [7], id: "x" }) },
+                pr
+            )
+        ).toBe("dismissed");
+        expect(
+            planGitLinkBinding(
+                {
+                    by: "task_key",
+                    task: task({
+                        dismissed_branches: ["feature/TASK-1"],
+                        id: "x",
+                    }),
+                },
+                { headRef: "refs/heads/feature/TASK-1" }
+            )
+        ).toBe("dismissed");
+        expect(
+            planGitLinkBinding(
+                {
+                    by: "branch",
+                    task: task({
+                        branch_name: "feature/TASK-1",
+                        dismissed_prs: [7],
+                        id: "x",
+                    }),
+                },
+                pr
+            )
+        ).toBe("dismissed");
+        expect(
+            planGitLinkBinding(
+                { by: "task_key", task: task({ dismissed_prs: [8], id: "x" }) },
+                pr
+            )
         ).toBe("auto_link");
     });
 });

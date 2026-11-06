@@ -64,7 +64,11 @@ describe("planClosePullRequestSync", () => {
                 pr_state: "open",
                 status: "in_progress",
             }),
-            { prHtmlUrl: "https://github.com/o/r/pull/7", prNumber: 7 }
+            {
+                headRef: "feature/no-key",
+                prHtmlUrl: "https://github.com/o/r/pull/7",
+                prNumber: 7,
+            }
         );
 
         expect(plan).toEqual({
@@ -89,6 +93,7 @@ describe("planClosePullRequestSync", () => {
             planClosePullRequestSync(
                 match({ id: "t1", pr_number: 7, pr_state: "closed" }),
                 {
+                    headRef: "feature/no-key",
                     prHtmlUrl: null,
                     prNumber: 7,
                 }
@@ -105,7 +110,7 @@ describe("planClosePullRequestSync", () => {
                     pr_state: "merged",
                     status: "done",
                 }),
-                { prHtmlUrl: null, prNumber: 7 }
+                { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 7 }
             )
         ).toEqual({ reason: "already_merged", skip: true });
     });
@@ -113,6 +118,7 @@ describe("planClosePullRequestSync", () => {
     it("skips when no matched task", () => {
         expect(
             planClosePullRequestSync(null, {
+                headRef: "feature/no-key",
                 prHtmlUrl: null,
                 prNumber: 7,
             })
@@ -132,6 +138,7 @@ describe("planClosePullRequestSync", () => {
                     "task_key"
                 ),
                 {
+                    headRef: "feature/no-key",
                     prHtmlUrl: "https://github.com/o/r/pull/99",
                     prNumber: 99,
                 }
@@ -146,7 +153,7 @@ describe("planClosePullRequestSync", () => {
                     { branch_name: "feature/TASK-1-old", id: "t1" },
                     "task_key"
                 ),
-                { prHtmlUrl: null, prNumber: 99 }
+                { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 99 }
             )
         ).toEqual({ reason: "link_conflict", skip: true });
     });
@@ -155,7 +162,7 @@ describe("planClosePullRequestSync", () => {
         expect(
             planClosePullRequestSync(
                 match({ branch_name: "feature/TASK-1", id: "t1" }, "branch"),
-                { prHtmlUrl: null, prNumber: 99 }
+                { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 99 }
             )
         ).toMatchObject({ binding: "bind", skip: false });
     });
@@ -163,6 +170,7 @@ describe("planClosePullRequestSync", () => {
     it("auto-links a Task matched only by task_key without a Git link", () => {
         expect(
             planClosePullRequestSync(match({ id: "t1" }, "task_key"), {
+                headRef: "feature/no-key",
                 prHtmlUrl: "https://github.com/o/r/pull/99",
                 prNumber: 99,
             })

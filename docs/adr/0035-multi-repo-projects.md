@@ -13,8 +13,15 @@ A Project used to hold at most one GitHub repository (`projects.github_repo_id` 
     - **Allowed head patterns stay on the Board** and apply to every Repository. They express the team's branch-naming convention, not a property of a Repository.
 - **The webhook resolves Repository first.** It looks up `project_repositories` by `github_repo_id`, which yields the Project. It then finds the Task in this order: `(repository_id, pr_number)`, then `(repository_id, branch)`, then `task_key` in the head ref.
     - Matching on `pr_number` alone is wrong once PR numbers from different Repositories coexist.
-- **Auto-link.** When a PR event matches a Task only by `task_key` and the Task has no Git link for that Repository, the webhook creates the Git link.
+- **Auto-link.** When a GitHub event matches a Task only by its task key and the Task has no Git link for that Repository, the Git link is created automatically (#351).
+    - The key is found anywhere in the head branch, the PR title or the PR body, case-insensitively. The app and the Edge Functions share one extractor (`supabase/functions/_shared/task-key.ts`).
+    - A PR naming several keys links to each of those Tasks.
+    - A pushed branch (`create` event) with a key creates a branch-only Git link. A PR opened from it later joins that link.
+    - Backfill: the drawer's refresh button and connecting a Repository run the `github-backfill` Edge Function. It reads the open PRs and branches through the GitHub App and applies the same rules.
     - It never overwrites an existing Git link for that Repository. A different PR is logged as `link_conflict`.
+    - A manual unlink is remembered (`task_git_link_dismissals`, per Task × Repository × branch / PR). Auto-link never brings that branch or PR back to the Task. Linking it again by hand lifts the dismissal.
+    - Activity marks the change as linked automatically by key (`metadata.auto_link.key`).
+    - Still one Git link per Task per Repository. Several links per Repository would need a separate decision.
 - **Merge sync waits for all PRs.** A Task moves to its Board's merge target column (ADR 0033) only when every one of its Git links that has a PR is merged into that Board's Base branch for that Repository. Specifically:
     - A PR closed without merge does not count.
     - A Git link with a branch but no PR does not count.
