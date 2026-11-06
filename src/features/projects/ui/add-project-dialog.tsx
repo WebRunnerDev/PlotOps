@@ -453,10 +453,19 @@ export function AddProjectDialog({
                                                         );
                                                     }}
                                                     placeholder={t(
-                                                        "createProjectReposNamePlaceholder"
+                                                        selectedRepos.length > 1
+                                                            ? "createProjectReposNameRequired"
+                                                            : "createProjectReposNamePlaceholder"
                                                     )}
                                                     value={repoProjectName}
                                                 />
+                                                {selectedRepos.length > 1 ? (
+                                                    <p className="text-meta text-muted-foreground">
+                                                        {t(
+                                                            "createProjectReposNameHint"
+                                                        )}
+                                                    </p>
+                                                ) : undefined}
                                             </div>
                                             <DialogFooter className="px-0 sm:justify-end">
                                                 <Button
