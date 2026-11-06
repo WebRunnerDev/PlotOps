@@ -45,11 +45,6 @@ const PROJECT_SELECT = `
   )
 `;
 
-/**
- * Link a GitHub repository to a Project (Admin+, ADR 0035). The cap and the
- * Team-wide uniqueness are enforced in Postgres; the first Repository also
- * sets the Project's visibility, as creating a Project from a repo does.
- */
 export async function addProjectRepository(
     projectId: string,
     patch: ConnectProjectGithubPatch
@@ -227,6 +222,37 @@ export async function removeProjectRepository(repositoryId: string) {
         };
     }
     return { data, error: null };
+}
+
+/**
+ * Link a GitHub repository to a Project (Admin+, ADR 0035). The cap and the
+ * Team-wide uniqueness are enforced in Postgres; the first Repository also
+ * sets the Project's visibility, as creating a Project from a repo does.
+ */
+/**
+ * Rename a Project (Manager+ via `projects_update_managers`). The slug is left
+ * alone: it is a stable handle, and renaming must not move anything.
+ */
+export async function renameProject(projectId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+        return { data: null, error: new Error("Project name is required") };
+    }
+    const { error } = await supabase
+        .from("projects")
+        .update({ name: trimmed })
+        .eq("id", projectId);
+    if (error) return { data: null, error };
+
+    const result = await fetchProject(projectId);
+    if (result.error) return { data: null, error: result.error };
+    if (!result.data) {
+        return {
+            data: null,
+            error: new Error("Project not found or update not permitted"),
+        };
+    }
+    return { data: result.data, error: null };
 }
 
 export function slugifyRepoName(name: string): string {
