@@ -22,7 +22,7 @@ describe("about page seam", () => {
         expect(aboutSource).toMatch(/PLOTOPS_GITHUB_URL/);
         expect(aboutSource).toMatch(/PLOTOPS_LICENSE/);
         expect(aboutSource).toMatch(/target="_blank"/);
-        expect(aboutSource).not.toMatch(/https:\/\/github\.com\//);
+        expect(aboutSource).not.toContain("https://github.com/");
     });
 
     it("renders a features grid from i18n keys", () => {

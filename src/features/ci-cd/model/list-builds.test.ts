@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { mockBuildsForProject } from "@/features/ci-cd/api/mock-builds";
 
+const REPOSITORY = {
+    defaultBranch: "main",
+    fullName: "org/repo",
+    id: "repo-1",
+};
+
 describe("CI/CD builds-for-Project seam", () => {
     it("lists mock builds keyed by branch with success and failure statuses", async () => {
-        const { builds } =
-            await mockBuildsForProject.listBuilds("project-demo");
+        const { builds } = await mockBuildsForProject.listBuilds(REPOSITORY);
 
         expect(builds.length).toBeGreaterThanOrEqual(2);
 
@@ -17,9 +22,12 @@ describe("CI/CD builds-for-Project seam", () => {
         expect(byBranch["feature/analytics"]).toBe("failure");
     });
 
-    it("returns the same Project-scoped shape for any projectId (mock)", async () => {
-        const { builds } =
-            await mockBuildsForProject.listBuilds("another-project");
+    it("tags every run with the Repository it was listed for", async () => {
+        const { builds } = await mockBuildsForProject.listBuilds({
+            defaultBranch: "develop",
+            fullName: "org/api",
+            id: "repo-2",
+        });
 
         for (const build of builds) {
             expect(build).toEqual(
@@ -28,6 +36,8 @@ describe("CI/CD builds-for-Project seam", () => {
                     commitSha: expect.any(String),
                     htmlUrl: expect.any(String),
                     id: expect.any(String),
+                    repositoryId: "repo-2",
+                    repositoryName: "org/api",
                     status: expect.stringMatching(
                         /^(failure|queued|running|success)$/
                     ),
@@ -38,15 +48,15 @@ describe("CI/CD builds-for-Project seam", () => {
     });
 
     it("paginates mock builds with hasMore across pages", async () => {
-        const first = await mockBuildsForProject.listBuilds("project-demo", {
+        const first = await mockBuildsForProject.listBuilds(REPOSITORY, {
             page: 1,
             perPage: 2,
         });
-        const second = await mockBuildsForProject.listBuilds("project-demo", {
+        const second = await mockBuildsForProject.listBuilds(REPOSITORY, {
             page: 2,
             perPage: 2,
         });
-        const third = await mockBuildsForProject.listBuilds("project-demo", {
+        const third = await mockBuildsForProject.listBuilds(REPOSITORY, {
             page: 3,
             perPage: 2,
         });

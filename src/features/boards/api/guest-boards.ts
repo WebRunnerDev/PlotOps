@@ -1,22 +1,26 @@
 import type { BoardsProvider } from "@/features/boards/api/boards-provider";
 import type {
     BoardColumn,
+    BoardRepositoryBaseBranch,
     ProjectBoardRecord,
 } from "@/features/boards/model/types";
-import type { GuestBoard } from "@/features/guest-mode";
+import type { GuestBoard, GuestSandbox } from "@/features/guest-mode";
 
 import { normalizeBoardDevelopmentPatch } from "@/features/boards/lib/normalize-board-development-patch";
 import { DEFAULT_KANBAN_COLUMNS } from "@/features/boards/model/constants";
 import { getGuestSandbox, updateGuestSandbox } from "@/features/guest-mode";
 
 function mapBoard(board: GuestBoard): ProjectBoardRecord {
+    const repositoryBaseBranches = board.repositoryBaseBranches.map(
+        (entry) => ({ ...entry })
+    );
     return {
         allowedHeadPatterns: [...board.allowedHeadPatterns],
         autoAssignToCreator: board.autoAssignToCreator ?? false,
-        baseBranch: board.baseBranch,
+        baseBranch: repositoryBaseBranches[0]?.baseBranch ?? null,
         defaultTaskType: board.defaultTaskType ?? "task",
         id: board.id,
-        isDevelopment: board.isDevelopment ?? Boolean(board.baseBranch),
+        isDevelopment: board.isDevelopment ?? false,
         mergeTargetColumnId:
             board.mergeTargetMode === "column"
                 ? (board.mergeTargetColumnId ?? null)
@@ -25,6 +29,7 @@ function mapBoard(board: GuestBoard): ProjectBoardRecord {
         name: board.name,
         position: board.position,
         projectId: board.projectId,
+        repositoryBaseBranches,
     };
 }
 
@@ -38,6 +43,31 @@ function requireBoard(boardId: string): GuestBoard {
         throw new Error("Board not found");
     }
     return board;
+}
+
+/**
+ * One Base branch row per Project Repository, like `boards_sync_repositories`:
+ * the per-Repository value when given, else the shared one, else the
+ * Repository's default branch.
+ */
+function seedBaseBranches(
+    sandbox: GuestSandbox,
+    projectId: string,
+    shared?: null | string,
+    entries?: readonly BoardRepositoryBaseBranch[]
+): GuestBoard["repositoryBaseBranches"] {
+    const repositories =
+        sandbox.projects.find((item) => item.id === projectId)?.repositories ??
+        [];
+    return repositories.map((repository) => ({
+        baseBranch:
+            entries
+                ?.find((entry) => entry.repositoryId === repository.id)
+                ?.baseBranch.trim() ||
+            shared?.trim() ||
+            repository.defaultBranch,
+        repositoryId: repository.id,
+    }));
 }
 
 function sortedColumns(board: GuestBoard): GuestBoard["columns"] {
@@ -57,11 +87,16 @@ export const guestBoardsProvider: BoardsProvider = {
     async createBoard(projectId, name, input) {
         let created: GuestBoard | undefined;
         const isDevelopment = input.isDevelopment;
-        const baseBranch = isDevelopment
-            ? input.baseBranch?.trim() || null
-            : null;
 
         updateGuestSandbox((sandbox) => {
+            const repositoryBaseBranches = isDevelopment
+                ? seedBaseBranches(
+                      sandbox,
+                      projectId,
+                      input.baseBranch,
+                      input.repositoryBaseBranches
+                  )
+                : [];
             const projectBoards = sandbox.boards.filter(
                 (board) => board.projectId === projectId
             );
@@ -75,7 +110,6 @@ export const guestBoardsProvider: BoardsProvider = {
             created = {
                 allowedHeadPatterns: [],
                 autoAssignToCreator: false,
-                baseBranch,
                 columns: DEFAULT_KANBAN_COLUMNS.map((column, index) => ({
                     id: column.id,
                     isDone: column.isDone,
@@ -90,6 +124,7 @@ export const guestBoardsProvider: BoardsProvider = {
                 name: name.trim() || "Board",
                 position: maxPosition + 1,
                 projectId,
+                repositoryBaseBranches,
             };
             sandbox.boards.push(created);
         });
@@ -285,11 +320,32 @@ export const guestBoardsProvider: BoardsProvider = {
             if (patch.name !== undefined) {
                 board.name = patch.name;
             }
+            const wasDevelopment = board.isDevelopment ?? false;
             if (normalized.is_development !== undefined) {
+                if (normalized.is_development && !wasDevelopment) {
+                    board.repositoryBaseBranches = seedBaseBranches(
+                        sandbox,
+                        board.projectId
+                    );
+                }
                 board.isDevelopment = normalized.is_development;
+                if (!normalized.is_development) {
+                    board.repositoryBaseBranches = [];
+                }
             }
-            if (normalized.base_branch !== undefined) {
-                board.baseBranch = normalized.base_branch;
+            // Only rows of a Repository the Board already holds are written.
+            if (
+                (normalized.is_development ?? wasDevelopment) &&
+                normalized.repository_base_branches
+            ) {
+                for (const entry of normalized.repository_base_branches) {
+                    const row = board.repositoryBaseBranches.find(
+                        (item) => item.repositoryId === entry.repositoryId
+                    );
+                    if (row && entry.baseBranch.trim()) {
+                        row.baseBranch = entry.baseBranch.trim();
+                    }
+                }
             }
             if (normalized.allowed_head_patterns !== undefined) {
                 board.allowedHeadPatterns = [

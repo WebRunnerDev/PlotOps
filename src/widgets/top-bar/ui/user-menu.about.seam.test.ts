@@ -27,7 +27,9 @@ describe("account menu About PlotOps seam", () => {
 
     it("keeps About out of the TopBar, command palette, and platform settings", () => {
         const topBar = read("src/widgets/top-bar/ui/top-bar.tsx");
-        const palette = read("src/features/command-palette/ui/command-palette.tsx");
+        const palette = read(
+            "src/features/command-palette/ui/command-palette.tsx"
+        );
         const settings = read("src/routes/(main)/settings.tsx");
 
         expect(topBar).not.toMatch(/to:\s*"\/about"/);

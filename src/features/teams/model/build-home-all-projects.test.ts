@@ -16,6 +16,7 @@ function project(
         github_repo_id: null,
         is_private: false,
         owner_id: "owner",
+        repositories: [],
         slug: overrides.name.toLowerCase(),
         updated_at: "2026-01-01T00:00:00Z",
         ...overrides,

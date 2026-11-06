@@ -17,16 +17,40 @@ export type BoardDefaultTaskType = "bug" | "story" | "task";
  */
 export type BoardMergeTargetMode = "column" | "last_column" | "none";
 
+export type BoardRepositoryBaseBranch = {
+    baseBranch: string;
+    repositoryId: string;
+};
+
+/**
+ * A Project Repository as Board settings need it. Local so `boards` stays a
+ * leaf module (mirrors `projects` ProjectRepository).
+ */
+export type BoardSettingsRepository = {
+    defaultBranch: string;
+    fullName: string;
+    id: string;
+};
+
 export type CreateBoardInput = {
+    /** One Base branch for every Repository (Board switcher, single-repo UI). */
     baseBranch?: string;
     isDevelopment: boolean;
+    /**
+     * Base branch per Repository, applied after the Board is seeded. A
+     * Repository left out keeps its default branch.
+     */
+    repositoryBaseBranches?: BoardRepositoryBaseBranch[];
 };
 
 export type ProjectBoardRecord = {
     allowedHeadPatterns: string[];
     /** Assign new Tasks on this Board to the creator when the Team is solo. */
     autoAssignToCreator: boolean;
-    /** PR merge target; required when isDevelopment. */
+    /**
+     * Single-repo view of `repositoryBaseBranches[0]` (null when none). Kept
+     * so screens built for one Repository read unchanged.
+     */
     baseBranch: null | string;
     /** Prefill for new Tasks created on this board when type is omitted. */
     defaultTaskType: BoardDefaultTaskType;
@@ -39,16 +63,22 @@ export type ProjectBoardRecord = {
     name: string;
     position: number;
     projectId: string;
+    /** Base branch per Repository (`board_repositories`); empty unless isDevelopment. */
+    repositoryBaseBranches: BoardRepositoryBaseBranch[];
 };
 
 export type UpdateBoardPatch = {
     allowed_head_patterns?: string[];
     auto_assign_to_creator?: boolean;
-    base_branch?: null | string;
     default_task_type?: BoardDefaultTaskType;
     is_development?: boolean;
     merge_target_column_id?: null | string;
     merge_target_mode?: BoardMergeTargetMode;
     name?: string;
     position?: number;
+    /**
+     * Base branch per Repository (`board_repositories`). Only rows of a
+     * Development Board are written; turning Development off clears them.
+     */
+    repository_base_branches?: BoardRepositoryBaseBranch[];
 };

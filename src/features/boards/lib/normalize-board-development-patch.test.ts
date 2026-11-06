@@ -3,29 +3,36 @@ import { describe, expect, it } from "vitest";
 import { normalizeBoardDevelopmentPatch } from "./normalize-board-development-patch";
 
 describe("normalizeBoardDevelopmentPatch", () => {
-    it("clears Base branch and Allowed head patterns when Development is turned off", () => {
+    it("clears Base branches and Allowed head patterns when Development is turned off", () => {
         expect(
             normalizeBoardDevelopmentPatch({
                 allowed_head_patterns: ["feature/*"],
-                base_branch: "main",
                 is_development: false,
+                repository_base_branches: [
+                    { baseBranch: "main", repositoryId: "web" },
+                ],
             })
         ).toEqual({
             allowed_head_patterns: [],
-            base_branch: null,
             is_development: false,
+            repository_base_branches: [],
         });
     });
 
-    it("trims Base branch when Development stays on", () => {
+    it("trims each Repository's Base branch and drops blank ones", () => {
         expect(
             normalizeBoardDevelopmentPatch({
-                base_branch: "  develop  ",
                 is_development: true,
+                repository_base_branches: [
+                    { baseBranch: "  develop  ", repositoryId: "api" },
+                    { baseBranch: "   ", repositoryId: "web" },
+                ],
             })
         ).toEqual({
-            base_branch: "develop",
             is_development: true,
+            repository_base_branches: [
+                { baseBranch: "develop", repositoryId: "api" },
+            ],
         });
     });
 

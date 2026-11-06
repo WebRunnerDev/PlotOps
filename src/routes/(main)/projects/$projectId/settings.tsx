@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, GitBranch } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
+    type BoardSettingsRepository,
     countTeamPeople,
     isSoloTeam,
     ProjectBoardsSettings,
@@ -16,13 +17,10 @@ import {
 } from "@/features/custom-fields";
 import { useIsGuest } from "@/features/guest-mode";
 import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
-import {
-    projectHasGithubRepo,
-    resolveProjectConnectHash,
-} from "@/features/projects/model/project-github-gate";
+import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
-import { ConnectProjectRepository } from "@/features/projects/ui/connect-project-repository";
+import { ProjectRepositoriesSettings } from "@/features/projects/ui/project-repositories-settings";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
 import {
     useTeam,
@@ -93,6 +91,18 @@ function ProjectSettingsRoute() {
     const defaultBoardId = boards[0]?.id ?? "";
     const selectTask = useTasksUiStore((state) => state.selectTask);
     const guest = useIsGuest();
+
+    // Development settings (Base branch per Repository) show only when the
+    // Project has at least one Repository.
+    const boardRepositories = useMemo<BoardSettingsRepository[]>(
+        () =>
+            (project?.repositories ?? []).map((repository) => ({
+                defaultBranch: repository.github_default_branch,
+                fullName: repository.github_full_name,
+                id: repository.id,
+            })),
+        [project?.repositories]
+    );
 
     const projectLabels = useMemo(
         () => labels.filter((label) => label.projectId === projectId),
@@ -294,66 +304,11 @@ function ProjectSettingsRoute() {
                     ) : undefined}
 
                     <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-8 lg:mx-0 lg:max-w-none">
-                        <section
-                            className={cn(
-                                "scroll-mt-4 motion-reveal border border-border bg-card/60 p-5 backdrop-blur-sm [animation-delay:220ms] sm:p-6",
-                                repoLinked
-                                    ? "ring-1 ring-primary/20"
-                                    : "border-dashed"
-                            )}
-                            id={resolveProjectConnectHash()}
-                        >
-                            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-                                <div className="flex min-w-0 items-center gap-2.5">
-                                    <GitBranch
-                                        aria-hidden
-                                        className="size-4 shrink-0 text-primary"
-                                    />
-                                    <h2 className="text-h3">
-                                        {t("settings.repository.title")}
-                                    </h2>
-                                </div>
-                                <span
-                                    className={cn(
-                                        "inline-flex items-center gap-2 font-mono text-meta uppercase tracking-[0.12em]",
-                                        repoLinked
-                                            ? "text-success"
-                                            : "text-muted-foreground"
-                                    )}
-                                >
-                                    <span
-                                        aria-hidden
-                                        className={cn(
-                                            "size-1.5 shrink-0 rounded-full",
-                                            repoLinked
-                                                ? "bg-success shadow-[0_0_0_3px_color-mix(in_oklab,var(--success)_28%,transparent)]"
-                                                : "bg-muted-foreground/50"
-                                        )}
-                                    />
-                                    {repoLinked
-                                        ? t("settings.repository.statusLinked")
-                                        : t(
-                                              "settings.repository.statusUnlinked"
-                                          )}
-                                </span>
-                            </div>
-
-                            {repoLinked ? (
-                                <p className="mt-4 min-w-0 truncate font-mono text-code text-foreground/90">
-                                    {project.github_full_name ??
-                                        t("settings.repository.linked")}
-                                </p>
-                            ) : canManageSettings ? (
-                                <ConnectProjectRepository
-                                    projectId={projectId}
-                                    teamId={project.team_id}
-                                />
-                            ) : (
-                                <p className="mt-4 text-ui text-muted-foreground">
-                                    {t("settings.repository.connect")}
-                                </p>
-                            )}
-                        </section>
+                        <ProjectRepositoriesSettings
+                            canManage={isSettled && canManageSettings}
+                            isGuest={guest}
+                            project={project}
+                        />
 
                         <div
                             className="motion-reveal min-w-0 [animation-delay:300ms]"
@@ -363,14 +318,13 @@ function ProjectSettingsRoute() {
                             isSettled &&
                             canManageBoard ? (
                                 <ProjectBoardsSettings
-                                    defaultBaseBranch={
-                                        project.github_default_branch ?? "main"
-                                    }
                                     projectId={projectId}
+                                    repositories={
+                                        repoLinked ? boardRepositories : []
+                                    }
                                     showAutoAssignToCreator={
                                         showAutoAssignToCreator
                                     }
-                                    showGitBranchSettings={repoLinked}
                                 />
                             ) : undefined}
                             {activeSection === "labels" &&
@@ -396,9 +350,7 @@ function ProjectSettingsRoute() {
                                 boardId={defaultBoardId}
                                 githubToken={githubAccessToken}
                                 projectId={projectId}
-                                repoFullName={
-                                    project.github_full_name ?? undefined
-                                }
+                                repositories={project.repositories}
                             />
                         ) : undefined}
                     </div>

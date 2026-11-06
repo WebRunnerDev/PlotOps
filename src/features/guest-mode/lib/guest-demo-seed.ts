@@ -1,4 +1,8 @@
-import type { GuestPerson, GuestSandbox } from "../model/types";
+import type {
+    GuestGitHubRepo,
+    GuestPerson,
+    GuestSandbox,
+} from "../model/types";
 
 /** Fixed demo actor — chrome identity only; not a Supabase user. */
 export const GUEST_SEED_ACTOR_ID =
@@ -10,14 +14,33 @@ const ACTOR: GuestPerson = {
 };
 
 const TEAM_ID = "b0000000-0000-4000-8000-000000000001";
-/** Seeded Git-linked Project — Try demo lands on this Board. */
+/** Seeded multi-repo Project «Web + API» — Try demo lands on this Board. */
 export const GUEST_DEMO_PROJECT_ID =
     "b0000000-0000-4000-8000-000000000010" as const;
-/** Seeded Board for the Git-linked demo Project. */
+/** Seeded Board for the «Web + API» demo Project. */
 export const GUEST_DEMO_BOARD_ID =
     "b0000000-0000-4000-8000-000000000012" as const;
 const PROJ_GIT_ID = GUEST_DEMO_PROJECT_ID;
 const PROJ_PLAIN_ID = "b0000000-0000-4000-8000-000000000011";
+/** «Web + API» Repositories (ADR 0035): the frontend and the backend. */
+export const GUEST_DEMO_WEB_REPOSITORY_ID =
+    "b0000000-0000-4000-8000-000000000050" as const;
+export const GUEST_DEMO_API_REPOSITORY_ID =
+    "b0000000-0000-4000-8000-000000000051" as const;
+const REPO_WEB = {
+    defaultBranch: "main",
+    fullName: "plotops-demo/web",
+    githubRepoId: 999_000_001,
+    htmlUrl: "https://github.com/plotops-demo/web",
+    id: GUEST_DEMO_WEB_REPOSITORY_ID,
+};
+const REPO_API = {
+    defaultBranch: "develop",
+    fullName: "plotops-demo/api",
+    githubRepoId: 999_000_002,
+    htmlUrl: "https://github.com/plotops-demo/api",
+    id: GUEST_DEMO_API_REPOSITORY_ID,
+};
 const BOARD_GIT_ID = GUEST_DEMO_BOARD_ID;
 const BOARD_PLAIN_ID = "b0000000-0000-4000-8000-000000000013";
 const SPRINT_ACTIVE_ID = "b0000000-0000-4000-8000-000000000020";
@@ -279,7 +302,6 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             allowedHeadPatterns: ["feature/*", "fix/*", "bugfix/*"],
             autoAssignToCreator: false,
-            baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
             defaultTaskType: "task",
             id: BOARD_GIT_ID,
@@ -289,11 +311,14 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             name: "Board",
             position: 0,
             projectId: PROJ_GIT_ID,
+            repositoryBaseBranches: [
+                { baseBranch: "main", repositoryId: REPO_WEB.id },
+                { baseBranch: "develop", repositoryId: REPO_API.id },
+            ],
         },
         {
             allowedHeadPatterns: [],
             autoAssignToCreator: false,
-            baseBranch: "main",
             columns: [...DEFAULT_COLUMNS],
             defaultTaskType: "task",
             id: BOARD_PLAIN_ID,
@@ -303,6 +328,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             name: "Board",
             position: 0,
             projectId: PROJ_PLAIN_ID,
+            repositoryBaseBranches: [],
         },
     ],
     comments: [
@@ -555,15 +581,12 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         {
             createdAt: "2026-07-16T10:00:00.000Z",
             description:
-                "Seeded demo project with fake GitHub fields for Git/CI UI.",
-            githubDefaultBranch: "main",
-            githubFullName: "plotops-demo/plotops",
-            githubHtmlUrl: "https://github.com/plotops-demo/plotops",
-            githubRepoId: 999_000_001,
+                "Frontend and backend in two repositories on one Board — fake GitHub data for the Git/CI UI.",
             id: PROJ_GIT_ID,
             isPrivate: false,
-            name: "PlotOps Demo",
-            slug: "plotops-demo",
+            name: "Web + API",
+            repositories: [{ ...REPO_WEB }, { ...REPO_API }],
+            slug: "web-api",
             teamId: TEAM_ID,
             updatedAt: "2026-08-04T10:00:00.000Z",
         },
@@ -571,13 +594,10 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             createdAt: "2026-07-18T10:00:00.000Z",
             description:
                 "Name-only Project — board and backlog without a GitHub repo (connect later from Settings).",
-            githubDefaultBranch: null,
-            githubFullName: null,
-            githubHtmlUrl: null,
-            githubRepoId: null,
             id: PROJ_PLAIN_ID,
             isPrivate: false,
             name: "Marketing Site",
+            repositories: [],
             slug: "marketing-site",
             teamId: TEAM_ID,
             updatedAt: "2026-08-02T10:00:00.000Z",
@@ -629,22 +649,37 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "feature/TASK-1-guest-signin-cta",
             createdAt: "2026-07-20T10:00:00.000Z",
             deadline: "2026-08-07",
             description:
                 "<p>Primary secondary button on sign-in that starts a Guest Session.</p>",
             epicId: EPIC_GUEST,
             estimate: 5,
+            gitLinks: [
+                {
+                    branchName: "feature/TASK-1-guest-signin-cta",
+                    pr: {
+                        number: 42,
+                        state: "open",
+                        url: "https://github.com/plotops-demo/web/pull/42",
+                    },
+                    repositoryId: REPO_WEB.id,
+                },
+                // A hotfix PR in the same Repository (ADR 0036).
+                {
+                    branchName: "hotfix/FEAT-1-cta-contrast",
+                    pr: {
+                        number: 44,
+                        state: "merged",
+                        url: "https://github.com/plotops-demo/web/pull/44",
+                    },
+                    repositoryId: REPO_WEB.id,
+                },
+            ],
             id: T01,
             key: "FEAT-1",
             labelIds: [LABEL_FRONTEND],
             position: 0,
-            pr: {
-                number: 42,
-                state: "open",
-                url: "https://github.com/plotops-demo/plotops/pull/42",
-            },
             priority: "high",
             projectId: PROJ_GIT_ID,
             sprintId: SPRINT_ACTIVE_ID,
@@ -657,22 +692,36 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "feature/FEAT-2-guest-ci-mock",
             createdAt: "2026-07-21T11:00:00.000Z",
             deadline: "2026-08-06",
             description:
                 "<p>Route guest sessions through the canned builds provider — no GitHub token.</p>",
             epicId: EPIC_GUEST,
             estimate: 8,
+            gitLinks: [
+                {
+                    branchName: "feature/FEAT-2-guest-ci-mock",
+                    pr: {
+                        number: 43,
+                        state: "open",
+                        url: "https://github.com/plotops-demo/web/pull/43",
+                    },
+                    repositoryId: REPO_WEB.id,
+                },
+                {
+                    branchName: "feature/FEAT-2-guest-ci-mock",
+                    pr: {
+                        number: 17,
+                        state: "merged",
+                        url: "https://github.com/plotops-demo/api/pull/17",
+                    },
+                    repositoryId: REPO_API.id,
+                },
+            ],
             id: T02,
             key: "FEAT-2",
             labelIds: [LABEL_CI, LABEL_BACKEND],
             position: 1,
-            pr: {
-                number: 43,
-                state: "open",
-                url: "https://github.com/plotops-demo/plotops/pull/43",
-            },
             priority: "urgent",
             projectId: PROJ_GIT_ID,
             sprintId: SPRINT_ACTIVE_ID,
@@ -685,21 +734,26 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "feature/TASK-3-guest-seed-dataset",
             createdAt: "2026-07-22T09:00:00.000Z",
             deadline: "2026-08-05",
             description:
                 "<p>Populate the Guest Mode seed with a Team, two Projects, and about 15 colourful tasks.</p>",
             estimate: 3,
+            gitLinks: [
+                {
+                    branchName: "feature/TASK-3-guest-seed-dataset",
+                    pr: {
+                        number: 15,
+                        state: "open",
+                        url: "https://github.com/plotops-demo/api/pull/15",
+                    },
+                    repositoryId: REPO_API.id,
+                },
+            ],
             id: T03,
             key: "TASK-3",
             labelIds: [LABEL_BACKEND],
             position: 0,
-            pr: {
-                number: 41,
-                state: "open",
-                url: "https://github.com/plotops-demo/plotops/pull/41",
-            },
             priority: "high",
             projectId: PROJ_GIT_ID,
             sprintId: SPRINT_ACTIVE_ID,
@@ -712,21 +766,26 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "feature/TASK-4-is-guest-session",
             createdAt: "2026-07-23T14:00:00.000Z",
             deadline: "2026-08-01",
             description:
                 "<p>Guest detection is a Guest Session client flag — not a demo email/UUID.</p>",
             epicId: EPIC_GUEST,
+            gitLinks: [
+                {
+                    branchName: "feature/TASK-4-is-guest-session",
+                    pr: {
+                        number: 38,
+                        state: "merged",
+                        url: "https://github.com/plotops-demo/web/pull/38",
+                    },
+                    repositoryId: REPO_WEB.id,
+                },
+            ],
             id: T04,
             key: "FEAT-4",
             labelIds: [LABEL_FRONTEND],
             position: 0,
-            pr: {
-                number: 38,
-                state: "merged",
-                url: "https://github.com/plotops-demo/plotops/pull/38",
-            },
             priority: "medium",
             projectId: PROJ_GIT_ID,
             sprintId: SPRINT_ACTIVE_ID,
@@ -739,20 +798,25 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "docs/TASK-5-guest-creds-docs",
             createdAt: "2026-07-24T08:00:00.000Z",
             deadline: "2026-07-31",
             description:
                 "<p>Document Local Guest Mode and that Docker SQL seed is for RLS experiments only.</p>",
+            gitLinks: [
+                {
+                    branchName: "docs/TASK-5-guest-creds-docs",
+                    pr: {
+                        number: 37,
+                        state: "merged",
+                        url: "https://github.com/plotops-demo/web/pull/37",
+                    },
+                    repositoryId: REPO_WEB.id,
+                },
+            ],
             id: T05,
             key: "TASK-5",
             labelIds: [LABEL_DOCS],
             position: 1,
-            pr: {
-                number: 37,
-                state: "merged",
-                url: "https://github.com/plotops-demo/plotops/pull/37",
-            },
             priority: "low",
             projectId: PROJ_GIT_ID,
             sprintId: SPRINT_ACTIVE_ID,
@@ -819,12 +883,17 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "feature/FEAT-9-git-fixtures",
             createdAt: "2026-07-28T09:30:00.000Z",
             deadline: "2026-08-12",
             description:
                 "<p>Git tab should return canned commits/PRs when Guest has no provider token.</p>",
             epicId: EPIC_GIT,
+            gitLinks: [
+                {
+                    branchName: "feature/FEAT-9-git-fixtures",
+                    repositoryId: REPO_WEB.id,
+                },
+            ],
             id: T09,
             key: "FEAT-9",
             labelIds: [LABEL_FRONTEND],
@@ -855,21 +924,26 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             assignee: ACTOR,
             author: ACTOR,
             boardId: BOARD_GIT_ID,
-            branchName: "fix/BUG-11-realtime-reconnect",
             createdAt: "2026-07-30T11:00:00.000Z",
             deadline: "2026-08-08",
             description:
                 "<p>Reproduce drop under slow 3G and harden the subscription bounce.</p>",
             epicId: EPIC_GIT,
+            gitLinks: [
+                {
+                    branchName: "fix/BUG-11-realtime-reconnect",
+                    pr: {
+                        number: 16,
+                        state: "open",
+                        url: "https://github.com/plotops-demo/api/pull/16",
+                    },
+                    repositoryId: REPO_API.id,
+                },
+            ],
             id: T11,
             key: "BUG-11",
             labelIds: [LABEL_BACKEND],
             position: 2,
-            pr: {
-                number: 39,
-                state: "open",
-                url: "https://github.com/plotops-demo/plotops/pull/39",
-            },
             priority: "medium",
             projectId: PROJ_GIT_ID,
             status: "in_progress",
@@ -1095,6 +1169,77 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
         },
     ],
 };
+
+/**
+ * Repositories the Guest's fake GitHub account sees in the repo pickers
+ * (Create Project, Settings → Repositories). The first two are linked to
+ * «Web + API»; the rest stay free to link.
+ */
+export const GUEST_DEMO_GITHUB_REPOS: readonly GuestGitHubRepo[] = [
+    {
+        defaultBranch: REPO_WEB.defaultBranch,
+        description: "React SPA — the Board, drawer and CI/CD screens.",
+        fullName: REPO_WEB.fullName,
+        htmlUrl: REPO_WEB.htmlUrl,
+        id: REPO_WEB.githubRepoId,
+        isPrivate: false,
+        name: "web",
+    },
+    {
+        defaultBranch: REPO_API.defaultBranch,
+        description: "Supabase migrations, RPCs and Edge Functions.",
+        fullName: REPO_API.fullName,
+        htmlUrl: REPO_API.htmlUrl,
+        id: REPO_API.githubRepoId,
+        isPrivate: false,
+        name: "api",
+    },
+    {
+        defaultBranch: "main",
+        description: "Expo client for iOS and Android.",
+        fullName: "plotops-demo/mobile",
+        htmlUrl: "https://github.com/plotops-demo/mobile",
+        id: 999_000_003,
+        isPrivate: false,
+        name: "mobile",
+    },
+    {
+        defaultBranch: "main",
+        description: "Product docs site.",
+        fullName: "plotops-demo/docs",
+        htmlUrl: "https://github.com/plotops-demo/docs",
+        id: 999_000_004,
+        isPrivate: false,
+        name: "docs",
+    },
+    {
+        defaultBranch: "main",
+        description: "Terraform and deploy scripts.",
+        fullName: "plotops-demo/infra",
+        htmlUrl: "https://github.com/plotops-demo/infra",
+        id: 999_000_005,
+        isPrivate: true,
+        name: "infra",
+    },
+    {
+        defaultBranch: "main",
+        description: "Shared UI components and tokens.",
+        fullName: "plotops-demo/design-system",
+        htmlUrl: "https://github.com/plotops-demo/design-system",
+        id: 999_000_006,
+        isPrivate: false,
+        name: "design-system",
+    },
+    {
+        defaultBranch: "main",
+        description: "Marketing landing page.",
+        fullName: "plotops-demo/landing",
+        htmlUrl: "https://github.com/plotops-demo/landing",
+        id: 999_000_007,
+        isPrivate: false,
+        name: "landing",
+    },
+];
 
 /** Deep-clone the canonical seed for a new or reset Guest Session sandbox. */
 export function cloneGuestDemoSeed(): GuestSandbox {

@@ -14,7 +14,6 @@ import {
     streamLinesProgressively,
     unzipJobLogs,
 } from "@/features/ci-cd/api/github-actions-builds";
-import * as projectsApi from "@/features/projects/api/projects-api";
 
 function createMemoryStorage(): Storage {
     const store = new Map<string, string>();
@@ -36,6 +35,12 @@ function createMemoryStorage(): Storage {
     };
 }
 
+const REPOSITORY = {
+    defaultBranch: "main",
+    fullName: "org/repo",
+    id: "repo-1",
+};
+
 function jsonResponse(body: unknown) {
     return {
         json: () => Promise.resolve(body),
@@ -46,19 +51,22 @@ function jsonResponse(body: unknown) {
 
 describe("mapWorkflowRunToBuild", () => {
     it("maps a completed successful run", () => {
-        const build = mapWorkflowRunToBuild({
-            conclusion: "success",
-            created_at: "2026-07-24T09:10:01.000Z",
-            display_title: "chore: bump board filters",
-            head_branch: "main",
-            head_sha: "a1b2c3d4e5f6",
-            html_url: "https://github.com/org/repo/actions/runs/99",
-            id: 99,
-            name: "CI",
-            path: ".github/workflows/ci.yml",
-            status: "completed",
-            updated_at: "2026-07-24T09:12:04.000Z",
-        });
+        const build = mapWorkflowRunToBuild(
+            {
+                conclusion: "success",
+                created_at: "2026-07-24T09:10:01.000Z",
+                display_title: "chore: bump board filters",
+                head_branch: "main",
+                head_sha: "a1b2c3d4e5f6",
+                html_url: "https://github.com/org/repo/actions/runs/99",
+                id: 99,
+                name: "CI",
+                path: ".github/workflows/ci.yml",
+                status: "completed",
+                updated_at: "2026-07-24T09:12:04.000Z",
+            },
+            REPOSITORY
+        );
 
         expect(build).toMatchObject({
             branch: "main",
@@ -66,6 +74,8 @@ describe("mapWorkflowRunToBuild", () => {
             commitSha: "a1b2c3d",
             htmlUrl: "https://github.com/org/repo/actions/runs/99",
             id: "99",
+            repositoryId: "repo-1",
+            repositoryName: "org/repo",
             status: "success",
             workflowName: "CI",
         });
@@ -73,19 +83,22 @@ describe("mapWorkflowRunToBuild", () => {
     });
 
     it("maps an in-progress run without finishedAt", () => {
-        const build = mapWorkflowRunToBuild({
-            conclusion: undefined,
-            created_at: "2026-07-24T10:00:00.000Z",
-            display_title: "feat: login",
-            head_branch: "feature/login",
-            head_sha: "deadbeef",
-            html_url: "https://github.com/org/repo/actions/runs/100",
-            id: 100,
-            name: "CI",
-            path: ".github/workflows/ci.yml",
-            status: "in_progress",
-            updated_at: "2026-07-24T10:01:00.000Z",
-        });
+        const build = mapWorkflowRunToBuild(
+            {
+                conclusion: undefined,
+                created_at: "2026-07-24T10:00:00.000Z",
+                display_title: "feat: login",
+                head_branch: "feature/login",
+                head_sha: "deadbeef",
+                html_url: "https://github.com/org/repo/actions/runs/100",
+                id: 100,
+                name: "CI",
+                path: ".github/workflows/ci.yml",
+                status: "in_progress",
+                updated_at: "2026-07-24T10:01:00.000Z",
+            },
+            REPOSITORY
+        );
 
         expect(build.status).toBe("running");
         expect(build.finishedAt).toBeUndefined();
@@ -150,29 +163,6 @@ describe("GitHub Actions 401 clears token SoT", () => {
     });
 
     it("listBuilds clears the SoT and throws CiCdUnauthorizedError on 401", async () => {
-        vi.spyOn(projectsApi, "fetchProject").mockResolvedValue({
-            count: null,
-            data: {
-                created_at: "2026-01-01T00:00:00.000Z",
-                description: null,
-                github_default_branch: "main",
-                github_full_name: "org/repo",
-                github_html_url: "https://github.com/org/repo",
-                github_repo_id: 1,
-                id: "project-1",
-                is_private: false,
-                name: "Repo",
-                owner_id: "user-1",
-                slug: "repo",
-                team_id: "team-1",
-                updated_at: "2026-01-01T00:00:00.000Z",
-            },
-            error: null,
-            status: 200,
-            statusText: "OK",
-            success: true,
-        });
-
         vi.stubGlobal(
             "fetch",
             vi.fn().mockResolvedValue({
@@ -182,7 +172,7 @@ describe("GitHub Actions 401 clears token SoT", () => {
         );
 
         await expect(
-            githubActionsBuilds.listBuilds("project-1")
+            githubActionsBuilds.listBuilds(REPOSITORY)
         ).rejects.toBeInstanceOf(CiCdUnauthorizedError);
 
         expect(getGitHubAccessToken()).toBeNull();
@@ -194,28 +184,6 @@ describe("getBuildsStats", () => {
         vi.stubGlobal("localStorage", createMemoryStorage());
         clearGitHubAccessToken();
         setGitHubAccessToken("token", "user-1");
-        vi.spyOn(projectsApi, "fetchProject").mockResolvedValue({
-            count: null,
-            data: {
-                created_at: "2026-01-01T00:00:00.000Z",
-                description: null,
-                github_default_branch: "main",
-                github_full_name: "org/repo",
-                github_html_url: "https://github.com/org/repo",
-                github_repo_id: 1,
-                id: "project-1",
-                is_private: false,
-                name: "Repo",
-                owner_id: "user-1",
-                slug: "repo",
-                team_id: "team-1",
-                updated_at: "2026-01-01T00:00:00.000Z",
-            },
-            error: null,
-            status: 200,
-            statusText: "OK",
-            success: true,
-        });
     });
 
     afterEach(() => {
@@ -270,7 +238,7 @@ describe("getBuildsStats", () => {
             })
         );
 
-        const stats = await githubActionsBuilds.getBuildsStats("project-1", {
+        const stats = await githubActionsBuilds.getBuildsStats(REPOSITORY, {
             defaultBranch: "main",
         });
 
@@ -293,7 +261,7 @@ describe("getBuildsStats", () => {
         );
         vi.stubGlobal("fetch", fetchMock);
 
-        const stats = await githubActionsBuilds.getBuildsStats("project-1");
+        const stats = await githubActionsBuilds.getBuildsStats(REPOSITORY);
 
         expect(stats.defaultBranchBuild).toBeUndefined();
         expect(fetchMock).toHaveBeenCalledTimes(3);

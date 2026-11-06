@@ -13,19 +13,19 @@ export type TeamsProvider = {
         data: null | { id: string };
         error: Error | null;
     }>;
-    updateTeam(
-        teamId: string,
-        name: string
-    ): Promise<{
-        data: null | TeamRow;
-        error: Error | null;
-    }>;
     fetchTeam(teamId: string): Promise<{
         data: null | TeamRow;
         error: Error | null;
     }>;
     fetchTeams(): Promise<{
         data: null | TeamRow[];
+        error: Error | null;
+    }>;
+    updateTeam(
+        teamId: string,
+        name: string
+    ): Promise<{
+        data: null | TeamRow;
         error: Error | null;
     }>;
 };

@@ -27,9 +27,9 @@ export function AuthTurnstile({
     return (
         <div className="flex w-full min-w-0 justify-center [&_.cf-turnstile]:w-full">
             <Turnstile
-                key={resetKey}
                 className="w-full"
                 id={`turnstile-${action}`}
+                key={resetKey}
                 onError={() => onTokenChange(null)}
                 onExpire={() => onTokenChange(null)}
                 onSuccess={onTokenChange}

@@ -6,13 +6,16 @@ import { toast } from "sonner";
 import type { GitHubRepo } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
+import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
+import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
 import { useGitHubRepos } from "@/features/projects/model/use-github-repos";
 import {
-    useConnectProjectGithub,
+    useAddProjectRepository,
     useProjectsByTeam,
 } from "@/features/projects/model/use-projects";
+import { isCapExceeded } from "@/shared/lib/is-cap-exceeded";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Input } from "@/shared/shadcn/ui/input";
@@ -20,18 +23,26 @@ import { ScrollArea } from "@/shared/shadcn/ui/scroll-area";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type ConnectProjectRepositoryProperties = {
+    /** Called after a Repository is linked (e.g. to close the picker). */
+    onAdded?: () => void;
     projectId: string;
     teamId: string;
 };
 
+/**
+ * Picker of the viewer's GitHub repositories, minus those already linked to
+ * any Project in the Team (a repository belongs to one Project per Team).
+ */
 export function ConnectProjectRepository({
+    onAdded,
     projectId,
     teamId,
 }: ConnectProjectRepositoryProperties) {
     const { t } = useTranslation("board");
     const { githubAccessToken, user } = useAuth();
+    const guest = useIsGuest();
     const [search, setSearch] = useState("");
-    const connect = useConnectProjectGithub(projectId);
+    const connect = useAddProjectRepository(projectId);
     const { data: teamProjects = [] } = useProjectsByTeam(teamId);
     const {
         data: repos = [],
@@ -42,9 +53,9 @@ export function ConnectProjectRepository({
     const connectedRepoIds = useMemo(
         () =>
             new Set(
-                teamProjects
-                    .map((project) => project.github_repo_id)
-                    .filter((id): id is number => id != undefined)
+                teamProjects.flatMap((project) =>
+                    project.repositories.map((repo) => repo.github_repo_id)
+                )
             ),
         [teamProjects]
     );
@@ -66,25 +77,32 @@ export function ConnectProjectRepository({
     const handleConnect = async (repo: GitHubRepo) => {
         try {
             await connect.mutateAsync(repo);
-            toast.success(t("settings.repository.connectSuccess"));
+            toast.success(
+                t("settings.repository.connectSuccess", {
+                    repository: repo.full_name,
+                })
+            );
+            onAdded?.();
         } catch (connectError) {
             toast.error(
                 isUniqueViolation(connectError)
                     ? t("settings.repository.connectDuplicate")
-                    : t("settings.repository.connectFailed")
+                    : isCapExceeded(connectError, "project_repositories_cap")
+                      ? t("settings.repository.capReached", {
+                            count: PROJECT_REPOSITORIES_CAP,
+                        })
+                      : t("settings.repository.connectFailed")
             );
         }
     };
 
     const missingRepoScope = error instanceof GitHubMissingRepoScopeError;
-    const hasGitHubToken = Boolean(githubAccessToken);
+    // Guest Mode lists the fake demo account's repositories, no token needed.
+    const hasGitHubToken = guest || Boolean(githubAccessToken);
 
     if (!hasGitHubToken) {
         return (
-            <div className="mt-4 flex flex-col gap-3">
-                <p className="max-w-prose text-ui text-muted-foreground">
-                    {t("settings.repository.connect")}
-                </p>
+            <div className="flex flex-col gap-3">
                 <Alert>
                     <AlertDescription>
                         {t("settings.repository.githubRequired")}
@@ -105,10 +123,7 @@ export function ConnectProjectRepository({
     }
 
     return (
-        <div className="mt-4 flex flex-col gap-3">
-            <p className="max-w-prose text-ui text-muted-foreground">
-                {t("settings.repository.connect")}
-            </p>
+        <div className="flex flex-col gap-3">
             <Input
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("settings.repository.searchRepos")}

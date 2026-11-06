@@ -21,11 +21,11 @@ select hasnt_column('public', 'projects', 'owner_id', 'projects.owner_id dropped
 
 select col_not_null('public', 'projects', 'team_id', 'projects.team_id is required');
 
-select has_index(
+select col_is_unique(
   'public',
-  'projects',
-  'projects_team_github_repo_unique',
-  'unique (team_id, github_repo_id) where repo present'
+  'project_repositories',
+  array['team_id', 'github_repo_id'],
+  'unique (team_id, github_repo_id) on project_repositories'
 );
 
 -- ---------------------------------------------------------------------------

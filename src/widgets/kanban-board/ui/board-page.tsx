@@ -199,7 +199,7 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                         githubToken={githubAccessToken}
                         openCreateTaskRequestKey={openCreateTaskRequestKey}
                         projectId={projectId}
-                        repoFullName={project.github_full_name ?? undefined}
+                        repositories={project.repositories}
                     />
                 </div>
             </div>

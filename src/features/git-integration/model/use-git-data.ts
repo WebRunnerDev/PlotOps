@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+
+import type { GitCommit } from "@/features/git-integration/api/github-git-api";
 
 import { useAuth } from "@/features/auth";
 import {
@@ -28,6 +30,10 @@ import {
     canFetchPullRequestFiles,
     canFetchTaskGitTab,
 } from "@/features/git-integration/lib/can-fetch-git-data";
+import {
+    mergeRepositoryCommits,
+    type RepositoryCommit,
+} from "@/features/git-integration/lib/merge-commits";
 import { isGuest } from "@/features/guest-mode";
 
 import { gitAuthFingerprint, gitKeys } from "./query-keys";
@@ -36,6 +42,20 @@ type GitQueryOptions = {
     branchName: string | undefined;
     repoFullName: string | undefined;
     token: null | string;
+};
+
+type TaskCommitsOptions<R extends TaskCommitsRepository> = {
+    linkedCommitSha: string | undefined;
+    repositories: readonly R[];
+    taskKey: string;
+    token: null | string;
+};
+
+type TaskCommitsRepository = {
+    /** Linked branch of this Repository; shared branches are skipped. */
+    branchName: string | undefined;
+    fullName: string;
+    id: string;
 };
 
 type TaskKeyCommitsOptions = {
@@ -277,6 +297,128 @@ export function usePullRequestReviewerCandidates(
         ),
         staleTime: 60_000,
     });
+}
+
+/**
+ * Every commit of a Task across its Repositories — smart commits by Task
+ * key, branch commits and the manually linked commit — as one list tagged
+ * with the Repository. Shares cache keys with the single-Repository hooks.
+ */
+export function useTaskCommits<R extends TaskCommitsRepository>({
+    linkedCommitSha,
+    repositories,
+    taskKey,
+    token,
+}: TaskCommitsOptions<R>): {
+    commits: RepositoryCommit<R>[];
+    enabled: boolean;
+    isError: boolean;
+    isLoading: boolean;
+    refetch: () => void;
+} {
+    const { user } = useAuth();
+    const guest = isGuest();
+    const authFingerprint = gitAuthFingerprint(user?.id);
+    const hasAuth = Boolean(token) || guest;
+
+    const queries = repositories.flatMap((repository) => {
+        const repoFullName = repository.fullName;
+        const branchName = repository.branchName;
+        return [
+            {
+                enabled: canFetchTaskGitTab({
+                    isGuest: guest,
+                    repoFullName,
+                    taskKey,
+                    token,
+                }),
+                queryFn: () =>
+                    guest
+                        ? fetchFixtureTaskKeyCommits(repoFullName, taskKey)
+                        : searchCommitsByTaskKey(repoFullName, taskKey, token!),
+                queryKey: gitKeys.taskKeyCommits(
+                    authFingerprint,
+                    repoFullName,
+                    taskKey
+                ),
+                staleTime: 60_000,
+            },
+            {
+                enabled: canFetchGitData({
+                    branchName,
+                    isGuest: guest,
+                    repoFullName,
+                    token,
+                }),
+                queryFn: () =>
+                    guest
+                        ? fetchFixtureBranchCommits(repoFullName, branchName!)
+                        : fetchBranchCommits(repoFullName, branchName!, token!),
+                queryKey: gitKeys.commits(
+                    authFingerprint,
+                    repoFullName,
+                    branchName ?? ""
+                ),
+                staleTime: 60_000,
+            },
+            {
+                enabled: Boolean(hasAuth && linkedCommitSha),
+                queryFn: async (): Promise<GitCommit[]> => [
+                    guest
+                        ? await fetchFixtureCommitBySha(
+                              repoFullName,
+                              linkedCommitSha!
+                          )
+                        : await fetchCommitBySha(
+                              repoFullName,
+                              linkedCommitSha!,
+                              token!
+                          ),
+                ],
+                queryKey: [
+                    ...gitKeys.all,
+                    "linked-commit-list",
+                    authFingerprint,
+                    repoFullName,
+                    linkedCommitSha ?? "",
+                ] as const,
+                // A 404 only means the commit lives in another Repository.
+                retry: false,
+                staleTime: 5 * 60_000,
+            },
+        ];
+    });
+
+    const results = useQueries({ queries });
+
+    const sources = repositories.map((repository, index) => {
+        const [keyCommits, branchCommits, linked] = results.slice(
+            index * 3,
+            index * 3 + 3
+        );
+        return {
+            commits: [
+                ...(linked?.data ?? []),
+                ...(keyCommits?.data ?? []),
+                ...(branchCommits?.data ?? []),
+            ],
+            repository,
+        };
+    });
+    // The linked-commit lookup 404s in every Repository but one — not an error.
+    const listResults = results.filter((_, index) => index % 3 !== 2);
+
+    return {
+        commits: mergeRepositoryCommits(sources, linkedCommitSha),
+        enabled: queries.some((query) => query.enabled),
+        isError: listResults.some((result) => result.isError),
+        isLoading: results.some((result) => result.isLoading),
+        refetch: () => {
+            for (const result of results) {
+                void result.refetch();
+            }
+        },
+    };
 }
 
 export function useTaskKeyCommits({

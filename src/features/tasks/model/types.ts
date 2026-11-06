@@ -36,6 +36,7 @@ export type Task = {
     assignee?: TaskAssignee;
     author?: TaskAssignee;
     boardId: string;
+    /** Single-repo view of `gitLinks[0].branchName`. */
     branchName?: string;
     /** ISO timestamp when the Task was created. */
     createdAt: string;
@@ -54,6 +55,8 @@ export type Task = {
      * Absent / undefined = unestimated.
      */
     estimate?: TaskEstimate;
+    /** Git links (`task_git_links`), any number per Repository, oldest first. */
+    gitLinks?: TaskGitLink[];
     /** True when an open `blocks` Task Link targets this Task. */
     hasOpenBlocker?: boolean;
     id: string;
@@ -68,6 +71,7 @@ export type Task = {
     parentId?: string;
     /** Parent Task key for card/drawer badge; set when parentId is set. */
     parentKey?: string;
+    /** Single-repo view of `gitLinks[0].pr`. */
     pr?: TaskPullRequest;
     priority?: TaskPriority;
     /** Peer Task Link summaries for the drawer (and later cards). */
@@ -116,6 +120,8 @@ export type TaskActivityField =
     | "type";
 
 export type TaskActivityMetadata = {
+    /** Task key the webhook / backfill matched when it auto-linked (ADR 0035). */
+    autoLinkKey?: string;
     changes: TaskActivityChange[];
     /** Set by Edge Function `github-webhook` for system-authored events. */
     source?: "github_webhook";
@@ -136,6 +142,15 @@ export type TaskComment = {
     parentId?: null | string;
     taskId: string;
     updatedAt: string;
+};
+
+/** A Task's branch / PR in one Repository (`task_git_links`, ADR 0036). */
+export type TaskGitLink = {
+    branchName?: string;
+    /** `task_git_links.id` — a Task may hold several per Repository. */
+    id: string;
+    pr?: TaskPullRequest;
+    repositoryId: string;
 };
 
 export type TaskLinkKind = "blocks" | "relates_to";

@@ -14,8 +14,9 @@ export type BuildLogLine = {
 };
 
 /**
- * Narrow “builds for this Project” seam.
+ * Narrow “builds for one Repository” seam (ADR 0035: a Project has several).
  * Product: GitHub Actions. Tests: mock provider at the same shape.
+ * The Project-wide feed is assembled from these calls in `project-feed.ts`.
  */
 export type BuildsForProject = {
     /**
@@ -23,13 +24,16 @@ export type BuildsForProject = {
      * Drives the summary cells so the numbers do not grow while scrolling.
      */
     getBuildsStats(
-        projectId: string,
+        repository: BuildsRepository,
         options?: GetBuildsStatsOptions
     ): Promise<BuildsStats>;
     /** Jobs for a run — used by the detail dialog checklist. */
-    listBuildJobs(projectId: string, buildId: string): Promise<BuildJob[]>;
+    listBuildJobs(
+        repository: BuildsRepository,
+        buildId: string
+    ): Promise<BuildJob[]>;
     listBuilds(
-        projectId: string,
+        repository: BuildsRepository,
         options?: ListBuildsOptions
     ): Promise<ListBuildsPage>;
     /**
@@ -37,10 +41,20 @@ export type BuildsForProject = {
      * Returns unsubscribe to stop the stream (e.g. on unmount / close).
      */
     streamBuildLogs(
-        projectId: string,
+        repository: BuildsRepository,
         buildId: string,
         onLine: (line: BuildLogLine) => void
     ): () => void;
+};
+
+/** A Repository of the Project whose GitHub Actions runs the feed shows. */
+export type BuildsRepository = {
+    /** GitHub default branch — the branch the summary reports on. */
+    defaultBranch: string;
+    /** `owner/name` on GitHub. */
+    fullName: string;
+    /** `project_repositories.id`. */
+    id: string;
 };
 
 /**
@@ -94,6 +108,10 @@ export type ProjectBuild = {
     htmlUrl: string;
     id: string;
     jobs?: BuildJob[];
+    /** `project_repositories.id` of the Repository the run belongs to. */
+    repositoryId: string;
+    /** `owner/name` of that Repository — the Repo column. */
+    repositoryName: string;
     startedAt: string;
     status: BuildStatus;
     /** Short reason when status is failure (e.g. "tests"). */

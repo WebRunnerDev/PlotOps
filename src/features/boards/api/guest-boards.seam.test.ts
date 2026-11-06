@@ -120,13 +120,20 @@ describe("guest boards provider happy path", () => {
         expect(board.baseBranch).toBeNull();
         expect(board.allowedHeadPatterns).toEqual([]);
 
+        const [web, api] = sandbox.projects[0]!.repositories;
         await provider.updateBoard(board.id, {
-            base_branch: "main",
             is_development: true,
+            repository_base_branches: [
+                { baseBranch: "release", repositoryId: api!.id },
+            ],
         });
         const asDevelopment = await provider.fetchBoard(board.id);
         expect(asDevelopment.isDevelopment).toBe(true);
-        expect(asDevelopment.baseBranch).toBe("main");
+        // Seeded from each Repository's default, then the given row applied.
+        expect(asDevelopment.repositoryBaseBranches).toEqual([
+            { baseBranch: web!.defaultBranch, repositoryId: web!.id },
+            { baseBranch: "release", repositoryId: api!.id },
+        ]);
 
         await provider.updateBoard(board.id, {
             allowed_head_patterns: ["feature/*"],
@@ -136,6 +143,28 @@ describe("guest boards provider happy path", () => {
         expect(asOps.isDevelopment).toBe(false);
         expect(asOps.baseBranch).toBeNull();
         expect(asOps.allowedHeadPatterns).toEqual([]);
+    });
+
+    it("creates a Development Board with a Base branch per Repository", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+
+        startGuestSession();
+        const project = getGuestSandbox()!.projects[0]!;
+        const [web, api] = project.repositories;
+        const provider = resolveBoardsProvider(true);
+
+        const board = await provider.createBoard(project.id, "Release", {
+            isDevelopment: true,
+            repositoryBaseBranches: [
+                { baseBranch: "release/web", repositoryId: web!.id },
+            ],
+        });
+
+        expect(board.repositoryBaseBranches).toEqual([
+            { baseBranch: "release/web", repositoryId: web!.id },
+            { baseBranch: api!.defaultBranch, repositoryId: api!.id },
+        ]);
     });
 
     it("merge target defaults to last column and falls back to none when its column is deleted", async () => {

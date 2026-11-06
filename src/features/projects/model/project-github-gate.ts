@@ -1,6 +1,8 @@
-/** Soft-empty branch/PR fields when the Project has no linked repo full name. */
-export function githubPanelNeedsRepo(repoFullName?: string): boolean {
-    return !repoFullName?.trim();
+/** Soft-empty branch/PR fields when the Project has no linked Repository. */
+export function githubPanelNeedsRepo(
+    repositories?: readonly { fullName: string }[]
+): boolean {
+    return !repositories?.some((repository) => repository.fullName.trim());
 }
 
 /** Whether the Project has a linked GitHub repository (non-null `github_repo_id`). */

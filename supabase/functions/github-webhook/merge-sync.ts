@@ -1,23 +1,18 @@
-import {
-    type BoardColumnRow,
-    type CandidateTask,
-    isAlreadySynced,
-    pickLastColumnId,
-} from "./match-task.ts";
+import { type BoardColumnRow, pickLastColumnId } from "./match-task.ts";
 
-export type MergePullRequestPlan =
+/** PR fields of one Git link, as merge sync counts them. */
+export type GitLinkPrState = {
+    pr_number: null | number;
+    pr_state: null | string;
+};
+
+export type MergeCompletionPlan =
     | {
+          kind: "complete";
           /** Column the Task moves into; `null` when the column stays as is. */
           moveTo: null | string;
-          skip: false;
-          taskId: string;
-          update: {
-              pr_number: number;
-              pr_state: "merged";
-              pr_url: null | string;
-          };
       }
-    | { reason: string; skip: true };
+    | { kind: "pending" };
 
 export type MergeTarget =
     | { columnId: string; kind: "column" }
@@ -31,40 +26,45 @@ export type MergeTargetBoard = {
 };
 
 /**
- * Decide the Task update for a PR merged into the Board's Base branch.
- * Idempotent: a redelivery of an already-applied merge is skipped.
+ * ADR 0035 «Merge sync waits for all PRs»: the set is the Task's Git links
+ * that hold a PR not closed without merge (branch-only links and closed PRs do
+ * not count). It is complete when it is non-empty and every PR in it is
+ * merged. A PR merged outside the Base branch never reaches `merged` here, so
+ * it keeps the set pending.
  */
-export function planMergePullRequestSync(
-    matched: CandidateTask,
-    input: {
-        board: MergeTargetBoard;
-        columns: BoardColumnRow[];
-        prHtmlUrl: null | string;
-        prNumber: number;
-    }
-): MergePullRequestPlan {
-    const target = resolveMergeTarget(input.board, input.columns);
-    if (target.kind === "no_columns") {
-        return { reason: "no_columns", skip: true };
+export function isMergeSetComplete(links: GitLinkPrState[]): boolean {
+    const counted = links.filter(
+        (link) => link.pr_number != undefined && link.pr_state !== "closed"
+    );
+    return (
+        counted.length > 0 &&
+        counted.every((link) => link.pr_state === "merged")
+    );
+}
+
+/**
+ * Decide whether the Task moves to its Board's merge target column (ADR 0033)
+ * now that `links` (all of its Git links, after this event) are known.
+ */
+export function planMergeCompletion(input: {
+    board: MergeTargetBoard;
+    columns: BoardColumnRow[];
+    links: GitLinkPrState[];
+    status: string;
+}): MergeCompletionPlan {
+    if (!isMergeSetComplete(input.links)) {
+        return { kind: "pending" };
     }
 
+    const target = resolveMergeTarget(input.board, input.columns);
     const targetColumnId = target.kind === "column" ? target.columnId : null;
-    if (isAlreadySynced(matched, targetColumnId)) {
-        return { reason: "already_synced", skip: true };
-    }
 
     return {
+        kind: "complete",
         moveTo:
-            targetColumnId !== null && matched.status !== targetColumnId
+            targetColumnId !== null && input.status !== targetColumnId
                 ? targetColumnId
                 : null,
-        skip: false,
-        taskId: matched.id,
-        update: {
-            pr_number: input.prNumber,
-            pr_state: "merged",
-            pr_url: input.prHtmlUrl,
-        },
     };
 }
 

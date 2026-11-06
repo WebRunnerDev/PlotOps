@@ -1,21 +1,49 @@
 import { describe, expect, it } from "vitest";
 
-import type { CandidateTask } from "./match-task";
+import type { CandidateTask, MatchedBy, TaskMatch } from "./match-task";
 
 import {
     planClosePullRequestSync,
     shouldHandleClosedUnmergedPr,
 } from "./close-sync";
 
-function task(
-    partial: Partial<CandidateTask> & Pick<CandidateTask, "id">
-): CandidateTask {
+type TaskFixture = Partial<CandidateTask> &
+    Pick<CandidateTask, "id"> & {
+        /** Shorthand for a single Git link in this Repository. */
+        branch_name?: null | string;
+        pr_number?: null | number;
+        pr_state?: null | string;
+    };
+
+function match(partial: TaskFixture, by: MatchedBy = "pr"): TaskMatch {
+    const candidate = task(partial);
+    return {
+        by,
+        link: by === "task_key" ? undefined : candidate.git_links[0],
+        task: candidate,
+    };
+}
+
+function task({
+    branch_name = null,
+    pr_number = null,
+    pr_state = null,
+    ...partial
+}: TaskFixture): CandidateTask {
     return {
         archived_at: null,
         board_id: "board-1",
-        branch_name: null,
-        pr_number: null,
-        pr_state: null,
+        git_links:
+            branch_name != undefined || pr_number != undefined
+                ? [
+                      {
+                          branch_name,
+                          id: `${partial.id}-link`,
+                          pr_number,
+                          pr_state,
+                      },
+                  ]
+                : [],
         status: "todo",
         task_key: "TASK-1",
         ...partial,
@@ -51,16 +79,21 @@ describe("shouldHandleClosedUnmergedPr", () => {
 describe("planClosePullRequestSync", () => {
     it("sets pr_state closed without touching status", () => {
         const plan = planClosePullRequestSync(
-            task({
+            match({
                 id: "t1",
                 pr_number: 7,
                 pr_state: "open",
                 status: "in_progress",
             }),
-            { prHtmlUrl: "https://github.com/o/r/pull/7", prNumber: 7 }
+            {
+                headRef: "feature/no-key",
+                prHtmlUrl: "https://github.com/o/r/pull/7",
+                prNumber: 7,
+            }
         );
 
         expect(plan).toEqual({
+            binding: "linked",
             skip: false,
             taskId: "t1",
             update: {
@@ -79,8 +112,9 @@ describe("planClosePullRequestSync", () => {
     it("skips when already closed (idempotent)", () => {
         expect(
             planClosePullRequestSync(
-                task({ id: "t1", pr_number: 7, pr_state: "closed" }),
+                match({ id: "t1", pr_number: 7, pr_state: "closed" }),
                 {
+                    headRef: "feature/no-key",
                     prHtmlUrl: null,
                     prNumber: 7,
                 }
@@ -91,13 +125,13 @@ describe("planClosePullRequestSync", () => {
     it("does not downgrade merged to closed", () => {
         expect(
             planClosePullRequestSync(
-                task({
+                match({
                     id: "t1",
                     pr_number: 7,
                     pr_state: "merged",
                     status: "done",
                 }),
-                { prHtmlUrl: null, prNumber: 7 }
+                { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 7 }
             )
         ).toEqual({ reason: "already_merged", skip: true });
     });
@@ -105,43 +139,71 @@ describe("planClosePullRequestSync", () => {
     it("skips when no matched task", () => {
         expect(
             planClosePullRequestSync(null, {
+                headRef: "feature/no-key",
                 prHtmlUrl: null,
                 prNumber: 7,
             })
         ).toEqual({ reason: "no_task", skip: true });
     });
 
-    it("does not retarget a task already linked to another PR", () => {
+    it("adds a new Git link next to one holding another PR", () => {
         expect(
             planClosePullRequestSync(
-                task({
-                    id: "t1",
-                    pr_number: 42,
-                    pr_state: "open",
-                    task_key: "TASK-1",
-                }),
+                match(
+                    {
+                        id: "t1",
+                        pr_number: 42,
+                        pr_state: "open",
+                        task_key: "TASK-1",
+                    },
+                    "task_key"
+                ),
                 {
+                    headRef: "feature/no-key",
                     prHtmlUrl: "https://github.com/o/r/pull/99",
                     prNumber: 99,
                 }
             )
-        ).toEqual({ reason: "pr_mismatch", skip: true });
+        ).toMatchObject({ binding: "auto_link", skip: false });
     });
 
-    it("does not bind an unbound task from a close event", () => {
+    it("adds a new Git link next to a branch-only one on another branch", () => {
         expect(
             planClosePullRequestSync(
-                task({
-                    id: "t1",
-                    pr_number: null,
-                    pr_state: null,
-                    task_key: "TASK-1",
-                }),
-                {
-                    prHtmlUrl: "https://github.com/o/r/pull/99",
-                    prNumber: 99,
-                }
+                match(
+                    { branch_name: "feature/TASK-1-old", id: "t1" },
+                    "task_key"
+                ),
+                { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 99 }
             )
-        ).toEqual({ reason: "pr_mismatch", skip: true });
+        ).toMatchObject({ binding: "auto_link", skip: false });
+    });
+
+    it("binds the PR to a branch-only Git link on the head branch", () => {
+        expect(
+            planClosePullRequestSync(
+                match({ branch_name: "feature/TASK-1", id: "t1" }, "branch"),
+                { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 99 }
+            )
+        ).toMatchObject({ binding: "bind", skip: false });
+    });
+
+    it("auto-links a Task matched only by task_key without a Git link", () => {
+        expect(
+            planClosePullRequestSync(match({ id: "t1" }, "task_key"), {
+                headRef: "feature/no-key",
+                prHtmlUrl: "https://github.com/o/r/pull/99",
+                prNumber: 99,
+            })
+        ).toEqual({
+            binding: "auto_link",
+            skip: false,
+            taskId: "t1",
+            update: {
+                pr_number: 99,
+                pr_state: "closed",
+                pr_url: "https://github.com/o/r/pull/99",
+            },
+        });
     });
 });

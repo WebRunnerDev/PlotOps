@@ -288,10 +288,12 @@ CI / `supabase db push` must **never** run seed against production. Product Gues
 
 Functions live under `supabase/functions/`. They are **not** deployed by the migration CI pipeline — deploy manually when needed.
 
-| Function           | JWT                        | Purpose                                                                                                |
-| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `github-webhook`   | Off (`verify_jwt = false`) | GitHub App PR merge → Task column sync — see [`docs/github-webhook-setup.md`](github-webhook-setup.md) |
-| `send-team-invite` | On (`verify_jwt = true`)   | Best-effort Resend email for **email-kind** Team invites (copy-link remains primary)                   |
+| Function            | JWT                        | Purpose                                                                                                                                                             |
+| ------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `github-app-status` | On (`verify_jwt = true`)   | GitHub App installed? per Repository for Project Settings → Repositories — see [`docs/github-webhook-setup.md`](github-webhook-setup.md#5-app-status)               |
+| `github-backfill`   | On (`verify_jwt = true`)   | Auto-link open branches / PRs that carry a task key (drawer refresh, Repository connect) — see [`docs/github-webhook-setup.md`](github-webhook-setup.md#6-backfill) |
+| `github-webhook`    | Off (`verify_jwt = false`) | GitHub App PR merge → Task column sync — see [`docs/github-webhook-setup.md`](github-webhook-setup.md)                                                              |
+| `send-team-invite`  | On (`verify_jwt = true`)   | Best-effort Resend email for **email-kind** Team invites (copy-link remains primary)                                                                                |
 
 ### `send-team-invite` (Resend)
 

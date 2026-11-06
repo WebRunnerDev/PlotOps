@@ -21,6 +21,13 @@ describe("richTextToPlainText", () => {
         expect(richTextToPlainText("<p><br></p>")).toBe("");
     });
 
+    it("does not leave reassembled tags after nested markup", () => {
+        const text = richTextToPlainText(
+            "<p><<b>script>alert(1)<</b>/script></p>"
+        );
+        expect(text).not.toMatch(/<[a-z/]/i);
+    });
+
     it("passes through legacy plain text", () => {
         expect(richTextToPlainText("Just a note")).toBe("Just a note");
     });

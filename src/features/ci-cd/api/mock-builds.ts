@@ -1,6 +1,7 @@
 import type {
     BuildLogLine,
     BuildsForProject,
+    BuildsRepository,
     BuildsStats,
     GetBuildsStatsOptions,
     ListBuildsOptions,
@@ -19,7 +20,9 @@ import { deriveBuildsStats } from "@/features/ci-cd/model/builds-stats";
  * Spec example: main passed, feature/analytics failed on tests.
  * Selected via `resolveBuildsProvider(true)` when the session is guest.
  */
-const MOCK_BUILDS: ProjectBuild[] = [
+type MockBuild = Omit<ProjectBuild, "repositoryId" | "repositoryName">;
+
+const MOCK_BUILDS: MockBuild[] = [
     {
         branch: "main",
         commitMessage: "chore: bump board filters",
@@ -75,6 +78,58 @@ const MOCK_BUILDS: ProjectBuild[] = [
     },
 ];
 
+/**
+ * Backend Repository of «Web + API» (any `…/api` repo): its own workflows,
+ * default branch `develop`, so the multi-repo feed interleaves two sets.
+ */
+const MOCK_API_BUILDS: MockBuild[] = [
+    {
+        branch: "feature/FEAT-2-guest-ci-mock",
+        commitMessage: "feat(api): builds RPC for guest demo",
+        commitSha: "a91f0c3",
+        htmlUrl: "https://github.com/example/api/actions/runs/11",
+        id: "build-api-feat-2",
+        jobs: [
+            { id: "job-api-1", name: "pgTAP", status: "running" },
+            { id: "job-api-2", name: "deno check", status: "success" },
+        ],
+        startedAt: "2026-07-24T10:04:30.000Z",
+        status: "running",
+        workflowName: "Supabase",
+    },
+    {
+        branch: "develop",
+        commitMessage: "Merge pull request #17 from FEAT-2-guest-ci-mock",
+        commitSha: "5eed5ee",
+        finishedAt: "2026-07-24T09:31:40.000Z",
+        htmlUrl: "https://github.com/example/api/actions/runs/12",
+        id: "build-api-develop-1",
+        jobs: [
+            { id: "job-api-3", name: "pgTAP", status: "success" },
+            { id: "job-api-4", name: "deno check", status: "success" },
+        ],
+        startedAt: "2026-07-24T09:27:02.000Z",
+        status: "success",
+        workflowName: "Supabase",
+    },
+    {
+        branch: "fix/BUG-11-realtime-reconnect",
+        commitMessage: "fix(api): realtime publication for boards",
+        commitSha: "b16b00b",
+        finishedAt: "2026-07-24T08:58:10.000Z",
+        htmlUrl: "https://github.com/example/api/actions/runs/13",
+        id: "build-api-bug-11",
+        jobs: [
+            { id: "job-api-5", name: "pgTAP", status: "failure" },
+            { id: "job-api-6", name: "deno check", status: "success" },
+        ],
+        startedAt: "2026-07-24T08:55:00.000Z",
+        status: "failure",
+        summary: "pgTAP",
+        workflowName: "Supabase",
+    },
+];
+
 /** Full log scripts keyed by build id — streamed via setInterval. */
 const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
     "build-analytics-1": [
@@ -85,6 +140,28 @@ const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
         " FAIL  src/widgets/analytics/chart.test.ts",
         "Expected series length 7, received 0",
         "error Command failed with exit code 1.",
+    ],
+    "build-api-bug-11": [
+        "$ git checkout fix/BUG-11-realtime-reconnect",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "not ok 4 - boards is in the realtime publication",
+        "Failed 1/12 subtests",
+        "error Command failed with exit code 1.",
+    ],
+    "build-api-develop-1": [
+        "$ git checkout develop",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "All tests successful.",
+        "$ deno check supabase/functions/**/*.ts",
+        "✓ Build succeeded",
+    ],
+    "build-api-feat-2": [
+        "$ git checkout feature/FEAT-2-guest-ci-mock",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "… still running",
     ],
     "build-invite-1": [
         "Queued — waiting for a runner…",
@@ -110,6 +187,25 @@ const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
 };
 
 const STREAM_INTERVAL_MS = 50;
+
+/** The canned runs a Repository gets: the API set for `…/api`, else the web set. */
+function buildsFor(repository: BuildsRepository): MockBuild[] {
+    return repository.fullName.toLowerCase().endsWith("/api")
+        ? MOCK_API_BUILDS
+        : MOCK_BUILDS;
+}
+
+function forRepository(
+    build: MockBuild,
+    repository: BuildsRepository
+): ProjectBuild {
+    return {
+        ...build,
+        jobs: build.jobs?.map((job) => ({ ...job })),
+        repositoryId: repository.id,
+        repositoryName: repository.fullName,
+    };
+}
 
 function streamMockLogLines(
     script: string[],
@@ -141,15 +237,15 @@ function streamMockLogLines(
 
 export const mockBuildsForProject: BuildsForProject = {
     async getBuildsStats(
-        projectId: string,
+        repository: BuildsRepository,
         options?: GetBuildsStatsOptions
     ): Promise<BuildsStats> {
-        void projectId;
         const defaultBranch = options?.defaultBranch;
-        const completed = MOCK_BUILDS.filter(
+        const builds = buildsFor(repository);
+        const completed = builds.filter(
             (build) => build.status === "failure" || build.status === "success"
         ).length;
-        const success = MOCK_BUILDS.filter(
+        const success = builds.filter(
             (build) => build.status === "success"
         ).length;
 
@@ -157,45 +253,46 @@ export const mockBuildsForProject: BuildsForProject = {
             ...deriveBuildsStats({
                 completed,
                 success,
-                total: MOCK_BUILDS.length,
+                total: builds.length,
             }),
             defaultBranchBuild: defaultBranch
-                ? MOCK_BUILDS.find((build) => build.branch === defaultBranch)
+                ? builds
+                      .filter((build) => build.branch === defaultBranch)
+                      .map((build) => forRepository(build, repository))[0]
                 : undefined,
         };
     },
 
-    async listBuildJobs(projectId, buildId) {
-        void projectId;
-        const build = MOCK_BUILDS.find((item) => item.id === buildId);
+    async listBuildJobs(repository, buildId) {
+        const build = buildsFor(repository).find((item) => item.id === buildId);
         return build?.jobs?.map((job) => ({ ...job })) ?? [];
     },
 
     async listBuilds(
-        projectId: string,
+        repository: BuildsRepository,
         options?: ListBuildsOptions
     ): Promise<ListBuildsPage> {
-        void projectId;
         const page = Math.max(1, options?.page ?? 1);
         const perPage = Math.max(1, options?.perPage ?? BUILDS_PAGE_SIZE);
         const start = (page - 1) * perPage;
-        const builds = MOCK_BUILDS.slice(start, start + perPage).map(
-            (build) => ({ ...build })
-        );
+        const all = buildsFor(repository);
+        const builds = all
+            .slice(start, start + perPage)
+            .map((build) => forRepository(build, repository));
 
         return {
             builds,
             hasMore: hasMoreBuilds({
                 page,
                 perPage,
-                totalCount: MOCK_BUILDS.length,
+                totalCount: all.length,
             }),
             page,
         };
     },
 
-    streamBuildLogs(projectId, buildId, onLine) {
-        void projectId;
+    streamBuildLogs(repository, buildId, onLine) {
+        void repository;
         const script = MOCK_LOG_SCRIPTS[buildId];
         if (!script || script.length === 0) {
             // Complete immediately with no lines so UI does not stay “Streaming…”.

@@ -1,4 +1,5 @@
 import type {
+    GuestGitLink,
     GuestPerson,
     GuestSandbox,
     GuestTask,
@@ -17,6 +18,7 @@ import { shouldAutoAssignToCreator } from "@/features/boards";
 import {
     getGuestSandbox,
     GUEST_SEED_ACTOR_ID,
+    guestGitLinkId,
     updateGuestSandbox,
 } from "@/features/guest-mode";
 import { applyGuestStakeWatchEnrollment } from "@/features/notifications/api/guest-task-watchers";
@@ -108,7 +110,117 @@ function appendTaskLinkActivity(
     });
 }
 
-function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
+/**
+ * Mirror `update_task_details` (ADR 0036): Git fields write the Git link
+ * `git_link_id` — an id the Task does not hold adds one with that id. Without
+ * an id, the single Git link in `repository_id` (optional while the Project
+ * has exactly one Repository). A link left with neither branch nor PR is
+ * removed.
+ */
+function applyGitLinkPatch(
+    sandbox: GuestSandbox,
+    task: GuestTask,
+    patch: TaskRecordPatch
+): void {
+    const touchesBranch = patch.branch_name !== undefined;
+    const touchesPr =
+        patch.pr_number !== undefined ||
+        patch.pr_state !== undefined ||
+        patch.pr_url !== undefined;
+    if (!touchesBranch && !touchesPr) return;
+
+    const links = task.gitLinks ?? [];
+    let current = patch.git_link_id
+        ? links.find((link) => link.id === patch.git_link_id)
+        : undefined;
+    if (
+        current &&
+        patch.repository_id &&
+        patch.repository_id !== current.repositoryId
+    ) {
+        throw new Error("Git link belongs to another Repository");
+    }
+
+    const repositories =
+        sandbox.projects.find((project) => project.id === task.projectId)
+            ?.repositories ?? [];
+    let repositoryId = current?.repositoryId ?? patch.repository_id;
+    if (!repositoryId) {
+        if (repositories.length !== 1) {
+            throw new Error(
+                `repository_id is required when the Project has ${repositories.length} Repositories`
+            );
+        }
+        repositoryId = repositories[0]!.id;
+    } else if (!repositories.some((repo) => repo.id === repositoryId)) {
+        throw new Error("Repository not found in this Project");
+    }
+
+    if (!patch.git_link_id) {
+        const inRepository = links.filter(
+            (link) => link.repositoryId === repositoryId
+        );
+        if (inRepository.length > 1) {
+            throw new Error(
+                `git_link_id is required when the Task has ${inRepository.length} Git links in this Repository`
+            );
+        }
+        current = inRepository[0];
+    }
+
+    const branchName = touchesBranch
+        ? patch.branch_name?.trim() || undefined
+        : current?.branchName;
+    let pr = current?.pr;
+    if (touchesPr) {
+        pr =
+            patch.pr_number != undefined &&
+            patch.pr_url != undefined &&
+            (patch.pr_state === "open" ||
+                patch.pr_state === "closed" ||
+                patch.pr_state === "merged")
+                ? {
+                      number: patch.pr_number,
+                      state: patch.pr_state,
+                      url: patch.pr_url,
+                  }
+                : undefined;
+    }
+
+    const others = links.filter((link) => link !== current);
+    if (!branchName && !pr) {
+        if (others.length > 0) task.gitLinks = others;
+        else delete task.gitLinks;
+        return;
+    }
+    // Same uniqueness as `task_git_links`: one row per PR, one branch-only
+    // row per branch, per Task × Repository.
+    const duplicate = others.some(
+        (link) =>
+            link.repositoryId === repositoryId &&
+            (pr
+                ? link.pr?.number === pr.number
+                : !link.pr && link.branchName === branchName)
+    );
+    if (duplicate) {
+        throw new Error("This branch or PR is already linked to the Task");
+    }
+    const next: GuestGitLink = {
+        id: current?.id ?? patch.git_link_id ?? crypto.randomUUID(),
+        repositoryId,
+    };
+    if (branchName) next.branchName = branchName;
+    if (pr) next.pr = pr;
+    task.gitLinks = current
+        ? links.map((link) => (link === current ? next : link))
+        : [...links, next];
+}
+
+function applyPatch(
+    sandbox: GuestSandbox,
+    task: GuestTask,
+    patch: TaskRecordPatch
+): void {
     if (patch.title !== undefined) {
         task.title = normalizeTaskTitle(patch.title);
     }
@@ -130,9 +242,7 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
     if (patch.deadline !== undefined) {
         task.deadline = patch.deadline ?? undefined;
     }
-    if (patch.branch_name !== undefined) {
-        task.branchName = patch.branch_name ?? undefined;
-    }
+    applyGitLinkPatch(sandbox, task, patch);
     if (patch.linked_commit_sha !== undefined) {
         task.linkedCommitSha = patch.linked_commit_sha ?? undefined;
     }
@@ -170,29 +280,6 @@ function applyPatch(task: GuestTask, patch: TaskRecordPatch): void {
                   ? ACTOR
                   : { id: patch.author_id, name: "Member" };
     }
-    if (
-        patch.pr_number !== undefined ||
-        patch.pr_state !== undefined ||
-        patch.pr_url !== undefined
-    ) {
-        if (
-            patch.pr_number == undefined ||
-            patch.pr_state == undefined ||
-            patch.pr_url == undefined
-        ) {
-            task.pr = undefined;
-        } else if (
-            patch.pr_state === "open" ||
-            patch.pr_state === "closed" ||
-            patch.pr_state === "merged"
-        ) {
-            task.pr = {
-                number: patch.pr_number,
-                state: patch.pr_state,
-                url: patch.pr_url,
-            };
-        }
-    }
 }
 
 function applyPatchWithWatchEnrollment(
@@ -201,7 +288,7 @@ function applyPatchWithWatchEnrollment(
     patch: TaskRecordPatch
 ): void {
     const previous = stakeIdsFromTask(task);
-    applyPatch(task, patch);
+    applyPatch(sandbox, task, patch);
     const next = stakeIdsFromTask(task);
     if (
         previous.authorId === next.authorId &&
@@ -308,18 +395,25 @@ function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
     const parent = task.parentId
         ? sandbox.tasks.find((item) => item.id === task.parentId)
         : undefined;
+    const gitLinks = (task.gitLinks ?? []).map((link, index) => ({
+        branchName: link.branchName,
+        id: link.id ?? guestGitLinkId(task.id, index),
+        pr: link.pr ? { ...link.pr } : undefined,
+        repositoryId: link.repositoryId,
+    }));
     return {
         archivedAt: task.archivedAt,
         assignee: task.assignee,
         author: task.author,
         boardId: task.boardId,
-        branchName: task.branchName,
+        branchName: gitLinks[0]?.branchName,
         createdAt: task.createdAt,
         deadline: task.deadline,
         description: task.description,
         epicColor: task.epicColor,
         epicId: task.epicId,
         estimate: task.estimate,
+        gitLinks: gitLinks.length > 0 ? gitLinks : undefined,
         hasOpenBlocker: hasOpenBlocker(
             task.id,
             parentGateTasks(sandbox),
@@ -331,7 +425,7 @@ function mapGuestTask(task: GuestTask, sandbox: GuestSandbox): Task {
         parentEpicId: parent?.epicId,
         parentId: task.parentId,
         parentKey: parent?.key,
-        pr: task.pr,
+        pr: gitLinks[0]?.pr,
         priority: task.priority,
         relatedTasks: relatedPeersOf(task.id, sandbox),
         sprintId: task.sprintId,

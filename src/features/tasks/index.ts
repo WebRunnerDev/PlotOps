@@ -175,5 +175,6 @@ export { TaskDrawer } from "./ui/task-drawer";
 export { TaskDrawerSettings } from "./ui/task-drawer-settings";
 export { TaskGithubPanel } from "./ui/task-github-panel";
 export { TaskQuickAddChips } from "./ui/task-quick-add-chips";
+export { TaskRepositoryNamesProvider } from "./ui/task-repository-names";
 export { TaskSearchPicker } from "./ui/task-search-picker";
 export { TASK_TYPE_ICON, TaskTypeIcon } from "./ui/task-type-icon";

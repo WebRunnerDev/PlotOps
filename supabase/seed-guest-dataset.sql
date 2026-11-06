@@ -10,6 +10,7 @@ declare
   guest_id constant uuid := 'a0000000-0000-4000-8000-000000000001';
   team_id constant uuid := 'b0000000-0000-4000-8000-000000000001';
   proj_git_id constant uuid := 'b0000000-0000-4000-8000-000000000010';
+  repo_git_id constant uuid := 'b0000000-0000-4000-8000-000000000011';
   proj_plain_id constant uuid := 'b0000000-0000-4000-8000-000000000011';
   board_git_id uuid;
   board_plain_id uuid;
@@ -68,10 +69,6 @@ begin
     team_id,
     name,
     slug,
-    github_repo_id,
-    github_full_name,
-    github_html_url,
-    github_default_branch,
     description,
     is_private,
     created_at,
@@ -83,10 +80,6 @@ begin
       team_id,
       'PlotOps Demo',
       'plotops-demo',
-      999000001,
-      'plotops-demo/plotops',
-      'https://github.com/plotops-demo/plotops',
-      'main',
       'Seeded demo project with fake GitHub fields for Git/CI UI.',
       false,
       now() - interval '20 days',
@@ -97,10 +90,6 @@ begin
       team_id,
       'Marketing Site',
       'marketing-site',
-      null,
-      null,
-      null,
-      'main',
       'Second project without a linked GitHub repo.',
       false,
       now() - interval '18 days',
@@ -123,9 +112,31 @@ begin
     raise exception 'Expected default boards after project insert';
   end if;
 
+  insert into public.project_repositories (
+    id,
+    project_id,
+    team_id,
+    github_repo_id,
+    github_full_name,
+    github_html_url,
+    github_default_branch,
+    created_at
+  )
+  values (
+    repo_git_id,
+    proj_git_id,
+    team_id,
+    999000001,
+    'plotops-demo/plotops',
+    'https://github.com/plotops-demo/plotops',
+    'main',
+    now() - interval '20 days'
+  );
+
+  -- Turning the Board into a Development Board seeds board_repositories (main).
   update public.boards
   set
-    base_branch = 'main',
+    is_development = true,
     allowed_head_patterns = array['feature/*', 'fix/*', 'bugfix/*']
   where id = board_git_id;
 
@@ -184,7 +195,30 @@ begin
       guest_id
     );
 
-  insert into public.tasks (
+  -- Git fields live in task_git_links; stage rows with them, then split.
+  create temp table _seed_tasks (
+    id uuid,
+    project_id uuid,
+    board_id uuid,
+    title text,
+    description text,
+    status text,
+    priority text,
+    position integer,
+    branch_name text,
+    pr_number integer,
+    pr_state text,
+    pr_url text,
+    assignee_id uuid,
+    author_id uuid,
+    task_type public.task_type,
+    deadline date,
+    sprint_id uuid,
+    sprint_position integer,
+    created_at timestamptz
+  ) on commit drop;
+
+  insert into _seed_tasks (
     id,
     project_id,
     board_id,
@@ -348,6 +382,34 @@ begin
       guest_id, guest_id, 'bug', current_date + 1,
       null, null, now() - interval '6 days'
     );
+
+  insert into public.tasks (
+    id, project_id, board_id, title, description, status, priority, position,
+    assignee_id, author_id, task_type, deadline, sprint_id, sprint_position, created_at
+  )
+  select
+    id, project_id, board_id, title, description, status, priority, position,
+    assignee_id, author_id, task_type, deadline, sprint_id, sprint_position, created_at
+  from _seed_tasks;
+
+  insert into public.task_git_links (
+    task_id, repository_id, project_id, branch_name, pr_number, pr_state, pr_url
+  )
+  select id, repo_git_id, project_id, branch_name, pr_number, pr_state, pr_url
+  from _seed_tasks
+  where branch_name is not null or pr_number is not null;
+
+  -- A second PR of BUG-11 in the same Repository (ADR 0036).
+  insert into public.task_git_links (
+    task_id, repository_id, project_id, branch_name, pr_number, pr_state, pr_url
+  )
+  values (
+    t11, repo_git_id, proj_git_id,
+    'hotfix/BUG-11-reconnect-backoff',
+    40, 'merged', 'https://github.com/plotops-demo/plotops/pull/40'
+  );
+
+  drop table _seed_tasks;
 
   update public.sprints
   set committed_task_ids = array[t01, t02, t03, t04, t05, t06]

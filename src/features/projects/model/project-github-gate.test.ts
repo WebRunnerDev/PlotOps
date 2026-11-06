@@ -21,12 +21,20 @@ describe("projectHasGithubRepo", () => {
 describe("githubPanelNeedsRepo", () => {
     it("is true when the Project has no linked repository", () => {
         expect(githubPanelNeedsRepo()).toBe(true);
-        expect(githubPanelNeedsRepo("")).toBe(true);
-        expect(githubPanelNeedsRepo("   ")).toBe(true);
+        expect(githubPanelNeedsRepo([])).toBe(true);
+        expect(githubPanelNeedsRepo([{ fullName: "   " }])).toBe(true);
     });
 
-    it("is false when repo full name is present", () => {
-        expect(githubPanelNeedsRepo("acme/widgets")).toBe(false);
+    it("is false when at least one Repository is linked", () => {
+        expect(githubPanelNeedsRepo([{ fullName: "acme/widgets" }])).toBe(
+            false
+        );
+        expect(
+            githubPanelNeedsRepo([
+                { fullName: "acme/web" },
+                { fullName: "acme/api" },
+            ])
+        ).toBe(false);
     });
 });
 

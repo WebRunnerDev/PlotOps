@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { GitHubRepo } from "@/features/projects/model/types";
 
+import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
+
 import {
     buildConnectProjectGithubPatch,
     buildGitHubCreateProjectInput,
     buildNameOnlyCreateProjectInput,
+    defaultProjectNameFromRepos,
     isValidProjectName,
     isValidProjectSlug,
     suggestProjectSlug,
@@ -23,7 +26,7 @@ const repo: GitHubRepo = {
 };
 
 describe("buildNameOnlyCreateProjectInput", () => {
-    it("persists null github_* fields for a name-only Project", () => {
+    it("links no Repository for a name-only Project", () => {
         expect(
             buildNameOnlyCreateProjectInput({
                 name: "  Roadmap  ",
@@ -32,31 +35,144 @@ describe("buildNameOnlyCreateProjectInput", () => {
             })
         ).toEqual({
             description: null,
-            github_default_branch: null,
-            github_full_name: null,
-            github_html_url: null,
-            github_repo_id: null,
             is_private: false,
             name: "Roadmap",
+            repositories: [],
             slug: "roadmap",
             team_id: "team-1",
         });
     });
 });
 
+const apiRepo: GitHubRepo = {
+    default_branch: "develop",
+    description: "Widgets API",
+    full_name: "acme/widgets-api",
+    html_url: "https://github.com/acme/widgets-api",
+    id: 43,
+    name: "widgets-api",
+    owner: { avatar_url: "https://example.com/a.png", login: "acme" },
+    private: false,
+};
+
 describe("buildGitHubCreateProjectInput", () => {
-    it("maps repo fields and keeps github_repo_id for duplicate-repo uniqueness", () => {
-        expect(buildGitHubCreateProjectInput(repo, "team-1")).toEqual({
+    it("maps repo fields into one Repository and keeps github_repo_id for duplicate-repo uniqueness", () => {
+        expect(
+            buildGitHubCreateProjectInput({ repos: [repo], teamId: "team-1" })
+        ).toEqual({
             description: "Widgets app",
-            github_default_branch: "main",
-            github_full_name: "acme/widgets",
-            github_html_url: "https://github.com/acme/widgets",
-            github_repo_id: 42,
             is_private: true,
             name: "widgets",
+            repositories: [
+                {
+                    github_default_branch: "main",
+                    github_full_name: "acme/widgets",
+                    github_html_url: "https://github.com/acme/widgets",
+                    github_repo_id: 42,
+                },
+            ],
             slug: "acme-widgets",
             team_id: "team-1",
         });
+    });
+
+    it("links every selected Repository in order, each with its own default branch", () => {
+        const input = buildGitHubCreateProjectInput({
+            repos: [apiRepo, repo],
+            teamId: "team-1",
+        });
+
+        expect(input.repositories).toEqual([
+            {
+                github_default_branch: "develop",
+                github_full_name: "acme/widgets-api",
+                github_html_url: "https://github.com/acme/widgets-api",
+                github_repo_id: 43,
+            },
+            {
+                github_default_branch: "main",
+                github_full_name: "acme/widgets",
+                github_html_url: "https://github.com/acme/widgets",
+                github_repo_id: 42,
+            },
+        ]);
+    });
+
+    it("defaults name, slug and description to the first selected repo", () => {
+        const input = buildGitHubCreateProjectInput({
+            repos: [apiRepo, repo],
+            teamId: "team-1",
+        });
+
+        expect(input.name).toBe("widgets-api");
+        expect(input.slug).toBe("acme-widgets-api");
+        expect(input.description).toBe("Widgets API");
+    });
+
+    it("uses a custom name when given, and falls back on blank", () => {
+        expect(
+            buildGitHubCreateProjectInput({
+                name: "  Widgets  ",
+                repos: [apiRepo, repo],
+                teamId: "team-1",
+            }).name
+        ).toBe("Widgets");
+        expect(
+            buildGitHubCreateProjectInput({
+                name: "   ",
+                repos: [apiRepo],
+                teamId: "team-1",
+            }).name
+        ).toBe("widgets-api");
+    });
+
+    it("is private when any selected repo is private", () => {
+        expect(
+            buildGitHubCreateProjectInput({
+                repos: [apiRepo],
+                teamId: "team-1",
+            }).is_private
+        ).toBe(false);
+        expect(
+            buildGitHubCreateProjectInput({
+                repos: [apiRepo, repo],
+                teamId: "team-1",
+            }).is_private
+        ).toBe(true);
+    });
+
+    it("rejects an empty selection and more than the Repository cap", () => {
+        expect(() =>
+            buildGitHubCreateProjectInput({ repos: [], teamId: "team-1" })
+        ).toThrow();
+
+        const tooMany = Array.from(
+            { length: PROJECT_REPOSITORIES_CAP + 1 },
+            (_, index) => ({
+                ...repo,
+                full_name: `acme/r${index}`,
+                id: 100 + index,
+                name: `r${index}`,
+            })
+        );
+        expect(() =>
+            buildGitHubCreateProjectInput({ repos: tooMany, teamId: "team-1" })
+        ).toThrow();
+        expect(
+            buildGitHubCreateProjectInput({
+                repos: tooMany.slice(0, PROJECT_REPOSITORIES_CAP),
+                teamId: "team-1",
+            }).repositories
+        ).toHaveLength(PROJECT_REPOSITORIES_CAP);
+    });
+});
+
+describe("defaultProjectNameFromRepos", () => {
+    it("takes the first selected repo's name, empty when none", () => {
+        expect(defaultProjectNameFromRepos([apiRepo, repo])).toBe(
+            "widgets-api"
+        );
+        expect(defaultProjectNameFromRepos([])).toBe("");
     });
 });
 

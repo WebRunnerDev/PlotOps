@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(26);
+select plan(28);
 
 select set_config('test.owner', 'a1111111-1111-1111-1111-111111111111', true);
 select set_config('test.manager', 'a2222222-2222-2222-2222-222222222222', true);
@@ -301,6 +301,36 @@ select hasnt_function(
   'public', 'claim_mcp_rate_limit', array['integer', 'integer'],
   'claim_mcp_rate_limit was dropped (rate limit lives in the Worker)'
 );
+
+-- Multi-repo (#337): git columns moved to task_git_links. The column-level
+-- GRANT must cover every editable tasks column and nothing else.
+select is(
+  (
+    select array_agg(c.column_name::text order by c.column_name)
+    from information_schema.columns as c
+    where c.table_schema = 'public'
+      and c.table_name = 'tasks'
+      and has_column_privilege('authenticated', 'public.tasks', c.column_name, 'UPDATE')
+  ),
+  array[
+    'archived_at', 'archived_by', 'assignee_id', 'author_id', 'board_id',
+    'deadline', 'description', 'epic_color', 'epic_id', 'estimate',
+    'linked_commit_sha', 'parent_id', 'position', 'priority', 'sprint_id',
+    'sprint_position', 'status', 'task_type', 'title'
+  ]::text[],
+  'authenticated UPDATE grant on tasks matches the multi-repo columns'
+);
+
+select pg_temp.as_user(current_setting('test.manager')::uuid);
+select lives_ok(
+  format(
+    $$select public.update_task_details(%L::uuid, %L::jsonb, null)$$,
+    current_setting('test.task_a'),
+    '{"title": "Via MCP", "priority": "high", "description": "d"}'
+  ),
+  'MCP update_task patch works with update_task_details on multi-repo schema'
+);
+reset role;
 
 select * from finish();
 rollback;

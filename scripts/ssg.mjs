@@ -15,28 +15,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const distDir = path.join(root, "dist");
+const buildDirectory = path.join(root, "dist");
 const ssrEntry = path.join(root, "dist-ssr", "render-route.js");
 
-/**
- * @param {string} route
- */
-function outputFileForRoute(route) {
-    if (route === "/") {
-        return path.join(distDir, "index.html");
-    }
-
-    return path.join(distDir, route.slice(1), "index.html");
-}
-
 async function main() {
-    const templatePath = path.join(distDir, "index.html");
+    const templatePath = path.join(buildDirectory, "index.html");
     const template = await readFile(templatePath, "utf8");
 
     // SPA shell before public routes overwrite index.html with login SSG.
     // Top-level 404.html disables Pages' default "serve /" SPA mode and is
     // returned for unknown paths (app routes) without a _redirects catch-all.
-    const notFoundPath = path.join(distDir, "404.html");
+    const notFoundPath = path.join(buildDirectory, "404.html");
     await writeFile(notFoundPath, template, "utf8");
     console.log(
         `  → ${path.relative(root, notFoundPath)} (SPA not-found shell)`
@@ -49,9 +38,9 @@ async function main() {
 
     const ssg = await import(pathToFileURL(ssrEntry).href);
     const {
-        PLOTOPS_PUBLIC_PATHS,
         getSeoForPublicRoute,
         patchPrerenderedHtml,
+        PLOTOPS_PUBLIC_PATHS,
         renderPublicRoute,
     } = ssg;
 
@@ -72,7 +61,20 @@ async function main() {
     console.log("SSG complete.");
 }
 
-main().catch((error) => {
+/**
+ * @param {string} route
+ */
+function outputFileForRoute(route) {
+    if (route === "/") {
+        return path.join(buildDirectory, "index.html");
+    }
+
+    return path.join(buildDirectory, route.slice(1), "index.html");
+}
+
+try {
+    await main();
+} catch (error) {
     console.error(error);
     process.exit(1);
-});
+}

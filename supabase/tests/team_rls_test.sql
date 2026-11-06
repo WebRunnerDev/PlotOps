@@ -86,24 +86,18 @@ select is(
   'Viewer is not project owner for delete'
 );
 
--- Unique (team_id, github_repo_id)
+-- Unique (team_id, github_repo_id) — now on project_repositories (ADR 0035)
 set local role postgres;
 select throws_ok(
   $$
-    insert into public.projects (team_id, name, slug, github_repo_id)
-    values (
-      '11111111-1111-1111-1111-111111111111',
-      'Dup',
-      'dup',
-      42
-    );
-    insert into public.projects (team_id, name, slug, github_repo_id)
-    values (
-      '11111111-1111-1111-1111-111111111111',
-      'Dup2',
-      'dup2',
-      42
-    );
+    insert into public.projects (id, team_id, name, slug)
+    values
+      ('99999999-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Dup', 'dup'),
+      ('99999999-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'Dup2', 'dup2');
+    insert into public.project_repositories (project_id, team_id, github_repo_id, github_full_name, github_html_url)
+    values
+      ('99999999-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 42, 'o/dup', 'https://github.com/o/dup'),
+      ('99999999-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 42, 'o/dup', 'https://github.com/o/dup');
   $$,
   '23505',
   null,

@@ -90,9 +90,11 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
         projectsLoading ||
         (!isSettled && !accessError && !teamError);
     const isProjectCapReached = !canAddProjectToTeam(projects.length);
-    const canAddProject = Boolean(!guest && canCreateProject && user);
+    // Guest Mode creates Projects in the sandbox (no Supabase user).
+    const canAddProject = Boolean(canCreateProject && (guest || user));
+    // Guest Mode picks from the fake demo account's repos — no GitHub sign-in.
     const showGitHubReconnect = Boolean(
-        canAddProject && !isProjectCapReached && !githubAccessToken
+        !guest && canAddProject && !isProjectCapReached && !githubAccessToken
     );
 
     const handleConfirmRemove = async () => {
@@ -315,14 +317,14 @@ export function TeamProjectsPage({ teamId }: TeamProjectsPageProperties) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {user && canCreateProject && !isProjectCapReached ? (
+            {canAddProject && !isProjectCapReached ? (
                 <AddProjectDialog
                     accessToken={githubAccessToken}
                     connectedProjects={projects}
                     onOpenChange={setIsAddOpen}
                     open={isAddOpen}
                     teamId={teamId}
-                    userId={user.id}
+                    userId={user?.id ?? null}
                 />
             ) : null}
         </div>

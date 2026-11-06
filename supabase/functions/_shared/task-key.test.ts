@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    extractTaskKeyFromBranch,
     extractTaskKeysFromText,
+    normalizeGitReference,
     textReferencesTaskKey,
-} from "./extract-task-key";
+} from "./task-key";
 
 describe("extractTaskKeysFromText", () => {
-    it("finds keys in commit messages", () => {
+    it("finds keys in commit messages and PR titles", () => {
         expect(extractTaskKeysFromText("TASK-12: Fix login")).toEqual([
             "TASK-12",
         ]);
@@ -19,19 +19,39 @@ describe("extractTaskKeysFromText", () => {
         ).toEqual(["FEAT-42"]);
     });
 
-    it("dedupes case-insensitively", () => {
+    it("finds a key anywhere in a branch name", () => {
+        expect(extractTaskKeysFromText("feature/TASK-12-login")).toEqual([
+            "TASK-12",
+        ]);
+        expect(extractTaskKeysFromText("TASK-1-login")).toEqual(["TASK-1"]);
+        expect(extractTaskKeysFromText("TASK-1")).toEqual(["TASK-1"]);
+        expect(extractTaskKeysFromText("user/foo-TASK-1")).toEqual(["TASK-1"]);
+        expect(extractTaskKeysFromText("feature/task-7_login")).toEqual([
+            "task-7",
+        ]);
+        expect(extractTaskKeysFromText("main")).toEqual([]);
+    });
+
+    it("never shortens a longer number", () => {
+        expect(extractTaskKeysFromText("TASK-12")).not.toContain("TASK-1");
+    });
+
+    it("returns every key, deduped case-insensitively", () => {
         expect(extractTaskKeysFromText("task-12 and TASK-12")).toEqual([
             "task-12",
         ]);
+        expect(
+            extractTaskKeysFromText("TASK-1, TASK-2: shared login fix")
+        ).toEqual(["TASK-1", "TASK-2"]);
     });
 });
 
-describe("extractTaskKeyFromBranch", () => {
-    it("parses feature branch slugs", () => {
-        expect(extractTaskKeyFromBranch("feature/TASK-12-login")).toBe(
-            "TASK-12"
+describe("normalizeGitReference", () => {
+    it("strips refs and remotes", () => {
+        expect(normalizeGitReference(" refs/heads/feature/TASK-1 ")).toBe(
+            "feature/TASK-1"
         );
-        expect(extractTaskKeyFromBranch("fix/BUG-5-crash")).toBe("BUG-5");
+        expect(normalizeGitReference("origin/fix/BUG-2")).toBe("fix/BUG-2");
     });
 });
 

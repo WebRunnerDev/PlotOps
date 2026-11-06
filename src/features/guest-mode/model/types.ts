@@ -13,6 +13,10 @@ export type GuestActivityEvent = {
             from: unknown;
             to: unknown;
         }>;
+        /** Why the change happened, e.g. `repository_unlinked`. */
+        reason?: string;
+        /** Repository full name for Git link changes. */
+        repository?: string;
     };
     projectId: string;
     taskId: string;
@@ -22,8 +26,6 @@ export type GuestActivityEvent = {
 export type GuestBoard = {
     allowedHeadPatterns: string[];
     autoAssignToCreator?: boolean;
-    /** PR merge target; required when isDevelopment. */
-    baseBranch: null | string;
     columns: GuestBoardColumn[];
     defaultTaskType: "bug" | "story" | "task";
     id: string;
@@ -36,6 +38,11 @@ export type GuestBoard = {
     name: string;
     position: number;
     projectId: string;
+    /**
+     * PR merge target per Repository (`board_repositories`); one row per
+     * Project Repository while isDevelopment, empty otherwise.
+     */
+    repositoryBaseBranches: GuestBoardRepositoryBaseBranch[];
 };
 
 export type GuestBoardColumn = {
@@ -43,6 +50,11 @@ export type GuestBoardColumn = {
     isDone: boolean;
     name: string;
     position: number;
+};
+
+export type GuestBoardRepositoryBaseBranch = {
+    baseBranch: string;
+    repositoryId: string;
 };
 
 export type GuestComment = {
@@ -71,6 +83,32 @@ export type GuestCustomFieldValue = {
     fieldId: string;
     taskId: string;
     value: string;
+};
+
+/**
+ * A repository the Guest's fake GitHub account can see — what the repo
+ * pickers list in place of `GET /user/repos`.
+ */
+export type GuestGitHubRepo = {
+    defaultBranch: string;
+    description: null | string;
+    fullName: string;
+    htmlUrl: string;
+    id: number;
+    isPrivate: boolean;
+    name: string;
+};
+
+/** A Task's branch / PR in one Repository (`task_git_links`, ADR 0036). */
+export type GuestGitLink = {
+    branchName?: string;
+    /**
+     * Stable id (`task_git_links.id`). Seeded and older links get one on read
+     * (`guestGitLinkId`); links added in the session keep the app's id.
+     */
+    id?: string;
+    pr?: GuestPullRequest;
+    repositoryId: string;
 };
 
 export type GuestLabel = {
@@ -103,13 +141,11 @@ export type GuestPerson = {
 export type GuestProject = {
     createdAt: string;
     description: null | string;
-    githubDefaultBranch: null | string;
-    githubFullName: null | string;
-    githubHtmlUrl: null | string;
-    githubRepoId: null | number;
     id: string;
     isPrivate: boolean;
     name: string;
+    /** Linked GitHub repositories, oldest first; uncapped in Guest Mode. */
+    repositories: GuestRepository[];
     slug: string;
     teamId: string;
     updatedAt: string;
@@ -119,6 +155,15 @@ export type GuestPullRequest = {
     number: number;
     state: "closed" | "merged" | "open";
     url: string;
+};
+
+/** A GitHub repository linked to a Guest Project (`project_repositories`). */
+export type GuestRepository = {
+    defaultBranch: string;
+    fullName: string;
+    githubRepoId: number;
+    htmlUrl: string;
+    id: string;
 };
 
 /** Full product seed clone held for the life of a Guest Session. */
@@ -162,7 +207,6 @@ export type GuestTask = {
     assignee?: GuestPerson;
     author?: GuestPerson;
     boardId: string;
-    branchName?: string;
     /** ISO timestamp when the Task was created. */
     createdAt: string;
     /** ISO calendar date `YYYY-MM-DD`. */
@@ -183,6 +227,8 @@ export type GuestTask = {
     epicId?: string;
     /** Fibonacci story points; absent = unestimated. */
     estimate?: 1 | 2 | 3 | 5 | 8 | 13 | 21;
+    /** At most one per Repository, oldest first. */
+    gitLinks?: GuestGitLink[];
     id: string;
     key: string;
     labelIds?: string[];
@@ -190,7 +236,6 @@ export type GuestTask = {
     /** Present when this Task is a Subtask of a Parent Task. */
     parentId?: string;
     position: number;
-    pr?: GuestPullRequest;
     priority?: "high" | "low" | "medium" | "urgent";
     projectId: string;
     sprintId?: string;

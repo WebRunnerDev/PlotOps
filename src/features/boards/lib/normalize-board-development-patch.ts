@@ -1,17 +1,20 @@
-import type { UpdateBoardPatch } from "@/features/boards/model/types";
+import type {
+    BoardRepositoryBaseBranch,
+    UpdateBoardPatch,
+} from "@/features/boards/model/types";
 
 type DevelopmentPatch = Pick<
     UpdateBoardPatch,
     | "allowed_head_patterns"
-    | "base_branch"
     | "is_development"
     | "merge_target_column_id"
     | "merge_target_mode"
+    | "repository_base_branches"
 >;
 
 /**
  * Normalizes Board git-mapping fields from an update patch.
- * Non-development Boards clear Base branch and Allowed head patterns.
+ * Non-development Boards clear Base branches and Allowed head patterns.
  * A merge target mode other than `column` clears the target column.
  */
 export function normalizeBoardDevelopmentPatch(
@@ -28,18 +31,32 @@ export function normalizeBoardDevelopmentPatch(
             ...patch,
             ...merge,
             allowed_head_patterns: [],
-            base_branch: null,
             is_development: false,
+            repository_base_branches: [],
         };
     }
 
-    if (patch.base_branch === undefined) {
+    if (patch.repository_base_branches === undefined) {
         return { ...patch, ...merge };
     }
 
     return {
         ...patch,
         ...merge,
-        base_branch: patch.base_branch?.trim() || null,
+        repository_base_branches: normalizeRepositoryBaseBranches(
+            patch.repository_base_branches
+        ),
     };
+}
+
+/** Trims each Base branch and drops blank ones (a blank keeps the stored value). */
+export function normalizeRepositoryBaseBranches(
+    entries: readonly BoardRepositoryBaseBranch[]
+): BoardRepositoryBaseBranch[] {
+    return entries
+        .map((entry) => ({
+            baseBranch: entry.baseBranch.trim(),
+            repositoryId: entry.repositoryId,
+        }))
+        .filter((entry) => entry.baseBranch.length > 0);
 }

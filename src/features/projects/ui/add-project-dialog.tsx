@@ -1,4 +1,4 @@
-import { Lock, Plus } from "lucide-react";
+import { Lock } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -6,20 +6,27 @@ import { toast } from "sonner";
 import type { GitHubRepo, Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub } from "@/features/auth";
+import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import {
+    defaultProjectNameFromRepos,
     isValidProjectName,
     isValidProjectSlug,
     suggestProjectSlug,
 } from "@/features/projects/model/build-create-project-input";
-import { TEAM_PROJECTS_CAP } from "@/features/projects/model/limits";
+import {
+    canAddRepositoryToProject,
+    PROJECT_REPOSITORIES_CAP,
+    TEAM_PROJECTS_CAP,
+} from "@/features/projects/model/limits";
 import { useGitHubRepos } from "@/features/projects/model/use-github-repos";
 import { useCreateProject } from "@/features/projects/model/use-projects";
 import { SuggestCollaboratorsStep } from "@/features/projects/ui/suggest-collaborators-step";
 import { isCapExceeded } from "@/shared/lib/is-cap-exceeded";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import { Checkbox } from "@/shared/shadcn/ui/checkbox";
 import {
     Dialog,
     DialogContent,
@@ -39,7 +46,8 @@ type AddProjectDialogProperties = {
     onOpenChange: (open: boolean) => void;
     open: boolean;
     teamId: string;
-    userId: string;
+    /** Null in Guest Mode, which has no Supabase user. */
+    userId: null | string;
 };
 
 type CreateProjectMode = "github" | "name-only";
@@ -47,6 +55,17 @@ type CreateProjectMode = "github" | "name-only";
 type DialogStep =
     | { kind: "create" }
     | { kind: "suggest-collaborators"; owner: string; repo: string };
+
+type RepoOptionProperties = {
+    checked: boolean;
+    disabled: boolean;
+    /** Name of the Team's Project already linking this repo, if any. */
+    linkedProjectName: string | undefined;
+    onToggle: (checked: boolean) => void;
+    repo: GitHubRepo;
+    /** The Repository cap is reached: unchecked repos cannot be added. */
+    selectionFull: boolean;
+};
 
 export function AddProjectDialog({
     accessToken,
@@ -57,12 +76,16 @@ export function AddProjectDialog({
     userId,
 }: AddProjectDialogProperties) {
     const { t } = useTranslation("home");
+    const guest = useIsGuest();
     const [mode, setMode] = useState<CreateProjectMode>("github");
     const [step, setStep] = useState<DialogStep>({ kind: "create" });
     const [search, setSearch] = useState("");
     const [name, setName] = useState("");
     const [slug, setSlug] = useState("");
     const [slugTouched, setSlugTouched] = useState(false);
+    const [selectedRepos, setSelectedRepos] = useState<GitHubRepo[]>([]);
+    const [repoProjectName, setRepoProjectName] = useState("");
+    const [repoProjectNameTouched, setRepoProjectNameTouched] = useState(false);
     const createProject = useCreateProject();
     const {
         data: repos = [],
@@ -78,50 +101,84 @@ export function AddProjectDialog({
             setName("");
             setSlug("");
             setSlugTouched(false);
+            setSelectedRepos([]);
+            setRepoProjectName("");
+            setRepoProjectNameTouched(false);
         }
     }, [open]);
 
-    const connectedRepoIds = useMemo(
-        () =>
-            new Set(
-                connectedProjects
-                    .map((project) => project.github_repo_id)
-                    .filter((id): id is number => id != undefined)
-            ),
-        [connectedProjects]
-    );
+    /** github_repo_id → name of the Team's Project that already links it. */
+    const linkedProjectByRepoId = useMemo(() => {
+        const linked = new Map<number, string>();
+        for (const project of connectedProjects) {
+            for (const repo of project.repositories) {
+                linked.set(repo.github_repo_id, project.name);
+            }
+        }
+        return linked;
+    }, [connectedProjects]);
 
-    const availableRepos = useMemo(() => {
+    const visibleRepos = useMemo(() => {
         const query = search.trim().toLowerCase();
+        if (!query) return repos;
 
-        return repos
-            .filter((repo) => !connectedRepoIds.has(repo.id))
-            .filter((repo) => {
-                if (!query) return true;
-                return (
-                    repo.full_name.toLowerCase().includes(query) ||
-                    repo.description?.toLowerCase().includes(query)
-                );
-            });
-    }, [connectedRepoIds, repos, search]);
+        return repos.filter(
+            (repo) =>
+                repo.full_name.toLowerCase().includes(query) ||
+                repo.description?.toLowerCase().includes(query)
+        );
+    }, [repos, search]);
+
+    const selectedRepoIds = useMemo(
+        () => new Set(selectedRepos.map((repo) => repo.id)),
+        [selectedRepos]
+    );
+    const repoCapReached = !canAddRepositoryToProject(selectedRepos.length, {
+        isGuest: guest,
+    });
+
+    const toggleRepo = (repo: GitHubRepo, checked: boolean) => {
+        const next = checked
+            ? selectedRepoIds.has(repo.id) ||
+              !canAddRepositoryToProject(selectedRepos.length, {
+                  isGuest: guest,
+              })
+                ? selectedRepos
+                : [...selectedRepos, repo]
+            : selectedRepos.filter((selected) => selected.id !== repo.id);
+        setSelectedRepos(next);
+        if (!repoProjectNameTouched) {
+            setRepoProjectName(defaultProjectNameFromRepos(next));
+        }
+    };
+
+    const canSubmitRepos =
+        selectedRepos.length > 0 &&
+        isValidProjectName(repoProjectName) &&
+        !createProject.isPending;
 
     const canSubmitNameOnly =
         isValidProjectName(name) &&
         isValidProjectSlug(slug) &&
         !createProject.isPending;
 
-    const handleConnect = async (repo: GitHubRepo) => {
+    const handleReposSubmit = async (event: FormEvent) => {
+        event.preventDefault();
+        if (!canSubmitRepos) return;
+        const [first] = selectedRepos;
+
         try {
             await createProject.mutateAsync({
                 mode: "github",
-                repo,
+                name: repoProjectName,
+                repos: selectedRepos,
                 teamId,
             });
-            if (accessToken) {
+            if (accessToken && first) {
                 setStep({
                     kind: "suggest-collaborators",
-                    owner: repo.owner.login,
-                    repo: repo.name,
+                    owner: first.owner.login,
+                    repo: first.name,
                 });
                 return;
             }
@@ -130,9 +187,13 @@ export function AddProjectDialog({
             toast.error(
                 isCapExceeded(connectError, "team_projects_cap")
                     ? t("addProjectCapReached", { cap: TEAM_PROJECTS_CAP })
-                    : isUniqueViolation(connectError)
-                      ? t("createProjectDuplicate")
-                      : t("createProjectFailed")
+                    : isCapExceeded(connectError, "project_repositories_cap")
+                      ? t("createProjectRepoCapReached", {
+                            cap: PROJECT_REPOSITORIES_CAP,
+                        })
+                      : isUniqueViolation(connectError)
+                        ? t("createProjectDuplicate")
+                        : t("createProjectFailed")
             );
         }
     };
@@ -161,7 +222,8 @@ export function AddProjectDialog({
     };
 
     const missingRepoScope = error instanceof GitHubMissingRepoScopeError;
-    const hasGitHubToken = Boolean(accessToken);
+    // Guest Mode lists the fake demo account's repositories, no token needed.
+    const hasGitHubToken = guest || Boolean(accessToken);
     const suggesting =
         step.kind === "suggest-collaborators" && Boolean(accessToken);
 
@@ -240,8 +302,13 @@ export function AddProjectDialog({
                         {mode === "github" ? (
                             <>
                                 {hasGitHubToken ? (
-                                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                                        <div className="shrink-0 border-b border-border px-4 py-3">
+                                    <form
+                                        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                                        onSubmit={(event) =>
+                                            void handleReposSubmit(event)
+                                        }
+                                    >
+                                        <div className="flex shrink-0 flex-col gap-2 border-b border-border px-4 py-3">
                                             <Input
                                                 onChange={(event) =>
                                                     setSearch(
@@ -252,6 +319,32 @@ export function AddProjectDialog({
                                                 type="search"
                                                 value={search}
                                             />
+                                            <p
+                                                aria-live="polite"
+                                                className="text-meta text-muted-foreground"
+                                            >
+                                                {repoCapReached
+                                                    ? t(
+                                                          "createProjectReposCapHint",
+                                                          {
+                                                              cap: PROJECT_REPOSITORIES_CAP,
+                                                          }
+                                                      )
+                                                    : guest
+                                                      ? t(
+                                                            "createProjectReposSelectedUncapped",
+                                                            {
+                                                                count: selectedRepos.length,
+                                                            }
+                                                        )
+                                                      : t(
+                                                            "createProjectReposSelected",
+                                                            {
+                                                                cap: PROJECT_REPOSITORIES_CAP,
+                                                                count: selectedRepos.length,
+                                                            }
+                                                        )}
+                                            </p>
                                         </div>
 
                                         <ScrollArea className="min-h-0 flex-1">
@@ -299,7 +392,7 @@ export function AddProjectDialog({
 
                                                 {!isLoading &&
                                                     !error &&
-                                                    availableRepos.length ===
+                                                    visibleRepos.length ===
                                                         0 && (
                                                         <p className="px-3 py-8 text-center text-sm text-muted-foreground">
                                                             {t("noReposFound")}
@@ -307,58 +400,94 @@ export function AddProjectDialog({
                                                     )}
 
                                                 <ul className="flex flex-col gap-1">
-                                                    {availableRepos.map(
+                                                    {visibleRepos.map(
                                                         (repo) => (
-                                                            <li key={repo.id}>
-                                                                <Button
-                                                                    className="h-auto w-full justify-between px-3 py-2.5 text-left"
-                                                                    disabled={
-                                                                        createProject.isPending
-                                                                    }
-                                                                    onClick={() => {
-                                                                        void handleConnect(
-                                                                            repo
-                                                                        );
-                                                                    }}
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                >
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="truncate font-medium">
-                                                                                {
-                                                                                    repo.name
-                                                                                }
-                                                                            </span>
-                                                                            {repo.private && (
-                                                                                <Lock
-                                                                                    aria-hidden
-                                                                                    className="size-3 shrink-0 text-muted-foreground"
-                                                                                />
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="font-mono text-xs text-muted-foreground">
-                                                                            {
-                                                                                repo.full_name
-                                                                            }
-                                                                        </p>
-                                                                        {repo.description && (
-                                                                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                                                                {
-                                                                                    repo.description
-                                                                                }
-                                                                            </p>
-                                                                        )}
-                                                                    </div>
-                                                                    <Plus className="shrink-0 text-primary" />
-                                                                </Button>
-                                                            </li>
+                                                            <RepoOption
+                                                                checked={selectedRepoIds.has(
+                                                                    repo.id
+                                                                )}
+                                                                disabled={
+                                                                    createProject.isPending
+                                                                }
+                                                                key={repo.id}
+                                                                linkedProjectName={linkedProjectByRepoId.get(
+                                                                    repo.id
+                                                                )}
+                                                                onToggle={(
+                                                                    checked
+                                                                ) => {
+                                                                    toggleRepo(
+                                                                        repo,
+                                                                        checked
+                                                                    );
+                                                                }}
+                                                                repo={repo}
+                                                                selectionFull={
+                                                                    repoCapReached
+                                                                }
+                                                            />
                                                         )
                                                     )}
                                                 </ul>
                                             </div>
                                         </ScrollArea>
-                                    </div>
+
+                                        <div className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3">
+                                            <div className="flex flex-col gap-2">
+                                                <Label htmlFor="repo-project-name">
+                                                    {t("projectNameLabel")}
+                                                </Label>
+                                                <Input
+                                                    disabled={
+                                                        createProject.isPending ||
+                                                        selectedRepos.length ===
+                                                            0
+                                                    }
+                                                    id="repo-project-name"
+                                                    onChange={(event) => {
+                                                        setRepoProjectNameTouched(
+                                                            true
+                                                        );
+                                                        setRepoProjectName(
+                                                            event.target.value
+                                                        );
+                                                    }}
+                                                    placeholder={t(
+                                                        "createProjectReposNamePlaceholder"
+                                                    )}
+                                                    value={repoProjectName}
+                                                />
+                                            </div>
+                                            <DialogFooter className="px-0 sm:justify-end">
+                                                <Button
+                                                    disabled={
+                                                        createProject.isPending
+                                                    }
+                                                    onClick={() =>
+                                                        onOpenChange(false)
+                                                    }
+                                                    type="button"
+                                                    variant="outline"
+                                                >
+                                                    {t("createProjectCancel")}
+                                                </Button>
+                                                <Button
+                                                    disabled={!canSubmitRepos}
+                                                    type="submit"
+                                                >
+                                                    {createProject.isPending ? (
+                                                        <Spinner data-icon="inline-start" />
+                                                    ) : null}
+                                                    {t(
+                                                        "createProjectReposConfirm",
+                                                        {
+                                                            count: selectedRepos.length,
+                                                        }
+                                                    )}
+                                                </Button>
+                                            </DialogFooter>
+                                        </div>
+                                    </form>
                                 ) : (
                                     <div className="flex flex-1 flex-col gap-3 p-4">
                                         <Alert>
@@ -459,4 +588,68 @@ export function AddProjectDialog({
 
 async function handleReconnectGitHub() {
     await signInWithGitHub();
+}
+
+function RepoOption({
+    checked,
+    disabled,
+    linkedProjectName,
+    onToggle,
+    repo,
+    selectionFull,
+}: RepoOptionProperties) {
+    const { t } = useTranslation("home");
+    const isLinked = linkedProjectName !== undefined;
+    const isDisabled = disabled || isLinked || (selectionFull && !checked);
+    const inputId = `create-project-repo-${repo.id}`;
+
+    return (
+        <li>
+            <label
+                className={
+                    isDisabled
+                        ? "flex cursor-not-allowed items-start gap-3 px-3 py-2.5 opacity-60"
+                        : "flex cursor-pointer items-start gap-3 px-3 py-2.5 hover:bg-muted/60"
+                }
+                htmlFor={inputId}
+            >
+                <Checkbox
+                    checked={checked}
+                    className="mt-1"
+                    disabled={isDisabled}
+                    id={inputId}
+                    onCheckedChange={(next) => {
+                        onToggle(next === true);
+                    }}
+                />
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                        <span className="truncate font-medium">
+                            {repo.name}
+                        </span>
+                        {repo.private && (
+                            <Lock
+                                aria-hidden
+                                className="size-3 shrink-0 text-muted-foreground"
+                            />
+                        )}
+                    </div>
+                    <p className="font-mono text-xs text-muted-foreground">
+                        {repo.full_name}
+                    </p>
+                    {isLinked ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {t("createProjectRepoAlreadyLinked", {
+                                project: linkedProjectName,
+                            })}
+                        </p>
+                    ) : repo.description ? (
+                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                            {repo.description}
+                        </p>
+                    ) : null}
+                </div>
+            </label>
+        </li>
+    );
 }
