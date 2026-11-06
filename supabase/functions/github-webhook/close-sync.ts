@@ -28,9 +28,8 @@ export type ClosePullRequestPlan =
 /**
  * Decide the Git link update for a non-merge PR close. The column only moves
  * when the close completes the merge set (handled by the caller).
- * Never overwrites a Git link holding another PR or branch (`link_conflict`)
- * nor brings back a PR / branch a person unlinked (`dismissed`); a Task
- * matched only by task key without a link gets one (auto-link).
+ * Never brings back a PR / branch a person unlinked (`dismissed`); a PR no
+ * Git link of the Task holds yet gets a new one (auto-link, ADR 0036).
  */
 export function planClosePullRequestSync(
     match: null | TaskMatch,
@@ -41,15 +40,19 @@ export function planClosePullRequestSync(
     }
 
     const binding = planGitLinkBinding(match, input);
-    if (binding === "link_conflict" || binding === "dismissed") {
+    if (binding === "dismissed") {
         return { reason: binding, skip: true };
     }
 
-    if (match.task.pr_state === "closed") {
+    // Only a Git link that already holds this PR has a state to compare.
+    const currentState =
+        binding === "linked" ? (match.link?.pr_state ?? null) : null;
+
+    if (currentState === "closed") {
         return { reason: "already_closed", skip: true };
     }
 
-    if (match.task.pr_state === "merged") {
+    if (currentState === "merged") {
         return { reason: "already_merged", skip: true };
     }
 

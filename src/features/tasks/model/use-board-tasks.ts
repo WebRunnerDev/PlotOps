@@ -70,6 +70,7 @@ import {
 import {
     applyGitLinkDetails,
     gitLinkActivityView,
+    type GitLinkTarget,
 } from "@/features/tasks/lib/task-git-links";
 import {
     assertParentArchiveLegal,
@@ -123,36 +124,7 @@ type AuthorNotificationChange = {
 
 type IdNameSnapshot = { id: string; name: string };
 
-type TaskDetailsUpdate = {
-    /** Pass `null` to clear assignee or author. */
-    assignee?: null | Task["assignee"];
-    author?: null | Task["author"];
-    /** Pass `null` to clear a linked branch. */
-    branchName?: null | string;
-    /** Pass `null` to clear the deadline. */
-    deadline?: null | string;
-    /** Pass `null` to clear the description. */
-    description?: null | string;
-    /** Epics only; `null` resets to the default colour. */
-    epicColor?: EpicColor | null;
-    /** Root non-Epic Tasks only; `null` removes the Task from its Epic. */
-    epicId?: null | string;
-    /** Pass `null` to clear estimate (unestimated). Manager+ only. */
-    estimate?: null | TaskEstimate;
-    /** Pass `null` (or `[]`) to clear all labels. */
-    labelIds?: null | string[];
-    /** Pass `null` to clear a manually linked commit SHA. */
-    linkedCommitSha?: null | string;
-    /** Pass `null` to clear a linked pull request. */
-    pr?: null | TaskPullRequest;
-    /** Pass `null` to clear priority (“None”). */
-    priority?: null | TaskPriority;
-    /**
-     * Repository whose Git link `branchName` / `pr` change (ADR 0035).
-     * Optional while the Project holds exactly one Repository.
-     */
-    repositoryId?: string;
-} & Partial<
+type TaskDetailsUpdate = Partial<
     Omit<
         Task,
         | "assignee"
@@ -171,7 +143,37 @@ type TaskDetailsUpdate = {
         | "priority"
         | "status"
     >
->;
+> & {
+    /** Pass `null` to clear assignee or author. */
+    assignee?: null | Task["assignee"];
+    author?: null | Task["author"];
+    /** Pass `null` to clear a linked branch. */
+    branchName?: null | string;
+    /** Pass `null` to clear the deadline. */
+    deadline?: null | string;
+    /** Pass `null` to clear the description. */
+    description?: null | string;
+    /** Epics only; `null` resets to the default colour. */
+    epicColor?: EpicColor | null;
+    /** Root non-Epic Tasks only; `null` removes the Task from its Epic. */
+    epicId?: null | string;
+    /** Pass `null` to clear estimate (unestimated). Manager+ only. */
+    estimate?: null | TaskEstimate;
+    /**
+     * Git link whose `branchName` / `pr` change (ADR 0036). A new link id
+     * adds a Git link. Optional while the Project holds exactly one
+     * Repository and the Task at most one Git link in it.
+     */
+    gitLink?: GitLinkTarget;
+    /** Pass `null` (or `[]`) to clear all labels. */
+    labelIds?: null | string[];
+    /** Pass `null` to clear a manually linked commit SHA. */
+    linkedCommitSha?: null | string;
+    /** Pass `null` to clear a linked pull request. */
+    pr?: null | TaskPullRequest;
+    /** Pass `null` to clear priority (“None”). */
+    priority?: null | TaskPriority;
+};
 
 /**
  * Board Tasks only — columns and Labels come from `@/features/boards` /
@@ -334,10 +336,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 }
             }
             if (
-                details.repositoryId !== undefined &&
+                details.gitLink !== undefined &&
                 (details.branchName !== undefined || details.pr !== undefined)
             ) {
-                patch.repository_id = details.repositoryId;
+                patch.git_link_id = details.gitLink.linkId;
+                patch.repository_id = details.gitLink.repositoryId;
             }
             if (details.type !== undefined) {
                 patch.task_type = details.type;
@@ -1456,7 +1459,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
 
             if (previous && snapshot) {
                 const before = toTaskActivitySnapshot(
-                    gitLinkActivityView(previous, details.repositoryId),
+                    gitLinkActivityView(previous, details.gitLink?.linkId),
                     {
                         labelNames: resolveLabelNames(
                             snapshot.labels,
@@ -1518,11 +1521,11 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         epicColor: nextEpicColor,
                         epicId: nextEpicId,
                         estimate: nextEstimate,
+                        gitLink: nextGitLink,
                         labelIds: nextLabelIds,
                         linkedCommitSha: nextLinkedCommit,
                         pr: nextPr,
                         priority: nextPriority,
-                        repositoryId: nextRepositoryId,
                         ...rest
                     } = details;
                     // Mirror the server's silent clears (assert_task_epic_rules).
@@ -1554,7 +1557,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         ...(nextAuthor === undefined
                             ? {}
                             : { author: nextAuthor ?? undefined }),
-                        ...applyGitLinkDetails(task, nextRepositoryId, {
+                        ...applyGitLinkDetails(task, nextGitLink, {
                             branchName: nextBranch,
                             pr: nextPr,
                         }),

@@ -70,7 +70,16 @@ export function getGuestSandbox(): GuestSandbox | null {
     ensureGuestDescriptionFields(sandbox);
     migrateGuestTaskTypes(sandbox);
     migrateGuestRepositories(sandbox);
+    ensureGuestGitLinkIds(sandbox);
     return sandbox;
+}
+
+/**
+ * Id for a Guest Git link saved without one (the seed, sessions before
+ * ADR 0036). Positional, and stored on the next sandbox write.
+ */
+export function guestGitLinkId(taskId: string, index: number): string {
+    return `${taskId}:git:${index}`;
 }
 
 /** True when a Guest Session is active in this browser session. */
@@ -185,6 +194,14 @@ function ensureGuestDescriptionFields(sandbox: GuestSandbox): void {
             projectId,
             systemKey: "description",
         });
+    }
+}
+
+function ensureGuestGitLinkIds(sandbox: GuestSandbox): void {
+    for (const task of sandbox.tasks) {
+        for (const [index, link] of (task.gitLinks ?? []).entries()) {
+            link.id ??= guestGitLinkId(task.id, index);
+        }
     }
 }
 

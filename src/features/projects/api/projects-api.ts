@@ -91,15 +91,21 @@ export async function addProjectRepository(
     return { data: result.data, error: null };
 }
 
-/** Tasks holding a Git link to this Repository (≤1 Git link per Task per Repository). */
+/**
+ * Tasks holding a Git link to this Repository. A Task may hold several
+ * (ADR 0036), so rows are counted per Task.
+ */
 export async function countRepositoryGitLinks(repositoryId: string) {
-    const { count, error } = await supabase
+    const { data, error } = await supabase
         .from("task_git_links")
-        .select("task_id", { count: "exact", head: true })
+        .select("task_id")
         .eq("repository_id", repositoryId);
 
     if (error) return { data: null, error };
-    return { data: count ?? 0, error: null };
+    return {
+        data: new Set((data ?? []).map((row) => row.task_id)).size,
+        error: null,
+    };
 }
 
 export async function createProject(input: CreateProjectInput) {

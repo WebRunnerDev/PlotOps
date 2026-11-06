@@ -58,17 +58,16 @@ https://ijcelrdcygzyzhcijkhe.supabase.co/functions/v1/github-webhook
 
 - Supabase Dashboard → Edge Functions → `github-webhook` → Logs; look for `reason`:
 
-| `reason`            | Meaning                                                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `invalid_signature` | `GITHUB_WEBHOOK_SECRET` and the App secret differ                                                                  |
-| `no_project`        | No Repository with this GitHub repo id (`project_repositories.github_repo_id`) — add it to the Project             |
-| `no_task`           | No Task matched by PR number, branch, or a task key in the head ref, PR title or PR body                           |
-| `link_conflict`     | Task found by branch / task key, but its Git link for this Repository holds another PR or branch — not overwritten |
-| `dismissed`         | Someone unlinked this PR / branch from the Task by hand — auto-link leaves it alone                                |
-| `already_linked`    | `create` for a branch the Task's Git link already holds                                                            |
-| `wrong_base`        | PR merged into a branch other than the Board’s Base branch for this Repository; the Task waits                     |
-| `pending_prs`       | This PR is merged, but other PRs on the Task are still open                                                        |
-| `already_synced`    | Redelivery of a merge already applied                                                                              |
+| `reason`            | Meaning                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `invalid_signature` | `GITHUB_WEBHOOK_SECRET` and the App secret differ                                                      |
+| `no_project`        | No Repository with this GitHub repo id (`project_repositories.github_repo_id`) — add it to the Project |
+| `no_task`           | No Task matched by PR number, branch, or a task key in the head ref, PR title or PR body               |
+| `dismissed`         | Someone unlinked this PR / branch from the Task by hand — auto-link leaves it alone                    |
+| `already_linked`    | `create` for a branch one of the Task's Git links already holds                                        |
+| `wrong_base`        | PR merged into a branch other than the Board’s Base branch for this Repository; the Task waits         |
+| `pending_prs`       | This PR is merged, but other PRs on the Task are still open                                            |
+| `already_synced`    | Redelivery of a merge already applied                                                                  |
 
 - Confirm the PR base branch equals the Base branch of the Task’s Board for **that** Repository (Project Settings → Boards).
 - Confirm the App is installed on that repository.
@@ -95,14 +94,16 @@ Without the secrets, or when GitHub rejects the App JWT (log `reason: app_auth_f
 
 1. **Repository first.** `repository.id` from the payload → `project_repositories.github_repo_id` → Project. The id survives repo renames.
 2. **Tasks**, within that Repository’s Git links: `(repository, pr_number)` → `(repository, branch)` → a task key anywhere in the head branch, PR title or PR body, case-insensitive (`TASK-12-login`, `user/foo-TASK-12`, `TASK-12: Fix login`). One event can match several Tasks: a PR naming `TASK-1` and `TASK-2` links to both. Equal PR numbers in two Repositories never collide. Key extraction is shared with the app (`supabase/functions/_shared/task-key.ts`).
-3. **Auto-link.** A Task matched only by task key that has no Git link for this Repository gets one: head branch + PR on `opened`, `reopened` and `closed`; branch only on `create`. A PR opened later from that branch joins the same Git link. An existing Git link is never overwritten (`link_conflict`). Activity shows _Linked automatically by key TASK-12_ (`metadata.auto_link.key`).
+3. **Auto-link** (ADR 0036: several Git links per Task per Repository). When no Git link of the matched Task holds this PR (or, for `create`, this branch), a new one is added: head branch + PR on `opened`, `reopened` and `closed`; branch only on `create`. A PR opened later from a branch-only Git link joins it; a second PR from an already linked branch gets its own Git link. Existing Git links are never overwritten, and a repeated event updates the row it created (`unique (task_id, repository_id, pr_number)`). Activity shows _Linked automatically by key TASK-12_ (`metadata.auto_link.key`).
 4. **Manual unlink wins.** When a person removes a branch or PR from a Git link, `task_git_link_dismissals` remembers it (a trigger on `task_git_links`, only for signed-in users). Auto-link never brings that branch / PR back to that Task (`dismissed`). Linking it again by hand (or Undo) lifts the dismissal.
 
 ## Merge rule
 
 A Task moves to its Board’s merge target column only when **every** Git link with a PR is merged into its Board × Repository Base branch:
 
+- Every Git link counts, including several in one Repository.
 - PRs closed without merge and branch-only Git links do not count. Closing the last open PR without merge can therefore complete the set and move the Task.
+- To take a PR out of the count (forgotten, or one that only mentions the key), unlink it in the drawer: the unlink is remembered and auto-link does not bring it back.
 - A PR merged elsewhere (`wrong_base`) keeps the Task waiting.
 - Each merge records the PR change in activity; the status change and notifications come with the event that completes the set.
 

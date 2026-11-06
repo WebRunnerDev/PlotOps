@@ -21,12 +21,12 @@ function openingTags(source: string, tag: string) {
 }
 
 describe("TaskGithubPanel layout (#350)", () => {
-    it("renders only linked Repositories — no always-open add form", () => {
+    it("renders one row per Git link — no always-open add form", () => {
         expect(panel).not.toMatch(/repositoriesWithoutGitLink/);
         expect(panel).not.toMatch(/github\.addGitLink/);
-        expect(panel).toMatch(
-            /flatMap\(\(\{ link, repository \}\) => \(link \? \[/
-        );
+        // Several Git links per Repository (ADR 0036): rows key by link id.
+        expect(panel).toMatch(/linkedGitLinks\(repositories, task\.gitLinks\)/);
+        expect(panel).toMatch(/key=\{link\.id\}/);
         // Add forms open only from the "+ Link" menu.
         expect(panel).toMatch(/github\.attach"/);
         expect(panel).toMatch(/\{attach && canEdit \? \(/);

@@ -55,7 +55,7 @@ export type Task = {
      * Absent / undefined = unestimated.
      */
     estimate?: TaskEstimate;
-    /** Git links, one per Repository at most (`task_git_links`), oldest first. */
+    /** Git links (`task_git_links`), any number per Repository, oldest first. */
     gitLinks?: TaskGitLink[];
     /** True when an open `blocks` Task Link targets this Task. */
     hasOpenBlocker?: boolean;
@@ -144,9 +144,11 @@ export type TaskComment = {
     updatedAt: string;
 };
 
-/** A Task's branch / PR in one Repository (`task_git_links`). */
+/** A Task's branch / PR in one Repository (`task_git_links`, ADR 0036). */
 export type TaskGitLink = {
     branchName?: string;
+    /** `task_git_links.id` — a Task may hold several per Repository. */
+    id: string;
     pr?: TaskPullRequest;
     repositoryId: string;
 };

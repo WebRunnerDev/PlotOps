@@ -50,6 +50,7 @@ describe("mapDatabaseTask", () => {
                     {
                         branch_name: "feature/TASK-1-api",
                         created_at: "2026-08-02T00:00:00.000Z",
+                        id: "link-api",
                         pr_number: 12,
                         pr_state: "merged",
                         pr_url: "https://github.com/o/api/pull/12",
@@ -58,6 +59,7 @@ describe("mapDatabaseTask", () => {
                     {
                         branch_name: "feature/TASK-1-web",
                         created_at: "2026-08-01T00:00:00.000Z",
+                        id: "link-web",
                         pr_number: 12,
                         pr_state: "open",
                         pr_url: "https://github.com/o/web/pull/12",
@@ -70,6 +72,10 @@ describe("mapDatabaseTask", () => {
         expect(task.gitLinks?.map((link) => link.repositoryId)).toEqual([
             "repo-web",
             "repo-api",
+        ]);
+        expect(task.gitLinks?.map((link) => link.id)).toEqual([
+            "link-web",
+            "link-api",
         ]);
         expect(task.branchName).toBe("feature/TASK-1-web");
         expect(task.pr).toEqual({

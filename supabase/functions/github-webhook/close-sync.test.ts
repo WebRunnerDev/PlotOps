@@ -7,22 +7,43 @@ import {
     shouldHandleClosedUnmergedPr,
 } from "./close-sync";
 
-function match(
-    partial: Partial<CandidateTask> & Pick<CandidateTask, "id">,
-    by: MatchedBy = "pr"
-): TaskMatch {
-    return { by, task: task(partial) };
+type TaskFixture = Partial<CandidateTask> &
+    Pick<CandidateTask, "id"> & {
+        /** Shorthand for a single Git link in this Repository. */
+        branch_name?: null | string;
+        pr_number?: null | number;
+        pr_state?: null | string;
+    };
+
+function match(partial: TaskFixture, by: MatchedBy = "pr"): TaskMatch {
+    const candidate = task(partial);
+    return {
+        by,
+        link: by === "task_key" ? undefined : candidate.git_links[0],
+        task: candidate,
+    };
 }
 
-function task(
-    partial: Partial<CandidateTask> & Pick<CandidateTask, "id">
-): CandidateTask {
+function task({
+    branch_name = null,
+    pr_number = null,
+    pr_state = null,
+    ...partial
+}: TaskFixture): CandidateTask {
     return {
         archived_at: null,
         board_id: "board-1",
-        branch_name: null,
-        pr_number: null,
-        pr_state: null,
+        git_links:
+            branch_name != undefined || pr_number != undefined
+                ? [
+                      {
+                          branch_name,
+                          id: `${partial.id}-link`,
+                          pr_number,
+                          pr_state,
+                      },
+                  ]
+                : [],
         status: "todo",
         task_key: "TASK-1",
         ...partial,
@@ -125,7 +146,7 @@ describe("planClosePullRequestSync", () => {
         ).toEqual({ reason: "no_task", skip: true });
     });
 
-    it("does not overwrite a Git link holding another PR", () => {
+    it("adds a new Git link next to one holding another PR", () => {
         expect(
             planClosePullRequestSync(
                 match(
@@ -143,10 +164,10 @@ describe("planClosePullRequestSync", () => {
                     prNumber: 99,
                 }
             )
-        ).toEqual({ reason: "link_conflict", skip: true });
+        ).toMatchObject({ binding: "auto_link", skip: false });
     });
 
-    it("does not overwrite a branch-only Git link on another branch", () => {
+    it("adds a new Git link next to a branch-only one on another branch", () => {
         expect(
             planClosePullRequestSync(
                 match(
@@ -155,7 +176,7 @@ describe("planClosePullRequestSync", () => {
                 ),
                 { headRef: "feature/no-key", prHtmlUrl: null, prNumber: 99 }
             )
-        ).toEqual({ reason: "link_conflict", skip: true });
+        ).toMatchObject({ binding: "auto_link", skip: false });
     });
 
     it("binds the PR to a branch-only Git link on the head branch", () => {

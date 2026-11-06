@@ -46,11 +46,12 @@ const TASK_LIST_SELECT = [
 ].join(", ");
 
 /**
- * Git data lives in `task_git_links` (≤1 branch / PR per Task per Repository),
- * embedded as `git_links` with the Repository it belongs to.
+ * Git data lives in `task_git_links` (any number of branches / PRs per Task
+ * per Repository, ADR 0036), embedded as `git_links` with the Repository it
+ * belongs to.
  */
 const TASK_GIT_LINKS_SELECT =
-    "git_links:task_git_links(repository_id, branch_name, pr_number, pr_state, pr_url, repository:project_repositories(github_full_name, github_html_url))";
+    "git_links:task_git_links(id, repository_id, branch_name, pr_number, pr_state, pr_url, created_at, repository:project_repositories(github_full_name, github_html_url))";
 
 export const TASK_DETAIL_SELECT = `${TASK_LIST_SELECT}, description, epic_id, epic_color, sprint_id, parent_id, ${TASK_GIT_LINKS_SELECT}`;
 

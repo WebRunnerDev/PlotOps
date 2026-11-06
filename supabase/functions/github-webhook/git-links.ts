@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-import type { CandidateTask } from "./match-task.ts";
+import type { CandidateGitLink, CandidateTask } from "./match-task.ts";
 
 export type GitLinkPrRow = {
+    id: string;
     pr_number: null | number;
     pr_state: null | string;
     repository_id: string;
@@ -15,19 +16,9 @@ type DismissalRow = { kind: string; task_id: string; value: string };
 
 type TaskWithGitLinkRow = Omit<
     CandidateTask,
-    | "branch_name"
-    | "dismissed_branches"
-    | "dismissed_prs"
-    | "pr_number"
-    | "pr_state"
+    "dismissed_branches" | "dismissed_prs" | "git_links"
 > & {
-    task_git_links:
-        | null
-        | {
-              branch_name: null | string;
-              pr_number: null | number;
-              pr_state: null | string;
-          }[];
+    task_git_links: CandidateGitLink[] | null;
 };
 
 /**
@@ -60,7 +51,7 @@ export async function fetchTaskGitLinks(
 ): Promise<GitLinkPrRow[]> {
     const { data, error } = await supabase
         .from("task_git_links")
-        .select("repository_id, pr_number, pr_state")
+        .select("id, repository_id, pr_number, pr_state")
         .eq("task_id", taskId);
 
     if (error) throw error;
@@ -85,9 +76,9 @@ export async function findRepositories(
 }
 
 /**
- * Project Tasks shaped for `matchTasks`, with branch / PR taken from the Git
- * link to `repositoryId` (null when the Task has none there) and the branches
- * / PRs people unlinked from the Task in that Repository.
+ * Project Tasks shaped for `matchTasks`, with their Git links to
+ * `repository` (oldest first) and the branches / PRs people unlinked from
+ * the Task in that Repository.
  */
 export async function loadCandidateTasks(
     supabase: SupabaseClient,
@@ -96,7 +87,7 @@ export async function loadCandidateTasks(
     const { data, error } = await supabase
         .from("tasks")
         .select(
-            "id, board_id, status, task_key, archived_at, parent_id, task_git_links (branch_name, pr_number, pr_state)"
+            "id, board_id, status, task_key, archived_at, parent_id, task_git_links (id, branch_name, pr_number, pr_state, created_at)"
         )
         .eq("project_id", repository.project_id)
         .eq("task_git_links.repository_id", repository.id);
@@ -127,24 +118,30 @@ export async function loadCandidateTasks(
     }
 
     return ((data ?? []) as TaskWithGitLinkRow[]).map(
-        ({ task_git_links: links, ...task }) => {
-            const link = links?.[0];
-            return {
-                ...task,
-                branch_name: link?.branch_name ?? null,
-                dismissed_branches: branchesByTask.get(task.id) ?? [],
-                dismissed_prs: prsByTask.get(task.id) ?? [],
-                pr_number: link?.pr_number ?? null,
-                pr_state: link?.pr_state ?? null,
-            };
-        }
+        ({ task_git_links: links, ...task }) => ({
+            ...task,
+            dismissed_branches: branchesByTask.get(task.id) ?? [],
+            dismissed_prs: prsByTask.get(task.id) ?? [],
+            git_links: (
+                (links ?? []) as (CandidateGitLink & { created_at?: string })[]
+            )
+                .toSorted((a, b) =>
+                    (a.created_at ?? "").localeCompare(b.created_at ?? "")
+                )
+                .map(({ branch_name, id, pr_number, pr_state }) => ({
+                    branch_name,
+                    id,
+                    pr_number,
+                    pr_state,
+                })),
+        })
     );
 }
 
 /**
- * Create a branch-only Git link (auto-link from a pushed branch). Never
- * touches an existing link: the caller checked there is none, and a race
- * with another delivery leaves the first writer's link in place.
+ * Add a branch-only Git link (auto-link from a pushed branch). A race with
+ * another delivery for the same branch hits the branch-only unique index
+ * and leaves the first writer's link in place.
  */
 export async function writeBranchLink(
     supabase: SupabaseClient,
@@ -152,23 +149,21 @@ export async function writeBranchLink(
     repository: RepositoryReference,
     branchName: string
 ): Promise<void> {
-    const { error } = await supabase.from("task_git_links").upsert(
-        {
-            branch_name: branchName,
-            project_id: repository.project_id,
-            repository_id: repository.id,
-            task_id: taskId,
-        },
-        { ignoreDuplicates: true, onConflict: "task_id,repository_id" }
-    );
+    const { error } = await supabase.from("task_git_links").insert({
+        branch_name: branchName,
+        project_id: repository.project_id,
+        repository_id: repository.id,
+        task_id: taskId,
+    });
 
-    if (error) throw error;
+    if (error && error.code !== UNIQUE_VIOLATION) throw error;
 }
 
 /**
- * Create or update the Task's Git link to `repository` with PR fields.
- * `branchName` is set only when auto-linking (the link does not exist yet);
- * an existing link keeps its branch.
+ * Write PR fields to the Task's Git link `linkId` in `repository`, or add a
+ * new Git link (auto-link) when `linkId` is absent. A new link takes
+ * `branchName`; a retried delivery for the same PR updates the row it
+ * created (`unique (task_id, repository_id, pr_number)`), never a duplicate.
  */
 export async function writeGitLink(
     supabase: SupabaseClient,
@@ -179,18 +174,30 @@ export async function writeGitLink(
         pr_state: string;
         pr_url: null | string;
     },
-    branchName?: string
+    target: { branchName: string } | { linkId: string }
 ): Promise<void> {
+    if ("linkId" in target) {
+        const { error } = await supabase
+            .from("task_git_links")
+            .update(update)
+            .eq("id", target.linkId);
+
+        if (error) throw error;
+        return;
+    }
+
     const { error } = await supabase.from("task_git_links").upsert(
         {
             ...update,
-            ...(branchName === undefined ? {} : { branch_name: branchName }),
+            branch_name: target.branchName,
             project_id: repository.project_id,
             repository_id: repository.id,
             task_id: taskId,
         },
-        { onConflict: "task_id,repository_id" }
+        { onConflict: "task_id,repository_id,pr_number" }
     );
 
     if (error) throw error;
 }
+
+const UNIQUE_VIOLATION = "23505";

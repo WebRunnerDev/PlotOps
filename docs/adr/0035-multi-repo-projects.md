@@ -9,6 +9,7 @@ A Project used to hold at most one GitHub repository (`projects.github_repo_id` 
     - **Repository cap: 5 per Project**, enforced by a `BEFORE INSERT` trigger (`project_repositories_cap()`). It raises `P0001` with a hint, following ADR 0032. The app mirrors the cap. Guest Mode is not capped.
     - **There is no primary Repository.** All Repositories are equal. Pickers default to the last Repository this viewer chose on this Board, and they skip the choice when the Project has one Repository.
 - **A Task holds at most one Git link per Repository** in `task_git_links (task_id, repository_id, branch_name, pr_number, pr_url, pr_state)`, with `unique (task_id, repository_id)`. A full-stack Task can carry one frontend PR and one backend PR.
+    - _Superseded by ADR 0036: a Task holds any number of Git links per Repository (one row per PR)._
 - **Base branch is per Board × Repository** in `board_repositories (board_id, repository_id, base_branch)`. One row exists for every Development Board and every Repository in its Project. A row is seeded from the Repository's default branch when either side is created: a Repository added to the Project, or a Board turned into a Development Board. Rows are cleared when the Board stops being a Development Board.
     - **Allowed head patterns stay on the Board** and apply to every Repository. They express the team's branch-naming convention, not a property of a Repository.
 - **The webhook resolves Repository first.** It looks up `project_repositories` by `github_repo_id`, which yields the Project. It then finds the Task in this order: `(repository_id, pr_number)`, then `(repository_id, branch)`, then `task_key` in the head ref.
@@ -18,10 +19,10 @@ A Project used to hold at most one GitHub repository (`projects.github_repo_id` 
     - A PR naming several keys links to each of those Tasks.
     - A pushed branch (`create` event) with a key creates a branch-only Git link. A PR opened from it later joins that link.
     - Backfill: the drawer's refresh button and connecting a Repository run the `github-backfill` Edge Function. It reads the open PRs and branches through the GitHub App and applies the same rules.
-    - It never overwrites an existing Git link for that Repository. A different PR is logged as `link_conflict`.
+    - It never overwrites an existing Git link for that Repository. A different PR is logged as `link_conflict`. _ADR 0036: a different PR now adds a new Git link; `link_conflict` is gone._
     - A manual unlink is remembered (`task_git_link_dismissals`, per Task × Repository × branch / PR). Auto-link never brings that branch or PR back to the Task. Linking it again by hand lifts the dismissal.
     - Activity marks the change as linked automatically by key (`metadata.auto_link.key`).
-    - Still one Git link per Task per Repository. Several links per Repository would need a separate decision.
+    - Still one Git link per Task per Repository. Several links per Repository would need a separate decision. _That decision is ADR 0036._
 - **Merge sync waits for all PRs.** A Task moves to its Board's merge target column (ADR 0033) only when every one of its Git links that has a PR is merged into that Board's Base branch for that Repository. Specifically:
     - A PR closed without merge does not count.
     - A Git link with a branch but no PR does not count.
@@ -51,7 +52,7 @@ A Project used to hold at most one GitHub repository (`projects.github_repo_id` 
 - **Two Projects plus Team Tasks.** The halves of one feature cannot share a Board, a Sprint, an Epic or a blocks link.
 - **One Repository per Board.** Boards would split by repository again, which is the problem this ADR exists to solve.
 - **One Git link per Task, carrying a `repository_id`.** Full-stack work would have to be broken into separate Tasks or Subtasks just to hold two PRs.
-- **Unbounded Git links per Repository.** Several branches of one Repository on one Task make "all merged" ambiguous, and the badge unreadable.
+- **Unbounded Git links per Repository.** Several branches of one Repository on one Task make "all merged" ambiguous, and the badge unreadable. _Reversed by ADR 0036, which defines "all merged" over every Git link and keeps the badge aggregate._
 - **A single Base branch name applied to every Repository.** It breaks as soon as repositories use different defaults, for example `main` and `develop`.
 - **Move the Task on the first merge.** This brings back the premature-close behaviour that ADR 0033 removed.
 - **Counting branch-only Git links as pending.** A forgotten branch would hold a finished Task open forever.

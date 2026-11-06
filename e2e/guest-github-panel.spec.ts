@@ -62,7 +62,9 @@ test.describe("Task drawer GitHub block (#350)", () => {
         await api
             .getByRole("button", { name: "plotops-demo/api actions" })
             .click();
-        await page.getByRole("menuitem", { name: "Unlink repository" }).click();
+        await page
+            .getByRole("menuitem", { name: "Unlink branch and PR" })
+            .click();
 
         await expect(panel.getByTestId("github-git-link")).toHaveCount(1);
         await expect(api).toHaveCount(0);
@@ -74,6 +76,42 @@ test.describe("Task drawer GitHub block (#350)", () => {
             "feature/FEAT-2-guest-ci-mock"
         );
         await expect(api.getByRole("link", { name: "PR #17" })).toBeVisible();
+    });
+
+    test("two PRs in one Repository render two named rows (#352)", async ({
+        page,
+    }) => {
+        const errors = collectPageErrors(page);
+        await enterGuestDemo(page);
+        const panel = await openGithubPanel(page, "FEAT-1");
+
+        await expect(panel.getByTestId("github-git-link")).toHaveCount(2);
+        for (const [branch, pr] of [
+            ["feature/TASK-1-guest-signin-cta", "PR #42"],
+            ["hotfix/FEAT-1-cta-contrast", "PR #44"],
+        ] as const) {
+            const row = panel.getByRole("region", {
+                exact: true,
+                name: `plotops-demo/web · ${branch}`,
+            });
+            await expect(row.locator("code")).toHaveText(branch);
+            await expect(row.getByRole("link", { name: pr })).toBeVisible();
+        }
+
+        // Unlinking one leaves the other in the same Repository.
+        await panel
+            .getByRole("button", {
+                name: "plotops-demo/web · hotfix/FEAT-1-cta-contrast actions",
+            })
+            .click();
+        await page
+            .getByRole("menuitem", { name: "Unlink branch and PR" })
+            .click();
+        await expect(panel.getByTestId("github-git-link")).toHaveCount(1);
+        await expect(
+            panel.getByRole("region", { name: "plotops-demo/web" })
+        ).toContainText("feature/TASK-1-guest-signin-cta");
+        expect(errors).toEqual([]);
     });
 
     test("every interactive element of the block has an accessible name", async ({
