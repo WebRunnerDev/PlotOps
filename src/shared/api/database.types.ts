@@ -1331,6 +1331,61 @@ export type Database = {
           value?: string
         }
       }
+      task_git_link_dismissals: {
+        Insert: {
+          created_at?: string
+          dismissed_by?: null | string
+          id?: string
+          kind: string
+          project_id: string
+          repository_id: string
+          task_id: string
+          value: string
+        }
+        Relationships: [
+          {
+            columns: ["project_id"]
+            foreignKeyName: "task_git_link_dismissals_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["repository_id"]
+            foreignKeyName: "task_git_link_dismissals_repository_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "project_repositories"
+          },
+          {
+            columns: ["task_id"]
+            foreignKeyName: "task_git_link_dismissals_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+        ]
+        Row: {
+          created_at: string
+          dismissed_by: null | string
+          id: string
+          kind: string
+          project_id: string
+          repository_id: string
+          task_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_by?: null | string
+          id?: string
+          kind?: string
+          project_id?: string
+          repository_id?: string
+          task_id?: string
+          value?: string
+        }
+      }
       task_git_links: {
         Insert: {
           branch_name?: null | string

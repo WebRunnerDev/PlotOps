@@ -1,167 +1,16 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+    createFakeSupabase,
+    type Row,
+    type Tables,
+} from "./fake-supabase.test-helper";
+import {
     syncClosedPullRequest,
+    syncCreatedBranch,
     syncMergedPullRequest,
     syncOpenedPullRequest,
 } from "./sync";
-
-type Row = Record<string, unknown>;
-type Tables = Record<string, Row[]>;
-
-/**
- * In-memory stand-in for the PostgREST calls sync.ts makes: select / eq /
- * order / limit / maybeSingle, the embedded `task_git_links (...)` select,
- * insert, update, upsert on `task_id,repository_id`, and rpc.
- */
-function createFakeSupabase(tables: Tables) {
-    const rpcCalls: { args: Row; name: string }[] = [];
-
-    class Query implements PromiseLike<{ data: unknown; error: null }> {
-        private filters: [string, unknown][] = [];
-        private limitTo: null | number = null;
-        private op: "insert" | "select" | "update" | "upsert" = "select";
-        private orderBy: null | { ascending: boolean; column: string } = null;
-        private payload: Row = {};
-        private selectColumns = "*";
-        private single = false;
-
-        constructor(private readonly table: string) {}
-
-        eq(column: string, value: unknown) {
-            this.filters.push([column, value]);
-            return this;
-        }
-
-        insert(payload: Row) {
-            this.op = "insert";
-            this.payload = payload;
-            return this;
-        }
-
-        limit(count: number) {
-            this.limitTo = count;
-            return this;
-        }
-
-        maybeSingle() {
-            this.single = true;
-            return this;
-        }
-
-        order(column: string, options: { ascending: boolean }) {
-            this.orderBy = { ascending: options.ascending, column };
-            return this;
-        }
-
-        select(columns: string) {
-            this.selectColumns = columns;
-            return this;
-        }
-
-        // eslint-disable-next-line unicorn/no-thenable -- PostgREST builders are awaited
-        then: PromiseLike<{ data: unknown; error: null }>["then"] = (
-            onFulfilled,
-            onRejected
-        ) => Promise.resolve(this.run()).then(onFulfilled, onRejected);
-
-        update(payload: Row) {
-            this.op = "update";
-            this.payload = payload;
-            return this;
-        }
-
-        upsert(payload: Row) {
-            this.op = "upsert";
-            this.payload = payload;
-            return this;
-        }
-
-        private rows(): Row[] {
-            const own = this.filters.filter(
-                ([column]) => !column.includes(".")
-            );
-            return (tables[this.table] ??= []).filter((row) =>
-                own.every(([column, value]) => row[column] === value)
-            );
-        }
-
-        private run(): { data: unknown; error: null } {
-            const table = (tables[this.table] ??= []);
-
-            if (this.op === "insert") {
-                table.push({ ...this.payload });
-                return { data: null, error: null };
-            }
-
-            if (this.op === "update") {
-                for (const row of this.rows()) Object.assign(row, this.payload);
-                return { data: null, error: null };
-            }
-
-            if (this.op === "upsert") {
-                const existing = table.find(
-                    (row) =>
-                        row.task_id === this.payload.task_id &&
-                        row.repository_id === this.payload.repository_id
-                );
-                if (existing) {
-                    Object.assign(existing, this.payload);
-                } else {
-                    table.push({ branch_name: null, ...this.payload });
-                }
-                return { data: null, error: null };
-            }
-
-            let rows = this.rows().map((row) => ({ ...row }));
-
-            if (this.selectColumns.includes("task_git_links (")) {
-                const linkFilters = this.filters
-                    .filter(([column]) => column.startsWith("task_git_links."))
-                    .map(([column, value]) => [column.split(".")[1], value]);
-                rows = rows.map((row) => ({
-                    ...row,
-                    task_git_links: (tables.task_git_links ?? [])
-                        .filter((link) => link.task_id === row.id)
-                        .filter((link) =>
-                            linkFilters.every(
-                                ([column, value]) =>
-                                    link[column as string] === value
-                            )
-                        ),
-                }));
-            }
-
-            if (this.orderBy) {
-                const { ascending, column } = this.orderBy;
-                rows.sort(
-                    (a, b) =>
-                        ((a[column] as number) - (b[column] as number)) *
-                        (ascending ? 1 : -1)
-                );
-            }
-
-            if (this.limitTo !== null) rows = rows.slice(0, this.limitTo);
-
-            return {
-                data: this.single ? (rows[0] ?? null) : rows,
-                error: null,
-            };
-        }
-    }
-
-    const client = {
-        from: (table: string) => new Query(table),
-        rpc: (name: string, arguments_: Row) => {
-            rpcCalls.push({ args: arguments_, name });
-            return Promise.resolve({ data: null, error: null });
-        },
-    };
-
-    return { client: client as unknown as SupabaseClient, rpcCalls };
-}
 
 const WEB = { github: 101, id: "repo-web", name: "acme/web" };
 const API = { github: 202, id: "repo-api", name: "acme/api" };
@@ -481,5 +330,301 @@ describe("github-webhook sync across Repositories", () => {
         expect(
             await syncMergedPullRequest(fake.client, unknown, log)
         ).toMatchObject({ reason: "no_project", skipped: true });
+    });
+});
+
+/** `create` webhook payload for a pushed branch. */
+const created = (repo: typeof WEB, branchName: string) => ({
+    ref: branchName,
+    ref_type: "branch",
+    repository: { full_name: repo.name, id: repo.github },
+});
+
+/** `pull_request` opened payload with a title and body. */
+const opened = (
+    repo: typeof WEB,
+    pr: {
+        body?: null | string;
+        head: string;
+        number: number;
+        title: string;
+    }
+) => {
+    const base = payload(repo, pr, "opened");
+    return {
+        ...base,
+        pull_request: {
+            ...base.pull_request,
+            body: pr.body,
+            title: pr.title,
+        },
+    };
+};
+
+describe("github-webhook auto-link by task key (#351)", () => {
+    let tables: Tables;
+    let fake: ReturnType<typeof createFakeSupabase>;
+    const logs: Row[] = [];
+    const log = (fields: Row) => logs.push(fields);
+
+    const dismiss = (taskId: string, kind: "branch" | "pr", value: string) =>
+        (tables.task_git_link_dismissals ??= []).push({
+            kind,
+            project_id: "project-1",
+            repository_id: WEB.id,
+            task_id: taskId,
+            value,
+        });
+
+    beforeEach(() => {
+        tables = seed();
+        fake = createFakeSupabase(tables);
+        logs.length = 0;
+    });
+
+    it("links a pushed branch TASK-1-login without a PR to TASK-1", async () => {
+        addTask(tables, "t1", "TASK-1");
+
+        const result = await syncCreatedBranch(
+            fake.client,
+            created(WEB, "TASK-1-login"),
+            log
+        );
+
+        expect(result).toMatchObject({ skipped: false, taskId: "t1" });
+        expect(link(tables, "t1", WEB)).toMatchObject({
+            branch_name: "TASK-1-login",
+            pr_number: null,
+        });
+        expect(tables.activity_log).toEqual([
+            expect.objectContaining({
+                metadata: {
+                    auto_link: { key: "TASK-1" },
+                    changes: [
+                        { field: "branch", from: null, to: "TASK-1-login" },
+                    ],
+                    source: "github_webhook",
+                },
+                task_id: "t1",
+                user_id: null,
+            }),
+        ]);
+
+        // The PR opened from it later joins that Git link (bind).
+        await syncOpenedPullRequest(
+            fake.client,
+            opened(WEB, { head: "TASK-1-login", number: 4, title: "Login" }),
+            log
+        );
+        expect(link(tables, "t1", WEB)).toMatchObject({
+            branch_name: "TASK-1-login",
+            pr_number: 4,
+            pr_state: "open",
+        });
+    });
+
+    it("ignores tags, branches without a key and already linked branches", async () => {
+        addTask(tables, "t1", "TASK-1");
+        addLink(tables, "t1", WEB, { branch_name: "TASK-1-login" });
+
+        expect(
+            await syncCreatedBranch(
+                fake.client,
+                { ...created(WEB, "TASK-1"), ref_type: "tag" },
+                log
+            )
+        ).toMatchObject({ reason: "not_branch_create", skipped: true });
+        expect(
+            await syncCreatedBranch(fake.client, created(WEB, "main"), log)
+        ).toMatchObject({ reason: "no_task", skipped: true });
+        expect(
+            await syncCreatedBranch(
+                fake.client,
+                created(WEB, "TASK-1-login"),
+                log
+            )
+        ).toMatchObject({ reason: "already_linked", skipped: true });
+        expect(tables.activity_log).toEqual([]);
+    });
+
+    it("links a PR titled TASK-1: Fix login from a branch without a key", async () => {
+        addTask(tables, "t1", "TASK-1");
+
+        const result = await syncOpenedPullRequest(
+            fake.client,
+            opened(WEB, {
+                head: "fix-login",
+                number: 8,
+                title: "TASK-1: Fix login",
+            }),
+            log
+        );
+
+        expect(result).toMatchObject({ skipped: false, taskId: "t1" });
+        expect(link(tables, "t1", WEB)).toMatchObject({
+            branch_name: "fix-login",
+            pr_number: 8,
+            pr_state: "open",
+        });
+        expect(tables.activity_log[0]?.metadata).toMatchObject({
+            auto_link: { key: "TASK-1" },
+        });
+    });
+
+    it("links one PR to every Task its title and body name", async () => {
+        addTask(tables, "t1", "TASK-1");
+        addTask(tables, "t2", "TASK-2");
+        addTask(tables, "t3", "TASK-3");
+        addLink(tables, "t3", WEB, { pr_number: 2, pr_state: "open" });
+
+        const result = await syncOpenedPullRequest(
+            fake.client,
+            opened(WEB, {
+                body: "Closes task-2 and TASK-3.",
+                head: "shared-login",
+                number: 8,
+                title: "TASK-1: Fix login",
+            }),
+            log
+        );
+
+        expect(result).toMatchObject({
+            skipped: false,
+            taskIds: ["t1", "t2"],
+        });
+        expect(link(tables, "t1", WEB)).toMatchObject({ pr_number: 8 });
+        expect(link(tables, "t2", WEB)).toMatchObject({ pr_number: 8 });
+        // TASK-3 already holds another PR — never overwritten.
+        expect(link(tables, "t3", WEB)).toMatchObject({ pr_number: 2 });
+        expect(logs).toContainEqual(
+            expect.objectContaining({
+                linkedPr: 2,
+                pr: 8,
+                reason: "link_conflict",
+                taskId: "t3",
+            })
+        );
+    });
+
+    it("moves every linked Task when the shared PR merges", async () => {
+        addTask(tables, "t1", "TASK-1");
+        addTask(tables, "t2", "TASK-2");
+        addLink(tables, "t1", WEB, { pr_number: 8, pr_state: "open" });
+        addLink(tables, "t2", WEB, { pr_number: 8, pr_state: "open" });
+
+        await syncMergedPullRequest(
+            fake.client,
+            payload(WEB, { head: "shared-login", number: 8 }),
+            log
+        );
+
+        expect(status(tables, "t1")).toBe("done");
+        expect(status(tables, "t2")).toBe("done");
+    });
+
+    it("does not relink a PR after a manual unlink", async () => {
+        addTask(tables, "t1", "TASK-1");
+        // The person unlinked PR #8 (the DB trigger remembered it).
+        dismiss("t1", "pr", "8");
+
+        const event = opened(WEB, {
+            head: "feature/TASK-1-login",
+            number: 8,
+            title: "TASK-1: Fix login",
+        });
+        const result = await syncOpenedPullRequest(fake.client, event, log);
+
+        expect(result).toMatchObject({ reason: "dismissed", skipped: true });
+        expect(link(tables, "t1", WEB)).toBeUndefined();
+
+        // Neither does its merge.
+        expect(
+            await syncMergedPullRequest(
+                fake.client,
+                payload(WEB, { head: "feature/TASK-1-login", number: 8 }),
+                log
+            )
+        ).toMatchObject({ reason: "dismissed", skipped: true });
+        expect(link(tables, "t1", WEB)).toBeUndefined();
+        expect(status(tables, "t1")).toBe("review");
+        expect(tables.activity_log).toEqual([]);
+    });
+
+    it("does not bind a dismissed PR to a still-linked branch", async () => {
+        addTask(tables, "t1", "TASK-1");
+        addLink(tables, "t1", WEB, { branch_name: "feature/TASK-1-login" });
+        dismiss("t1", "pr", "8");
+
+        expect(
+            await syncOpenedPullRequest(
+                fake.client,
+                opened(WEB, {
+                    head: "feature/TASK-1-login",
+                    number: 8,
+                    title: "Login",
+                }),
+                log
+            )
+        ).toMatchObject({ reason: "dismissed", skipped: true });
+        expect(link(tables, "t1", WEB)).toMatchObject({ pr_number: null });
+    });
+
+    it("does not relink a branch after a manual unlink", async () => {
+        addTask(tables, "t1", "TASK-1");
+        dismiss("t1", "branch", "TASK-1-login");
+
+        expect(
+            await syncCreatedBranch(
+                fake.client,
+                created(WEB, "TASK-1-login"),
+                log
+            )
+        ).toMatchObject({ reason: "dismissed", skipped: true });
+        expect(link(tables, "t1", WEB)).toBeUndefined();
+    });
+
+    it("never overwrites an existing Git link from a pushed branch", async () => {
+        addTask(tables, "t1", "TASK-1");
+        addLink(tables, "t1", WEB, { branch_name: "feature/TASK-1-old" });
+
+        expect(
+            await syncCreatedBranch(
+                fake.client,
+                created(WEB, "TASK-1-new"),
+                log
+            )
+        ).toMatchObject({ reason: "link_conflict", skipped: true });
+        expect(link(tables, "t1", WEB)).toMatchObject({
+            branch_name: "feature/TASK-1-old",
+        });
+        expect(logs).toContainEqual(
+            expect.objectContaining({
+                linkedBranch: "feature/TASK-1-old",
+                reason: "link_conflict",
+                ref: "TASK-1-new",
+                taskId: "t1",
+            })
+        );
+    });
+
+    it("limits a run to one Repository when asked (backfill)", async () => {
+        addTask(tables, "t1", "TASK-1");
+        // Another Team links the same GitHub repository.
+        tables.project_repositories.push({
+            github_repo_id: WEB.github,
+            id: "repo-web-other",
+            project_id: "project-2",
+        });
+
+        await syncCreatedBranch(
+            fake.client,
+            created(WEB, "TASK-1-login"),
+            log,
+            {
+                repository: { id: "repo-web-other", project_id: "project-2" },
+            }
+        );
+
+        expect(link(tables, "t1", WEB)).toBeUndefined();
     });
 });

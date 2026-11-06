@@ -119,7 +119,7 @@ _Avoid_: Board custom field, property (Notion), custom attribute (generic)
 ### Structure
 
 **Git link**:
-A Task's branch and optional pull request in one Repository (`task_git_links`, ADR 0035); at most one per Task per Repository. Created from the Task drawer or automatically by the webhook when a PR's head branch carries the Task key and the Task has no Git link for that Repository (never overwrites an existing one). Merge sync moves the Task to its Board's merge target column only when every Git link that has a PR is merged into its Base branch; PRs closed without merge and branch-only Git links do not count. The Kanban card shows one aggregate PR badge.
+A Task's branch and optional pull request in one Repository (`task_git_links`, ADR 0035); at most one per Task per Repository. Created from the Task drawer, or by **auto-link** when a branch name, PR title or PR body carries the Task key and the Task has no Git link for that Repository yet (from webhook events, or a backfill from the drawer's refresh button and Repository connect). Auto-link never overwrites an existing Git link and never brings back a branch or PR a person unlinked from that Task (a **dismissed** link, remembered until someone links it again by hand). Merge sync moves the Task to its Board's merge target column only when every Git link that has a PR is merged into its Base branch; PRs closed without merge and branch-only Git links do not count. The Kanban card shows one aggregate PR badge.
 _Avoid_: Task Link (Task-to-Task relationship — unrelated), git fields (UI copy only)
 
 **Parent Task**:

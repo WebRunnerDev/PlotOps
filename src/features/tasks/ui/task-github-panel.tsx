@@ -8,6 +8,7 @@ import {
     GitPullRequest,
     MoreHorizontal,
     Plus,
+    RefreshCw,
     Sparkles,
     X,
 } from "lucide-react";
@@ -73,6 +74,7 @@ import {
     repositoriesAcceptingGitLink,
 } from "@/features/tasks/lib/task-git-links";
 import { useGitLinkRepositoryStore } from "@/features/tasks/model/git-link-repository-store";
+import { useBackfillGitLinks } from "@/features/tasks/model/use-backfill-git-links";
 import { TaskGithubCommits } from "@/features/tasks/ui/task-github-commits";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -184,6 +186,7 @@ export function TaskGithubPanel({
     );
     const lookupAbort = useRef<AbortController | undefined>(undefined);
     const lookupGeneration = useRef(0);
+    const backfill = useBackfillGitLinks(projectId);
 
     const closeAttach = () => {
         lookupAbort.current?.abort();
@@ -536,6 +539,30 @@ export function TaskGithubPanel({
               ? t("github.linkPrConfirm")
               : t("github.linkCommitConfirm");
 
+    /** Find open PRs and branches with a task key on GitHub (auto-link). */
+    const refreshGitLinks = () => {
+        if (!canEdit || backfill.isPending) return;
+        backfill.mutate(undefined, {
+            onError: () => {
+                toast.error(t("github.refreshLinksFailed"));
+            },
+            onSuccess: (result) => {
+                if (!result.configured) {
+                    toast.error(t("github.refreshLinksFailed"));
+                } else if (result.linked > 0) {
+                    toast.success(
+                        t("github.refreshLinksLinked", { count: result.linked })
+                    );
+                } else if (result.unavailable > 0) {
+                    toast.warning(t("github.refreshLinksUnavailable"));
+                } else {
+                    toast.message(t("github.refreshLinksNone"));
+                }
+            },
+        });
+    };
+    const canRefreshLinks = canEdit && !isGuest();
+
     const commitRepositories = gitTabRepositories(
         repositories,
         task.gitLinks
@@ -558,64 +585,86 @@ export function TaskGithubPanel({
                     <p className="text-meta font-medium tracking-[0.06em] text-muted-foreground">
                         {t("github.title")}
                     </p>
-                    {canEdit ? (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger
-                                render={
-                                    <Button
-                                        size="xs"
-                                        type="button"
-                                        variant="outline"
+                    <div className="flex shrink-0 items-center gap-1">
+                        {canRefreshLinks ? (
+                            <Button
+                                aria-label={t("github.refreshLinks")}
+                                disabled={backfill.isPending}
+                                onClick={refreshGitLinks}
+                                size="icon-xs"
+                                title={t("github.refreshLinksHint")}
+                                type="button"
+                                variant="ghost"
+                            >
+                                {backfill.isPending ? (
+                                    <Spinner className="size-3.5" />
+                                ) : (
+                                    <RefreshCw
+                                        aria-hidden
+                                        className="size-3.5"
                                     />
-                                }
-                            >
-                                <Plus aria-hidden className="size-3.5" />
-                                {t("github.attach")}
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                                align="end"
-                                className="w-auto min-w-48"
-                            >
-                                <DropdownMenuItem
-                                    disabled={branchOptions.length === 0}
-                                    onClick={() => openAttach("branch")}
-                                >
-                                    <GitBranch aria-hidden />
-                                    {t("github.attachBranch")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    disabled={
-                                        prOptions.length === 0 ||
-                                        !canFetchGithub
-                                    }
-                                    onClick={() => openAttach("pr")}
-                                    title={
-                                        canFetchGithub
-                                            ? undefined
-                                            : t("github.prNeedsGithub")
+                                )}
+                            </Button>
+                        ) : undefined}
+                        {canEdit ? (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger
+                                    render={
+                                        <Button
+                                            size="xs"
+                                            type="button"
+                                            variant="outline"
+                                        />
                                     }
                                 >
-                                    <GitPullRequest aria-hidden />
-                                    {t("github.attachPr")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    disabled={
-                                        Boolean(task.linkedCommitSha) ||
-                                        !canFetchGithub
-                                    }
-                                    onClick={() => openAttach("commit")}
-                                    title={
-                                        canFetchGithub
-                                            ? undefined
-                                            : t("github.commitNeedsGithub")
-                                    }
+                                    <Plus aria-hidden className="size-3.5" />
+                                    {t("github.attach")}
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="w-auto min-w-48"
                                 >
-                                    <GitCommit aria-hidden />
-                                    {t("github.attachCommit")}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    ) : undefined}
+                                    <DropdownMenuItem
+                                        disabled={branchOptions.length === 0}
+                                        onClick={() => openAttach("branch")}
+                                    >
+                                        <GitBranch aria-hidden />
+                                        {t("github.attachBranch")}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        disabled={
+                                            prOptions.length === 0 ||
+                                            !canFetchGithub
+                                        }
+                                        onClick={() => openAttach("pr")}
+                                        title={
+                                            canFetchGithub
+                                                ? undefined
+                                                : t("github.prNeedsGithub")
+                                        }
+                                    >
+                                        <GitPullRequest aria-hidden />
+                                        {t("github.attachPr")}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        disabled={
+                                            Boolean(task.linkedCommitSha) ||
+                                            !canFetchGithub
+                                        }
+                                        onClick={() => openAttach("commit")}
+                                        title={
+                                            canFetchGithub
+                                                ? undefined
+                                                : t("github.commitNeedsGithub")
+                                        }
+                                    >
+                                        <GitCommit aria-hidden />
+                                        {t("github.attachCommit")}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        ) : undefined}
+                    </div>
                 </div>
 
                 {attach && canEdit ? (

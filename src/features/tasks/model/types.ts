@@ -120,6 +120,8 @@ export type TaskActivityField =
     | "type";
 
 export type TaskActivityMetadata = {
+    /** Task key the webhook / backfill matched when it auto-linked (ADR 0035). */
+    autoLinkKey?: string;
     changes: TaskActivityChange[];
     /** Set by Edge Function `github-webhook` for system-authored events. */
     source?: "github_webhook";

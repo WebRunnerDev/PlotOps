@@ -322,6 +322,7 @@
         "empty": "Пока нет активности.",
         "updated": "обновил(а) задачу",
         "githubActor": "GitHub",
+        "autoLinked": "Привязано автоматически по ключу {{key}}",
         "none": "Нет",
         "change": {
             "fromTo": "{{field}}: {{from}} → {{to}}",
@@ -824,6 +825,15 @@
     },
     "github": {
         "title": "GitHub",
+        "refreshLinks": "Найти ветки и PR по ключу задачи",
+        "refreshLinksHint": "Найти на GitHub открытые ветки и pull request с ключом задачи и привязать их",
+        "refreshLinksLinked_one": "Привязана {{count}} задача по ключу",
+        "refreshLinksLinked_few": "Привязаны {{count}} задачи по ключу",
+        "refreshLinksLinked_many": "Привязано {{count}} задач по ключу",
+        "refreshLinksLinked_other": "Привязано {{count}} задачи по ключу",
+        "refreshLinksNone": "Новых веток и pull request с ключом задачи нет",
+        "refreshLinksUnavailable": "Часть репозиториев не удалось прочитать. Проверьте, установлен ли GitHub App.",
+        "refreshLinksFailed": "Не удалось проверить GitHub. Попробуйте позже.",
         "connectRepo": "Подключите репозиторий, чтобы привязывать ветки и pull request.",
         "connectRepoAction": "Подключить репозиторий",
         "copy": "Скопировать команду checkout",

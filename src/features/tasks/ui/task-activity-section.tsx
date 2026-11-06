@@ -118,6 +118,13 @@ function ActivityEventItem({
                     </time>
                 </div>
 
+                {event.metadata.autoLinkKey ? (
+                    <p className="text-meta text-muted-foreground">
+                        {t("activity.autoLinked", {
+                            key: event.metadata.autoLinkKey,
+                        })}
+                    </p>
+                ) : undefined}
                 {changes.length === 0 ? (
                     <p className="text-ui text-muted-foreground">
                         {t("activity.updated")}

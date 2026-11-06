@@ -104,6 +104,46 @@ export async function insertTaskActivityEvent(input: {
     };
 }
 
+export function parseMetadata(raw: unknown): TaskActivityMetadata {
+    if (!raw || typeof raw !== "object") {
+        return { changes: [] };
+    }
+
+    const record = raw as {
+        auto_link?: unknown;
+        changes?: unknown;
+        source?: unknown;
+    };
+    const changesRaw = record.changes;
+    if (!Array.isArray(changesRaw)) {
+        return { changes: [] };
+    }
+
+    const changes: TaskActivityChange[] = [];
+    for (const item of changesRaw) {
+        if (!item || typeof item !== "object") continue;
+        const field = (item as { field?: unknown }).field;
+        if (!isActivityField(field)) continue;
+        changes.push({
+            field,
+            from: (item as { from?: unknown }).from,
+            to: (item as { to?: unknown }).to,
+        });
+    }
+
+    const autoLinkKey =
+        record.auto_link && typeof record.auto_link === "object"
+            ? (record.auto_link as { key?: unknown }).key
+            : undefined;
+
+    return {
+        ...(typeof autoLinkKey === "string" ? { autoLinkKey } : {}),
+        changes,
+        source:
+            record.source === "github_webhook" ? "github_webhook" : undefined,
+    };
+}
+
 function asProfile(
     value: DatabaseProfile | DatabaseProfile[] | null | undefined
 ): DatabaseProfile | null {
@@ -149,35 +189,5 @@ function mapActivity(row: DatabaseActivityLog): TaskActivityEvent {
                       name,
                   }
                 : undefined,
-    };
-}
-
-function parseMetadata(raw: unknown): TaskActivityMetadata {
-    if (!raw || typeof raw !== "object") {
-        return { changes: [] };
-    }
-
-    const record = raw as { changes?: unknown; source?: unknown };
-    const changesRaw = record.changes;
-    if (!Array.isArray(changesRaw)) {
-        return { changes: [] };
-    }
-
-    const changes: TaskActivityChange[] = [];
-    for (const item of changesRaw) {
-        if (!item || typeof item !== "object") continue;
-        const field = (item as { field?: unknown }).field;
-        if (!isActivityField(field)) continue;
-        changes.push({
-            field,
-            from: (item as { from?: unknown }).from,
-            to: (item as { to?: unknown }).to,
-        });
-    }
-
-    return {
-        changes,
-        source:
-            record.source === "github_webhook" ? "github_webhook" : undefined,
     };
 }

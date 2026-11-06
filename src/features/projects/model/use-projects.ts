@@ -9,6 +9,7 @@ import type { GitHubRepo } from "@/features/projects/model/types";
 
 // Leaf key modules (no imports) — the feature indexes would form a cycle.
 import { boardKeys } from "@/features/boards/model/query-keys";
+import { backfillGitLinks } from "@/features/git-integration/api/backfill-git-links-api";
 import { isGuest } from "@/features/guest-mode";
 import { resolveProjectsProvider } from "@/features/projects/api/resolve-projects-provider";
 import {
@@ -51,6 +52,18 @@ export function useAddProjectRepository(projectId: string) {
         },
         onSuccess: () => {
             invalidateRepositoryDependents(queryClient, projectId);
+            if (isGuest()) return;
+            // Pull in branches and PRs that already carry a task key (ADR 0035
+            // «Auto-link»). Best effort: the Repository is linked either way.
+            void backfillGitLinks(projectId)
+                .then((result) => {
+                    if (result.linked > 0) {
+                        void queryClient.invalidateQueries({
+                            queryKey: taskKeys.all,
+                        });
+                    }
+                })
+                .catch(() => {});
         },
     });
 }

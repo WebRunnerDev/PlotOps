@@ -10,13 +10,14 @@ import {
     findRepositories,
     loadCandidateTasks,
     type RepositoryReference,
+    writeBranchLink,
     writeGitLink,
 } from "./git-links.ts";
 import {
     type BoardColumnRow,
     type CandidateTask,
     type GitLinkBinding,
-    matchTask,
+    matchTasks,
     planGitLinkBinding,
     type TaskMatch,
 } from "./match-task.ts";
@@ -31,9 +32,29 @@ import {
     shouldHandleReopenedPr,
 } from "./reopen-sync.ts";
 
+/** `create` webhook payload (a branch or tag was pushed). */
+export type CreateBranchPayload = {
+    ref?: string;
+    ref_type?: string;
+    repository?: { full_name?: string; id?: number };
+};
+
+/** `repository` limits the run to one Repository (backfill of one Project). */
+export type SyncOptions = { repository?: RepositoryReference };
+
+/**
+ * `taskId` / `status` describe the first Task the event changed; `taskIds`
+ * lists every one (a PR naming several task keys links to each of them).
+ */
 export type SyncResult =
     | { ok: true; reason: string; skipped: true }
-    | { ok: true; skipped: false; status: string; taskId: string };
+    | {
+          ok: true;
+          skipped: false;
+          status: string;
+          taskId: string;
+          taskIds: string[];
+      };
 
 type Log = (fields: Record<string, unknown>) => void;
 
@@ -43,7 +64,7 @@ type PrState = "closed" | "merged" | "open";
 type PrStateSync = {
     plan: (
         match: null | TaskMatch,
-        input: { prHtmlUrl: null | string; prNumber: number }
+        input: { headRef: string; prHtmlUrl: null | string; prNumber: number }
     ) =>
         | {
               binding: GitLinkBinding;
@@ -65,27 +86,39 @@ type PrUpdate = {
 
 type PullRequestEvent = {
     baseRef: null | string;
+    body: null | string;
     headRef: string;
     prHtmlUrl: null | string;
     prNumber: number;
     repoFullName: null | string;
     repoId: number;
+    title: null | string;
 };
 
 type PullRequestPayload = {
     action?: string;
     pull_request?: {
         base?: { ref?: string };
+        body?: null | string;
         head?: { ref?: string };
         html_url?: string;
         merged?: boolean;
         number?: number;
         state?: string;
+        title?: string;
     };
     repository?: {
         full_name?: string;
         id?: number;
     };
+};
+
+/** What `forEachRepository` needs to resolve and log a delivery. */
+type RepositoryEvent = {
+    prNumber?: number;
+    ref?: string;
+    repoFullName: null | string;
+    repoId: number;
 };
 
 const CLOSED_SYNC: PrStateSync = {
@@ -121,13 +154,117 @@ type Move = {
 export async function syncClosedPullRequest(
     supabase: SupabaseClient,
     payload: PullRequestPayload,
-    log: Log
+    log: Log,
+    options: SyncOptions = {}
 ): Promise<SyncResult> {
     if (!shouldHandleClosedUnmergedPr(payload)) {
         return { ok: true, reason: CLOSED_SYNC.skipReason, skipped: true };
     }
 
-    return syncPrState(supabase, payload, log, CLOSED_SYNC);
+    return syncPrState(supabase, payload, log, CLOSED_SYNC, options);
+}
+
+/**
+ * Branch pushed (`create`, ref_type=branch) — every Task whose key is in the
+ * branch name and that has no Git link to this Repository gets a branch-only
+ * one. A PR opened from it later joins that link (`bind`).
+ */
+export async function syncCreatedBranch(
+    supabase: SupabaseClient,
+    payload: CreateBranchPayload,
+    log: Log,
+    options: SyncOptions = {}
+): Promise<SyncResult> {
+    const branchName = payload.ref?.trim();
+    const repoId = payload.repository?.id;
+
+    if (
+        payload.ref_type !== "branch" ||
+        !branchName ||
+        typeof repoId !== "number"
+    ) {
+        return { ok: true, reason: "not_branch_create", skipped: true };
+    }
+
+    const event: RepositoryEvent = {
+        ref: branchName,
+        repoFullName: payload.repository?.full_name ?? null,
+        repoId,
+    };
+
+    return forEachRepository(
+        supabase,
+        event,
+        log,
+        options,
+        async (repository) => {
+            const matches = matchTasks(
+                await loadCandidateTasks(supabase, repository),
+                { headRef: branchName }
+            );
+
+            return applyEach(matches, async (match) => {
+                const binding = planGitLinkBinding(match, {
+                    headRef: branchName,
+                });
+
+                if (binding !== "auto_link") {
+                    const reason =
+                        binding === "linked" ? "already_linked" : binding;
+                    if (binding === "link_conflict") {
+                        logLinkConflict(log, match, { ref: branchName });
+                    } else {
+                        log({ reason, taskId: match.task.id });
+                    }
+                    return { ok: true, reason, skipped: true };
+                }
+
+                const { task } = match;
+                await writeBranchLink(
+                    supabase,
+                    task.id,
+                    repository,
+                    branchName
+                );
+
+                const { error: activityError } = await supabase
+                    .from("activity_log")
+                    .insert({
+                        action: "updated",
+                        metadata: {
+                            auto_link: { key: match.key ?? task.task_key },
+                            changes: [
+                                { field: "branch", from: null, to: branchName },
+                            ],
+                            source: "github_webhook",
+                        },
+                        project_id: repository.project_id,
+                        task_id: task.id,
+                        user_id: null,
+                    });
+
+                if (activityError) {
+                    throw activityError;
+                }
+
+                log({
+                    autoLinked: true,
+                    branch: branchName,
+                    projectId: repository.project_id,
+                    reason: "branch_linked",
+                    taskId: task.id,
+                });
+
+                return {
+                    ok: true,
+                    skipped: false,
+                    status: task.status,
+                    taskId: task.id,
+                    taskIds: [task.id],
+                };
+            });
+        }
+    );
 }
 
 /**
@@ -137,7 +274,8 @@ export async function syncClosedPullRequest(
 export async function syncMergedPullRequest(
     supabase: SupabaseClient,
     payload: PullRequestPayload,
-    log: Log
+    log: Log,
+    options: SyncOptions = {}
 ): Promise<SyncResult> {
     const event = readPullRequestEvent(payload);
 
@@ -149,35 +287,69 @@ export async function syncMergedPullRequest(
         return { ok: true, reason: "not_merged_pr", skipped: true };
     }
 
-    return forEachRepository(supabase, event, log, (repository) =>
+    return forEachRepository(supabase, event, log, options, (repository) =>
         syncMergedInRepository(supabase, event, repository, log)
     );
 }
 
-/** Opened — `pr_state=open` only; auto-links a Task named in the head ref. */
+/**
+ * Opened — `pr_state=open` only; auto-links every Task whose key is in the
+ * head branch, PR title or PR body.
+ */
 export async function syncOpenedPullRequest(
     supabase: SupabaseClient,
     payload: PullRequestPayload,
-    log: Log
+    log: Log,
+    options: SyncOptions = {}
 ): Promise<SyncResult> {
     if (!shouldHandleOpenedPr(payload)) {
         return { ok: true, reason: OPENED_SYNC.skipReason, skipped: true };
     }
 
-    return syncPrState(supabase, payload, log, OPENED_SYNC);
+    return syncPrState(supabase, payload, log, OPENED_SYNC, options);
 }
 
 /** Reopened — `pr_state` back to `open` only (no column move). */
 export async function syncReopenedPullRequest(
     supabase: SupabaseClient,
     payload: PullRequestPayload,
-    log: Log
+    log: Log,
+    options: SyncOptions = {}
 ): Promise<SyncResult> {
     if (!shouldHandleReopenedPr(payload)) {
         return { ok: true, reason: REOPENED_SYNC.skipReason, skipped: true };
     }
 
-    return syncPrState(supabase, payload, log, REOPENED_SYNC);
+    return syncPrState(supabase, payload, log, REOPENED_SYNC, options);
+}
+
+/**
+ * Run `apply` for each match in turn. Skipped when every match skipped (the
+ * first skip reason wins); otherwise the first change, listing every Task
+ * changed.
+ */
+async function applyEach(
+    matches: TaskMatch[],
+    apply: (match: TaskMatch) => Promise<SyncResult>
+): Promise<SyncResult> {
+    if (matches.length === 0) {
+        return { ok: true, reason: "no_task", skipped: true };
+    }
+
+    const results: SyncResult[] = [];
+    for (const match of matches) {
+        results.push(await apply(match));
+    }
+
+    const changed = results.flatMap((result) =>
+        result.skipped ? [] : [result]
+    );
+    const [first] = changed;
+    if (!first) {
+        return results[0]!;
+    }
+
+    return { ...first, taskIds: changed.map((result) => result.taskId) };
 }
 
 /**
@@ -191,13 +363,15 @@ async function applyPrEvent(
         binding: GitLinkBinding;
         headRef: string;
         log: Log;
+        match: TaskMatch;
         prUpdate: null | PrUpdate;
         repository: RepositoryReference;
         syncedReason: string;
-        task: CandidateTask;
     }
 ): Promise<SyncResult> {
-    const { log, prUpdate, repository, task } = input;
+    const { log, match, prUpdate, repository } = input;
+    const { task } = match;
+    const autoLinked = input.binding === "auto_link";
     const projectId = repository.project_id;
 
     // Every Git link as it stands after this event: this Repository's link
@@ -224,7 +398,7 @@ async function applyPrEvent(
             task.id,
             repository,
             prUpdate,
-            input.binding === "auto_link" ? input.headRef : undefined
+            autoLinked ? input.headRef : undefined
         );
     }
 
@@ -267,7 +441,13 @@ async function applyPrEvent(
         .from("activity_log")
         .insert({
             action: "updated",
-            metadata: { changes, source: "github_webhook" },
+            metadata: {
+                ...(autoLinked && prUpdate
+                    ? { auto_link: { key: match.key ?? task.task_key } }
+                    : {}),
+                changes,
+                source: "github_webhook",
+            },
             project_id: projectId,
             task_id: task.id,
             user_id: null,
@@ -289,7 +469,7 @@ async function applyPrEvent(
     const status = move?.to.id ?? task.status;
 
     log({
-        ...(input.binding === "auto_link" ? { autoLinked: true } : {}),
+        ...(autoLinked ? { autoLinked: true } : {}),
         moved: Boolean(move),
         projectId,
         reason: input.syncedReason,
@@ -297,7 +477,13 @@ async function applyPrEvent(
         taskId: task.id,
     });
 
-    return { ok: true, skipped: false, status, taskId: task.id };
+    return {
+        ok: true,
+        skipped: false,
+        status,
+        taskId: task.id,
+        taskIds: [task.id],
+    };
 }
 
 /**
@@ -372,11 +558,14 @@ async function fanOutStatusChange(
  */
 async function forEachRepository(
     supabase: SupabaseClient,
-    event: PullRequestEvent,
+    event: RepositoryEvent,
     log: Log,
+    options: SyncOptions,
     run: (repository: RepositoryReference) => Promise<SyncResult>
 ): Promise<SyncResult> {
-    const repositories = await findRepositories(supabase, event.repoId);
+    const repositories = options.repository
+        ? [options.repository]
+        : await findRepositories(supabase, event.repoId);
 
     if (repositories.length === 0) {
         log({
@@ -394,16 +583,28 @@ async function forEachRepository(
         }
     }
 
-    log({ pr: event.prNumber, reason: "no_task", repo: event.repoFullName });
+    log({
+        ...(event.prNumber === undefined
+            ? { ref: event.ref }
+            : { pr: event.prNumber }),
+        reason: "no_task",
+        repo: event.repoFullName,
+    });
     return { ok: true, reason: "no_task", skipped: true };
 }
 
-function logLinkConflict(log: Log, match: TaskMatch, event: PullRequestEvent) {
+function logLinkConflict(
+    log: Log,
+    match: TaskMatch,
+    event: { prNumber?: number; ref?: string }
+) {
     log({
         linkedBranch: match.task.branch_name,
         linkedPr: match.task.pr_number,
         matchedBy: match.by,
-        pr: event.prNumber,
+        ...(event.prNumber === undefined
+            ? { ref: event.ref }
+            : { pr: event.prNumber }),
         reason: "link_conflict",
         taskId: match.task.id,
     });
@@ -502,11 +703,13 @@ function readPullRequestEvent(
 
     return {
         baseRef: pr?.base?.ref ?? null,
+        body: pr?.body ?? null,
         headRef: headReference,
         prHtmlUrl: pr?.html_url ?? null,
         prNumber,
         repoFullName: payload.repository?.full_name ?? null,
         repoId,
+        title: pr?.title ?? null,
     };
 }
 
@@ -516,54 +719,56 @@ async function syncMergedInRepository(
     repository: RepositoryReference,
     log: Log
 ): Promise<SyncResult> {
-    const match = matchTask(await loadCandidateTasks(supabase, repository), {
-        headRef: event.headRef,
-        prNumber: event.prNumber,
-    });
-
-    if (!match) {
-        return { ok: true, reason: "no_task", skipped: true };
-    }
-
-    const binding = planGitLinkBinding(match);
-    if (binding === "link_conflict") {
-        logLinkConflict(log, match, event);
-        return { ok: true, reason: "link_conflict", skipped: true };
-    }
-
-    const { task } = match;
-    const boardBase = await fetchBoardBaseBranch(
-        supabase,
-        task.board_id,
-        repository.id
+    const matches = matchTasks(
+        await loadCandidateTasks(supabase, repository),
+        event
     );
 
-    // A merge elsewhere leaves the PR open here, so the merge set stays pending.
-    if (boardBase !== event.baseRef) {
-        log({
-            base: event.baseRef,
-            boardBase,
-            reason: "wrong_base",
-            taskId: task.id,
-        });
-        return { ok: true, reason: "wrong_base", skipped: true };
-    }
+    return applyEach(matches, async (match) => {
+        const binding = planGitLinkBinding(match, event);
+        if (binding === "link_conflict") {
+            logLinkConflict(log, match, event);
+            return { ok: true, reason: "link_conflict", skipped: true };
+        }
+        if (binding === "dismissed") {
+            log({ reason: "dismissed", taskId: match.task.id });
+            return { ok: true, reason: "dismissed", skipped: true };
+        }
 
-    return applyPrEvent(supabase, {
-        binding,
-        headRef: event.headRef,
-        log,
-        prUpdate:
-            task.pr_state === "merged"
-                ? null
-                : {
-                      pr_number: event.prNumber,
-                      pr_state: "merged",
-                      pr_url: event.prHtmlUrl,
-                  },
-        repository,
-        syncedReason: "synced",
-        task,
+        const { task } = match;
+        const boardBase = await fetchBoardBaseBranch(
+            supabase,
+            task.board_id,
+            repository.id
+        );
+
+        // A merge elsewhere leaves the PR open here, so the merge set stays pending.
+        if (boardBase !== event.baseRef) {
+            log({
+                base: event.baseRef,
+                boardBase,
+                reason: "wrong_base",
+                taskId: task.id,
+            });
+            return { ok: true, reason: "wrong_base", skipped: true };
+        }
+
+        return applyPrEvent(supabase, {
+            binding,
+            headRef: event.headRef,
+            log,
+            match,
+            prUpdate:
+                task.pr_state === "merged"
+                    ? null
+                    : {
+                          pr_number: event.prNumber,
+                          pr_state: "merged",
+                          pr_url: event.prHtmlUrl,
+                      },
+            repository,
+            syncedReason: "synced",
+        });
     });
 }
 
@@ -571,7 +776,8 @@ async function syncPrState(
     supabase: SupabaseClient,
     payload: PullRequestPayload,
     log: Log,
-    sync: PrStateSync
+    sync: PrStateSync,
+    options: SyncOptions
 ): Promise<SyncResult> {
     const event = readPullRequestEvent(payload);
 
@@ -579,38 +785,43 @@ async function syncPrState(
         return { ok: true, reason: sync.skipReason, skipped: true };
     }
 
-    return forEachRepository(supabase, event, log, async (repository) => {
-        const match = matchTask(
-            await loadCandidateTasks(supabase, repository),
-            { headRef: event.headRef, prNumber: event.prNumber }
-        );
+    return forEachRepository(
+        supabase,
+        event,
+        log,
+        options,
+        async (repository) => {
+            const matches = matchTasks(
+                await loadCandidateTasks(supabase, repository),
+                event
+            );
 
-        if (!match) {
-            return { ok: true, reason: "no_task", skipped: true };
+            return applyEach(matches, async (match) => {
+                const plan = sync.plan(match, {
+                    headRef: event.headRef,
+                    prHtmlUrl: event.prHtmlUrl,
+                    prNumber: event.prNumber,
+                });
+
+                if (plan.skip) {
+                    if (plan.reason === "link_conflict") {
+                        logLinkConflict(log, match, event);
+                    } else {
+                        log({ reason: plan.reason, taskId: match.task.id });
+                    }
+                    return { ok: true, reason: plan.reason, skipped: true };
+                }
+
+                return applyPrEvent(supabase, {
+                    binding: plan.binding,
+                    headRef: event.headRef,
+                    log,
+                    match,
+                    prUpdate: plan.update,
+                    repository,
+                    syncedReason: sync.syncedReason,
+                });
+            });
         }
-
-        const plan = sync.plan(match, {
-            prHtmlUrl: event.prHtmlUrl,
-            prNumber: event.prNumber,
-        });
-
-        if (plan.skip) {
-            if (plan.reason === "link_conflict") {
-                logLinkConflict(log, match, event);
-            } else {
-                log({ reason: plan.reason, taskId: match.task.id });
-            }
-            return { ok: true, reason: plan.reason, skipped: true };
-        }
-
-        return applyPrEvent(supabase, {
-            binding: plan.binding,
-            headRef: event.headRef,
-            log,
-            prUpdate: plan.update,
-            repository,
-            syncedReason: sync.syncedReason,
-            task: match.task,
-        });
-    });
+    );
 }
