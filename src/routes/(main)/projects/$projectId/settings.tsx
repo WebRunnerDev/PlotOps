@@ -20,6 +20,7 @@ import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
 import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
+import { ProjectNameSettings } from "@/features/projects/ui/project-name-settings";
 import { ProjectRepositoriesSettings } from "@/features/projects/ui/project-repositories-settings";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
 import {
@@ -304,6 +305,11 @@ function ProjectSettingsRoute() {
                     ) : undefined}
 
                     <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-8 lg:mx-0 lg:max-w-none">
+                        <ProjectNameSettings
+                            canManage={isSettled && canManageSettings}
+                            project={project}
+                        />
+
                         <ProjectRepositoriesSettings
                             canManage={isSettled && canManageSettings}
                             isGuest={guest}
