@@ -43,11 +43,24 @@ describe("isOAuthConsentRedirect", () => {
 });
 
 describe("parseAuthorizationId", () => {
-    it("accepts UUID authorization ids", () => {
+    it("accepts opaque Supabase authorization ids", () => {
+        expect(parseAuthorizationId("ipa2gil4a54huhojalqa7325r7mp4ilf")).toBe(
+            "ipa2gil4a54huhojalqa7325r7mp4ilf"
+        );
         expect(
             parseAuthorizationId("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
         ).toBe("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        expect(parseAuthorizationId("not-a-uuid")).toBeNull();
+    });
+
+    it("rejects malformed authorization ids", () => {
+        expect(parseAuthorizationId("short")).toBeNull();
+        expect(
+            parseAuthorizationId("ipa2gil4a54huho/../jalqa7325r7")
+        ).toBeNull();
+        expect(
+            parseAuthorizationId("ipa2gil4a54huhojalqa7325r7mp4ilf&x=1")
+        ).toBeNull();
+        expect(parseAuthorizationId("a".repeat(129))).toBeNull();
         expect(parseAuthorizationId(12)).toBeNull();
     });
 });
