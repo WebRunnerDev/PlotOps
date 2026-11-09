@@ -486,6 +486,15 @@
         "backToBoard": "Back to board",
         "membersMoved": "Members and invites are managed on the Team.",
         "openTeamSettings": "Open Team settings",
+        "project": {
+            "title": "Project",
+            "description": "The Project name is shown in the Projects list, the header, and Team Tasks. The URL does not change.",
+            "nameLabel": "Name",
+            "nameRequired": "Name cannot be empty.",
+            "nameSave": "Save",
+            "nameSaved": "Project name updated",
+            "nameSaveFailed": "Could not update Project name. Try again."
+        },
         "repository": {
             "title": "Repositories",
             "capCount": "{{count}} / {{cap}}",
