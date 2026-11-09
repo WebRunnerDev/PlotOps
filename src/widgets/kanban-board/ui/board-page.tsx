@@ -3,7 +3,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
-import { BoardSwitcher, useProjectBoards } from "@/features/boards";
+import {
+    BoardSwitcher,
+    toBoardSettingsRepositories,
+    useProjectBoards,
+} from "@/features/boards";
 import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
@@ -128,13 +132,14 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                         <BoardSwitcher
                             boardId={boardId}
                             canManage={isSettled && canManageBoard}
-                            defaultBaseBranch={
-                                project.github_default_branch ?? "main"
-                            }
                             projectId={projectId}
-                            showGitBranchSettings={projectHasGithubRepo(
-                                project.github_repo_id
-                            )}
+                            repositories={
+                                projectHasGithubRepo(project.github_repo_id)
+                                    ? toBoardSettingsRepositories(
+                                          project.repositories
+                                      )
+                                    : []
+                            }
                         />
                         {baseBranchChips.length > 0 ? (
                             <ul

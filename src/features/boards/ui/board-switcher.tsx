@@ -3,13 +3,23 @@ import { Check, ChevronsUpDown, LayoutGrid, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectBoardRecord } from "@/features/boards/model/types";
+import type { BaseBranchDraft } from "@/features/boards/lib/base-branch-draft";
+import type {
+    BoardSettingsRepository,
+    ProjectBoardRecord,
+} from "@/features/boards/model/types";
 
+import {
+    buildCreateBoardInput,
+    hasBlankBaseBranch,
+    toBaseBranchDraft,
+} from "@/features/boards/lib/base-branch-draft";
 import { writeLastBoardId } from "@/features/boards/lib/last-board-storage";
 import {
     useBoardMutations,
     useProjectBoards,
 } from "@/features/boards/model/use-project-boards";
+import { RepositoryBaseBranchFields } from "@/features/boards/ui/repository-base-branch-fields";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
 import { Checkbox } from "@/shared/shadcn/ui/checkbox";
@@ -34,22 +44,24 @@ import { Label } from "@/shared/shadcn/ui/label";
 type BoardSwitcherProperties = {
     boardId: string;
     canManage: boolean;
-    defaultBaseBranch: string;
     /** Where selecting/creating a board navigates. Default: kanban board. */
     destination?: "backlog" | "board";
     projectId: string;
-    /** Development Board option — only meaningful with a linked GitHub repo. */
-    showGitBranchSettings?: boolean;
+    /**
+     * The Project's Repositories, oldest first. The Development Board option
+     * (Base branch per Repository) shows only when non-empty.
+     */
+    repositories?: readonly BoardSettingsRepository[];
 };
 
 export function BoardSwitcher({
     boardId,
     canManage,
-    defaultBaseBranch,
     destination = "board",
     projectId,
-    showGitBranchSettings = false,
+    repositories = [],
 }: BoardSwitcherProperties) {
+    const showGitBranchSettings = repositories.length > 0;
     const { t } = useTranslation("board");
     const navigate = useNavigate();
     const { data: boards = [], isLoading } = useProjectBoards(projectId);
@@ -57,7 +69,9 @@ export function BoardSwitcher({
     const [createOpen, setCreateOpen] = useState(false);
     const [name, setName] = useState("");
     const [isDevelopment, setIsDevelopment] = useState(showGitBranchSettings);
-    const [baseBranch, setBaseBranch] = useState(defaultBaseBranch);
+    const [baseBranches, setBaseBranches] = useState<BaseBranchDraft>(() =>
+        toBaseBranchDraft(repositories, [])
+    );
 
     const current = boards.find((board) => board.id === boardId);
     const currentName =
@@ -76,18 +90,14 @@ export function BoardSwitcher({
     };
 
     const handleCreate = async () => {
-        const asDevelopment = showGitBranchSettings && isDevelopment;
         const board = await createBoard(
             name.trim() || t("boards.defaultNewName"),
-            {
-                baseBranch: asDevelopment ? baseBranch.trim() : undefined,
-                isDevelopment: asDevelopment,
-            }
+            buildCreateBoardInput(repositories, isDevelopment, baseBranches)
         );
         setCreateOpen(false);
         setName("");
         setIsDevelopment(showGitBranchSettings);
-        setBaseBranch(defaultBaseBranch);
+        setBaseBranches(toBaseBranchDraft(repositories, []));
         goToBoard(board);
     };
 
@@ -144,7 +154,9 @@ export function BoardSwitcher({
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setIsDevelopment(showGitBranchSettings);
-                                        setBaseBranch(defaultBaseBranch);
+                                        setBaseBranches(
+                                            toBaseBranchDraft(repositories, [])
+                                        );
                                         setCreateOpen(true);
                                     }}
                                 >
@@ -203,25 +215,17 @@ export function BoardSwitcher({
                                     </div>
                                 </div>
                                 {isDevelopment ? (
-                                    <div className="flex flex-col gap-1.5">
-                                        <Label htmlFor="board-base">
-                                            {t("boards.baseBranch")}
-                                        </Label>
-                                        <Input
-                                            className="font-mono text-sm"
-                                            id="board-base"
-                                            onChange={(event) =>
-                                                setBaseBranch(
-                                                    event.target.value
-                                                )
-                                            }
-                                            placeholder="main"
-                                            value={baseBranch}
-                                        />
-                                        <p className="text-meta text-muted-foreground">
-                                            {t("boards.baseBranchHint")}
-                                        </p>
-                                    </div>
+                                    <RepositoryBaseBranchFields
+                                        idPrefix="board-base"
+                                        onChange={(repositoryId, value) =>
+                                            setBaseBranches((current) => ({
+                                                ...current,
+                                                [repositoryId]: value,
+                                            }))
+                                        }
+                                        repositories={repositories}
+                                        values={baseBranches}
+                                    />
                                 ) : undefined}
                             </>
                         ) : undefined}
@@ -238,7 +242,10 @@ export function BoardSwitcher({
                                 isCreating ||
                                 (showGitBranchSettings &&
                                     isDevelopment &&
-                                    !baseBranch.trim())
+                                    hasBlankBaseBranch(
+                                        repositories,
+                                        baseBranches
+                                    ))
                             }
                             onClick={() => void handleCreate()}
                         >
