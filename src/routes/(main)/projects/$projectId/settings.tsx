@@ -5,10 +5,10 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
-    type BoardSettingsRepository,
     countTeamPeople,
     isSoloTeam,
     ProjectBoardsSettings,
+    toBoardSettingsRepositories,
     useProjectBoards,
 } from "@/features/boards";
 import {
@@ -20,6 +20,7 @@ import { ProjectLabelsSettings, useProjectLabels } from "@/features/labels";
 import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
+import { ProjectNameSettings } from "@/features/projects/ui/project-name-settings";
 import { ProjectRepositoriesSettings } from "@/features/projects/ui/project-repositories-settings";
 import { TaskDrawer, useTasksUiStore } from "@/features/tasks";
 import {
@@ -94,13 +95,8 @@ function ProjectSettingsRoute() {
 
     // Development settings (Base branch per Repository) show only when the
     // Project has at least one Repository.
-    const boardRepositories = useMemo<BoardSettingsRepository[]>(
-        () =>
-            (project?.repositories ?? []).map((repository) => ({
-                defaultBranch: repository.github_default_branch,
-                fullName: repository.github_full_name,
-                id: repository.id,
-            })),
+    const boardRepositories = useMemo(
+        () => toBoardSettingsRepositories(project?.repositories ?? []),
         [project?.repositories]
     );
 
@@ -304,6 +300,11 @@ function ProjectSettingsRoute() {
                     ) : undefined}
 
                     <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-8 lg:mx-0 lg:max-w-none">
+                        <ProjectNameSettings
+                            canManage={isSettled && canManageSettings}
+                            project={project}
+                        />
+
                         <ProjectRepositoriesSettings
                             canManage={isSettled && canManageSettings}
                             isGuest={guest}

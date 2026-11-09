@@ -23,7 +23,7 @@ describe("ProjectBoardsSettings git-branch gate", () => {
             /showGitBranchSettings\s*=\s*repositories\.length\s*>\s*0/
         );
         expect(settingsUi).toMatch(
-            /showGitBranchSettings\s*\?\s*[\s\S]*boards\.baseBranch/
+            /showGitBranchSettings\s*\?\s*[\s\S]*<RepositoryBaseBranchFields/
         );
         expect(settingsUi).toMatch(
             /showGitBranchSettings\s*\?\s*[\s\S]*boards\.allowedPatterns/

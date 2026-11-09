@@ -8,13 +8,15 @@ import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
 function repo(
     id: number,
     name: string,
-    branch = "main"
+    branch = "main",
+    isPrivate = false
 ): ProjectRepositoryInput {
     return {
         github_default_branch: branch,
         github_full_name: `plotops-demo/${name}`,
         github_html_url: `https://github.com/plotops-demo/${name}`,
         github_repo_id: id,
+        is_private: isPrivate,
     };
 }
 
@@ -119,10 +121,10 @@ describe("guest Projects with several Repositories (ADR 0035)", () => {
         const { guestMode, provider } = await startGuest();
         const projectId = guestMode.GUEST_DEMO_PROJECT_ID;
 
-        const { data } = await provider.addProjectRepository(projectId, {
-            ...repo(999_000_003, "mobile", "trunk"),
-            is_private: false,
-        });
+        const { data } = await provider.addProjectRepository(
+            projectId,
+            repo(999_000_003, "mobile", "trunk")
+        );
 
         expect(data?.repositories).toHaveLength(3);
         const added = data!.repositories[2]!;
@@ -170,5 +172,65 @@ describe("guest Projects with several Repositories (ADR 0035)", () => {
                 (event) => event.metadata.reason === "repository_unlinked"
             )
         ).toHaveLength(apiLinks);
+    });
+
+    describe("Project visibility follows its Repositories (#360)", () => {
+        it("locks a public Project once a private Repository is linked", async () => {
+            const { guestMode, provider } = await startGuest();
+            const projectId = guestMode.GUEST_DEMO_PROJECT_ID;
+
+            const before = await provider.fetchProject(projectId);
+            expect(before.data?.is_private).toBe(false);
+
+            const { data } = await provider.addProjectRepository(
+                projectId,
+                repo(999_000_005, "infra", "main", true)
+            );
+
+            expect(data?.is_private).toBe(true);
+            expect(data?.repositories.at(-1)?.is_private).toBe(true);
+        });
+
+        it("unlocks the Project when its last private Repository is unlinked", async () => {
+            const { guestMode, provider } = await startGuest();
+            const projectId = guestMode.GUEST_DEMO_PROJECT_ID;
+            const first = await provider.addProjectRepository(
+                projectId,
+                repo(999_000_005, "infra", "main", true)
+            );
+            const second = await provider.addProjectRepository(
+                projectId,
+                repo(999_000_008, "secrets", "main", true)
+            );
+            const [infra, secrets] = second.data!.repositories.slice(-2);
+            expect(first.data?.is_private).toBe(true);
+
+            await provider.removeProjectRepository(infra!.id);
+            const stillPrivate = await provider.fetchProject(projectId);
+            expect(stillPrivate.data?.is_private).toBe(true);
+
+            await provider.removeProjectRepository(secrets!.id);
+            const unlocked = await provider.fetchProject(projectId);
+            expect(unlocked.data?.is_private).toBe(false);
+        });
+
+        it("creates a private Project when any of its Repositories is private", async () => {
+            const { provider, teamId } = await startGuest();
+
+            const { data } = await provider.createProject({
+                description: null,
+                is_private: true,
+                name: "Mixed",
+                repositories: [repo(11, "pub"), repo(12, "priv", "main", true)],
+                slug: "mixed",
+                team_id: teamId,
+            });
+
+            expect(data?.is_private).toBe(true);
+            expect(data?.repositories.map((r) => r.is_private)).toEqual([
+                false,
+                true,
+            ]);
+        });
     });
 });

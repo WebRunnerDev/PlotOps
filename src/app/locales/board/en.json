@@ -486,6 +486,15 @@
         "backToBoard": "Back to board",
         "membersMoved": "Members and invites are managed on the Team.",
         "openTeamSettings": "Open Team settings",
+        "project": {
+            "title": "Project",
+            "description": "The Project name is shown in the Projects list, the header, and Team Tasks. The URL does not change.",
+            "nameLabel": "Name",
+            "nameRequired": "Name cannot be empty.",
+            "nameSave": "Save",
+            "nameSaved": "Project name updated",
+            "nameSaveFailed": "Could not update Project name. Try again."
+        },
         "repository": {
             "title": "Repositories",
             "capCount": "{{count}} / {{cap}}",
@@ -519,7 +528,14 @@
             "loadingRepos": "Loading repositories from GitHub…",
             "reposError": "Failed to load repositories. Try signing out and back in with GitHub.",
             "reposScopeError": "GitHub access is missing the repo scope required for private repositories. Reconnect GitHub and approve access to your repositories.",
-            "noReposFound": "No repositories found"
+            "noReposFound": "No repositories found",
+            "namePromptTitle": "Connect {{repository}}",
+            "namePromptReason": "The Project will have several repositories. It is called “{{name}}” right now — the same as {{source}}, the repository it was created from. In a multi-repo Project no repository is primary, so give the Project a shared name, for example the product's.",
+            "namePromptLabel": "Project name",
+            "namePromptPlaceholder": "e.g. Widgets Platform",
+            "namePromptKeep": "Keep “{{name}}”",
+            "namePromptConfirm": "Connect and rename",
+            "renameFailed": "The repository is connected, but the Project could not be renamed. Try again."
         },
         "nav": {
             "projectSettings": "Project settings",
@@ -552,6 +568,7 @@
         "deleteBlocked": "Remove all projects from this Team before deleting it."
     },
     "boards": {
+        "baseBranches": "Board base branches",
         "label": "Board",
         "loading": "Board…",
         "unknown": "Unknown board",

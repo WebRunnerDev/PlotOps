@@ -114,7 +114,6 @@
         "zustand": "^5.0.14"
     },
     "devDependencies": {
-        "@b12k/gitleaks": "^8.30.1-v.28",
         "@eslint/js": "^9.39.2",
         "@playwright/test": "^1.62.1",
         "@tanstack/router-plugin": "^1.168.19",
@@ -139,6 +138,9 @@
         "typescript-eslint": "^8.50.0",
         "vite": "^8.1.1",
         "vitest": "^4.1.12"
+    },
+    "optionalDependencies": {
+        "@b12k/gitleaks": "^8.30.1-v.28"
     },
     "overrides": {
         "@hono/node-server": "^2.0.5",

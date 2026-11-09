@@ -69,6 +69,7 @@ describe("buildGitHubCreateProjectInput", () => {
                     github_full_name: "acme/widgets",
                     github_html_url: "https://github.com/acme/widgets",
                     github_repo_id: 42,
+                    is_private: true,
                 },
             ],
             slug: "acme-widgets",
@@ -76,8 +77,9 @@ describe("buildGitHubCreateProjectInput", () => {
         });
     });
 
-    it("links every selected Repository in order, each with its own default branch", () => {
+    it("links every selected Repository in order, each with its own default branch and visibility", () => {
         const input = buildGitHubCreateProjectInput({
+            name: "Widgets",
             repos: [apiRepo, repo],
             teamId: "team-1",
         });
@@ -88,25 +90,52 @@ describe("buildGitHubCreateProjectInput", () => {
                 github_full_name: "acme/widgets-api",
                 github_html_url: "https://github.com/acme/widgets-api",
                 github_repo_id: 43,
+                is_private: false,
             },
             {
                 github_default_branch: "main",
                 github_full_name: "acme/widgets",
                 github_html_url: "https://github.com/acme/widgets",
                 github_repo_id: 42,
+                is_private: true,
             },
         ]);
     });
 
-    it("defaults name, slug and description to the first selected repo", () => {
+    it("defaults name, slug and description to the repo when only one is selected", () => {
         const input = buildGitHubCreateProjectInput({
-            repos: [apiRepo, repo],
+            repos: [apiRepo],
             teamId: "team-1",
         });
 
         expect(input.name).toBe("widgets-api");
         expect(input.slug).toBe("acme-widgets-api");
         expect(input.description).toBe("Widgets API");
+    });
+
+    it("with several repos, requires a name and takes no repo as primary", () => {
+        expect(() =>
+            buildGitHubCreateProjectInput({
+                repos: [apiRepo, repo],
+                teamId: "team-1",
+            })
+        ).toThrow();
+        expect(() =>
+            buildGitHubCreateProjectInput({
+                name: "   ",
+                repos: [apiRepo, repo],
+                teamId: "team-1",
+            })
+        ).toThrow();
+
+        const input = buildGitHubCreateProjectInput({
+            name: "Widgets Platform",
+            repos: [apiRepo, repo],
+            teamId: "team-1",
+        });
+        expect(input.name).toBe("Widgets Platform");
+        expect(input.slug).toBe("widgets-platform");
+        expect(input.description).toBeNull();
     });
 
     it("uses a custom name when given, and falls back on blank", () => {
@@ -135,6 +164,7 @@ describe("buildGitHubCreateProjectInput", () => {
         ).toBe(false);
         expect(
             buildGitHubCreateProjectInput({
+                name: "Widgets",
                 repos: [apiRepo, repo],
                 teamId: "team-1",
             }).is_private
@@ -156,10 +186,15 @@ describe("buildGitHubCreateProjectInput", () => {
             })
         );
         expect(() =>
-            buildGitHubCreateProjectInput({ repos: tooMany, teamId: "team-1" })
+            buildGitHubCreateProjectInput({
+                name: "Many",
+                repos: tooMany,
+                teamId: "team-1",
+            })
         ).toThrow();
         expect(
             buildGitHubCreateProjectInput({
+                name: "Many",
                 repos: tooMany.slice(0, PROJECT_REPOSITORIES_CAP),
                 teamId: "team-1",
             }).repositories
@@ -168,10 +203,9 @@ describe("buildGitHubCreateProjectInput", () => {
 });
 
 describe("defaultProjectNameFromRepos", () => {
-    it("takes the first selected repo's name, empty when none", () => {
-        expect(defaultProjectNameFromRepos([apiRepo, repo])).toBe(
-            "widgets-api"
-        );
+    it("takes the repo's name when exactly one is selected, else empty", () => {
+        expect(defaultProjectNameFromRepos([apiRepo])).toBe("widgets-api");
+        expect(defaultProjectNameFromRepos([apiRepo, repo])).toBe("");
         expect(defaultProjectNameFromRepos([])).toBe("");
     });
 });

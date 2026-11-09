@@ -33,6 +33,7 @@ import type { BoardTaskFilters, EpicColor, Task } from "@/features/tasks";
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
     BoardSwitcher,
+    toBoardSettingsRepositories,
     useBoardColumns,
     useProjectBoards,
 } from "@/features/boards";
@@ -549,14 +550,16 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                     <BoardSwitcher
                         boardId={boardId}
                         canManage={canManage}
-                        defaultBaseBranch={
-                            project?.github_default_branch ?? "main"
-                        }
                         destination="backlog"
                         projectId={projectId}
-                        showGitBranchSettings={projectHasGithubRepo(
-                            project?.github_repo_id
-                        )}
+                        repositories={
+                            project &&
+                            projectHasGithubRepo(project.github_repo_id)
+                                ? toBoardSettingsRepositories(
+                                      project.repositories
+                                  )
+                                : []
+                        }
                     />
                 </div>
 

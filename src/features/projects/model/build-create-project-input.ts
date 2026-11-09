@@ -13,16 +13,14 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function buildConnectProjectGithubPatch(
     repo: GitHubRepo
 ): ConnectProjectGithubPatch {
-    return {
-        ...buildProjectRepositoryInput(repo),
-        is_private: repo.private,
-    };
+    return buildProjectRepositoryInput(repo);
 }
 
 /**
- * Create Project from one or more GitHub repos (ADR 0035). The first selected
- * repo supplies the default name, slug and description; the Project is
- * private when any selected repo is. The RPC links every Repository in one
+ * Create Project from one or more GitHub repos (ADR 0035). With one repo, that
+ * repo supplies the default name, slug and description. With several, no repo
+ * is primary, so the name is required and the slug comes from it. The Project
+ * is private when any selected repo is. The RPC links every Repository in one
  * transaction — all of them or no Project at all.
  */
 export function buildGitHubCreateProjectInput(input: {
@@ -42,16 +40,22 @@ export function buildGitHubCreateProjectInput(input: {
         );
     }
 
-    const name = input.name?.trim() || first.name;
+    const isSingle = input.repos.length === 1;
+    const name = input.name?.trim() || (isSingle ? first.name : "");
+    if (!name) {
+        throw new Error(
+            "A name is required for a Project with several repositories"
+        );
+    }
 
     return {
-        description: first.description,
+        description: isSingle ? first.description : null,
         is_private: input.repos.some((repo) => repo.private),
         name,
         repositories: input.repos.map((repo) =>
             buildProjectRepositoryInput(repo)
         ),
-        slug: slugifyRepoName(first.full_name),
+        slug: slugifyRepoName(isSingle ? first.full_name : name),
         team_id: input.teamId,
     };
 }
@@ -79,14 +83,18 @@ export function buildProjectRepositoryInput(
         github_full_name: repo.full_name,
         github_html_url: repo.html_url,
         github_repo_id: repo.id,
+        is_private: repo.private,
     };
 }
 
-/** Default Project name for a GitHub create: the first selected repo's name. */
+/**
+ * Default Project name for a GitHub create: the repo's name when exactly one
+ * is selected. With several there is no primary repo, so the person names it.
+ */
 export function defaultProjectNameFromRepos(
     repos: readonly GitHubRepo[]
 ): string {
-    return repos[0]?.name ?? "";
+    return repos.length === 1 ? (repos[0]?.name ?? "") : "";
 }
 
 export function isValidProjectName(name: string): boolean {

@@ -41,7 +41,7 @@ A unit of work inside exactly one Team: Boards, Tasks, Labels, Custom fields, an
 _Avoid_: Team, Workspace, repository (a Repository is linked to the Project, not the same concept)
 
 **Repository**:
-A GitHub repository linked to one Project (`project_repositories`, ADR 0035). A Project holds at most 5 (Repository cap); a GitHub repository belongs to at most one Project per Team, so a webhook delivery resolves to exactly one Project. All Repositories in a Project are equal — there is no primary one. Linking and unlinking are Admin+; unlinking deletes that Repository's Git links on every Task (recorded in Task activity) and touches nothing on GitHub. Project Settings shows per Repository whether the GitHub App is installed.
+A GitHub repository linked to one Project (`project_repositories`, ADR 0035). A Project holds at most 5 (Repository cap); a GitHub repository belongs to at most one Project per Team, so a webhook delivery resolves to exactly one Project. All Repositories in a Project are equal — there is no primary one. Linking and unlinking are Admin+; unlinking deletes that Repository's Git links on every Task (recorded in Task activity) and touches nothing on GitHub. Project Settings shows per Repository whether the GitHub App is installed. Each Repository stores its GitHub visibility; the Project is private while at least one linked Repository is, so linking a private one locks the Project and unlinking the last private one unlocks it (#360). A trigger keeps `projects.is_private` in step; Guest Mode does the same.
 _Avoid_: repo (UI only), primary repo, main repo (no such concept)
 
 **Repository cap**:

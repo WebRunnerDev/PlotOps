@@ -151,8 +151,7 @@ export function ProjectRepositoriesSettings({
                 <div className="mt-4">
                     <ConnectProjectRepository
                         onAdded={() => setPickerOpen(false)}
-                        projectId={project.id}
-                        teamId={project.team_id}
+                        project={project}
                     />
                 </div>
             ) : undefined}

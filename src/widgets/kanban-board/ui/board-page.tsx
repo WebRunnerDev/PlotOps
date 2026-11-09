@@ -3,8 +3,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
-import { BoardSwitcher, useProjectBoards } from "@/features/boards";
-import { buildGithubTreeUrl } from "@/features/projects/model/github-project-links";
+import {
+    BoardSwitcher,
+    toBoardSettingsRepositories,
+    useProjectBoards,
+} from "@/features/boards";
 import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
@@ -12,6 +15,7 @@ import { BoardSprintControls } from "@/features/sprints";
 import { BoardArchiveDialog } from "@/features/tasks";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import { resolveBoardBaseBranchChips } from "@/widgets/kanban-board/model/resolve-board-base-branch-chips";
 import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
 import { resolveBoardPagePresence } from "@/widgets/kanban-board/model/resolve-board-page-presence";
 
@@ -110,19 +114,15 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
     }
 
     const { currentBoard } = presence;
-    const baseBranch = currentBoard.isDevelopment
-        ? currentBoard.baseBranch
-        : null;
-    const branchUrl = baseBranch
-        ? buildGithubTreeUrl(project.github_html_url, baseBranch)
-        : null;
-
-    const branchLabel = baseBranch ? (
-        <>
-            <GitBranch aria-hidden className="size-3.5" />
-            {baseBranch}
-        </>
-    ) : undefined;
+    const currentBoardRecord = boards.find(
+        (board) => board.id === currentBoard.id
+    );
+    const baseBranchChips = resolveBoardBaseBranchChips({
+        isDevelopment: currentBoard.isDevelopment,
+        repositories: project.repositories,
+        repositoryBaseBranches:
+            currentBoardRecord?.repositoryBaseBranches ?? [],
+    });
 
     return (
         <div className="@container/board scrollbar-board h-full overflow-x-auto overflow-y-hidden">
@@ -132,29 +132,60 @@ export function BoardPage({ boardId, projectId }: BoardPageProperties) {
                         <BoardSwitcher
                             boardId={boardId}
                             canManage={isSettled && canManageBoard}
-                            defaultBaseBranch={
-                                project.github_default_branch ?? "main"
-                            }
                             projectId={projectId}
-                            showGitBranchSettings={projectHasGithubRepo(
-                                project.github_repo_id
-                            )}
+                            repositories={
+                                projectHasGithubRepo(project.github_repo_id)
+                                    ? toBoardSettingsRepositories(
+                                          project.repositories
+                                      )
+                                    : []
+                            }
                         />
-                        {baseBranch ? (
-                            branchUrl ? (
-                                <a
-                                    className="inline-flex h-8 min-w-0 items-center gap-1.5 border border-transparent px-1.5 text-code text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:border-border hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                                    href={branchUrl}
-                                    rel="noreferrer noopener"
-                                    target="_blank"
-                                >
-                                    {branchLabel}
-                                </a>
-                            ) : (
-                                <span className="inline-flex h-8 min-w-0 items-center gap-1.5 px-1.5 text-code text-muted-foreground">
-                                    {branchLabel}
-                                </span>
-                            )
+                        {baseBranchChips.length > 0 ? (
+                            <ul
+                                aria-label={t("boards.baseBranches")}
+                                className="flex min-w-0 flex-wrap items-center gap-1"
+                            >
+                                {baseBranchChips.map((chip) => {
+                                    const label = (
+                                        <>
+                                            <GitBranch
+                                                aria-hidden
+                                                className="size-3.5 shrink-0"
+                                            />
+                                            {chip.repoLabel ? (
+                                                <span className="text-muted-foreground/70">
+                                                    {chip.repoLabel}:
+                                                </span>
+                                            ) : undefined}
+                                            <span className="truncate">
+                                                {chip.branch}
+                                            </span>
+                                        </>
+                                    );
+                                    return (
+                                        <li
+                                            className="min-w-0"
+                                            key={chip.repositoryId}
+                                        >
+                                            {chip.url ? (
+                                                <a
+                                                    className="inline-flex h-8 min-w-0 items-center gap-1.5 border border-transparent px-1.5 text-code text-muted-foreground transition-colors duration-150 ease-[var(--ease-out-quart)] hover:border-border hover:bg-primary/5 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                                                    href={chip.url}
+                                                    rel="noreferrer noopener"
+                                                    target="_blank"
+                                                >
+                                                    {label}
+                                                </a>
+                                            ) : (
+                                                <span className="inline-flex h-8 min-w-0 items-center gap-1.5 px-1.5 text-code text-muted-foreground">
+                                                    {label}
+                                                </span>
+                                            )}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         ) : undefined}
                         <div className="flex min-w-0 flex-wrap items-stretch gap-2">
                             <BoardSprintControls

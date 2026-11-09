@@ -9,6 +9,7 @@ import {
     fetchProjects,
     fetchProjectsByTeam,
     removeProjectRepository,
+    renameProject,
 } from "@/features/projects/api/projects-api";
 
 /**
@@ -90,6 +91,14 @@ export const supabaseProjectsProvider: ProjectsProvider = {
 
     async removeProjectRepository(repositoryId) {
         const result = await removeProjectRepository(repositoryId);
+        return {
+            data: result.data,
+            error: toProviderError(result.error),
+        };
+    },
+
+    async renameProject(projectId, name) {
+        const result = await renameProject(projectId, name);
         return {
             data: result.data,
             error: toProviderError(result.error),

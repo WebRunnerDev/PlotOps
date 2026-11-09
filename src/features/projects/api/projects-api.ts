@@ -15,6 +15,7 @@ type ProjectRepositoryRow = {
     github_html_url: string;
     github_repo_id: number;
     id: string;
+    is_private: boolean;
 };
 
 type ProjectRow = {
@@ -41,21 +42,20 @@ const PROJECT_SELECT = `
     github_full_name,
     github_html_url,
     github_default_branch,
+    is_private,
     created_at
   )
 `;
 
 /**
  * Link a GitHub repository to a Project (Admin+, ADR 0035). The cap and the
- * Team-wide uniqueness are enforced in Postgres; the first Repository also
- * sets the Project's visibility, as creating a Project from a repo does.
+ * Team-wide uniqueness are enforced in Postgres, and a trigger recomputes the
+ * Project's visibility from its Repositories (#360).
  */
 export async function addProjectRepository(
     projectId: string,
     patch: ConnectProjectGithubPatch
 ) {
-    const { is_private: isPrivate, ...repository } = patch;
-
     const existing = await fetchProject(projectId);
     if (existing.error) return { data: null, error: existing.error };
     if (!existing.data) {
@@ -68,20 +68,12 @@ export async function addProjectRepository(
     const { error: insertError } = await supabase
         .from("project_repositories")
         .insert({
-            ...repository,
+            ...patch,
             project_id: projectId,
             // Overwritten from the Project by a trigger; required by the type.
             team_id: existing.data.team_id,
         });
     if (insertError) return { data: null, error: insertError };
-
-    if (existing.data.repositories.length === 0) {
-        const { error: updateError } = await supabase
-            .from("projects")
-            .update({ is_private: isPrivate })
-            .eq("id", projectId);
-        if (updateError) return { data: null, error: updateError };
-    }
 
     const result = await fetchProject(projectId);
     if (result.error) return { data: null, error: result.error };
@@ -229,6 +221,32 @@ export async function removeProjectRepository(repositoryId: string) {
     return { data, error: null };
 }
 
+/**
+ * Rename a Project (Manager+ via `projects_update_managers`). The slug is left
+ * alone: it is a stable handle, and renaming must not move anything.
+ */
+export async function renameProject(projectId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) {
+        return { data: null, error: new Error("Project name is required") };
+    }
+    const { error } = await supabase
+        .from("projects")
+        .update({ name: trimmed })
+        .eq("id", projectId);
+    if (error) return { data: null, error };
+
+    const result = await fetchProject(projectId);
+    if (result.error) return { data: null, error: result.error };
+    if (!result.data) {
+        return {
+            data: null,
+            error: new Error("Project not found or update not permitted"),
+        };
+    }
+    return { data: result.data, error: null };
+}
+
 export function slugifyRepoName(name: string): string {
     const slug = name
         .toLowerCase()
@@ -251,6 +269,7 @@ function mapProject(row: ProjectRow): Project {
             github_html_url: repo.github_html_url,
             github_repo_id: repo.github_repo_id,
             id: repo.id,
+            is_private: repo.is_private,
         }));
     const first = repositories[0];
     return {
