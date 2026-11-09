@@ -1,8 +1,12 @@
 /** SessionStorage key for an in-flight OAuth consent return URL. */
 export const PENDING_OAUTH_CONSENT_KEY = "plotops_pending_oauth_consent";
 
-const AUTHORIZATION_ID_PATTERN =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * Supabase Auth's `authorization_id` is opaque — hosted Auth issues a
+ * 32-char base32 token (`ipa2gil4a54huhojalqa7325r7mp4ilf`), not a UUID.
+ * Only guard the charset and length; Auth validates the id itself.
+ */
+const AUTHORIZATION_ID_PATTERN = /^[\w-]{16,128}$/;
 
 export function isOAuthConsentRedirect(path: null | string): boolean {
     if (!path) return false;
