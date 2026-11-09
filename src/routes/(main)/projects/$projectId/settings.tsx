@@ -5,10 +5,10 @@ import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
-    type BoardSettingsRepository,
     countTeamPeople,
     isSoloTeam,
     ProjectBoardsSettings,
+    toBoardSettingsRepositories,
     useProjectBoards,
 } from "@/features/boards";
 import {
@@ -95,13 +95,8 @@ function ProjectSettingsRoute() {
 
     // Development settings (Base branch per Repository) show only when the
     // Project has at least one Repository.
-    const boardRepositories = useMemo<BoardSettingsRepository[]>(
-        () =>
-            (project?.repositories ?? []).map((repository) => ({
-                defaultBranch: repository.github_default_branch,
-                fullName: repository.github_full_name,
-                id: repository.id,
-            })),
+    const boardRepositories = useMemo(
+        () => toBoardSettingsRepositories(project?.repositories ?? []),
         [project?.repositories]
     );
 

@@ -167,6 +167,40 @@ describe("guest boards provider happy path", () => {
         ]);
     });
 
+    it("create-dialog defaults give each Repository its own default branch (main + develop)", async () => {
+        const { getGuestSandbox, startGuestSession } =
+            await import("@/features/guest-mode");
+        const { buildCreateBoardInput, toBaseBranchDraft } =
+            await import("@/features/boards/lib/base-branch-draft");
+
+        startGuestSession();
+        const project = getGuestSandbox()!.projects[0]!;
+        const repositories = project.repositories.map((repository) => ({
+            defaultBranch: repository.defaultBranch,
+            fullName: repository.fullName,
+            id: repository.id,
+        }));
+        expect(repositories.map((r) => r.defaultBranch)).toEqual([
+            "main",
+            "develop",
+        ]);
+
+        const board = await resolveBoardsProvider(true).createBoard(
+            project.id,
+            "Dev",
+            buildCreateBoardInput(
+                repositories,
+                true,
+                toBaseBranchDraft(repositories, [])
+            )
+        );
+
+        expect(board.repositoryBaseBranches).toEqual([
+            { baseBranch: "main", repositoryId: repositories[0]!.id },
+            { baseBranch: "develop", repositoryId: repositories[1]!.id },
+        ]);
+    });
+
     it("merge target defaults to last column and falls back to none when its column is deleted", async () => {
         const { getGuestSandbox, startGuestSession } =
             await import("@/features/guest-mode");

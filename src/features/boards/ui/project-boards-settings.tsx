@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+import type { BaseBranchDraft } from "@/features/boards/lib/base-branch-draft";
 import type {
     BoardDefaultTaskType,
     BoardMergeTargetMode,
@@ -15,12 +16,21 @@ import type {
 
 import { resolveBoardsProvider } from "@/features/boards/api/resolve-boards-provider";
 import { parseAllowedHeadPatterns } from "@/features/boards/lib/allowed-head-patterns";
+import {
+    buildCreateBoardInput,
+    fillBlankBaseBranches,
+    fromBaseBranchDraft,
+    hasBlankBaseBranch,
+    summarizeBaseBranches,
+    toBaseBranchDraft,
+} from "@/features/boards/lib/base-branch-draft";
 import { BOARD_DEFAULT_TASK_TYPES } from "@/features/boards/model/constants";
 import { boardKeys } from "@/features/boards/model/query-keys";
 import {
     useBoardMutations,
     useProjectBoards,
 } from "@/features/boards/model/use-project-boards";
+import { RepositoryBaseBranchFields } from "@/features/boards/ui/repository-base-branch-fields";
 import { isGuest } from "@/features/guest-mode";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
@@ -60,8 +70,6 @@ import {
 } from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 import { Textarea } from "@/shared/shadcn/ui/textarea";
-
-type BaseBranchDraft = Record<string, string>;
 
 type ProjectBoardsSettingsProperties = {
     projectId: string;
@@ -129,13 +137,14 @@ export function ProjectBoardsSettings({
     };
 
     const handleCreate = async () => {
-        const isDevelopment = showGitBranchSettings && newIsDevelopment;
-        await createBoard(newName.trim() || t("boards.defaultNewName"), {
-            isDevelopment,
-            repositoryBaseBranches: isDevelopment
-                ? fromBaseBranchDraft(repositories, newBaseBranches)
-                : undefined,
-        });
+        await createBoard(
+            newName.trim() || t("boards.defaultNewName"),
+            buildCreateBoardInput(
+                repositories,
+                newIsDevelopment,
+                newBaseBranches
+            )
+        );
         setCreateOpen(false);
         setNewName("");
         setNewIsDevelopment(showGitBranchSettings);
@@ -825,135 +834,6 @@ function BoardSettingsCard({
                 </div>
             </Collapsible>
         </li>
-    );
-}
-
-function fillBlankBaseBranches(
-    repositories: readonly BoardSettingsRepository[],
-    draft: BaseBranchDraft
-): BaseBranchDraft {
-    return Object.fromEntries(
-        repositories.map((repository) => [
-            repository.id,
-            draft[repository.id]?.trim() || repository.defaultBranch,
-        ])
-    );
-}
-
-function fromBaseBranchDraft(
-    repositories: readonly BoardSettingsRepository[],
-    draft: BaseBranchDraft
-): BoardRepositoryBaseBranch[] {
-    return repositories.map((repository) => ({
-        baseBranch: (draft[repository.id] ?? "").trim(),
-        repositoryId: repository.id,
-    }));
-}
-
-function hasBlankBaseBranch(
-    repositories: readonly BoardSettingsRepository[],
-    draft: BaseBranchDraft
-): boolean {
-    return repositories.some(
-        (repository) => !(draft[repository.id] ?? "").trim()
-    );
-}
-
-/**
- * Base branch inputs, one per Repository. A single Repository keeps the
- * one-field look; several get the Repository name as each field's label.
- */
-function RepositoryBaseBranchFields({
-    idPrefix,
-    onChange,
-    repositories,
-    values,
-}: {
-    idPrefix: string;
-    onChange: (repositoryId: string, value: string) => void;
-    repositories: readonly BoardSettingsRepository[];
-    values: BaseBranchDraft;
-}) {
-    const { t } = useTranslation("board");
-    const single = repositories.length === 1;
-
-    return (
-        <fieldset className="flex min-w-0 flex-col gap-1.5">
-            <legend className="mb-1.5 text-sm leading-none font-medium">
-                {t("boards.baseBranch")}
-            </legend>
-            <div className={cn("grid gap-2", !single && "sm:grid-cols-2")}>
-                {repositories.map((repository) => {
-                    const id = `${idPrefix}-${repository.id}`;
-                    return (
-                        <div
-                            className="flex min-w-0 flex-col gap-1"
-                            key={repository.id}
-                        >
-                            {single ? undefined : (
-                                <Label
-                                    className="min-w-0 truncate font-mono text-meta font-normal normal-case text-muted-foreground"
-                                    htmlFor={id}
-                                >
-                                    {repository.fullName}
-                                </Label>
-                            )}
-                            <Input
-                                aria-label={
-                                    single
-                                        ? t("boards.baseBranch")
-                                        : t("boards.baseBranchFor", {
-                                              repository: repository.fullName,
-                                          })
-                                }
-                                className="font-mono text-sm"
-                                id={id}
-                                onChange={(event) =>
-                                    onChange(repository.id, event.target.value)
-                                }
-                                placeholder={repository.defaultBranch}
-                                value={values[repository.id] ?? ""}
-                            />
-                        </div>
-                    );
-                })}
-            </div>
-            <p className="text-meta text-muted-foreground">
-                {single
-                    ? t("boards.baseBranchHint")
-                    : t("boards.baseBranchPerRepositoryHint")}
-            </p>
-        </fieldset>
-    );
-}
-
-/** Distinct Base branches in Repository order, e.g. `main · develop`. */
-function summarizeBaseBranches(
-    repositories: readonly BoardSettingsRepository[],
-    draft: BaseBranchDraft
-): string {
-    const branches = repositories
-        .map((repository) => (draft[repository.id] ?? "").trim())
-        .filter(Boolean);
-    return [...new Set(branches)].join(" · ");
-}
-
-/**
- * Draft per Repository: the stored Base branch, else the Repository's default
- * branch (what the trigger seeds when the Board becomes a Development Board).
- */
-function toBaseBranchDraft(
-    repositories: readonly BoardSettingsRepository[],
-    stored: readonly BoardRepositoryBaseBranch[]
-): BaseBranchDraft {
-    const byRepository = new Map(
-        stored.map((entry) => [entry.repositoryId, entry.baseBranch])
-    );
-    return Object.fromEntries(
-        repositories.map((repository) => [
-            repository.id,
-            byRepository.get(repository.id) ?? repository.defaultBranch,
-        ])
     );
 }
 

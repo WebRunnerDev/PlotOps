@@ -28,6 +28,7 @@ export {
     matchesAllowedHeadPatterns,
     parseAllowedHeadPatterns,
 } from "./lib/allowed-head-patterns";
+export { toBoardSettingsRepositories } from "./lib/base-branch-draft";
 export { readLastBoardId, writeLastBoardId } from "./lib/last-board-storage";
 export {
     countTeamPeople,
