@@ -3,46 +3,63 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import type { GitHubRepo } from "@/features/projects/model/types";
+import type { GitHubRepo, Project } from "@/features/projects/model/types";
 
 import { signInWithGitHub, useAuth } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
+import { resolveRepoAddNamePrompt } from "@/features/projects/model/resolve-repo-add-name-prompt";
 import { useGitHubRepos } from "@/features/projects/model/use-github-repos";
 import {
     useAddProjectRepository,
     useProjectsByTeam,
+    useRenameProject,
 } from "@/features/projects/model/use-projects";
 import { isCapExceeded } from "@/shared/lib/is-cap-exceeded";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/shared/shadcn/ui/dialog";
 import { Input } from "@/shared/shadcn/ui/input";
+import { Label } from "@/shared/shadcn/ui/label";
 import { ScrollArea } from "@/shared/shadcn/ui/scroll-area";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
 
 type ConnectProjectRepositoryProperties = {
     /** Called after a Repository is linked (e.g. to close the picker). */
     onAdded?: () => void;
-    projectId: string;
-    teamId: string;
+    project: Pick<Project, "id" | "name" | "repositories" | "team_id">;
 };
 
 /**
  * Picker of the viewer's GitHub repositories, minus those already linked to
  * any Project in the Team (a repository belongs to one Project per Team).
+ * When the pick makes a Project multi-repo while it still carries its first
+ * repo's name, it asks for a Project name first and says why.
  */
 export function ConnectProjectRepository({
     onAdded,
-    projectId,
-    teamId,
+    project,
 }: ConnectProjectRepositoryProperties) {
+    const projectId = project.id;
+    const teamId = project.team_id;
     const { t } = useTranslation("board");
     const { githubAccessToken, user } = useAuth();
     const guest = useIsGuest();
     const [search, setSearch] = useState("");
     const connect = useAddProjectRepository(projectId);
+    const rename = useRenameProject(projectId);
+    const nameSource = resolveRepoAddNamePrompt(project);
+    const [pendingRepo, setPendingRepo] = useState<GitHubRepo | null>(null);
+    const [newName, setNewName] = useState("");
     const { data: teamProjects = [] } = useProjectsByTeam(teamId);
     const {
         data: repos = [],
@@ -74,14 +91,31 @@ export function ConnectProjectRepository({
             });
     }, [connectedRepoIds, repos, search]);
 
-    const handleConnect = async (repo: GitHubRepo) => {
+    const handlePick = (repo: GitHubRepo) => {
+        if (nameSource) {
+            setNewName("");
+            setPendingRepo(repo);
+            return;
+        }
+        void handleConnect(repo);
+    };
+
+    const handleConnect = async (repo: GitHubRepo, name?: string) => {
         try {
             await connect.mutateAsync(repo);
+            setPendingRepo(null);
             toast.success(
                 t("settings.repository.connectSuccess", {
                     repository: repo.full_name,
                 })
             );
+            if (name) {
+                try {
+                    await rename.mutateAsync(name);
+                } catch {
+                    toast.error(t("settings.repository.renameFailed"));
+                }
+            }
             onAdded?.();
         } catch (connectError) {
             toast.error(
@@ -180,10 +214,10 @@ export function ConnectProjectRepository({
                             <li key={repo.id}>
                                 <Button
                                     className="h-auto w-full justify-between rounded-none px-3 py-2.5 text-left transition-[background-color,transform] duration-300 ease-(--ease-out-expo) hover:translate-x-0.5"
-                                    disabled={connect.isPending}
-                                    onClick={() => {
-                                        void handleConnect(repo);
-                                    }}
+                                    disabled={
+                                        connect.isPending || rename.isPending
+                                    }
+                                    onClick={() => handlePick(repo)}
                                     type="button"
                                     variant="ghost"
                                 >
@@ -219,6 +253,79 @@ export function ConnectProjectRepository({
                     </ul>
                 </div>
             </ScrollArea>
+
+            <Dialog
+                onOpenChange={(open) => {
+                    if (!open && !(connect.isPending || rename.isPending))
+                        setPendingRepo(null);
+                }}
+                open={pendingRepo !== null}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {t("settings.repository.namePromptTitle", {
+                                repository: pendingRepo?.full_name ?? "",
+                            })}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {t("settings.repository.namePromptReason", {
+                                name: project.name,
+                                source: nameSource ?? "",
+                            })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        className="flex flex-col gap-1.5"
+                        id="repo-add-project-name"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            if (!pendingRepo || !newName.trim()) return;
+                            void handleConnect(pendingRepo, newName.trim());
+                        }}
+                    >
+                        <Label htmlFor="repo-add-project-name-input">
+                            {t("settings.repository.namePromptLabel")}
+                        </Label>
+                        <Input
+                            autoFocus
+                            disabled={connect.isPending || rename.isPending}
+                            id="repo-add-project-name-input"
+                            onChange={(event) => setNewName(event.target.value)}
+                            placeholder={t(
+                                "settings.repository.namePromptPlaceholder"
+                            )}
+                            value={newName}
+                        />
+                    </form>
+                    <DialogFooter>
+                        <Button
+                            disabled={connect.isPending || rename.isPending}
+                            onClick={() => {
+                                if (pendingRepo)
+                                    void handleConnect(pendingRepo);
+                            }}
+                            type="button"
+                            variant="ghost"
+                        >
+                            {t("settings.repository.namePromptKeep", {
+                                name: project.name,
+                            })}
+                        </Button>
+                        <Button
+                            disabled={
+                                connect.isPending ||
+                                rename.isPending ||
+                                !newName.trim()
+                            }
+                            form="repo-add-project-name"
+                            type="submit"
+                        >
+                            {t("settings.repository.namePromptConfirm")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

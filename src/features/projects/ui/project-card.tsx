@@ -36,6 +36,7 @@ export function ProjectCard({
     const { canDeleteProject, isSettled } = useProjectAccess(project.id);
     const canDelete = Boolean(onRemove) && isSettled && canDeleteProject;
     const defaultBranch = project.github_default_branch ?? "main";
+    const isMultiRepo = project.repositories.length > 1;
 
     const openProject = () => {
         void navigate({
@@ -87,10 +88,20 @@ export function ProjectCard({
                                 {teamName}
                             </p>
                         ) : undefined}
-                        {project.github_full_name ? (
-                            <p className="min-w-0 truncate text-code text-muted-foreground">
-                                {project.github_full_name}
-                            </p>
+                        {project.repositories.length > 0 ? (
+                            <ul
+                                aria-label={t("projectRepositories")}
+                                className="flex min-w-0 flex-col gap-0.5"
+                            >
+                                {project.repositories.map((repository) => (
+                                    <li
+                                        className="min-w-0 truncate text-code text-muted-foreground"
+                                        key={repository.id}
+                                    >
+                                        {repository.github_full_name}
+                                    </li>
+                                ))}
+                            </ul>
                         ) : undefined}
                     </div>
 
@@ -125,9 +136,21 @@ export function ProjectCard({
                 ) : undefined}
 
                 <div className="flex min-w-0 items-center justify-between gap-3 border-t border-border/60 pt-3">
-                    {project.github_repo_id == undefined ? (
+                    {project.repositories.length === 0 ? (
                         <span className="text-meta text-muted-foreground">
                             {t("projectNoGitHub")}
+                        </span>
+                    ) : isMultiRepo ? (
+                        <span className="inline-flex min-w-0 items-center gap-1.5 text-meta text-muted-foreground">
+                            <GitBranch
+                                aria-hidden
+                                className="size-3.5 shrink-0 text-primary/70 transition-colors duration-300 ease-(--ease-out-expo) group-hover:text-primary"
+                            />
+                            <span className="truncate">
+                                {t("projectRepoCount", {
+                                    count: project.repositories.length,
+                                })}
+                            </span>
                         </span>
                     ) : (
                         <span className="inline-flex min-w-0 items-center gap-1.5 text-code text-muted-foreground">
@@ -139,7 +162,7 @@ export function ProjectCard({
                         </span>
                     )}
 
-                    {project.github_html_url ? (
+                    {project.github_html_url && !isMultiRepo ? (
                         <Button
                             className="shrink-0"
                             nativeButton={false}

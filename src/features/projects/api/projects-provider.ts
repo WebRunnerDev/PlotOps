@@ -46,4 +46,11 @@ export type ProjectsProvider = {
         data: null | { id: string };
         error: Error | null;
     }>;
+    renameProject(
+        projectId: string,
+        name: string
+    ): Promise<{
+        data: null | Project;
+        error: Error | null;
+    }>;
 };

@@ -177,6 +177,26 @@ export function useRemoveProjectRepository(projectId: string) {
     });
 }
 
+/** Rename a Project (Manager+). The slug does not change. */
+export function useRenameProject(projectId: string) {
+    const queryClient = useQueryClient();
+    const provider = resolveProjectsProvider(isGuest());
+
+    return useMutation({
+        mutationFn: async (name: string) => {
+            const { data, error } = await provider.renameProject(
+                projectId,
+                name
+            );
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: projectKeys.all });
+        },
+    });
+}
+
 /** Tasks holding a Git link to the Repository; idle while `repositoryId` is null. */
 export function useRepositoryGitLinkCount(repositoryId: null | string) {
     const provider = resolveProjectsProvider(isGuest());

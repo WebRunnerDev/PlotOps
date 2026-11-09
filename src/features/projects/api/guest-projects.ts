@@ -368,4 +368,25 @@ export const guestProjectsProvider: ProjectsProvider = {
             return { id: repositoryId };
         });
     },
+
+    async renameProject(projectId, name) {
+        return toResult(() => {
+            const trimmed = name.trim();
+            if (!trimmed) throw new Error("Project name is required");
+            let mapped: null | Project = null;
+            updateGuestSandbox((sandbox) => {
+                const project = sandbox.projects.find(
+                    (item) => item.id === projectId
+                );
+                if (!project) throw new Error("Project not found");
+                project.name = trimmed;
+                project.updatedAt = new Date().toISOString();
+                mapped = mapProject(
+                    project,
+                    resolveOwnerId(sandbox, project.teamId)
+                );
+            });
+            return mapped as null | Project;
+        });
+    },
 };
