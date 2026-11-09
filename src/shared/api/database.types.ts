@@ -994,6 +994,7 @@ export type Database = {
           github_html_url: string
           github_repo_id: number
           id?: string
+          is_private?: boolean
           project_id: string
           team_id: string
         }
@@ -1020,6 +1021,7 @@ export type Database = {
           github_html_url: string
           github_repo_id: number
           id: string
+          is_private: boolean
           project_id: string
           team_id: string
         }
@@ -1030,6 +1032,7 @@ export type Database = {
           github_html_url?: string
           github_repo_id?: number
           id?: string
+          is_private?: boolean
           project_id?: string
           team_id?: string
         }

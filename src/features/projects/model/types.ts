@@ -1,6 +1,5 @@
-export type ConnectProjectGithubPatch = ProjectRepositoryInput & {
-    is_private: boolean;
-};
+/** Linking one more Repository; its `is_private` feeds the Project's (#360). */
+export type ConnectProjectGithubPatch = ProjectRepositoryInput;
 
 export type CreateProjectInput = {
     description: null | string;
@@ -38,6 +37,7 @@ export type Project = {
     github_html_url: null | string;
     github_repo_id: null | number;
     id: string;
+    /** True while at least one linked Repository is private (#360). */
     is_private: boolean;
     name: string;
     /** Team Owner id (joined from teams.owner_id; not a projects column). */
@@ -59,6 +59,8 @@ export type ProjectRepositoryInput = {
     github_full_name: string;
     github_html_url: string;
     github_repo_id: number;
+    /** The GitHub repo's visibility; the Project is private if any is (#360). */
+    is_private: boolean;
 };
 
 /** Collaborator from `GET /repos/{owner}/{repo}/collaborators` (+ optional public email). */

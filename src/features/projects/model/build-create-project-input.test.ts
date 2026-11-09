@@ -69,6 +69,7 @@ describe("buildGitHubCreateProjectInput", () => {
                     github_full_name: "acme/widgets",
                     github_html_url: "https://github.com/acme/widgets",
                     github_repo_id: 42,
+                    is_private: true,
                 },
             ],
             slug: "acme-widgets",
@@ -76,7 +77,7 @@ describe("buildGitHubCreateProjectInput", () => {
         });
     });
 
-    it("links every selected Repository in order, each with its own default branch", () => {
+    it("links every selected Repository in order, each with its own default branch and visibility", () => {
         const input = buildGitHubCreateProjectInput({
             name: "Widgets",
             repos: [apiRepo, repo],
@@ -89,12 +90,14 @@ describe("buildGitHubCreateProjectInput", () => {
                 github_full_name: "acme/widgets-api",
                 github_html_url: "https://github.com/acme/widgets-api",
                 github_repo_id: 43,
+                is_private: false,
             },
             {
                 github_default_branch: "main",
                 github_full_name: "acme/widgets",
                 github_html_url: "https://github.com/acme/widgets",
                 github_repo_id: 42,
+                is_private: true,
             },
         ]);
     });
