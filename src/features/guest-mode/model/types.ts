@@ -164,6 +164,8 @@ export type GuestRepository = {
     githubRepoId: number;
     htmlUrl: string;
     id: string;
+    /** Absent in sandboxes stored before #360 — read as public. */
+    isPrivate?: boolean;
 };
 
 /** Full product seed clone held for the life of a Guest Session. */

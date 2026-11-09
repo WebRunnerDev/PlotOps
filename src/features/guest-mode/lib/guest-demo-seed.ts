@@ -33,6 +33,7 @@ const REPO_WEB = {
     githubRepoId: 999_000_001,
     htmlUrl: "https://github.com/plotops-demo/web",
     id: GUEST_DEMO_WEB_REPOSITORY_ID,
+    isPrivate: false,
 };
 const REPO_API = {
     defaultBranch: "develop",
@@ -40,6 +41,7 @@ const REPO_API = {
     githubRepoId: 999_000_002,
     htmlUrl: "https://github.com/plotops-demo/api",
     id: GUEST_DEMO_API_REPOSITORY_ID,
+    isPrivate: false,
 };
 const BOARD_GIT_ID = GUEST_DEMO_BOARD_ID;
 const BOARD_PLAIN_ID = "b0000000-0000-4000-8000-000000000013";

@@ -13,10 +13,7 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function buildConnectProjectGithubPatch(
     repo: GitHubRepo
 ): ConnectProjectGithubPatch {
-    return {
-        ...buildProjectRepositoryInput(repo),
-        is_private: repo.private,
-    };
+    return buildProjectRepositoryInput(repo);
 }
 
 /**
@@ -86,6 +83,7 @@ export function buildProjectRepositoryInput(
         github_full_name: repo.full_name,
         github_html_url: repo.html_url,
         github_repo_id: repo.id,
+        is_private: repo.private,
     };
 }
 

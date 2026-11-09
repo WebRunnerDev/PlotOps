@@ -46,6 +46,14 @@ function assertRepositoriesFree(
     }
 }
 
+/**
+ * Mirrors `project_repositories_sync_project_privacy` (#360): private while
+ * any linked Repository is.
+ */
+function hasPrivateRepository(project: GuestProject): boolean {
+    return project.repositories.some((repository) => repository.isPrivate);
+}
+
 function mapProject(project: GuestProject, ownerId: string): Project {
     const repositories = project.repositories.map((repository) => ({
         github_default_branch: repository.defaultBranch,
@@ -53,6 +61,7 @@ function mapProject(project: GuestProject, ownerId: string): Project {
         github_html_url: repository.htmlUrl,
         github_repo_id: repository.githubRepoId,
         id: repository.id,
+        is_private: repository.isPrivate ?? false,
     }));
     const [first] = repositories;
     return {
@@ -111,6 +120,7 @@ function toGuestRepository(input: ProjectRepositoryInput): GuestRepository {
             input.github_html_url ||
             `https://github.com/${input.github_full_name}`,
         id: crypto.randomUUID(),
+        isPrivate: input.is_private,
     };
 }
 
@@ -142,7 +152,7 @@ export const guestProjectsProvider: ProjectsProvider = {
                 assertRepositoriesFree(sandbox, project.teamId, [patch]);
                 const repository = toGuestRepository(patch);
                 project.repositories.push(repository);
-                project.isPrivate = project.isPrivate || patch.is_private;
+                project.isPrivate = hasPrivateRepository(project);
                 project.updatedAt = new Date().toISOString();
                 seedBoardBaseBranches(sandbox, projectId, repository);
                 mapped = mapProject(
@@ -200,6 +210,9 @@ export const guestProjectsProvider: ProjectsProvider = {
                     teamId: input.team_id,
                     updatedAt: now,
                 };
+                if (repositories.length > 0) {
+                    project.isPrivate = hasPrivateRepository(project);
+                }
                 sandbox.projects.push(project);
                 // `projects_create_default_board`; linking Repositories turns
                 // it into a Development Board, as the RPC does.
@@ -311,6 +324,7 @@ export const guestProjectsProvider: ProjectsProvider = {
                 project.repositories = project.repositories.filter(
                     (repo) => repo.id !== repositoryId
                 );
+                project.isPrivate = hasPrivateRepository(project);
                 project.updatedAt = new Date().toISOString();
                 for (const board of sandbox.boards) {
                     board.repositoryBaseBranches =
