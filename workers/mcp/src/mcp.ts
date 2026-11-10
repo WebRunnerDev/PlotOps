@@ -12,10 +12,22 @@ import {
     success,
 } from "./jsonrpc.ts";
 import { MAX_MCP_BODY_BYTES, utf8ByteLength } from "./limits.ts";
-import { callTool, ToolInputError, toolListPayload } from "./tools.ts";
+import {
+    callTool,
+    RICH_TEXT_FORMAT_HINT,
+    ToolInputError,
+    toolListPayload,
+} from "./tools.ts";
 
 const PROTOCOL_VERSION = "2025-06-18";
 const SUPPORTED_PROTOCOLS = new Set(["2024-11-05", "2025-03-26", "2025-06-18"]);
+
+export const SERVER_INSTRUCTIONS = [
+    "PlotOps project tracker. Use list_projects, then list_boards and list_tasks. Status is a board column id (see list_boards). You act as the signed-in user; RLS applies.",
+    "To assign work, find people with list_members and pass their user_id as assignee_id.",
+    "Model structure with fields, never with text in the description: epic_id (list_epics), parent_id for Parent Task / Subtask, and link_tasks for blocks / relates_to. get_task returns these relations.",
+    `Task descriptions and comments: ${RICH_TEXT_FORMAT_HINT}`,
+].join("\n");
 
 export function acceptsMcp(request: Request): boolean {
     const accept = request.headers.get("Accept") ?? "";
@@ -80,8 +92,7 @@ async function handleRequest(request: JsonRpcRequest, context: ToolContext) {
                 const parameters = recordParameters(request.params);
                 return success(id, {
                     capabilities: { tools: { listChanged: false } },
-                    instructions:
-                        "PlotOps project tracker. Use list_projects, then list_boards and list_tasks. Status is a board column id (see list_boards). You act as the signed-in user; RLS applies.",
+                    instructions: SERVER_INSTRUCTIONS,
                     protocolVersion: protocolVersion(
                         parameters.protocolVersion
                     ),
