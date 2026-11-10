@@ -93,12 +93,16 @@ describe("MCP worker security seam", () => {
             "whoami",
             "list_projects",
             "list_boards",
+            "list_members",
+            "list_epics",
             "list_tasks",
             "get_task",
             "create_task",
             "update_task",
             "change_status",
             "add_comment",
+            "link_tasks",
+            "unlink_tasks",
         ]);
         expect(TOOLS.some((tool) => tool.name.includes("delete"))).toBe(false);
     });
