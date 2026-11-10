@@ -39,6 +39,8 @@ const TASK_LIST_SELECT = [
     "project_id",
     "assignee_id",
     "author_id",
+    "parent_id",
+    "epic_id",
     "deadline",
     "estimate",
     "archived_at",
@@ -53,10 +55,32 @@ const TASK_LIST_SELECT = [
 const TASK_GIT_LINKS_SELECT =
     "git_links:task_git_links(id, repository_id, branch_name, pr_number, pr_state, pr_url, created_at, repository:project_repositories(github_full_name, github_html_url))";
 
-export const TASK_DETAIL_SELECT = `${TASK_LIST_SELECT}, description, epic_id, epic_color, sprint_id, parent_id, ${TASK_GIT_LINKS_SELECT}`;
+export const TASK_DETAIL_SELECT = `${TASK_LIST_SELECT}, description, epic_color, sprint_id, ${TASK_GIT_LINKS_SELECT}`;
 
 const COMMENT_SELECT =
     "id, task_id, parent_id, body, author_id, created_at, updated_at";
+
+const TASK_REF_SELECT = "id, task_key, title, task_type, status, archived_at";
+
+const LINK_KINDS = new Set(["blocks", "relates_to"]);
+
+/**
+ * Task descriptions and comments are edited in a Notion-like TipTap editor
+ * that stores HTML. Markdown is shown verbatim (`## Title`, `**bold**`), so
+ * agents must send HTML. Shared by tool schemas and server instructions.
+ */
+export const RICH_TEXT_FORMAT_HINT = [
+    "HTML for the Notion-like rich text editor (TipTap) — NOT Markdown; Markdown is rendered as literal text.",
+    "Use <p>, <h1>-<h3>, <strong>, <em>, <u>, <s>, <mark>, <code>, <a href>, <blockquote>, <hr>,",
+    '<ul>/<ol>/<li>, checklists <ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>…</p></li></ul>,',
+    '<pre><code class="language-ts">…</code></pre>, <table><tr><th>/<td>.',
+    'Mention a member (from list_members): <span data-type="mention" data-id="USER_ID" data-label="Name">@Name</span>.',
+    'Reference a task: <span data-type="taskMention" data-id="TASK_ID" data-label="KEY-1">#KEY-1</span>.',
+    "Do not encode parent/subtask, epic or blocks/relates links as text — use the parent_id / epic_id fields and link_tasks.",
+].join(" ");
+
+const MARKDOWN_LINE_PATTERN = /^(?:#{1,6}\s|\s*[-*+]\s|\s*\d+\.\s|>\s|```)/m;
+const MARKDOWN_INLINE_PATTERN = /\*\*[^*\n]+\*\*|\[[^\]\n]+\]\(https?:\/\//;
 
 export type ToolContext = {
     clientId: null | string;
@@ -82,6 +106,31 @@ export type ToolResult = {
     text: string;
 };
 
+type TaskLinkRow = {
+    id: string;
+    kind: string;
+    source: null | TaskRef;
+    source_task_id: string;
+    target: null | TaskRef;
+    target_task_id: string;
+};
+
+type TaskRef = {
+    archived_at: null | string;
+    id: string;
+    status: string;
+    task_key: string;
+    task_type: string;
+    title: string;
+};
+
+type TaskRelationSource = {
+    epic_id: null | string;
+    id: string;
+    parent_id: null | string;
+    task_type: string;
+};
+
 export class ToolInputError extends Error {
     constructor(message: string) {
         super(message);
@@ -94,6 +143,22 @@ function asRecord(value: unknown): Record<string, unknown> {
         return {};
     }
     return value as Record<string, unknown>;
+}
+
+/**
+ * Rejects text that is Markdown rather than HTML. Plain prose is fine (the
+ * editor wraps lines in paragraphs); HTML input is never inspected.
+ */
+function assertRichText(value: string, field: string): void {
+    if (/<\/?[a-z][\s\S]*>/i.test(value)) return;
+    if (
+        MARKDOWN_LINE_PATTERN.test(value) ||
+        MARKDOWN_INLINE_PATTERN.test(value)
+    ) {
+        throw new ToolInputError(
+            `${field} looks like Markdown. Send ${RICH_TEXT_FORMAT_HINT}`
+        );
+    }
 }
 
 async function createTask(
@@ -161,7 +226,15 @@ async function createTask(
         if (description.length > MAX_DESCRIPTION_LENGTH) {
             throw new ToolInputError("description is too long");
         }
+        assertRichText(description, "description");
         options.description = description;
+    }
+
+    const parentId = optionalUuid(arguments_.parent_id, "parent_id");
+    if (parentId && (epicId || taskType === "epic")) {
+        throw new ToolInputError(
+            "A Subtask cannot be an Epic or carry epic_id; it belongs to its Parent Task's Epic"
+        );
     }
 
     const id = await rpcResult(
@@ -171,6 +244,16 @@ async function createTask(
             p_title: title,
         })
     );
+    const resourceId = typeof id === "string" ? id : null;
+
+    let parentError: string | undefined;
+    if (parentId) {
+        const { error } = await context.supabase.rpc("set_task_parent", {
+            p_child_id: id,
+            p_parent_id: parentId,
+        });
+        if (error) parentError = error.message;
+    }
 
     const { data: task, error } = await context.supabase
         .from("tasks")
@@ -179,8 +262,20 @@ async function createTask(
         .single();
     if (error) throw new Error(error.message);
 
+    if (parentError) {
+        return {
+            isError: true,
+            resourceId,
+            resourceType: "task",
+            text: jsonText({
+                error: `Task was created but not attached to parent_id: ${parentError}`,
+                task,
+            }),
+        };
+    }
+
     return {
-        resourceId: typeof id === "string" ? id : null,
+        resourceId,
         resourceType: "task",
         text: jsonText({ task }),
     };
@@ -235,12 +330,18 @@ async function getTask(
         .eq("task_id", task.id);
     if (labelsError) throw new Error(labelsError.message);
 
+    const relations = await loadRelations(
+        task as unknown as TaskRelationSource,
+        context
+    );
+
     return {
         resourceId: task.id,
         resourceType: "task",
         text: jsonText({
             comments: comments ?? [],
             labels: labels ?? [],
+            ...relations,
             task,
         }),
     };
@@ -349,6 +450,11 @@ async function listTasks(
     if (status) request = request.eq("status", status);
     if (!includeArchived) request = request.is("archived_at", null);
 
+    const parentId = optionalUuid(arguments_.parent_id, "parent_id");
+    if (parentId) request = request.eq("parent_id", parentId);
+    const epicId = optionalUuid(arguments_.epic_id, "epic_id");
+    if (epicId) request = request.eq("epic_id", epicId);
+
     if (assignee === "me") {
         request = request.eq("assignee_id", context.user.id);
     } else if (assignee === "unassigned") {
@@ -370,6 +476,74 @@ async function listTasks(
     const { data, error } = await request;
     if (error) throw new Error(error.message);
     return { text: jsonText({ tasks: data ?? [] }) };
+}
+
+/**
+ * Structured relations as the task drawer shows them: Parent Task, Subtasks,
+ * Epic (or Epic members when the task is an Epic) and Task Links. A `blocks`
+ * link reads "blocks" from the source and "blocked_by" from the target.
+ */
+async function loadRelations(task: TaskRelationSource, context: ToolContext) {
+    const refById = async (id: null | string): Promise<null | TaskRef> => {
+        if (!id) return null;
+        const { data, error } = await context.supabase
+            .from("tasks")
+            .select(TASK_REF_SELECT)
+            .eq("id", id)
+            .limit(1);
+        if (error) throw new Error(error.message);
+        return ((data ?? [])[0] as TaskRef | undefined) ?? null;
+    };
+
+    const childrenBy = async (column: "epic_id" | "parent_id") => {
+        const { data, error } = await context.supabase
+            .from("tasks")
+            .select(TASK_REF_SELECT)
+            .eq(column, task.id)
+            .order("created_at", { ascending: true })
+            .limit(MAX_LIST_LIMIT);
+        if (error) throw new Error(error.message);
+        return (data ?? []) as unknown as TaskRef[];
+    };
+
+    const isEpic = task.task_type === "epic";
+    const [parent, epic, subtasks, epicTasks, linkRows] = await Promise.all([
+        refById(task.parent_id),
+        refById(task.epic_id),
+        childrenBy("parent_id"),
+        isEpic ? childrenBy("epic_id") : Promise.resolve(),
+        context.supabase
+            .from("task_links")
+            .select(
+                `id, kind, source_task_id, target_task_id, source:tasks!task_links_source_task_id_fkey(${TASK_REF_SELECT}), target:tasks!task_links_target_task_id_fkey(${TASK_REF_SELECT})`
+            )
+            .or(`source_task_id.eq.${task.id},target_task_id.eq.${task.id}`)
+            .then(({ data, error }) => {
+                if (error) throw new Error(error.message);
+                return (data ?? []) as unknown as TaskLinkRow[];
+            }),
+    ]);
+
+    const links = linkRows.map((link) => {
+        const outgoing = link.source_task_id === task.id;
+        let relation = "relates_to";
+        if (link.kind === "blocks")
+            relation = outgoing ? "blocks" : "blocked_by";
+        return {
+            kind: link.kind,
+            link_id: link.id,
+            relation,
+            task: outgoing ? link.target : link.source,
+        };
+    });
+
+    return {
+        epic,
+        ...(epicTasks ? { epic_tasks: epicTasks } : {}),
+        links,
+        parent,
+        subtasks,
+    };
 }
 
 function optionalString(value: unknown): string | undefined {
@@ -430,6 +604,13 @@ const UPDATE_TASK_FIELDS = new Set([
     "title",
 ]);
 
+type MemberProfile = {
+    first_name: null | string;
+    id: string;
+    last_name: null | string;
+    username: null | string;
+};
+
 async function addComment(
     arguments_: Record<string, unknown>,
     context: ToolContext
@@ -439,6 +620,7 @@ async function addComment(
     if (body.length > MAX_COMMENT_LENGTH) {
         throw new ToolInputError("body is too long");
     }
+    assertRichText(body, "body");
     const parentId = optionalUuid(arguments_.parent_id, "parent_id") ?? null;
     const id = await rpcResult(
         context.supabase.rpc("add_task_comment", {
@@ -477,6 +659,196 @@ async function changeStatus(
     };
 }
 
+function displayName(profile: MemberProfile | null | undefined): string {
+    if (!profile) return "";
+    const composed = [profile.first_name, profile.last_name]
+        .map((part) => part?.trim())
+        .filter(Boolean)
+        .join(" ");
+    return composed || profile.username?.trim() || "";
+}
+
+function firstOf<T>(value: null | T | T[] | undefined): null | T {
+    if (!value) return null;
+    return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+async function linkTasks(
+    arguments_: Record<string, unknown>,
+    context: ToolContext
+): Promise<ToolResult> {
+    const sourceId = requireUuid(arguments_.source_task_id, "source_task_id");
+    const targetId = requireUuid(arguments_.target_task_id, "target_task_id");
+    const kind = requireString(arguments_.kind, "kind");
+    if (!LINK_KINDS.has(kind)) {
+        throw new ToolInputError("kind must be blocks or relates_to");
+    }
+    if (sourceId === targetId) {
+        throw new ToolInputError("A Task cannot link to itself");
+    }
+    const id = await rpcResult(
+        context.supabase.rpc("create_task_link", {
+            p_kind: kind,
+            p_source_task_id: sourceId,
+            p_target_task_id: targetId,
+        })
+    );
+    return {
+        resourceId: sourceId,
+        resourceType: "task",
+        text: jsonText({
+            kind,
+            link_id: id,
+            source_task_id: sourceId,
+            target_task_id: targetId,
+        }),
+    };
+}
+
+async function listEpics(
+    arguments_: Record<string, unknown>,
+    context: ToolContext
+): Promise<ToolResult> {
+    const projectId = requireUuid(arguments_.project_id, "project_id");
+    const includeArchived = arguments_.include_archived === true;
+    const rows = await rpcResult(
+        context.supabase.rpc("project_epics", { p_project_id: projectId })
+    );
+    const epics = ((rows ?? []) as { archived_at: null | string }[]).filter(
+        (epic) => includeArchived || epic.archived_at === null
+    );
+    return { text: jsonText({ epics }) };
+}
+
+/** Team Owner + Team Members of the Project's Team — the assignee picker set. */
+async function listMembers(
+    arguments_: Record<string, unknown>,
+    context: ToolContext
+): Promise<ToolResult> {
+    const projectId = requireUuid(arguments_.project_id, "project_id");
+
+    const { data: projects, error: projectError } = await context.supabase
+        .from("projects")
+        .select("id, team_id, team:teams!projects_team_id_fkey(owner_id)")
+        .eq("id", projectId)
+        .limit(1);
+    if (projectError) throw new Error(projectError.message);
+    const project = (projects ?? [])[0] as
+        | undefined
+        | {
+              team: null | { owner_id: string } | { owner_id: string }[];
+              team_id: string;
+          };
+    if (!project) throw new Error("Project not found");
+    const ownerId = firstOf(project.team)?.owner_id ?? null;
+
+    const { data: memberRows, error: membersError } = await context.supabase
+        .from("team_members")
+        .select(
+            "user_id, role, profile:profiles!team_members_user_id_fkey(id, username, first_name, last_name)"
+        )
+        .eq("team_id", project.team_id)
+        .order("created_at", { ascending: true });
+    if (membersError) throw new Error(membersError.message);
+
+    type Member = {
+        is_owner: boolean;
+        name: string;
+        role: null | string;
+        user_id: string;
+        username: null | string;
+    };
+    const byId = new Map<string, Member>();
+
+    if (ownerId) {
+        const { data: owners, error: ownerError } = await context.supabase
+            .from("profiles")
+            .select("id, username, first_name, last_name")
+            .eq("id", ownerId)
+            .limit(1);
+        if (ownerError) throw new Error(ownerError.message);
+        const owner = (owners ?? [])[0] as MemberProfile | undefined;
+        byId.set(ownerId, {
+            is_owner: true,
+            name: displayName(owner),
+            role: "owner",
+            user_id: ownerId,
+            username: owner?.username ?? null,
+        });
+    }
+
+    for (const row of (memberRows ?? []) as unknown as {
+        profile: MemberProfile | MemberProfile[] | null;
+        role: string;
+        user_id: string;
+    }[]) {
+        if (byId.has(row.user_id)) continue;
+        const profile = firstOf(row.profile);
+        byId.set(row.user_id, {
+            is_owner: false,
+            name: displayName(profile),
+            role: row.role,
+            user_id: row.user_id,
+            username: profile?.username ?? null,
+        });
+    }
+
+    return {
+        text: jsonText({
+            members: [...byId.values()].toSorted((left, right) =>
+                left.name.localeCompare(right.name)
+            ),
+        }),
+    };
+}
+
+/** Detaches from the current parent first: set_task_parent refuses a re-parent. */
+async function setParent(
+    taskId: string,
+    parentId: null | string,
+    context: ToolContext
+): Promise<void> {
+    const { data, error } = await context.supabase
+        .from("tasks")
+        .select("id, parent_id")
+        .eq("id", taskId)
+        .limit(1);
+    if (error) throw new Error(error.message);
+    const current = (data ?? [])[0] as
+        undefined | { id: string; parent_id: null | string };
+    if (!current) throw new Error("Task not found");
+    if (current.parent_id === parentId) return;
+
+    if (current.parent_id) {
+        await rpcResult(
+            context.supabase.rpc("clear_task_parent", { p_task_id: taskId })
+        );
+    }
+    if (parentId) {
+        await rpcResult(
+            context.supabase.rpc("set_task_parent", {
+                p_child_id: taskId,
+                p_parent_id: parentId,
+            })
+        );
+    }
+}
+
+async function unlinkTasks(
+    arguments_: Record<string, unknown>,
+    context: ToolContext
+): Promise<ToolResult> {
+    const linkId = requireUuid(arguments_.link_id, "link_id");
+    await rpcResult(
+        context.supabase.rpc("delete_task_link", { p_link_id: linkId })
+    );
+    return {
+        resourceId: linkId,
+        resourceType: "task_link",
+        text: jsonText({ deleted: true, link_id: linkId }),
+    };
+}
+
 async function updateTask(
     arguments_: Record<string, unknown>,
     context: ToolContext
@@ -505,6 +877,7 @@ async function updateTask(
             ) {
                 throw new ToolInputError("description is too long");
             }
+            if (typeof value === "string") assertRichText(value, "description");
             patch.description = value ?? null;
             continue;
         }
@@ -569,16 +942,37 @@ async function updateTask(
         nextLabels = labelIds.map((id) => requireUuid(id, "label_ids[]"));
     }
 
-    if (Object.keys(patch).length === 0 && nextLabels === undefined) {
+    let nextParent: null | string | undefined;
+    if ("parent_id" in arguments_) {
+        nextParent =
+            arguments_.parent_id === null || arguments_.parent_id === ""
+                ? null
+                : requireUuid(arguments_.parent_id, "parent_id");
+        if (nextParent === taskId) {
+            throw new ToolInputError("A Task cannot be its own parent");
+        }
+    }
+
+    const hasDetails =
+        Object.keys(patch).length > 0 || nextLabels !== undefined;
+    if (!hasDetails && nextParent === undefined) {
         throw new ToolInputError("No updatable fields were provided");
     }
 
-    const { error } = await context.supabase.rpc("update_task_details", {
-        p_label_ids: nextLabels ?? null,
-        p_patch: patch,
-        p_task_id: taskId,
-    });
-    if (error) throw new Error(error.message);
+    // Parent first: a new Subtask must drop epic_id before details apply, and
+    // a former Subtask may join an Epic in the same call.
+    if (nextParent !== undefined) {
+        await setParent(taskId, nextParent, context);
+    }
+
+    if (hasDetails) {
+        const { error } = await context.supabase.rpc("update_task_details", {
+            p_label_ids: nextLabels ?? null,
+            p_patch: patch,
+            p_task_id: taskId,
+        });
+        if (error) throw new Error(error.message);
+    }
 
     const { data: task, error: fetchError } = await context.supabase
         .from("tasks")
@@ -593,6 +987,8 @@ async function updateTask(
         text: jsonText({ task }),
     };
 }
+
+const RICH_TEXT_SCHEMA_DESCRIPTION = `Rich text. ${RICH_TEXT_FORMAT_HINT}`;
 
 export const TOOLS: ToolDefinition[] = [
     {
@@ -637,16 +1033,55 @@ export const TOOLS: ToolDefinition[] = [
     },
     {
         description:
-            "List tasks. Filter by project, board, column status, assignee (UUID, me, or unassigned), and title/key search.",
+            "List people in a project's team (owner and members, any role) with user_id, display name and role. Use user_id for assignee_id or @mentions.",
+        handler: listMembers,
+        inputSchema: {
+            additionalProperties: false,
+            properties: {
+                project_id: { type: "string" },
+            },
+            required: ["project_id"],
+            type: "object",
+        },
+        name: "list_members",
+        readOnly: true,
+    },
+    {
+        description:
+            "List Epics in a project with progress (task_count, done_count, points). Use id as epic_id on create_task / update_task.",
+        handler: listEpics,
+        inputSchema: {
+            additionalProperties: false,
+            properties: {
+                include_archived: { type: "boolean" },
+                project_id: { type: "string" },
+            },
+            required: ["project_id"],
+            type: "object",
+        },
+        name: "list_epics",
+        readOnly: true,
+    },
+    {
+        description:
+            "List tasks. Filter by project, board, column status, assignee (UUID from list_members, me, or unassigned), parent (Subtasks of a task), epic (Tasks in an Epic), and title/key search.",
         handler: listTasks,
         inputSchema: {
             additionalProperties: false,
             properties: {
                 assignee_id: { type: "string" },
                 board_id: { type: "string" },
+                epic_id: {
+                    description: "Only Tasks that belong to this Epic",
+                    type: "string",
+                },
                 include_archived: { type: "boolean" },
                 limit: { maximum: MAX_LIST_LIMIT, minimum: 1, type: "integer" },
                 offset: { minimum: 0, type: "integer" },
+                parent_id: {
+                    description: "Only Subtasks of this Parent Task",
+                    type: "string",
+                },
                 project_id: { type: "string" },
                 q: { type: "string" },
                 status: {
@@ -661,7 +1096,7 @@ export const TOOLS: ToolDefinition[] = [
     },
     {
         description:
-            "Read one task and its comments (optional one-level replies).",
+            "Read one task with its comments, labels and structured relations: parent, subtasks, epic (epic_tasks when the task is an Epic) and links (blocks / blocked_by / relates_to, each with link_id).",
         handler: getTask,
         inputSchema: {
             additionalProperties: false,
@@ -677,21 +1112,42 @@ export const TOOLS: ToolDefinition[] = [
     },
     {
         description:
-            "Create a task on a board. Status defaults to the first column; type defaults to the board setting; author is the signed-in user.",
+            "Create a task on a board. Status defaults to the first column; type defaults to the board setting; author is the signed-in user. Set relations with fields, not description text: assignee_id (list_members), epic_id (list_epics), parent_id (creates a Subtask: it moves to the parent's board, first column and open Sprint). Add blocks/relates_to links afterwards with link_tasks.",
         handler: createTask,
         inputSchema: {
             additionalProperties: false,
             properties: {
-                assignee_id: { type: ["string", "null"] },
+                assignee_id: {
+                    description: "user_id from list_members",
+                    type: ["string", "null"],
+                },
                 board_id: { type: "string" },
-                description: { type: "string" },
-                epic_color: { type: "string" },
-                epic_id: { type: "string" },
-                priority: { type: ["string", "null"] },
+                description: {
+                    description: RICH_TEXT_SCHEMA_DESCRIPTION,
+                    type: "string",
+                },
+                epic_color: {
+                    description: `Badge colour, only for task_type epic: ${[...EPIC_COLORS].join(", ")}`,
+                    type: "string",
+                },
+                epic_id: {
+                    description:
+                        "Epic this task belongs to (id from list_epics). Not for Subtasks or Epics.",
+                    type: "string",
+                },
+                parent_id: {
+                    description:
+                        "Parent Task id: makes this a Subtask. Parent cannot be an Epic or a Subtask.",
+                    type: "string",
+                },
+                priority: {
+                    enum: [...PRIORITIES, null],
+                    type: ["string", "null"],
+                },
                 project_id: { type: "string" },
                 sprint_id: { type: "string" },
                 status: { description: "Board column id", type: "string" },
-                task_type: { type: "string" },
+                task_type: { enum: [...TASK_TYPES], type: "string" },
                 title: { type: "string" },
             },
             required: ["board_id", "title"],
@@ -702,21 +1158,39 @@ export const TOOLS: ToolDefinition[] = [
     },
     {
         description:
-            "Update task fields (title, description, priority, deadline, assignee, type, estimate, epic, labels). Does not change status, author, or git/PR fields.",
+            "Update task fields (title, description, priority, deadline, assignee, type, estimate, epic, parent, labels). Pass null to clear assignee_id, epic_id or parent_id. Does not change status, author, or git/PR fields; use link_tasks for blocks/relates_to.",
         handler: updateTask,
         inputSchema: {
             additionalProperties: false,
             properties: {
-                assignee_id: { type: ["string", "null"] },
+                assignee_id: {
+                    description: "user_id from list_members; null unassigns",
+                    type: ["string", "null"],
+                },
                 deadline: { type: ["string", "null"] },
-                description: { type: ["string", "null"] },
+                description: {
+                    description: RICH_TEXT_SCHEMA_DESCRIPTION,
+                    type: ["string", "null"],
+                },
                 epic_color: { type: ["string", "null"] },
-                epic_id: { type: ["string", "null"] },
+                epic_id: {
+                    description:
+                        "Epic id from list_epics; null removes the task from its Epic",
+                    type: ["string", "null"],
+                },
                 estimate: { type: ["integer", "null"] },
                 label_ids: { items: { type: "string" }, type: "array" },
-                priority: { type: ["string", "null"] },
+                parent_id: {
+                    description:
+                        "Parent Task id (makes this a Subtask, moving it to the parent's board); null turns a Subtask back into a root task",
+                    type: ["string", "null"],
+                },
+                priority: {
+                    enum: [...PRIORITIES, null],
+                    type: ["string", "null"],
+                },
                 task_id: { type: "string" },
-                task_type: { type: "string" },
+                task_type: { enum: [...TASK_TYPES], type: "string" },
                 title: { type: "string" },
             },
             required: ["task_id"],
@@ -751,7 +1225,10 @@ export const TOOLS: ToolDefinition[] = [
         inputSchema: {
             additionalProperties: false,
             properties: {
-                body: { type: "string" },
+                body: {
+                    description: RICH_TEXT_SCHEMA_DESCRIPTION,
+                    type: "string",
+                },
                 parent_id: { type: "string" },
                 task_id: { type: "string" },
             },
@@ -759,6 +1236,37 @@ export const TOOLS: ToolDefinition[] = [
             type: "object",
         },
         name: "add_comment",
+        readOnly: false,
+    },
+    {
+        description:
+            "Link two tasks in the same project, as in the task drawer. kind blocks: source blocks target (target cannot enter Done while source is open; cycles rejected). kind relates_to: undirected. Parent/Subtask pairs cannot be linked — use parent_id instead.",
+        handler: linkTasks,
+        inputSchema: {
+            additionalProperties: false,
+            properties: {
+                kind: { enum: [...LINK_KINDS], type: "string" },
+                source_task_id: { type: "string" },
+                target_task_id: { type: "string" },
+            },
+            required: ["source_task_id", "target_task_id", "kind"],
+            type: "object",
+        },
+        name: "link_tasks",
+        readOnly: false,
+    },
+    {
+        description: "Remove a task link by link_id (from get_task links).",
+        handler: unlinkTasks,
+        inputSchema: {
+            additionalProperties: false,
+            properties: {
+                link_id: { type: "string" },
+            },
+            required: ["link_id"],
+            type: "object",
+        },
+        name: "unlink_tasks",
         readOnly: false,
     },
 ];
