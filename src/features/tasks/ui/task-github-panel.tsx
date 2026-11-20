@@ -43,6 +43,8 @@ import { canFetchPullRequestFiles } from "@/features/git-integration/lib/can-fet
 import { canReviewGithubPr } from "@/features/git-integration/lib/can-review-github-pr";
 import { canWriteGithubPr } from "@/features/git-integration/lib/can-write-github-pr";
 import { defaultPullRequestTitle } from "@/features/git-integration/lib/default-pull-request-title";
+import { storesMergedPrState } from "@/features/git-integration/lib/stores-merged-pr-state";
+import { usePullRequestChecks } from "@/features/git-integration/model/use-git-data";
 import {
     useApprovePullRequest,
     useClosePullRequest,
@@ -947,6 +949,21 @@ function GitLinkRow({
     const repoFullName = repository.fullName;
     const branchName = link.branchName;
     const pr = link.pr;
+    // Same query as PrChecksSummary (shared cache, no extra request). It
+    // carries GitHub's live PR state: the stored `pr_state` lags when a PR is
+    // merged or closed outside PlotOps, a webhook is missed, or the PR merged
+    // into a non-Base branch (the webhook keeps it pending, ADR 0035). Actions
+    // and the badge follow GitHub, so a merged PR offers no Merge.
+    const liveChecks = usePullRequestChecks(
+        repoFullName,
+        pr?.number,
+        githubToken
+    );
+    // Merged is final, so a stored merge wins over a live read cached before it.
+    const prState =
+        pr?.state === "merged"
+            ? "merged"
+            : (liveChecks.data?.pr.state ?? pr?.state);
 
     const canWritePr =
         isSettled &&
@@ -1003,28 +1020,28 @@ function GitLinkRow({
     const canMergePr =
         canWritePr &&
         canFetchGithub &&
-        pr?.state === "open" &&
+        prState === "open" &&
         !writeActionPending;
     const canClosePr =
         canWritePr &&
         canFetchGithub &&
-        pr?.state === "open" &&
+        prState === "open" &&
         !writeActionPending;
     // Merged PRs are never reopenable — only `closed` (unmerged) qualifies.
     const canReopenPr =
         canWritePr &&
         canFetchGithub &&
-        pr?.state === "closed" &&
+        prState === "closed" &&
         !writeActionPending;
     const canApprovePr =
         canReviewPr &&
         canFetchGithub &&
-        pr?.state === "open" &&
+        prState === "open" &&
         !writeActionPending;
     // Same review gate as Approve; stays true while its own request is in flight
     // so the picker dialog is not torn down mid-submit.
     const canRequestReview =
-        canReviewPr && canFetchGithub && pr?.state === "open";
+        canReviewPr && canFetchGithub && prState === "open";
 
     const toastWriteFailure = (error: unknown, fallbackKey: string) => {
         const kind = gitHubWriteErrorKind(error);
@@ -1099,10 +1116,25 @@ function GitLinkRow({
                 toast.error(t("github.mergePrClosed", { number: pr.number }));
                 return;
             }
-            onChange({ pr: { ...pr, state: "merged" } });
+            // Merged into a non-Base branch: GitHub's state shows it, but the
+            // link stays pending for this Board like the webhook keeps it.
+            const storesMerged = storesMergedPrState({
+                baseRef: result.baseRef,
+                boardBase: baseBranch,
+            });
+            if (storesMerged) {
+                onChange({ pr: { ...pr, state: "merged" } });
+            }
             if (result.outcome === "already_merged") {
                 toast.message(
-                    t("github.mergePrAlreadyMerged", { number: pr.number })
+                    storesMerged
+                        ? t("github.mergePrAlreadyMerged", {
+                              number: pr.number,
+                          })
+                        : t("github.mergePrMergedElsewhere", {
+                              base: result.baseRef,
+                              number: pr.number,
+                          })
                 );
                 return;
             }
@@ -1248,7 +1280,7 @@ function GitLinkRow({
     const prTitle = pr
         ? t("github.prLink", {
               number: pr.number,
-              state: t(`prState.${pr.state}`),
+              state: t(`prState.${prState ?? pr.state}`),
           })
         : "";
     const hasPrActions =
@@ -1420,7 +1452,7 @@ function GitLinkRow({
                         <a
                             className={cn(
                                 "inline-flex min-w-0 items-center gap-1.5 rounded-sm text-ui underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring",
-                                PR_STATE_CLASS[pr.state]
+                                PR_STATE_CLASS[prState ?? pr.state]
                             )}
                             href={pr.url}
                             rel="noreferrer"

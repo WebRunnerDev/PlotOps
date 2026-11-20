@@ -1,4 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+    type QueryClient,
+    useMutation,
+    useQueryClient,
+} from "@tanstack/react-query";
 
 import { useAuth } from "@/features/auth";
 import {
@@ -77,15 +81,7 @@ export function useClosePullRequest() {
                 token: variables.token,
             }),
         onSuccess: (_data, variables) => {
-            if (variables.headBranchName) {
-                void queryClient.invalidateQueries({
-                    queryKey: gitKeys.pullRequests(
-                        authFingerprint,
-                        variables.repoFullName,
-                        variables.headBranchName
-                    ),
-                });
-            }
+            invalidatePrState(queryClient, authFingerprint, variables);
         },
     });
 }
@@ -124,15 +120,7 @@ export function useMergePullRequest() {
                 token: variables.token,
             }),
         onSuccess: (_data, variables) => {
-            if (variables.headBranchName) {
-                void queryClient.invalidateQueries({
-                    queryKey: gitKeys.pullRequests(
-                        authFingerprint,
-                        variables.repoFullName,
-                        variables.headBranchName
-                    ),
-                });
-            }
+            invalidatePrState(queryClient, authFingerprint, variables);
         },
     });
 }
@@ -150,15 +138,7 @@ export function useReopenPullRequest() {
                 token: variables.token,
             }),
         onSuccess: (_data, variables) => {
-            if (variables.headBranchName) {
-                void queryClient.invalidateQueries({
-                    queryKey: gitKeys.pullRequests(
-                        authFingerprint,
-                        variables.repoFullName,
-                        variables.headBranchName
-                    ),
-                });
-            }
+            invalidatePrState(queryClient, authFingerprint, variables);
         },
     });
 }
@@ -186,4 +166,35 @@ export function useRequestPullRequestReviewers() {
             });
         },
     });
+}
+
+/**
+ * After Merge / Close / Reopen: refetch the branch's PR list and the PR's
+ * checks, which also carry the live PR state the drawer's actions follow.
+ */
+function invalidatePrState(
+    queryClient: QueryClient,
+    authFingerprint: string,
+    variables: {
+        headBranchName?: string;
+        prNumber: number;
+        repoFullName: string;
+    }
+) {
+    void queryClient.invalidateQueries({
+        queryKey: gitKeys.prChecks(
+            authFingerprint,
+            variables.repoFullName,
+            variables.prNumber
+        ),
+    });
+    if (variables.headBranchName) {
+        void queryClient.invalidateQueries({
+            queryKey: gitKeys.pullRequests(
+                authFingerprint,
+                variables.repoFullName,
+                variables.headBranchName
+            ),
+        });
+    }
 }

@@ -886,6 +886,7 @@
         "mergePrFailed": "Could not merge pull request",
         "mergePrAlreadyMerged": "PR #{{number}} is already merged on GitHub",
         "mergePrClosed": "PR #{{number}} is closed on GitHub — nothing to merge",
+        "mergePrMergedElsewhere": "PR #{{number}} is already merged into {{base}}, not the board's base branch — the task keeps waiting",
         "closePr": "Close",
         "closePrTitle": "Close pull request #{{number}}?",
         "closePrBody": "Closes without merging. The task stays in its current column.",

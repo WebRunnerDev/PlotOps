@@ -173,14 +173,17 @@ describe("mergeOpenPullRequest", () => {
     };
 
     it("does not merge again when GitHub already merged the PR", async () => {
-        const fetchMock = vi
-            .fn()
-            .mockResolvedValue(
-                livePr({ merged_at: "2026-08-10T00:00:00Z", state: "closed" })
-            );
+        const fetchMock = vi.fn().mockResolvedValue(
+            livePr({
+                base: { ref: "dev" },
+                merged_at: "2026-08-10T00:00:00Z",
+                state: "closed",
+            })
+        );
         vi.stubGlobal("fetch", fetchMock);
 
         await expect(mergeOpenPullRequest(input)).resolves.toEqual({
+            baseRef: "dev",
             outcome: "already_merged",
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -203,7 +206,7 @@ describe("mergeOpenPullRequest", () => {
     it("merges a PR GitHub still shows open", async () => {
         const fetchMock = vi
             .fn()
-            .mockResolvedValueOnce(livePr({}))
+            .mockResolvedValueOnce(livePr({ base: { ref: "dev" } }))
             .mockResolvedValueOnce({
                 json: async () => ({
                     merged: true,
@@ -216,6 +219,7 @@ describe("mergeOpenPullRequest", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         await expect(mergeOpenPullRequest(input)).resolves.toEqual({
+            baseRef: "dev",
             outcome: "merged",
             sha: "abc123",
         });

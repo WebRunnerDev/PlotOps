@@ -898,6 +898,7 @@
         "mergePrFailed": "Не удалось слить pull request",
         "mergePrAlreadyMerged": "PR #{{number}} уже слит на GitHub",
         "mergePrClosed": "PR #{{number}} закрыт на GitHub — сливать нечего",
+        "mergePrMergedElsewhere": "PR #{{number}} уже слит в {{base}}, а не в базовую ветку доски — задача ждёт",
         "closePr": "Закрыть",
         "closePrTitle": "Закрыть pull request #{{number}}?",
         "closePrBody": "Закрывает без слияния. Задача остаётся в текущей колонке.",
