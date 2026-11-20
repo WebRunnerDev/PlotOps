@@ -884,6 +884,8 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Merged PR #{{number}}",
         "mergePrFailed": "Could not merge pull request",
+        "mergePrAlreadyMerged": "PR #{{number}} is already merged on GitHub",
+        "mergePrClosed": "PR #{{number}} is closed on GitHub — nothing to merge",
         "closePr": "Close",
         "closePrTitle": "Close pull request #{{number}}?",
         "closePrBody": "Closes without merging. The task stays in its current column.",

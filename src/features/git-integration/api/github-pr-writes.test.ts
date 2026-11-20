@@ -8,6 +8,7 @@ import {
     fetchPullRequestReviewerCandidates,
     GitHubApiError,
     gitHubWriteErrorKind,
+    mergeOpenPullRequest,
     mergePullRequest,
     reopenPullRequest,
     requestPullRequestReviewers,
@@ -139,6 +140,109 @@ describe("mergePullRequest", () => {
             commit_title: "TASK-1: Login",
             merge_method: "squash",
         });
+    });
+});
+
+function livePr(overrides: Record<string, unknown>) {
+    return {
+        json: async () => ({
+            body: null,
+            created_at: "2026-08-11T00:00:00Z",
+            draft: false,
+            head: { ref: "feature/TASK-1" },
+            html_url: "https://github.com/o/r/pull/7",
+            mergeable: true,
+            merged_at: null,
+            number: 7,
+            state: "open",
+            title: "TASK-1: Login",
+            updated_at: "2026-08-11T00:00:00Z",
+            ...overrides,
+        }),
+        ok: true,
+        status: 200,
+    };
+}
+
+describe("mergeOpenPullRequest", () => {
+    const input = {
+        mergeMethod: "squash" as const,
+        prNumber: 7,
+        repoFullName: "o/r",
+        token: "tok",
+    };
+
+    it("does not merge again when GitHub already merged the PR", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                livePr({ merged_at: "2026-08-10T00:00:00Z", state: "closed" })
+            );
+        vi.stubGlobal("fetch", fetchMock);
+
+        await expect(mergeOpenPullRequest(input)).resolves.toEqual({
+            outcome: "already_merged",
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(init.method).toBe("GET");
+    });
+
+    it("does not merge a PR closed without merging", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(livePr({ state: "closed" }));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await expect(mergeOpenPullRequest(input)).resolves.toEqual({
+            outcome: "closed",
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("merges a PR GitHub still shows open", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(livePr({}))
+            .mockResolvedValueOnce({
+                json: async () => ({
+                    merged: true,
+                    message: "Pull Request successfully merged",
+                    sha: "abc123",
+                }),
+                ok: true,
+                status: 200,
+            });
+        vi.stubGlobal("fetch", fetchMock);
+
+        await expect(mergeOpenPullRequest(input)).resolves.toEqual({
+            outcome: "merged",
+            sha: "abc123",
+        });
+        const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+        expect(url).toBe("https://api.github.com/repos/o/r/pulls/7/merge");
+        expect(init.method).toBe("PUT");
+    });
+
+    it("treats a merged: false answer as a failure", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(livePr({}))
+            .mockResolvedValueOnce({
+                json: async () => ({
+                    merged: false,
+                    message: "Pull Request is not mergeable",
+                    sha: "",
+                }),
+                ok: true,
+                status: 200,
+            });
+        vi.stubGlobal("fetch", fetchMock);
+
+        const error = await mergeOpenPullRequest(input).catch(
+            (error: unknown) => error
+        );
+        expect(gitHubWriteErrorKind(error)).toBe("conflict");
     });
 });
 

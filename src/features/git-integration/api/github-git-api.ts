@@ -130,6 +130,11 @@ export type GitPullRequest = {
     url: string;
 };
 
+export type MergeOpenPullRequestResult =
+    | { outcome: "already_merged" }
+    | { outcome: "closed" }
+    | { outcome: "merged"; sha: string };
+
 export type MergePullRequestInput = {
     commitTitle?: string;
     mergeMethod: GitMergeMethod;
@@ -652,6 +657,34 @@ export function gitHubWriteErrorKind(error: unknown): GitHubWriteErrorKind {
 
 export function isGitHubApiError(error: unknown): error is GitHubApiError {
     return error instanceof GitHubApiError;
+}
+
+/**
+ * Merge only when GitHub still shows the PR open. The Git link's stored
+ * `open` can be stale (merged outside PlotOps, missed webhook, merged into a
+ * non-Base branch), so a re-click must report "already merged", not success.
+ * A `merged: false` answer is a failure, not a merge.
+ */
+export async function mergeOpenPullRequest(
+    input: MergePullRequestInput
+): Promise<MergeOpenPullRequestResult> {
+    const live = await fetchPullRequest(
+        input.repoFullName,
+        input.prNumber,
+        input.token
+    );
+    if (live.merged_at) return { outcome: "already_merged" };
+    if (live.state !== "open") return { outcome: "closed" };
+
+    const result = await mergePullRequest(input);
+    if (!result.merged) {
+        throw new GitHubApiError(
+            405,
+            `/repos/${input.repoFullName}/pulls/${input.prNumber}/merge`,
+            result.message
+        );
+    }
+    return { outcome: "merged", sha: result.sha };
 }
 
 /** Merge an open PR (GitHub enforces mergeability / branch protection). */

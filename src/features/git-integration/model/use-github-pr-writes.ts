@@ -6,7 +6,7 @@ import {
     closePullRequest,
     createPullRequest,
     type GitMergeMethod,
-    mergePullRequest,
+    mergeOpenPullRequest,
     reopenPullRequest,
     requestPullRequestReviewers,
 } from "@/features/git-integration/api/github-git-api";
@@ -116,7 +116,7 @@ export function useMergePullRequest() {
 
     return useMutation({
         mutationFn: (variables: MergePullRequestVariables) =>
-            mergePullRequest({
+            mergeOpenPullRequest({
                 commitTitle: variables.commitTitle,
                 mergeMethod: variables.mergeMethod,
                 prNumber: variables.prNumber,

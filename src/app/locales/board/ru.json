@@ -896,6 +896,8 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Слит PR #{{number}}",
         "mergePrFailed": "Не удалось слить pull request",
+        "mergePrAlreadyMerged": "PR #{{number}} уже слит на GitHub",
+        "mergePrClosed": "PR #{{number}} закрыт на GitHub — сливать нечего",
         "closePr": "Закрыть",
         "closePrTitle": "Закрыть pull request #{{number}}?",
         "closePrBody": "Закрывает без слияния. Задача остаётся в текущей колонке.",

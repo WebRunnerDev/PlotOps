@@ -1083,7 +1083,7 @@ function GitLinkRow({
         if (!canMergePr || !githubToken || !repoFullName || !pr) return;
 
         try {
-            await mergePr.mutateAsync({
+            const result = await mergePr.mutateAsync({
                 commitTitle: defaultPullRequestTitle(task),
                 headBranchName: branchName,
                 mergeMethod,
@@ -1091,10 +1091,21 @@ function GitLinkRow({
                 repoFullName,
                 token: githubToken,
             });
-            onChange({
-                pr: { ...pr, state: "merged" },
-            });
             setMergeOpen(false);
+            // The stored `open` was stale: sync the link to GitHub's real
+            // state instead of claiming a merge that did not happen now.
+            if (result.outcome === "closed") {
+                onChange({ pr: { ...pr, state: "closed" } });
+                toast.error(t("github.mergePrClosed", { number: pr.number }));
+                return;
+            }
+            onChange({ pr: { ...pr, state: "merged" } });
+            if (result.outcome === "already_merged") {
+                toast.message(
+                    t("github.mergePrAlreadyMerged", { number: pr.number })
+                );
+                return;
+            }
             toast.success(t("github.mergePrToast", { number: pr.number }));
         } catch (error) {
             toastWriteFailure(error, "github.mergePrFailed");
