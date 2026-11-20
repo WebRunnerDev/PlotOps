@@ -5,7 +5,7 @@ export type BuildJob = {
     status: BuildStatus;
 };
 
-/** One streamed log line from a build. */
+/** One streamed log line from a job. */
 export type BuildLogLine = {
     /** True on the final line of this stream. */
     done: boolean;
@@ -37,12 +37,14 @@ export type BuildsForProject = {
         options?: ListBuildsOptions
     ): Promise<ListBuildsPage>;
     /**
-     * Progressive log lines for a build. Calls `onLine` as lines “stream” in.
-     * Returns unsubscribe to stop the stream (e.g. on unmount / close).
+     * Progressive log lines for one job of a run (a run has several, each with
+     * its own log). Calls `onLine` as lines “stream” in; the last has `done`.
+     * The job's status picks the message when its log is not there yet.
+     * Returns unsubscribe to stop the stream (e.g. on unmount / job switch).
      */
-    streamBuildLogs(
+    streamJobLogs(
         repository: BuildsRepository,
-        buildId: string,
+        job: BuildJob,
         onLine: (line: BuildLogLine) => void
     ): () => void;
 };

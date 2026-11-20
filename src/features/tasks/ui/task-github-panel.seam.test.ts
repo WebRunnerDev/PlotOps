@@ -40,7 +40,7 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
         expect(gate).toBeDefined();
         expect(gate).toMatch(/canWritePr/);
         expect(gate).toMatch(/canFetchGithub/);
-        expect(gate).toMatch(/(?<!\w)pr\?\.state === "closed"/);
+        expect(gate).toMatch(/(?<!\w)prState === "closed"/);
         expect(gate).not.toMatch(/merged/);
     });
 
@@ -75,7 +75,7 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
         expect(gate).toBeDefined();
         expect(gate).toMatch(/canReviewPr/);
         expect(gate).toMatch(/canFetchGithub/);
-        expect(gate).toMatch(/(?<!\w)pr\?\.state === "open"/);
+        expect(gate).toMatch(/(?<!\w)prState === "open"/);
         expect(gate).not.toMatch(/canWritePr/);
         expect(panel).toMatch(/useRequestPullRequestReviewers/);
         expect(panel).toMatch(/RequestReviewDialog/);
@@ -144,5 +144,40 @@ describe("TaskGithubPanel Open/Merge/Close/Reopen/Approve seam", () => {
             expect(source).toMatch(/"mergeMethodSquash"/);
             expect(source).toMatch(/"writeError"/);
         }
+    });
+});
+
+describe("TaskGithubPanel live PR state seam", () => {
+    it("gates PR actions and the badge on GitHub's live state, not the stored one", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+
+        expect(panel).toMatch(/usePullRequestChecks\(/);
+        expect(panel).toMatch(/liveChecks\.data\?\.pr\.state \?\? pr\?\.state/);
+        expect(panel).toMatch(/pr\?\.state === "merged"\s+\? "merged"/);
+        for (const gate of [
+            "canMergePr",
+            "canClosePr",
+            "canReopenPr",
+            "canApprovePr",
+            "canRequestReview",
+        ]) {
+            const source = panel.match(
+                new RegExp(String.raw`const ${gate} =[\s\S]*?;`)
+            )?.[0];
+            expect(source, gate).toMatch(/prState ===/);
+            expect(source, gate).not.toMatch(/pr\?\.state/);
+        }
+    });
+
+    it("stores merged only when the PR merged into the Board's Base branch", () => {
+        const panel = read("src/features/tasks/ui/task-github-panel.tsx");
+        const handler = panel.match(
+            /const handleMergeConfirm = async \(\) => \{[\s\S]*?\n {4}\};/
+        )?.[0];
+
+        expect(handler).toBeDefined();
+        expect(handler).toMatch(/storesMergedPrState\(/);
+        expect(handler).toMatch(/boardBase: baseBranch/);
+        expect(handler).toMatch(/mergePrMergedElsewhere/);
     });
 });

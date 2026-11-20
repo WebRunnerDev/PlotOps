@@ -215,8 +215,10 @@ export async function fetchFixturePullRequestChecks(
         : "c0ffee1a2b3c4d5e6f708192a3b4c5d6e7f8091a";
     const base = `https://github.com/${repoFullName}`;
     // A merged PR passed its checks; otherwise odd numbers demo a failure.
-    const merged =
-        findSandboxGitLink(repoFullName, { prNumber })?.pr?.state === "merged";
+    // The sandbox is the guest's "GitHub": its PR state is the live state.
+    const prState =
+        findSandboxGitLink(repoFullName, { prNumber })?.pr?.state ?? "open";
+    const merged = prState === "merged";
     const failing = !merged && prNumber % 2 === 1;
     const testName = api ? "API / pgTAP" : "CI / test";
     const lintName = api ? "API / deno check" : "CI / lint";
@@ -279,6 +281,7 @@ export async function fetchFixturePullRequestChecks(
 
     return {
         checks,
+        pr: { baseRef: undefined, state: prState },
         rollup: mapCheckRollup(checks),
         sha,
         truncated: false,

@@ -61,6 +61,7 @@ describe("fetchPullRequestChecks", () => {
         const result = await fetchPullRequestChecks("org/repo", 42, "ghp_test");
 
         expect(result.sha).toBe("abc123deadbeef");
+        expect(result.pr).toEqual({ baseRef: undefined, state: "open" });
         expect(result.truncated).toBe(false);
         expect(result.rollup).toBe("pending");
         expect(result.checks).toEqual([
@@ -148,3 +149,40 @@ function jsonResponse(body: unknown): Response {
         status: 200,
     } as Response;
 }
+
+describe("fetchPullRequestChecks live PR state", () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it("reports a merged PR as merged with its base branch", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi
+                .fn()
+                .mockResolvedValueOnce(
+                    jsonResponse({
+                        base: { ref: "release" },
+                        body: null,
+                        created_at: "2026-07-28T10:00:00.000Z",
+                        draft: false,
+                        head: { ref: "feature/demo", sha: "abc123" },
+                        html_url: "https://github.com/org/repo/pull/42",
+                        merged_at: "2026-07-29T10:00:00.000Z",
+                        number: 42,
+                        state: "closed",
+                        title: "Demo",
+                        updated_at: "2026-07-29T10:00:00.000Z",
+                    })
+                )
+                .mockResolvedValueOnce(
+                    jsonResponse({ check_runs: [], total_count: 0 })
+                )
+        );
+
+        const result = await fetchPullRequestChecks("org/repo", 42, "tok");
+
+        expect(result.pr).toEqual({ baseRef: "release", state: "merged" });
+    });
+});

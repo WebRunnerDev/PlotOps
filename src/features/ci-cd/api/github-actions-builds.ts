@@ -25,6 +25,7 @@ import { mapActionsStatus } from "@/features/ci-cd/model/map-actions-status";
 
 const GITHUB_API = "https://api.github.com";
 const STREAM_CHUNK_MS = 16;
+const STREAM_MAX_TICKS = 60;
 
 const GITHUB_HEADERS = (token: string) => ({
     Accept: "application/vnd.github+json",
@@ -112,7 +113,11 @@ export function splitLogLines(text: string): string[] {
     return text.replaceAll("\r\n", "\n").replace(/\n$/, "").split("\n");
 }
 
-/** Pure progressive emitter — exported for unit tests. */
+/**
+ * Pure progressive emitter — exported for unit tests. Emits a batch of lines
+ * per tick so a log of any length finishes in about `STREAM_MAX_TICKS` ticks
+ * (a real job log runs to thousands of lines).
+ */
 export function streamLinesProgressively(
     lines: string[],
     onLine: (line: BuildLogLine) => void
@@ -126,22 +131,17 @@ export function streamLinesProgressively(
         };
     }
 
+    const perTick = Math.max(1, Math.ceil(lines.length / STREAM_MAX_TICKS));
     let index = 0;
     let stopped = false;
     const timer = setInterval(() => {
-        if (stopped) {
-            clearInterval(timer);
-            return;
+        const end = Math.min(index + perTick, lines.length);
+        while (!stopped && index < end) {
+            const done = index === lines.length - 1;
+            onLine({ done, index, text: lines[index] ?? "" });
+            index += 1;
         }
-        const text = lines[index];
-        if (text === undefined) {
-            clearInterval(timer);
-            return;
-        }
-        const done = index === lines.length - 1;
-        onLine({ done, index, text });
-        index += 1;
-        if (done) {
+        if (stopped || index >= lines.length) {
             clearInterval(timer);
         }
     }, STREAM_CHUNK_MS);
@@ -150,6 +150,14 @@ export function streamLinesProgressively(
         stopped = true;
         clearInterval(timer);
     };
+}
+
+/** Drop the ISO timestamp GitHub prefixes to every Actions log line. */
+export function stripLogTimestamp(line: string): string {
+    return line.replace(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z ?/,
+        ""
+    );
 }
 
 /** Extract concatenated text files from a GitHub Actions job-logs zip. */
@@ -356,70 +364,40 @@ export const githubActionsBuilds: BuildsForProject = {
         };
     },
 
-    streamBuildLogs(repository, buildId, onLine) {
+    streamJobLogs(repository, job, onLine) {
         let stopProgress: (() => void) | undefined;
         let cancelled = false;
 
         void (async () => {
+            let lines: string[];
             try {
-                const token = requireToken();
-                const repoFullName = repository.fullName;
-
-                const jobs = await fetchRunJobs(repoFullName, buildId, token);
+                const logText = await fetchJobLogText(
+                    repository.fullName,
+                    job.id,
+                    requireToken()
+                );
                 if (cancelled) return;
-
-                const lines: string[] = [];
-
-                if (jobs.length === 0) {
-                    lines.push("No jobs found for this run.");
-                }
-
-                for (const job of jobs) {
-                    lines.push(`── ${job.name} · ${job.status} ──`);
-                    try {
-                        const logText = await fetchJobLogText(
-                            repoFullName,
-                            job.id,
-                            token
-                        );
-                        if (cancelled) return;
-                        if (logText) {
-                            lines.push(...splitLogLines(logText));
-                        } else if (
-                            job.status === "running" ||
-                            job.status === "queued"
-                        ) {
-                            lines.push(
-                                "Logs not ready yet — job still in progress."
-                            );
-                        } else {
-                            lines.push(
-                                "Logs unavailable (expired or not retained)."
-                            );
-                        }
-                    } catch {
-                        if (cancelled) return;
-                        lines.push("Could not download logs for this job.");
-                    }
-                    lines.push("");
-                }
-
-                stopProgress = streamLinesProgressively(lines, onLine);
-                if (cancelled) {
-                    stopProgress();
-                    return;
+                if (logText) {
+                    lines = splitLogLines(logText).map((line) =>
+                        stripLogTimestamp(line)
+                    );
+                } else if (
+                    job.status === "running" ||
+                    job.status === "queued"
+                ) {
+                    lines = ["Logs not ready yet — job still in progress."];
+                } else {
+                    lines = ["Logs unavailable (expired or not retained)."];
                 }
             } catch (error) {
                 if (cancelled) return;
-                const message =
+                lines = [
                     error instanceof Error
                         ? error.message
-                        : "Failed to load build logs";
-                stopProgress = streamLinesProgressively([message], onLine);
-                if (cancelled) {
-                    stopProgress();
-                }
+                        : "Could not download logs for this job.",
+                ];
             }
+            stopProgress = streamLinesProgressively(lines, onLine);
         })();
 
         return () => {

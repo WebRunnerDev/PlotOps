@@ -1,13 +1,17 @@
 import {
+    Check,
     CircleCheck,
     CircleX,
+    Copy,
+    Download,
     ExternalLink,
     GitBranch,
     LoaderCircle,
     Timer,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import type {
     BuildsRepository,
@@ -16,10 +20,14 @@ import type {
 } from "@/features/ci-cd/model/types";
 
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
+import { pickDefaultJob } from "@/features/ci-cd/model/default-job";
+import {
+    jobLogFileName,
+    jobLogText,
+} from "@/features/ci-cd/model/job-log-export";
 import { useBuildJobs } from "@/features/ci-cd/model/use-build-jobs";
-import { useBuildLogStream } from "@/features/ci-cd/model/use-build-log-stream";
+import { useJobLogStream } from "@/features/ci-cd/model/use-job-log-stream";
 import { cn } from "@/shared/lib/utils";
-import { Badge } from "@/shared/shadcn/ui/badge";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
     Dialog,
@@ -58,17 +66,54 @@ export function BuildLogDialog({
 }: BuildLogDialogProperties) {
     const { t } = useTranslation("board");
     const endReference = useRef<HTMLSpanElement>(null);
-    const { isStreaming, lines } = useBuildLogStream(
-        repository,
-        open && build ? build.id : undefined,
-        build?.status
-    );
     const {
         data: jobs = build?.jobs ?? [],
         isError: jobsError,
         isLoading: jobsLoading,
         refetch: refetchJobs,
-    } = useBuildJobs(projectId, repository, build?.id, open && Boolean(build));
+    } = useBuildJobs(
+        projectId,
+        repository,
+        build?.id,
+        open && Boolean(build),
+        build?.status
+    );
+    // The pick is tied to its run, so opening another run starts on its default.
+    const [picked, setPicked] = useState<{ buildId: string; jobId: string }>();
+    const selectedJob =
+        (picked && picked.buildId === build?.id
+            ? jobs.find((job) => job.id === picked.jobId)
+            : undefined) ?? pickDefaultJob(jobs);
+    const { isStreaming, lines } = useJobLogStream(
+        repository,
+        open && build ? selectedJob : undefined
+    );
+
+    const [copied, setCopied] = useState(false);
+    const canExport = Boolean(build && selectedJob) && lines.length > 0;
+
+    const handleCopyLog = async () => {
+        try {
+            await navigator.clipboard.writeText(jobLogText(lines));
+            setCopied(true);
+            toast.success(t("cicd.logs.copied"));
+            globalThis.setTimeout(() => setCopied(false), 1500);
+        } catch {
+            toast.error(t("copyFailed"));
+        }
+    };
+
+    const handleDownloadLog = () => {
+        if (!build || !selectedJob) return;
+        const url = URL.createObjectURL(
+            new Blob([jobLogText(lines)], { type: "text/plain;charset=utf-8" })
+        );
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = jobLogFileName(build, selectedJob);
+        link.click();
+        globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
 
     useEffect(() => {
         if (!open || lines.length === 0) return;
@@ -194,42 +239,71 @@ export function BuildLogDialog({
                                 {t("cicd.logs.noJobs")}
                             </p>
                         ) : (
-                            <ul className="flex flex-col gap-1.5">
-                                {jobs.map((job) => (
-                                    <li
-                                        className={cn(
-                                            "flex min-w-0 flex-col gap-2 border border-border border-l-2 bg-card/40 px-2.5 py-1.5 sm:flex-row sm:items-center sm:justify-between",
-                                            STATUS_BORDER[job.status]
-                                        )}
-                                        key={job.id}
-                                    >
-                                        <span className="min-w-0 text-ui wrap-break-word">
-                                            {job.name}
-                                        </span>
-                                        <Badge
-                                            className={cn(
-                                                "w-fit gap-1 border font-mono text-meta uppercase tracking-wide",
-                                                buildStatusAccentClass(
-                                                    job.status
-                                                )
-                                            )}
-                                            variant="outline"
-                                        >
-                                            <JobStatusIcon
-                                                status={job.status}
-                                            />
-                                            {t(`cicd.status.${job.status}`)}
-                                        </Badge>
-                                    </li>
-                                ))}
+                            <ul className="scrollbar-board flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+                                {jobs.map((job) => {
+                                    const selected = job.id === selectedJob?.id;
+                                    return (
+                                        <li className="min-w-0" key={job.id}>
+                                            <button
+                                                aria-pressed={selected}
+                                                className={cn(
+                                                    "flex min-w-0 max-w-full items-center gap-1.5 border border-border border-l-2 px-2 py-1 text-left text-ui transition-colors",
+                                                    "hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                                                    STATUS_BORDER[job.status],
+                                                    selected
+                                                        ? "bg-muted text-foreground"
+                                                        : "bg-card/40 text-muted-foreground"
+                                                )}
+                                                onClick={() => {
+                                                    if (build) {
+                                                        setPicked({
+                                                            buildId: build.id,
+                                                            jobId: job.id,
+                                                        });
+                                                    }
+                                                }}
+                                                type="button"
+                                            >
+                                                <span
+                                                    aria-hidden
+                                                    className={cn(
+                                                        buildStatusAccentClass(
+                                                            job.status
+                                                        ),
+                                                        "inline-flex shrink-0 border-0 bg-transparent"
+                                                    )}
+                                                >
+                                                    <JobStatusIcon
+                                                        status={job.status}
+                                                    />
+                                                </span>
+                                                <span className="min-w-0 truncate">
+                                                    {job.name}
+                                                </span>
+                                                <span className="sr-only">
+                                                    {t(
+                                                        `cicd.status.${job.status}`
+                                                    )}
+                                                </span>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         )}
                     </section>
 
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-border bg-background">
                         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-                            <span className="font-mono text-meta text-muted-foreground uppercase tracking-[0.12em]">
-                                {t("cicd.logs.console")}
+                            <span className="flex min-w-0 items-baseline gap-2 font-mono text-meta text-muted-foreground uppercase tracking-[0.12em]">
+                                <span className="shrink-0">
+                                    {t("cicd.logs.console")}
+                                </span>
+                                {selectedJob ? (
+                                    <span className="min-w-0 truncate normal-case tracking-normal text-foreground">
+                                        {selectedJob.name}
+                                    </span>
+                                ) : undefined}
                             </span>
                             <div className="flex items-center gap-3">
                                 {lines.length > 0 ? (
@@ -244,13 +318,37 @@ export function BuildLogDialog({
                                         {t("cicd.logs.streaming")}
                                     </span>
                                 ) : undefined}
+                                <div className="flex items-center gap-0.5">
+                                    <Button
+                                        aria-label={t("cicd.logs.copy")}
+                                        disabled={!canExport}
+                                        onClick={() => void handleCopyLog()}
+                                        size="icon-xs"
+                                        title={t("cicd.logs.copy")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        {copied ? <Check /> : <Copy />}
+                                    </Button>
+                                    <Button
+                                        aria-label={t("cicd.logs.download")}
+                                        disabled={!canExport}
+                                        onClick={handleDownloadLog}
+                                        size="icon-xs"
+                                        title={t("cicd.logs.download")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Download />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                         <div className="scrollbar-board min-h-0 flex-1 overflow-y-auto">
                             <pre
                                 aria-live="polite"
                                 className={cn(
-                                    "m-0 min-h-full p-0 font-mono text-meta text-foreground sm:text-code",
+                                    "m-0 min-h-full p-0 font-mono text-meta normal-case tracking-normal text-foreground sm:text-code",
                                     "selection:bg-primary/30"
                                 )}
                             >
@@ -281,7 +379,9 @@ export function BuildLogDialog({
                                         </span>
                                     </span>
                                 ) : undefined}
-                                {!isStreaming && lines.length === 0 ? (
+                                {selectedJob &&
+                                !isStreaming &&
+                                lines.length === 0 ? (
                                     <span className="block px-3 py-3 text-muted-foreground">
                                         {t("cicd.logs.empty")}
                                     </span>

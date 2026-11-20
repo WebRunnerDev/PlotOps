@@ -12,6 +12,7 @@ import {
     mapWorkflowRunToBuild,
     splitLogLines,
     streamLinesProgressively,
+    stripLogTimestamp,
     unzipJobLogs,
 } from "@/features/ci-cd/api/github-actions-builds";
 
@@ -41,11 +42,32 @@ const REPOSITORY = {
     id: "repo-1",
 };
 
+async function collect(
+    job: Parameters<typeof githubActionsBuilds.streamJobLogs>[1]
+) {
+    const lines: string[] = [];
+    const stop = githubActionsBuilds.streamJobLogs(REPOSITORY, job, (line) => {
+        if (line.text.length > 0) lines.push(line.text);
+    });
+    await vi.advanceTimersByTimeAsync(2000);
+    stop();
+    return lines;
+}
+
 function jsonResponse(body: unknown) {
     return {
         json: () => Promise.resolve(body),
         ok: true,
         status: 200,
+    } as unknown as Response;
+}
+
+function textResponse(text: string, status = 200) {
+    return {
+        arrayBuffer: () =>
+            Promise.resolve(new TextEncoder().encode(text).buffer),
+        ok: status < 400,
+        status,
     } as unknown as Response;
 }
 
@@ -146,6 +168,101 @@ describe("streamLinesProgressively cancel after assign", () => {
         stop();
         vi.advanceTimersByTime(500);
         expect(lines).toEqual([]);
+    });
+});
+
+describe("streamLinesProgressively batching", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("finishes a long log in about a second, in order, with one done line", () => {
+        const source = Array.from({ length: 6000 }, (_, index) => `l${index}`);
+        const received: { done: boolean; index: number }[] = [];
+        const stop = streamLinesProgressively(source, (line) => {
+            received.push({ done: line.done, index: line.index });
+        });
+
+        vi.advanceTimersByTime(16);
+        expect(received.length).toBe(100);
+
+        vi.advanceTimersByTime(1000);
+        expect(received.map((line) => line.index)).toEqual(
+            source.map((_, index) => index)
+        );
+        expect(received.filter((line) => line.done)).toEqual([
+            { done: true, index: 5999 },
+        ]);
+        stop();
+    });
+});
+
+describe("stripLogTimestamp", () => {
+    it("drops the Actions timestamp prefix and keeps other lines as they are", () => {
+        expect(
+            stripLogTimestamp(
+                "2026-11-20T10:00:00.1234567Z ##[group]Run npm ci"
+            )
+        ).toBe("##[group]Run npm ci");
+        expect(stripLogTimestamp("2026-11-20T10:00:00Z")).toBe("");
+        expect(stripLogTimestamp("plain line")).toBe("plain line");
+    });
+});
+
+describe("streamJobLogs", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.stubGlobal("localStorage", createMemoryStorage());
+        clearGitHubAccessToken();
+        setGitHubAccessToken("token", "user-1");
+    });
+
+    afterEach(() => {
+        clearGitHubAccessToken();
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        vi.useRealTimers();
+    });
+
+    it("downloads only the chosen job's log, without timestamps", async () => {
+        const fetchMock = vi.fn(() =>
+            Promise.resolve(
+                textResponse(
+                    "2026-11-20T10:00:00.0000000Z $ npm test\n2026-11-20T10:00:01.0000000Z ok\n"
+                )
+            )
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        const lines = await collect({
+            id: "42",
+            name: "vitest (2/4)",
+            status: "success",
+        });
+
+        expect(lines).toEqual(["$ npm test", "ok"]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe(
+            "https://api.github.com/repos/org/repo/actions/jobs/42/logs"
+        );
+    });
+
+    it("says the log is not ready while the job runs, and gone once it is done", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => Promise.resolve(textResponse("", 404)))
+        );
+
+        expect(
+            await collect({ id: "1", name: "e2e", status: "running" })
+        ).toEqual(["Logs not ready yet — job still in progress."]);
+        expect(
+            await collect({ id: "1", name: "e2e", status: "failure" })
+        ).toEqual(["Logs unavailable (expired or not retained)."]);
     });
 });
 

@@ -116,6 +116,8 @@ export type GitPrFile = {
 };
 
 export type GitPullRequest = {
+    /** Branch the PR merges into; undefined when GitHub's payload lacks it. */
+    base_ref?: string;
     body: null | string;
     created_at: string;
     draft: boolean;
@@ -129,6 +131,16 @@ export type GitPullRequest = {
     updated_at: string;
     url: string;
 };
+
+export type LivePullRequestState = {
+    baseRef: string | undefined;
+    state: "closed" | "merged" | "open";
+};
+
+export type MergeOpenPullRequestResult =
+    | { baseRef: string | undefined; outcome: "already_merged" }
+    | { baseRef: string | undefined; outcome: "merged"; sha: string }
+    | { outcome: "closed" };
 
 export type MergePullRequestInput = {
     commitTitle?: string;
@@ -146,6 +158,11 @@ export type MergePullRequestResult = {
 
 export type PullRequestChecksResult = {
     checks: GitCheckRun[];
+    /**
+     * GitHub's PR state at fetch time, from the same pull read that resolves
+     * the head sha. The Git link's stored `pr_state` can lag behind it.
+     */
+    pr: LivePullRequestState;
     rollup: GitCheckRollup;
     sha: string;
     /** True when GitHub still had more pages after `PR_CHECKS_MAX_PAGES`. */
@@ -241,6 +258,7 @@ type RawPrFilePayload = {
 };
 
 type RawPrPayload = {
+    base?: { ref: string };
     body: null | string;
     created_at: string;
     draft: boolean;
@@ -486,6 +504,7 @@ export async function fetchPullRequestChecks(
 
     return {
         checks,
+        pr: livePullRequestState(mapPullRequest(pr)),
         rollup: mapCheckRollup(checks),
         sha,
         truncated,
@@ -652,6 +671,44 @@ export function gitHubWriteErrorKind(error: unknown): GitHubWriteErrorKind {
 
 export function isGitHubApiError(error: unknown): error is GitHubApiError {
     return error instanceof GitHubApiError;
+}
+
+/** Open / closed / merged as GitHub has it now (merged is closed + merged_at). */
+export function livePullRequestState(pr: GitPullRequest): LivePullRequestState {
+    return {
+        baseRef: pr.base_ref,
+        state: pr.merged_at ? "merged" : pr.state,
+    };
+}
+
+/**
+ * Merge only when GitHub still shows the PR open. The Git link's stored
+ * `open` can be stale (merged outside PlotOps, missed webhook, merged into a
+ * non-Base branch), so a re-click must report "already merged", not success.
+ * A `merged: false` answer is a failure, not a merge.
+ */
+export async function mergeOpenPullRequest(
+    input: MergePullRequestInput
+): Promise<MergeOpenPullRequestResult> {
+    const live = await fetchPullRequest(
+        input.repoFullName,
+        input.prNumber,
+        input.token
+    );
+    if (live.merged_at) {
+        return { baseRef: live.base_ref, outcome: "already_merged" };
+    }
+    if (live.state !== "open") return { outcome: "closed" };
+
+    const result = await mergePullRequest(input);
+    if (!result.merged) {
+        throw new GitHubApiError(
+            405,
+            `/repos/${input.repoFullName}/pulls/${input.prNumber}/merge`,
+            result.message
+        );
+    }
+    return { baseRef: live.base_ref, outcome: "merged", sha: result.sha };
 }
 
 /** Merge an open PR (GitHub enforces mergeability / branch protection). */
@@ -871,6 +928,7 @@ function mapPrFile(raw: RawPrFilePayload): GitPrFile {
 
 function mapPullRequest(pr: RawPrPayload): GitPullRequest {
     return {
+        base_ref: pr.base?.ref,
         body: pr.body,
         created_at: pr.created_at,
         draft: pr.draft,

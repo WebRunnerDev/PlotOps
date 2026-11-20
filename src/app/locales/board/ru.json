@@ -473,11 +473,14 @@
             "lines": "строк",
             "hint": "Логи GitHub Actions",
             "streaming": "Загрузка логов…",
-            "empty": "Нет строк лога для этого прогона.",
+            "empty": "Нет строк лога у этого job.",
             "openOnGitHub": "Открыть на GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "Нет jobs у этого прогона.",
-            "jobsLoadFailed": "Не удалось загрузить jobs этого прогона."
+            "jobsLoadFailed": "Не удалось загрузить jobs этого прогона.",
+            "copy": "Скопировать лог",
+            "download": "Скачать лог",
+            "copied": "Лог скопирован"
         },
         "retry": "Повторить"
     },
@@ -896,6 +899,9 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Слит PR #{{number}}",
         "mergePrFailed": "Не удалось слить pull request",
+        "mergePrAlreadyMerged": "PR #{{number}} уже слит на GitHub",
+        "mergePrClosed": "PR #{{number}} закрыт на GitHub — сливать нечего",
+        "mergePrMergedElsewhere": "PR #{{number}} уже слит в {{base}}, а не в базовую ветку доски — задача ждёт",
         "closePr": "Закрыть",
         "closePrTitle": "Закрыть pull request #{{number}}?",
         "closePrBody": "Закрывает без слияния. Задача остаётся в текущей колонке.",
