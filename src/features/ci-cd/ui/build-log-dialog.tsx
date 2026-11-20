@@ -1,6 +1,9 @@
 import {
+    Check,
     CircleCheck,
     CircleX,
+    Copy,
+    Download,
     ExternalLink,
     GitBranch,
     LoaderCircle,
@@ -8,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 import type {
     BuildsRepository,
@@ -17,6 +21,10 @@ import type {
 
 import { buildStatusAccentClass } from "@/features/ci-cd/model/build-status";
 import { pickDefaultJob } from "@/features/ci-cd/model/default-job";
+import {
+    jobLogFileName,
+    jobLogText,
+} from "@/features/ci-cd/model/job-log-export";
 import { useBuildJobs } from "@/features/ci-cd/model/use-build-jobs";
 import { useJobLogStream } from "@/features/ci-cd/model/use-job-log-stream";
 import { cn } from "@/shared/lib/utils";
@@ -80,6 +88,32 @@ export function BuildLogDialog({
         repository,
         open && build ? selectedJob : undefined
     );
+
+    const [copied, setCopied] = useState(false);
+    const canExport = Boolean(build && selectedJob) && lines.length > 0;
+
+    const handleCopyLog = async () => {
+        try {
+            await navigator.clipboard.writeText(jobLogText(lines));
+            setCopied(true);
+            toast.success(t("cicd.logs.copied"));
+            globalThis.setTimeout(() => setCopied(false), 1500);
+        } catch {
+            toast.error(t("copyFailed"));
+        }
+    };
+
+    const handleDownloadLog = () => {
+        if (!build || !selectedJob) return;
+        const url = URL.createObjectURL(
+            new Blob([jobLogText(lines)], { type: "text/plain;charset=utf-8" })
+        );
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = jobLogFileName(build, selectedJob);
+        link.click();
+        globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
 
     useEffect(() => {
         if (!open || lines.length === 0) return;
@@ -284,6 +318,30 @@ export function BuildLogDialog({
                                         {t("cicd.logs.streaming")}
                                     </span>
                                 ) : undefined}
+                                <div className="flex items-center gap-0.5">
+                                    <Button
+                                        aria-label={t("cicd.logs.copy")}
+                                        disabled={!canExport}
+                                        onClick={() => void handleCopyLog()}
+                                        size="icon-xs"
+                                        title={t("cicd.logs.copy")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        {copied ? <Check /> : <Copy />}
+                                    </Button>
+                                    <Button
+                                        aria-label={t("cicd.logs.download")}
+                                        disabled={!canExport}
+                                        onClick={handleDownloadLog}
+                                        size="icon-xs"
+                                        title={t("cicd.logs.download")}
+                                        type="button"
+                                        variant="ghost"
+                                    >
+                                        <Download />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                         <div className="scrollbar-board min-h-0 flex-1 overflow-y-auto">

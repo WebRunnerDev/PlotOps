@@ -475,7 +475,10 @@
             "openOnGitHub": "Open on GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "No jobs for this run.",
-            "jobsLoadFailed": "Could not load jobs for this run."
+            "jobsLoadFailed": "Could not load jobs for this run.",
+            "copy": "Copy log",
+            "download": "Download log",
+            "copied": "Log copied"
         },
         "retry": "Retry"
     },

@@ -477,7 +477,10 @@
             "openOnGitHub": "Открыть на GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "Нет jobs у этого прогона.",
-            "jobsLoadFailed": "Не удалось загрузить jobs этого прогона."
+            "jobsLoadFailed": "Не удалось загрузить jobs этого прогона.",
+            "copy": "Скопировать лог",
+            "download": "Скачать лог",
+            "copied": "Лог скопирован"
         },
         "retry": "Повторить"
     },
