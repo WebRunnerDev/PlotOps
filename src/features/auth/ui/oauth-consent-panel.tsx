@@ -8,7 +8,10 @@ import {
     isOAuthAuthorizationDetails,
     oauthRedirectUrl,
 } from "@/features/auth/api/oauth-consent-api";
-import { isSafeHttpRedirect } from "@/features/auth/lib/safe-app-redirect";
+import {
+    isSafeHttpRedirect,
+    isSafeOAuthCallbackRedirect,
+} from "@/features/auth/lib/safe-app-redirect";
 import { useAuth } from "@/features/auth/model/use-auth";
 import { AuthPanel } from "@/features/auth/ui/auth-panel";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
@@ -39,7 +42,7 @@ export function OAuthConsentPanel({
     const [decision, setDecision] = useState<"allow" | "deny" | null>(null);
 
     const redirectToClient = useCallback((url: string) => {
-        if (!isSafeHttpRedirect(url)) {
+        if (!isSafeOAuthCallbackRedirect(url)) {
             setErrorKey("oauthConsent.unsafeRedirect");
             setIsLoading(false);
             setDecision(null);
