@@ -471,7 +471,7 @@
             "lines": "lines",
             "hint": "Logs from GitHub Actions",
             "streaming": "Loading logs…",
-            "empty": "No log lines for this run.",
+            "empty": "No log lines for this job.",
             "openOnGitHub": "Open on GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "No jobs for this run.",

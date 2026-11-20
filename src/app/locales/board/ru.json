@@ -473,7 +473,7 @@
             "lines": "строк",
             "hint": "Логи GitHub Actions",
             "streaming": "Загрузка логов…",
-            "empty": "Нет строк лога для этого прогона.",
+            "empty": "Нет строк лога у этого job.",
             "openOnGitHub": "Открыть на GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "Нет jobs у этого прогона.",

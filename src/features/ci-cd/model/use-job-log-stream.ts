@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type {
+    BuildJob,
     BuildLogLine,
     BuildsRepository,
     BuildStatus,
@@ -11,30 +12,42 @@ import { isGuest } from "@/features/guest-mode";
 
 const IN_FLIGHT_POLL_MS = 5000;
 
+export function isInFlightStatus(status: BuildStatus | undefined): boolean {
+    return status === "queued" || status === "running";
+}
+
 /**
- * Progressive log lines for a selected build (Actions or mock provider).
- * Unsubscribes on close / build change (no full page reload).
- * While the build is still queued/running, restarts the stream after each pass
+ * Progressive log lines of one job of a run (Actions or mock provider).
+ * Unsubscribes on close / job switch (no full page reload).
+ * While the job is still queued/running, restarts the stream after each pass
  * so logs appear without closing the dialog. Later passes replace lines only
  * when the new stream finishes (avoids wiping usable output every poll).
  */
-export function useBuildLogStream(
+export function useJobLogStream(
     repository: BuildsRepository | undefined,
-    buildId: string | undefined,
-    buildStatus?: BuildStatus
+    job: BuildJob | undefined
 ): { isStreaming: boolean; lines: BuildLogLine[] } {
     const guest = isGuest();
     const provider = resolveBuildsProvider(guest);
     const [lines, setLines] = useState<BuildLogLine[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
+    // Primitive deps: a jobs refetch hands over new objects for the same job.
+    const jobId = job?.id;
+    const jobName = job?.name ?? "";
+    const jobStatus = job?.status;
 
     useEffect(() => {
-        if (!buildId || !repository) {
+        if (!jobId || !jobStatus || !repository) {
             setLines([]);
             setIsStreaming(false);
             return;
         }
 
+        const current: BuildJob = {
+            id: jobId,
+            name: jobName,
+            status: jobStatus,
+        };
         let cancelled = false;
         let stopCurrent: (() => void) | undefined;
         let pollTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
@@ -52,34 +65,37 @@ export function useBuildLogStream(
             clearPoll();
             stopCurrent?.();
             pass += 1;
-            const thisPass = pass;
+            const isFirstPass = pass === 1;
             const buffer: BuildLogLine[] = [];
-            const isFirstPass = thisPass === 1;
+            let flushQueued = false;
 
             if (isFirstPass) {
                 setLines([]);
             }
             setIsStreaming(true);
 
-            stopCurrent = provider.streamBuildLogs(
+            stopCurrent = provider.streamJobLogs(
                 repository,
-                buildId,
+                current,
                 (line) => {
                     if (cancelled) return;
                     if (line.text.length > 0) {
-                        if (isFirstPass) {
-                            setLines((previous) => [...previous, line]);
-                        } else {
-                            buffer.push(line);
-                        }
+                        buffer.push(line);
+                    }
+                    // Providers emit a batch of lines per tick: copy the
+                    // buffer into state once per batch, not once per line.
+                    if (isFirstPass && !flushQueued && !line.done) {
+                        flushQueued = true;
+                        queueMicrotask(() => {
+                            flushQueued = false;
+                            if (!cancelled) setLines([...buffer]);
+                        });
                     }
                     if (!line.done) return;
 
-                    if (!isFirstPass) {
-                        setLines(buffer);
-                    }
+                    setLines([...buffer]);
                     setIsStreaming(false);
-                    if (isInFlightStatus(buildStatus) && !cancelled) {
+                    if (isInFlightStatus(jobStatus) && !cancelled) {
                         pollTimer = globalThis.setTimeout(
                             start,
                             IN_FLIGHT_POLL_MS
@@ -97,11 +113,7 @@ export function useBuildLogStream(
             stopCurrent?.();
             setIsStreaming(false);
         };
-    }, [buildId, buildStatus, provider, repository]);
+    }, [jobId, jobName, jobStatus, provider, repository]);
 
     return { isStreaming, lines };
-}
-
-function isInFlightStatus(status: BuildStatus | undefined): boolean {
-    return status === "queued" || status === "running";
 }

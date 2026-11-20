@@ -130,9 +130,25 @@ const MOCK_API_BUILDS: MockBuild[] = [
     },
 ];
 
-/** Full log scripts keyed by build id — streamed via setInterval. */
-const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
-    "build-analytics-1": [
+/** Log script of each job, keyed by job id — streamed via setInterval. */
+const MOCK_JOB_LOGS: Record<string, string[]> = {
+    "job-1": [
+        "$ git checkout main",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run test",
+        " PASS  src/features/tasks",
+        " PASS  src/widgets/kanban-board",
+        "All tests passed.",
+    ],
+    "job-2": [
+        "$ git checkout main",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run lint",
+        "✓ No lint errors",
+    ],
+    "job-3": [
         "$ git checkout feature/analytics",
         "$ npm ci",
         "added 412 packages in 18s",
@@ -141,7 +157,44 @@ const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
         "Expected series length 7, received 0",
         "error Command failed with exit code 1.",
     ],
-    "build-api-bug-11": [
+    "job-4": [
+        "$ git checkout feature/analytics",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run lint",
+        "✓ No lint errors",
+    ],
+    "job-5": [
+        "$ git checkout feature/TASK-42-login-page",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run test",
+        "… still running",
+    ],
+    "job-6": ["Queued — waiting for a runner…", "No runner available yet."],
+    "job-api-1": [
+        "$ git checkout feature/FEAT-2-guest-ci-mock",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "… still running",
+    ],
+    "job-api-2": [
+        "$ git checkout feature/FEAT-2-guest-ci-mock",
+        "$ deno check supabase/functions/**/*.ts",
+        "✓ Check succeeded",
+    ],
+    "job-api-3": [
+        "$ git checkout develop",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "All tests successful.",
+    ],
+    "job-api-4": [
+        "$ git checkout develop",
+        "$ deno check supabase/functions/**/*.ts",
+        "✓ Check succeeded",
+    ],
+    "job-api-5": [
         "$ git checkout fix/BUG-11-realtime-reconnect",
         "$ supabase db reset",
         "$ supabase test db",
@@ -149,40 +202,10 @@ const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
         "Failed 1/12 subtests",
         "error Command failed with exit code 1.",
     ],
-    "build-api-develop-1": [
-        "$ git checkout develop",
-        "$ supabase db reset",
-        "$ supabase test db",
-        "All tests successful.",
+    "job-api-6": [
+        "$ git checkout fix/BUG-11-realtime-reconnect",
         "$ deno check supabase/functions/**/*.ts",
-        "✓ Build succeeded",
-    ],
-    "build-api-feat-2": [
-        "$ git checkout feature/FEAT-2-guest-ci-mock",
-        "$ supabase db reset",
-        "$ supabase test db",
-        "… still running",
-    ],
-    "build-invite-1": [
-        "Queued — waiting for a runner…",
-        "No runner available yet.",
-    ],
-    "build-login-1": [
-        "$ git checkout feature/TASK-42-login-page",
-        "$ npm ci",
-        "added 412 packages in 18s",
-        "$ npm run lint",
-        "… still running",
-    ],
-    "build-main-1": [
-        "$ git checkout main",
-        "$ npm ci",
-        "added 412 packages in 18s",
-        "$ npm run test",
-        " PASS  src/features/tasks",
-        " PASS  src/widgets/kanban-board",
-        "All tests passed.",
-        "✓ Build succeeded",
+        "✓ Check succeeded",
     ],
 };
 
@@ -291,9 +314,12 @@ export const mockBuildsForProject: BuildsForProject = {
         };
     },
 
-    streamBuildLogs(repository, buildId, onLine) {
-        void repository;
-        const script = MOCK_LOG_SCRIPTS[buildId];
+    streamJobLogs(repository, job, onLine) {
+        // Only jobs of this Repository's runs have a log here.
+        const known = buildsFor(repository).some((build) =>
+            build.jobs?.some((item) => item.id === job.id)
+        );
+        const script = known ? MOCK_JOB_LOGS[job.id] : undefined;
         if (!script || script.length === 0) {
             // Complete immediately with no lines so UI does not stay “Streaming…”.
             const timer = setTimeout(() => {
