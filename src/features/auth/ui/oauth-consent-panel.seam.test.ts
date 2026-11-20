@@ -18,7 +18,7 @@ describe("OAuth consent panel seam", () => {
 
         expect(panel).toMatch(/approveOAuthAuthorization/);
         expect(panel).toMatch(/denyOAuthAuthorization/);
-        expect(panel).toMatch(/isSafeHttpRedirect/);
+        expect(panel).toMatch(/isSafeOAuthCallbackRedirect\(url\)/);
         expect(panel).not.toMatch(/startGuestSession/);
         expect(api).toMatch(/skipBrowserRedirect:\s*true/);
     });
