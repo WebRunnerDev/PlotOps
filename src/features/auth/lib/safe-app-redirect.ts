@@ -14,7 +14,28 @@ export function isOAuthConsentRedirect(path: null | string): boolean {
     return pathname === "/oauth/consent";
 }
 
-/** Supabase returns the OAuth client redirect after consent — http(s) only. */
+/**
+ * Schemes a browser handles itself (script execution, local files,
+ * browser internals). Never navigate to these from the consent page.
+ */
+const BLOCKED_CALLBACK_SCHEMES = new Set([
+    "about:",
+    "blob:",
+    "chrome-extension:",
+    "chrome:",
+    "data:",
+    "edge:",
+    "file:",
+    "filesystem:",
+    "intent:",
+    "javascript:",
+    "moz-extension:",
+    "resource:",
+    "vbscript:",
+    "view-source:",
+]);
+
+/** Web links only (e.g. the client's homepage) — http(s). */
 export function isSafeHttpRedirect(url: string): boolean {
     try {
         const parsed = new URL(url);
@@ -22,6 +43,26 @@ export function isSafeHttpRedirect(url: string): boolean {
     } catch {
         return false;
     }
+}
+
+/**
+ * OAuth client callback returned by Supabase after consent. Allows
+ * http(s) (web and loopback clients) and private-use app schemes
+ * (RFC 8252 §7.1) such as `claude://`, `cursor://`, `vscode://`, which
+ * desktop MCP clients register. Supabase has already matched the URL
+ * against the client's registered redirect URIs.
+ */
+export function isSafeOAuthCallbackRedirect(url: string): boolean {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        return true;
+    }
+    return !BLOCKED_CALLBACK_SCHEMES.has(parsed.protocol);
 }
 
 export function oauthConsentHref(authorizationId: string): string {
