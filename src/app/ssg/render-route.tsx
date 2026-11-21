@@ -12,6 +12,7 @@ import type { PageSeo } from "@/shared/lib/seo";
 import { createAppRouter } from "@/app/create-app-router";
 import { initSsgI18n } from "@/app/ssg/i18n";
 import { SsgAuthProvider } from "@/app/ssg/ssg-auth-provider";
+import { stripInlineScripts } from "@/app/ssg/strip-inline-scripts";
 import {
     PLOTOPS_SITE_ORIGIN,
     type PlotOpsPublicPath,
@@ -75,7 +76,7 @@ export async function renderPublicRoute(
     }
 
     const raw = await response.text();
-    return raw.replace(/^<!DOCTYPE html>/i, "");
+    return stripInlineScripts(raw.replace(/^<!DOCTYPE html>/i, ""));
 }
 
 export { patchPrerenderedHtml } from "@/shared/lib/seo-html";

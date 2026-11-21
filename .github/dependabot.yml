@@ -1,4 +1,9 @@
-# Weekly dependency updates; minor/patch bumps grouped into one PR per ecosystem.
+# Dependency updates, batched so the PR list stays short:
+#   - npm minor/patch: one grouped PR per week.
+#   - npm majors: ignored here; migrations are planned as issues and done by hand.
+#   - security fixes: one grouped PR (GitHub always opens these against the
+#     default branch, `main`, regardless of target-branch).
+#   - GitHub Actions: one grouped PR per month, majors included.
 version: 2
 updates:
     - package-ecosystem: npm
@@ -6,20 +11,27 @@ updates:
       target-branch: dev
       schedule:
           interval: weekly
-      open-pull-requests-limit: 10
+      open-pull-requests-limit: 5
+      ignore:
+          - dependency-name: "*"
+            update-types:
+                - version-update:semver-major
       groups:
           npm-minor-patch:
               update-types:
                   - minor
                   - patch
+          npm-security:
+              applies-to: security-updates
+              patterns:
+                  - "*"
 
     - package-ecosystem: github-actions
       directory: /
       target-branch: dev
       schedule:
-          interval: weekly
+          interval: monthly
       groups:
-          actions-minor-patch:
-              update-types:
-                  - minor
-                  - patch
+          actions-all:
+              patterns:
+                  - "*"
