@@ -99,6 +99,9 @@
         "merged": "merged",
         "closed": "closed"
     },
+    "peek": {
+        "openOnBoard": "Открыть на доске"
+    },
     "drawerDescription": "Редактирование задачи и связей с GitHub",
     "fields": {
         "title": "Название",

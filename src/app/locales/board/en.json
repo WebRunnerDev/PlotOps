@@ -99,6 +99,9 @@
         "merged": "merged",
         "closed": "closed"
     },
+    "peek": {
+        "openOnBoard": "Open on board"
+    },
     "drawerDescription": "Edit task details and GitHub links",
     "fields": {
         "title": "Title",

@@ -7,6 +7,7 @@ import {
     Copy,
     RotateCcw,
     Share2,
+    SquareKanban,
     Trash2,
     XIcon,
 } from "lucide-react";
@@ -80,6 +81,7 @@ import {
 } from "@/features/tasks/model/constants";
 import { resolveTaskSwapAnimation } from "@/features/tasks/model/resolve-task-swap-animation";
 import { useTaskDrawerPreferencesStore } from "@/features/tasks/model/task-drawer-preferences-store";
+import { useTaskPeekStore } from "@/features/tasks/model/task-peek-store";
 import { useArchivedTasks } from "@/features/tasks/model/use-archived-tasks";
 import { useBoardTasks } from "@/features/tasks/model/use-board-tasks";
 import { useProjectEpics } from "@/features/tasks/model/use-project-epics";
@@ -170,6 +172,11 @@ type MoveBoardTarget = {
 type TaskDrawerProperties = {
     boardId: string;
     githubToken: null | string;
+    /**
+     * Task Peek: the drawer opens away from its Board (e.g. Notifications) and
+     * offers "Open on board". Page-owned drawers leave this off.
+     */
+    peek?: boolean;
     projectId: string;
     /** The Project's Repositories (ADR 0035); `[]` when none is linked. */
     repositories: readonly ProjectRepository[];
@@ -178,10 +185,18 @@ type TaskDrawerProperties = {
 export function TaskDrawer({
     boardId,
     githubToken,
+    peek = false,
     projectId,
     repositories,
 }: TaskDrawerProperties) {
     useSyncTaskUrl();
+    const registerPageDrawer = useTaskPeekStore(
+        (state) => state.registerPageDrawer
+    );
+    useEffect(() => {
+        if (peek) return;
+        return registerPageDrawer();
+    }, [peek, registerPageDrawer]);
     const { i18n, t } = useTranslation("board");
     const isGuestSessionActive = isGuest();
     const queryClient = useQueryClient();
@@ -470,6 +485,19 @@ export function TaskDrawer({
         projectTasks,
         selectedTaskId,
     ]);
+
+    const handleOpenOnBoard = async () => {
+        if (!task) return;
+        const { boardId: taskBoardId, key } = task;
+        await commitDescription();
+        clearSelectedTask();
+        // `?task=` reopens the drawer on the Board (shared-link path).
+        await navigate({
+            params: { boardId: taskBoardId, projectId },
+            search: { task: key },
+            to: "/projects/$projectId/boards/$boardId",
+        });
+    };
 
     const handleCopyTaskLink = async () => {
         if (!task) return;
@@ -805,13 +833,40 @@ export function TaskDrawer({
                     "bg-linear-to-t from-amber-500/50 to-transparent dark:from-amber-900/50 dark:to-transparent"
             )}
         >
-            <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
-                <span aria-hidden className="size-1.5 shrink-0 bg-primary" />
-                <span className="font-mono text-code text-foreground/80">
-                    {task.key}
-                </span>
-                {isArchived ? ` · ${t("archive.badge")}` : undefined}
-            </p>
+            <div className="flex min-w-0 items-center justify-between gap-3">
+                <p className="flex min-w-0 flex-wrap items-center gap-2 text-meta text-muted-foreground">
+                    <span
+                        aria-hidden
+                        className="size-1.5 shrink-0 bg-primary"
+                    />
+                    <span className="font-mono text-code text-foreground/80">
+                        {task.key}
+                    </span>
+                    {isArchived ? ` · ${t("archive.badge")}` : undefined}
+                    {peek && (project?.name || currentBoard?.name) ? (
+                        <span className="min-w-0 truncate">
+                            {[project?.name, currentBoard?.name]
+                                .filter(Boolean)
+                                .join(" / ")}
+                        </span>
+                    ) : undefined}
+                </p>
+                {peek ? (
+                    <Button
+                        className={cn("shrink-0", DRAWER_ACTION_CLASS)}
+                        data-testid="task-peek-open-on-board"
+                        onClick={() => {
+                            void handleOpenOnBoard();
+                        }}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                    >
+                        <SquareKanban data-icon="inline-start" />
+                        {t("peek.openOnBoard")}
+                    </Button>
+                ) : undefined}
+            </div>
             <DrawerTitle className="sr-only">{task.title}</DrawerTitle>
             <DrawerDescription className="text-code text-muted-foreground">
                 {isArchived
