@@ -11,7 +11,9 @@ import { useTranslation } from "react-i18next";
 import type { TeamTask } from "@/features/tasks";
 import type { TeamTasksGroup } from "@/widgets/team-tasks/model/team-tasks-view";
 
+import { useIdlePreload } from "@/shared/lib/use-idle-preload";
 import { cn } from "@/shared/lib/utils";
+import { preloadRichTextEditor } from "@/shared/ui/rich-text-editor";
 
 import { TEAM_TASK_GRID_CLASS, TeamTaskRow } from "./team-task-row";
 
@@ -35,6 +37,7 @@ const ROW_OVERSCAN = 12;
  * virtualized list, so a Team with thousands of Tasks stays cheap to scroll.
  */
 export function TeamTasksList({ groups }: TeamTasksListProperties) {
+    useIdlePreload(preloadRichTextEditor);
     const { t } = useTranslation("board");
     const listReference = useRef<HTMLUListElement>(null);
     const scrollMargin = useWindowScrollMargin(listReference);

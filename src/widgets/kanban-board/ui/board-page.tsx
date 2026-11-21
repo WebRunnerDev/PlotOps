@@ -13,8 +13,10 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
 import { BoardSprintControls } from "@/features/sprints";
 import { BoardArchiveDialog } from "@/features/tasks";
+import { useIdlePreload } from "@/shared/lib/use-idle-preload";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button } from "@/shared/shadcn/ui/button";
+import { preloadRichTextEditor } from "@/shared/ui/rich-text-editor";
 import { resolveBoardBaseBranchChips } from "@/widgets/kanban-board/model/resolve-board-base-branch-chips";
 import { resolveBoardNewTaskCtaVisible } from "@/widgets/kanban-board/model/resolve-board-new-task-cta-visible";
 import { resolveBoardPagePresence } from "@/widgets/kanban-board/model/resolve-board-page-presence";
@@ -28,6 +30,7 @@ type BoardPageProperties = {
 };
 
 export function BoardPage({ boardId, projectId }: BoardPageProperties) {
+    useIdlePreload(preloadRichTextEditor);
     const { t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
     const {

@@ -5,7 +5,10 @@ import { useTranslation } from "react-i18next";
 import type { GitPullRequest as GitPR } from "@/features/git-integration/api/github-git-api";
 
 import { useBranchPullRequests } from "@/features/git-integration/model/use-git-data";
-import { PrDiffDialog } from "@/features/git-integration/ui/lazy-pr-diff-dialog";
+import {
+    PrDiffDialog,
+    preloadPrDiffDialog,
+} from "@/features/git-integration/ui/lazy-pr-diff-dialog";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/shadcn/ui/alert";
 import { Badge } from "@/shared/shadcn/ui/badge";
@@ -161,6 +164,10 @@ export function TaskGitTab({
                                         <div className="flex shrink-0 items-center gap-1">
                                             <Button
                                                 onClick={() => setDiffPr(pr)}
+                                                onFocus={preloadPrDiffDialog}
+                                                onPointerEnter={
+                                                    preloadPrDiffDialog
+                                                }
                                                 size="xs"
                                                 type="button"
                                                 variant="outline"
