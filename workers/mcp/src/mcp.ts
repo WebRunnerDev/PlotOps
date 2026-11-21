@@ -27,6 +27,7 @@ export const SERVER_INSTRUCTIONS = [
     "To assign work, find people with list_members and pass their user_id as assignee_id.",
     "Model structure with fields, never with text in the description: epic_id (list_epics), parent_id for Parent Task / Subtask, and link_tasks for blocks / relates_to. get_task returns these relations.",
     `Task descriptions and comments: ${RICH_TEXT_FORMAT_HINT}`,
+    'Git: when you write code for a PlotOps task, put its task_key (e.g. WEB-12) in the branch name, every commit message and the PR title — e.g. branch feat/WEB-12-login-form, commit "feat: add login form (WEB-12)", PR "WEB-12: Login form". PlotOps links branches, commits and PRs to the task by that key, with no manual step. Keep the repo\'s own naming conventions; only the key is required. get_task, create_task and change_status return ready-made names in `git`.',
 ].join("\n");
 
 export function acceptsMcp(request: Request): boolean {
