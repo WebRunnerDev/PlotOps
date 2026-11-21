@@ -19,6 +19,7 @@ import {
     useTasksUiStore,
 } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
+import { preloadRichTextEditor } from "@/shared/ui/rich-text-editor";
 import { gateDragListeners } from "@/widgets/kanban-board/model/gate-drag-pointer-down";
 import { shouldOpenTaskFromKeyboard } from "@/widgets/kanban-board/model/should-open-task-from-keyboard";
 import { shouldOpenTaskFromPointer } from "@/widgets/kanban-board/model/should-open-task-from-pointer";
@@ -205,7 +206,9 @@ export function DraggableTaskCard({
             )}
             onClick={handleCardClick}
             onDoubleClick={handleCardDoubleClick}
+            onFocus={preloadRichTextEditor}
             onMouseDown={handleCardMouseDown}
+            onPointerEnter={preloadRichTextEditor}
             ref={setNodeRef}
             style={{
                 transform: CSS.Translate.toString(transform),

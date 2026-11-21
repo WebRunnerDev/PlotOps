@@ -146,23 +146,7 @@ export type RichTextEditorHandle = {
     waitForIdle: () => Promise<string>;
 };
 
-type FloatingMenuState = {
-    activeIds: string[];
-    activeIndex: number;
-    commands: SlashCommand[];
-    query: string;
-    reference: null | ReferenceRect;
-    source: "context" | "selection" | "slash" | null;
-};
-
-type ReferenceRect = {
-    bottom: number;
-    left: number;
-    right: number;
-    top: number;
-};
-
-type RichTextEditorProperties = {
+export type RichTextEditorProperties = {
     className?: string;
     compact?: boolean;
     id?: string;
@@ -180,6 +164,22 @@ type RichTextEditorProperties = {
     /** Project Tasks for the `#` task reference picker. */
     taskMentionCandidates?: readonly TaskMentionCandidate[];
     value: string;
+};
+
+type FloatingMenuState = {
+    activeIds: string[];
+    activeIndex: number;
+    commands: SlashCommand[];
+    query: string;
+    reference: null | ReferenceRect;
+    source: "context" | "selection" | "slash" | null;
+};
+
+type ReferenceRect = {
+    bottom: number;
+    left: number;
+    right: number;
+    top: number;
 };
 
 const EMPTY_MENU: FloatingMenuState = {

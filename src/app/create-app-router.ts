@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 
 import { getPageTransitionTypes } from "@/shared/lib/page-transitions";
 
+import { RouteErrorFallback } from "./route-error-fallback";
 import { routeTree } from "./routeTree.gen";
 
 export function createAppRouter(queryClient: QueryClient) {
@@ -15,6 +16,7 @@ export function createAppRouter(queryClient: QueryClient) {
             },
             queryClient,
         },
+        defaultErrorComponent: RouteErrorFallback,
         defaultViewTransition: {
             types: getPageTransitionTypes,
         },

@@ -11,6 +11,7 @@ import {
 } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
+import { preloadRichTextEditor } from "@/shared/ui/rich-text-editor";
 
 /**
  * Desktop column track shared by the header and every row:
@@ -41,6 +42,8 @@ export function TeamTaskRow({ task }: TeamTaskRowProperties) {
                 "flex flex-col gap-1.5 px-3 py-2.5 outline-none hover:bg-primary/8 focus-visible:bg-primary/8 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset lg:py-2",
                 TEAM_TASK_GRID_CLASS
             )}
+            onFocus={preloadRichTextEditor}
+            onPointerEnter={preloadRichTextEditor}
             params={{ boardId: task.boardId, projectId: task.projectId }}
             search={{ task: task.key }}
             to="/projects/$projectId/boards/$boardId"
