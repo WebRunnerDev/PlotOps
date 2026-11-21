@@ -1,6 +1,7 @@
 import type { McpUser } from "./auth.ts";
 import type { UserSupabase } from "./supabase.ts";
 
+import { taskGitNaming } from "./git-naming.ts";
 import {
     clampLimit,
     clampOffset,
@@ -277,9 +278,27 @@ async function createTask(
     return {
         resourceId,
         resourceType: "task",
-        text: jsonText({ task }),
+        text: jsonText({ git: gitNamingOf(task), task }),
     };
 }
+
+/** `git` naming for a task row, or null when the row has no task_key. */
+function gitNamingOf(task: unknown) {
+    const row = task as null | {
+        task_key?: unknown;
+        task_type?: null | string;
+        title?: null | string;
+    };
+    if (typeof row?.task_key !== "string" || !row.task_key) return null;
+    return taskGitNaming({
+        task_key: row.task_key,
+        task_type: row.task_type,
+        title: row.title,
+    });
+}
+
+const GIT_NAMING_DESCRIPTION =
+    "Returns `git`: the branch, commit and PR title naming for this task. Use it when you branch, commit or open a PR for the task — PlotOps auto-links them by the task key.";
 
 function escapeIlike(value: string): string {
     return value
@@ -340,6 +359,7 @@ async function getTask(
         resourceType: "task",
         text: jsonText({
             comments: comments ?? [],
+            git: gitNamingOf(task),
             labels: labels ?? [],
             ...relations,
             task,
@@ -652,10 +672,23 @@ async function changeStatus(
             p_task_id: taskId,
         })
     );
+
+    // Naming is a hint: the status change already succeeded, so a failed
+    // lookup only drops `git`.
+    const { data: task } = await context.supabase
+        .from("tasks")
+        .select("task_key, title, task_type")
+        .eq("id", taskId)
+        .single();
+
     return {
         resourceId: taskId,
         resourceType: "task",
-        text: jsonText({ column_id: columnId, task_id: taskId }),
+        text: jsonText({
+            column_id: columnId,
+            git: gitNamingOf(task),
+            task_id: taskId,
+        }),
     };
 }
 
@@ -1095,8 +1128,7 @@ export const TOOLS: ToolDefinition[] = [
         readOnly: true,
     },
     {
-        description:
-            "Read one task with its comments, labels and structured relations: parent, subtasks, epic (epic_tasks when the task is an Epic) and links (blocks / blocked_by / relates_to, each with link_id).",
+        description: `Read one task with its comments, labels and structured relations: parent, subtasks, epic (epic_tasks when the task is an Epic) and links (blocks / blocked_by / relates_to, each with link_id). ${GIT_NAMING_DESCRIPTION}`,
         handler: getTask,
         inputSchema: {
             additionalProperties: false,
@@ -1111,8 +1143,7 @@ export const TOOLS: ToolDefinition[] = [
         readOnly: true,
     },
     {
-        description:
-            "Create a task on a board. Status defaults to the first column; type defaults to the board setting; author is the signed-in user. Set relations with fields, not description text: assignee_id (list_members), epic_id (list_epics), parent_id (creates a Subtask: it moves to the parent's board, first column and open Sprint). Add blocks/relates_to links afterwards with link_tasks.",
+        description: `Create a task on a board. Status defaults to the first column; type defaults to the board setting; author is the signed-in user. Set relations with fields, not description text: assignee_id (list_members), epic_id (list_epics), parent_id (creates a Subtask: it moves to the parent's board, first column and open Sprint). Add blocks/relates_to links afterwards with link_tasks. ${GIT_NAMING_DESCRIPTION}`,
         handler: createTask,
         inputSchema: {
             additionalProperties: false,
@@ -1200,8 +1231,7 @@ export const TOOLS: ToolDefinition[] = [
         readOnly: false,
     },
     {
-        description:
-            "Move a task to another board column (status). Appends at the end of the column. Uses the same Done-column gates as the kanban board.",
+        description: `Move a task to another board column (status). Appends at the end of the column. Uses the same Done-column gates as the kanban board. ${GIT_NAMING_DESCRIPTION}`,
         handler: changeStatus,
         inputSchema: {
             additionalProperties: false,

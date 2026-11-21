@@ -10,6 +10,7 @@ import {
     listGuestNotifications,
     markAllGuestNotificationsRead,
     markGuestNotificationsRead,
+    markGuestNotificationsUnread,
 } from "@/features/notifications/api/guest-notifications";
 import {
     cleanupNotificationsForUser,
@@ -17,6 +18,7 @@ import {
     fetchUnreadNotificationsCount,
     markAllNotificationsRead,
     markNotificationsRead,
+    markNotificationsUnread,
 } from "@/features/notifications/api/notifications-api";
 import { notificationsKeys } from "@/features/notifications/model/query-keys";
 import { supabase } from "@/shared/api/supabase";
@@ -72,6 +74,25 @@ export function useMarkNotificationRead() {
                 return;
             }
             await markNotificationsRead(notificationIds);
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({
+                queryKey: notificationsKeys.all,
+            });
+        },
+    });
+}
+
+export function useMarkNotificationUnread() {
+    const queryClient = useQueryClient();
+    const guest = isGuest();
+    return useMutation({
+        mutationFn: async (notificationIds: string[]) => {
+            if (guest) {
+                markGuestNotificationsUnread(notificationIds);
+                return;
+            }
+            await markNotificationsUnread(notificationIds);
         },
         onSuccess: () => {
             void queryClient.invalidateQueries({

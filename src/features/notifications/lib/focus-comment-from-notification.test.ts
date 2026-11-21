@@ -8,6 +8,7 @@ function notification(
     partial: Pick<Notification, "kind" | "metadata">
 ): Notification {
     return {
+        actor: null,
         createdAt: "2026-07-28T00:00:00.000Z",
         id: "n1",
         projectId: "p1",

@@ -395,6 +395,11 @@ export type Database = {
           p_q?: string
         }
         Returns: {
+          actor_avatar_url: null | string
+          actor_first_name: null | string
+          actor_id: null | string
+          actor_last_name: null | string
+          actor_username: null | string
           created_at: string
           id: string
           kind: string
@@ -406,12 +411,6 @@ export type Database = {
           task_key: string
           task_title: string
         }[]
-        SetofOptions: {
-          from: "*"
-          isOneToOne: false
-          isSetofReturn: true
-          to: "notifications"
-        }
       }
       log_mcp_action: {
         Args: {
@@ -891,6 +890,7 @@ export type Database = {
       }
       notifications: {
         Insert: {
+          actor_id?: null | string
           created_at?: string
           id?: string
           kind: string
@@ -926,6 +926,7 @@ export type Database = {
           },
         ]
         Row: {
+          actor_id: null | string
           created_at: string
           id: string
           kind: string
@@ -938,6 +939,7 @@ export type Database = {
           task_title: string
         }
         Update: {
+          actor_id?: null | string
           created_at?: string
           id?: string
           kind?: string

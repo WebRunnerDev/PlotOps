@@ -127,7 +127,14 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
         isLoading: buildsLoading,
     } = useProjectBuilds(projectId, repositories);
     const { stats: projectStats } = useBuildsStats(projectId, repositories);
-    const scrollReference = useRef<HTMLDivElement>(null);
+    // State, not a ref: the lists read the scroller during their own first
+    // layout pass, which runs before React attaches this parent's ref. With
+    // cached builds the page and lists mount in one commit, and a ref would
+    // leave the virtualizers without a viewport — empty lists until reload.
+    const [scrollElement, setScrollElement] = useState<HTMLDivElement>();
+    const attachScroller = useCallback((node: HTMLDivElement | null) => {
+        setScrollElement(node ?? undefined);
+    }, []);
     const [selectedBuild, setSelectedBuild] = useState<
         ProjectBuild | undefined
     >();
@@ -251,7 +258,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
     return (
         <div
             className="scrollbar-board relative mx-auto flex h-full w-full min-w-0 max-w-6xl flex-col gap-8 overflow-y-auto px-4 py-8 sm:gap-10 sm:py-10"
-            ref={scrollReference}
+            ref={attachScroller}
         >
             <div
                 aria-hidden
@@ -539,7 +546,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                                     ? t("cicd.repository")
                                                     : undefined
                                             }
-                                            scrollReference={scrollReference}
+                                            scrollElement={scrollElement}
                                             startDelayMs={200}
                                             statusLabel={(status) =>
                                                 t(`cicd.status.${status}`)
@@ -561,7 +568,7 @@ export function CiCdPage({ projectId }: CiCdPageProperties) {
                                                     ? t("cicd.repository")
                                                     : undefined
                                             }
-                                            scrollReference={scrollReference}
+                                            scrollElement={scrollElement}
                                             startDelayMs={
                                                 liveBuilds.length > 0
                                                     ? 280
@@ -981,7 +988,7 @@ function RunSection({
     onSelect,
     openLogsLabel,
     repositoryLabel,
-    scrollReference,
+    scrollElement,
     startDelayMs,
     statusLabel,
     title,
@@ -991,13 +998,13 @@ function RunSection({
     onSelect: (build: ProjectBuild) => void;
     openLogsLabel: (branch: string) => string;
     repositoryLabel?: string;
-    scrollReference: RefObject<HTMLDivElement | null>;
+    scrollElement: HTMLDivElement | undefined;
     startDelayMs: number;
     statusLabel: (status: BuildStatus) => string;
     title: string;
 }) {
     const listReference = useRef<HTMLUListElement>(null);
-    const scrollMargin = useScrollMargin(scrollReference, listReference);
+    const scrollMargin = useScrollMargin(scrollElement, listReference);
 
     const virtualizer = useVirtualizer({
         count: builds.length,
@@ -1006,7 +1013,8 @@ function RunSection({
             const build = builds[index];
             return build ? buildKey(build) : index;
         },
-        getScrollElement: () => scrollReference.current,
+        // eslint-disable-next-line unicorn/no-null -- the virtualizer's contract
+        getScrollElement: () => scrollElement ?? null,
         overscan: ROW_OVERSCAN,
         scrollMargin,
     });
@@ -1138,13 +1146,12 @@ function SummaryCell({
  * line its window up with the rows that sit below the header and summary.
  */
 function useScrollMargin(
-    scrollReference: RefObject<HTMLDivElement | null>,
+    scroller: HTMLDivElement | undefined,
     listReference: RefObject<HTMLUListElement | null>
 ): number {
     const [scrollMargin, setScrollMargin] = useState(0);
 
     const measure = useCallback(() => {
-        const scroller = scrollReference.current;
         const list = listReference.current;
         if (!scroller || !list) return;
         const next =
@@ -1155,7 +1162,7 @@ function useScrollMargin(
         setScrollMargin((current) =>
             Math.abs(current - next) < 1 ? current : next
         );
-    }, [listReference, scrollReference]);
+    }, [listReference, scroller]);
 
     // Every render: anything above the list (alerts, summary, the live
     // section) can change height and move the list without resizing anything
@@ -1163,7 +1170,6 @@ function useScrollMargin(
     useLayoutEffect(measure);
 
     useLayoutEffect(() => {
-        const scroller = scrollReference.current;
         if (!scroller || globalThis.ResizeObserver === undefined) return;
         const observer = new ResizeObserver(() => {
             measure();
@@ -1172,7 +1178,7 @@ function useScrollMargin(
         return () => {
             observer.disconnect();
         };
-    }, [measure, scrollReference]);
+    }, [measure, scroller]);
 
     return scrollMargin;
 }

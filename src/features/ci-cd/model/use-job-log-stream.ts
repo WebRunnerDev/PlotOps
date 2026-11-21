@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
     BuildJob,
@@ -12,25 +12,37 @@ import { isGuest } from "@/features/guest-mode";
 
 const IN_FLIGHT_POLL_MS = 5000;
 
+export type JobLogStream = {
+    /** The job is queued/running: its log keeps refreshing while open. */
+    isLive: boolean;
+    /** The first download of this job's log has not finished yet. */
+    isLoading: boolean;
+    lines: BuildLogLine[];
+};
+
 export function isInFlightStatus(status: BuildStatus | undefined): boolean {
     return status === "queued" || status === "running";
 }
 
 /**
- * Progressive log lines of one job of a run (Actions or mock provider).
- * Unsubscribes on close / job switch (no full page reload).
- * While the job is still queued/running, restarts the stream after each pass
- * so logs appear without closing the dialog. Later passes replace lines only
- * when the new stream finishes (avoids wiping usable output every poll).
+ * Log lines of one job of a run (Actions or mock provider).
+ * A finished job's log arrives whole; a queued/running one streams in, then
+ * restarts after each pass so new output appears without closing the dialog.
+ * Later passes — and a status change of the same job — replace the lines only
+ * when the new pass finishes, so the console never blanks out mid-read.
+ * Unsubscribes on close / job switch.
  */
 export function useJobLogStream(
     repository: BuildsRepository | undefined,
     job: BuildJob | undefined
-): { isStreaming: boolean; lines: BuildLogLine[] } {
+): JobLogStream {
     const guest = isGuest();
     const provider = resolveBuildsProvider(guest);
     const [lines, setLines] = useState<BuildLogLine[]>([]);
-    const [isStreaming, setIsStreaming] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    // Which job the lines on screen belong to — kept across status changes.
+    // Set once lines land, so an effect cancelled before that starts afresh.
+    const shownJobReference = useRef<string | undefined>(undefined);
     // Primitive deps: a jobs refetch hands over new objects for the same job.
     const jobId = job?.id;
     const jobName = job?.name ?? "";
@@ -38,8 +50,9 @@ export function useJobLogStream(
 
     useEffect(() => {
         if (!jobId || !jobStatus || !repository) {
+            shownJobReference.current = undefined;
             setLines([]);
-            setIsStreaming(false);
+            setIsLoading(false);
             return;
         }
 
@@ -48,6 +61,7 @@ export function useJobLogStream(
             name: jobName,
             status: jobStatus,
         };
+        const sameJob = shownJobReference.current === jobId;
         let cancelled = false;
         let stopCurrent: (() => void) | undefined;
         let pollTimer: ReturnType<typeof globalThis.setTimeout> | undefined;
@@ -66,40 +80,49 @@ export function useJobLogStream(
             stopCurrent?.();
             pass += 1;
             const isFirstPass = pass === 1;
+            // Only a fresh job fills the console as lines arrive.
+            const progressive = isFirstPass && !sameJob;
             const buffer: BuildLogLine[] = [];
+            let finished = false;
             let flushQueued = false;
 
-            if (isFirstPass) {
-                setLines([]);
-            }
-            setIsStreaming(true);
+            if (progressive) setLines([]);
+            if (isFirstPass) setIsLoading(true);
 
             stopCurrent = provider.streamJobLogs(
                 repository,
                 current,
                 (line) => {
-                    if (cancelled) return;
-                    if (line.text.length > 0) {
-                        buffer.push(line);
+                    if (cancelled || finished) return;
+                    if (line.text.length > 0) buffer.push(line);
+
+                    if (line.done) {
+                        finished = true;
+                        shownJobReference.current = jobId;
+                        const next = [...buffer];
+                        setLines((previous) =>
+                            sameLog(previous, next) ? previous : next
+                        );
+                        if (isFirstPass) setIsLoading(false);
+                        if (isInFlightStatus(jobStatus)) {
+                            pollTimer = globalThis.setTimeout(
+                                start,
+                                IN_FLIGHT_POLL_MS
+                            );
+                        }
+                        return;
                     }
+
                     // Providers emit a batch of lines per tick: copy the
                     // buffer into state once per batch, not once per line.
-                    if (isFirstPass && !flushQueued && !line.done) {
+                    if (progressive && !flushQueued) {
                         flushQueued = true;
                         queueMicrotask(() => {
                             flushQueued = false;
-                            if (!cancelled) setLines([...buffer]);
+                            if (cancelled || finished) return;
+                            shownJobReference.current = jobId;
+                            setLines([...buffer]);
                         });
-                    }
-                    if (!line.done) return;
-
-                    setLines([...buffer]);
-                    setIsStreaming(false);
-                    if (isInFlightStatus(jobStatus) && !cancelled) {
-                        pollTimer = globalThis.setTimeout(
-                            start,
-                            IN_FLIGHT_POLL_MS
-                        );
                     }
                 }
             );
@@ -111,9 +134,22 @@ export function useJobLogStream(
             cancelled = true;
             clearPoll();
             stopCurrent?.();
-            setIsStreaming(false);
+            setIsLoading(false);
         };
     }, [jobId, jobName, jobStatus, provider, repository]);
 
-    return { isStreaming, lines };
+    return {
+        isLive: Boolean(jobId) && isInFlightStatus(jobStatus),
+        isLoading,
+        lines,
+    };
+}
+
+/** Same lines as already shown — skip the re-render of a big console. */
+function sameLog(
+    previous: readonly BuildLogLine[],
+    next: readonly BuildLogLine[]
+): boolean {
+    if (previous.length !== next.length) return false;
+    return previous.every((line, index) => line.text === next[index]?.text);
 }

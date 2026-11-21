@@ -10,6 +10,7 @@ import {
     updateGuestSandbox,
 } from "@/features/guest-mode";
 import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
+import { resolveNotificationActor } from "@/features/notifications/lib/resolve-notification-actor";
 
 export function countGuestUnreadNotifications(projectId?: string): number {
     const sandbox = getGuestSandbox();
@@ -54,6 +55,8 @@ export function listGuestNotifications(input: {
         );
     }
 
+    // Same order as `list_notifications_for_recipient`: newest first only,
+    // so reading a row never moves it.
     rows = rows.toSorted(
         (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -87,12 +90,26 @@ export function markGuestNotificationsRead(notificationIds: string[]): void {
     });
 }
 
+export function markGuestNotificationsUnread(notificationIds: string[]): void {
+    if (notificationIds.length === 0) return;
+    const ids = new Set(notificationIds);
+    updateGuestSandbox((sandbox) => {
+        for (const row of sandbox.notifications) {
+            if (ids.has(row.id)) {
+                row.readAt = null;
+            }
+        }
+    });
+}
+
 function mapNotification(row: GuestNotification): Notification {
+    const metadata = row.metadata as NotificationMetadata;
     return {
+        actor: resolveNotificationActor({ metadata }),
         createdAt: row.createdAt,
         id: row.id,
         kind: row.kind as NotificationKind,
-        metadata: row.metadata as NotificationMetadata,
+        metadata,
         projectId: row.projectId,
         readAt: row.readAt,
         taskId: row.taskId,

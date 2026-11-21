@@ -49,6 +49,8 @@ export type MentionMetadata = {
 export type MentionSource = "comment" | "description";
 
 export type Notification = {
+    /** Who caused it; null when unknown (rows created before Actors were stored). */
+    actor: NotificationActor | null;
     createdAt: string;
     id: string;
     kind: NotificationKind;
@@ -59,6 +61,14 @@ export type Notification = {
     taskKey: string;
     taskTitle: string;
 };
+
+/**
+ * Who caused a Notification: a teammate, or the GitHub webhook.
+ * `name` is empty when the teammate's profile is no longer visible.
+ */
+export type NotificationActor =
+    | { avatarUrl: null | string; id: string; kind: "user"; name: string }
+    | { kind: "github" };
 
 /** Closed structural set — do not invent kinds beyond this list. */
 export type NotificationKind =

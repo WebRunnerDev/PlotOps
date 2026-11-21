@@ -62,6 +62,18 @@ function jsonResponse(body: unknown) {
     } as unknown as Response;
 }
 
+function receiveDone(status: "running" | "success") {
+    const received: { done: boolean }[] = [];
+    const stop = githubActionsBuilds.streamJobLogs(
+        REPOSITORY,
+        { id: "7", name: "build", status },
+        (line) => {
+            received.push({ done: line.done });
+        }
+    );
+    return { received, stop };
+}
+
 function textResponse(text: string, status = 200) {
     return {
         arrayBuffer: () =>
@@ -249,6 +261,28 @@ describe("streamJobLogs", () => {
         expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe(
             "https://api.github.com/repos/org/repo/actions/jobs/42/logs"
         );
+    });
+
+    it("hands a finished job's log over whole, and streams a running one", async () => {
+        const text = Array.from({ length: 600 }, (_, index) => `l${index}`)
+            .join("\n")
+            .concat("\n");
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => Promise.resolve(textResponse(text)))
+        );
+
+        const finished = receiveDone("success");
+        const running = receiveDone("running");
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(finished.received).toHaveLength(600);
+        expect(finished.received.filter((line) => line.done)).toHaveLength(1);
+        expect(finished.received.at(-1)?.done).toBe(true);
+        expect(running.received.length).toBeLessThan(600);
+
+        finished.stop();
+        running.stop();
     });
 
     it("says the log is not ready while the job runs, and gone once it is done", async () => {

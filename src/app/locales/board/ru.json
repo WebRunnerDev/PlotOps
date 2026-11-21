@@ -99,6 +99,9 @@
         "merged": "merged",
         "closed": "closed"
     },
+    "peek": {
+        "openOnBoard": "Открыть на доске"
+    },
     "drawerDescription": "Редактирование задачи и связей с GitHub",
     "fields": {
         "title": "Название",
@@ -472,7 +475,6 @@
             "console": "Console",
             "lines": "строк",
             "hint": "Логи GitHub Actions",
-            "streaming": "Загрузка логов…",
             "empty": "Нет строк лога у этого job.",
             "openOnGitHub": "Открыть на GitHub",
             "jobsLabel": "Jobs",
@@ -480,7 +482,27 @@
             "jobsLoadFailed": "Не удалось загрузить jobs этого прогона.",
             "copy": "Скопировать лог",
             "download": "Скачать лог",
-            "copied": "Лог скопирован"
+            "copied": "Лог скопирован",
+            "loadingFull": "Загружаем лог целиком…",
+            "loadingLive": "Подключаемся к логу…",
+            "live": "Live",
+            "liveHint": "Job выполняется — лог обновляется каждые 5 с",
+            "expandAll": "Развернуть все шаги",
+            "collapseAll": "Свернуть все шаги",
+            "wrap": "Переносить длинные строки",
+            "nextError": "К следующей ошибке",
+            "errors_one": "{{count}} ошибка",
+            "errors_few": "{{count}} ошибки",
+            "errors_many": "{{count}} ошибок",
+            "errors_other": "{{count}} ошибки",
+            "jumpToEnd": "В конец лога",
+            "maximize": "Развернуть консоль",
+            "restore": "Обычный размер",
+            "level": {
+                "error": "Ошибка",
+                "warning": "Предупреждение",
+                "notice": "Заметка"
+            }
         },
         "retry": "Повторить"
     },
