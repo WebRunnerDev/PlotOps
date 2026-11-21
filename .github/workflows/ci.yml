@@ -1,4 +1,4 @@
-# Gate for every PR and for pushes to dev/main. Git hooks can be skipped with
+# Gate for every PR and for pushes to main. Git hooks can be skipped with
 # --no-verify, so these jobs are the real check. Jobs run in parallel: tests are
 # the slowest, and the fast checks should not wait for them.
 name: CI
@@ -6,7 +6,7 @@ name: CI
 on:
     pull_request:
     push:
-        branches: [main, dev]
+        branches: [main]
     workflow_dispatch:
 
 concurrency:
@@ -75,7 +75,7 @@ jobs:
             - run: test "${{ needs.test.result }}" = success
 
     # Guest-mode e2e against the built app, one job per browser so they run in
-    # parallel. PRs and pushes to dev run chromium only; pushes to main and manual
+    # parallel. PRs run chromium only; pushes to main and manual
     # runs add firefox and webkit. Auth specs skip here: they need local Supabase
     # (E2E_AUTH=1). fail-fast is off so one browser failing does not hide the others.
     browser-compat:
