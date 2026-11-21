@@ -9,40 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './../routes/__root'
-import { Route as TermsRouteImport } from './../routes/terms'
-import { Route as PrivacyRouteImport } from './../routes/privacy'
-import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
-import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as IndexRouteImport } from './../routes/index'
-import { Route as OauthConsentRouteImport } from './../routes/oauth/consent'
-import { Route as InviteTokenRouteImport } from './../routes/invite.$token'
-import { Route as mainSettingsRouteImport } from './../routes/(main)/settings'
-import { Route as mainNotificationsRouteImport } from './../routes/(main)/notifications'
-import { Route as mainHomeRouteImport } from './../routes/(main)/home'
-import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
-import { Route as mainAboutRouteImport } from './../routes/(main)/about'
-import { Route as authSignUpRouteImport } from './../routes/(auth)/sign-up'
+import { Route as mainRouteRouteImport } from './../routes/(main)/route'
+import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
+import { Route as PrivacyRouteImport } from './../routes/privacy'
+import { Route as TermsRouteImport } from './../routes/terms'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
+import { Route as authSignUpRouteImport } from './../routes/(auth)/sign-up'
+import { Route as mainAboutRouteImport } from './../routes/(main)/about'
+import { Route as mainDashboardRouteImport } from './../routes/(main)/dashboard'
+import { Route as mainHomeRouteImport } from './../routes/(main)/home'
+import { Route as mainNotificationsRouteImport } from './../routes/(main)/notifications'
+import { Route as mainSettingsRouteImport } from './../routes/(main)/settings'
+import { Route as InviteTokenRouteImport } from './../routes/invite.$token'
+import { Route as OauthConsentRouteImport } from './../routes/oauth/consent'
 import { Route as mainProjectsProjectIdRouteRouteImport } from './../routes/(main)/projects/$projectId/route'
-import { Route as mainTeamsTeamIdIndexRouteImport } from './../routes/(main)/teams/$teamId/index'
 import { Route as mainProjectsProjectIdIndexRouteImport } from './../routes/(main)/projects/$projectId/index'
-import { Route as mainTeamsTeamIdTasksRouteImport } from './../routes/(main)/teams/$teamId/tasks'
-import { Route as mainTeamsTeamIdSettingsRouteImport } from './../routes/(main)/teams/$teamId/settings'
-import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
 import { Route as mainProjectsProjectIdCiCdRouteImport } from './../routes/(main)/projects/$projectId/ci-cd'
-import { Route as mainProjectsProjectIdTasksTaskKeyRouteImport } from './../routes/(main)/projects/$projectId/tasks/$taskKey'
+import { Route as mainProjectsProjectIdSettingsRouteImport } from './../routes/(main)/projects/$projectId/settings'
+import { Route as mainTeamsTeamIdIndexRouteImport } from './../routes/(main)/teams/$teamId/index'
+import { Route as mainTeamsTeamIdSettingsRouteImport } from './../routes/(main)/teams/$teamId/settings'
+import { Route as mainTeamsTeamIdTasksRouteImport } from './../routes/(main)/teams/$teamId/tasks'
 import { Route as mainProjectsProjectIdBoardsBoardIdRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId'
+import { Route as mainProjectsProjectIdTasksTaskKeyRouteImport } from './../routes/(main)/projects/$projectId/tasks/$taskKey'
 import { Route as mainProjectsProjectIdBoardsBoardIdIndexRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/index'
 import { Route as mainProjectsProjectIdBoardsBoardIdBacklogRouteImport } from './../routes/(main)/projects/$projectId/boards/$boardId/backlog'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
+const mainRouteRoute = mainRouteRouteImport.update({
+  id: '/(main)',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompleteProfileRoute = CompleteProfileRouteImport.update({
@@ -50,38 +49,29 @@ const CompleteProfileRoute = CompleteProfileRouteImport.update({
   path: '/complete-profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const mainRouteRoute = mainRouteRouteImport.update({
-  id: '/(main)',
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OauthConsentRoute = OauthConsentRouteImport.update({
-  id: '/oauth/consent',
-  path: '/oauth/consent',
+const authSignInRoute = authSignInRouteImport.update({
+  id: '/(auth)/sign-in',
+  path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InviteTokenRoute = InviteTokenRouteImport.update({
-  id: '/invite/$token',
-  path: '/invite/$token',
+const authSignUpRoute = authSignUpRouteImport.update({
+  id: '/(auth)/sign-up',
+  path: '/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
-const mainSettingsRoute = mainSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => mainRouteRoute,
-} as any)
-const mainNotificationsRoute = mainNotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
-  getParentRoute: () => mainRouteRoute,
-} as any)
-const mainHomeRoute = mainHomeRouteImport.update({
-  id: '/home',
-  path: '/home',
+const mainAboutRoute = mainAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => mainRouteRoute,
 } as any)
 const mainDashboardRoute = mainDashboardRouteImport.update({
@@ -89,19 +79,29 @@ const mainDashboardRoute = mainDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => mainRouteRoute,
 } as any)
-const mainAboutRoute = mainAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+const mainHomeRoute = mainHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => mainRouteRoute,
 } as any)
-const authSignUpRoute = authSignUpRouteImport.update({
-  id: '/(auth)/sign-up',
-  path: '/sign-up',
+const mainNotificationsRoute = mainNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => mainRouteRoute,
+} as any)
+const mainSettingsRoute = mainSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => mainRouteRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const authSignInRoute = authSignInRouteImport.update({
-  id: '/(auth)/sign-in',
-  path: '/sign-in',
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const mainProjectsProjectIdRouteRoute =
@@ -110,31 +110,10 @@ const mainProjectsProjectIdRouteRoute =
     path: '/projects/$projectId',
     getParentRoute: () => mainRouteRoute,
   } as any)
-const mainTeamsTeamIdIndexRoute = mainTeamsTeamIdIndexRouteImport.update({
-  id: '/teams/$teamId/',
-  path: '/teams/$teamId/',
-  getParentRoute: () => mainRouteRoute,
-} as any)
 const mainProjectsProjectIdIndexRoute =
   mainProjectsProjectIdIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => mainProjectsProjectIdRouteRoute,
-  } as any)
-const mainTeamsTeamIdTasksRoute = mainTeamsTeamIdTasksRouteImport.update({
-  id: '/teams/$teamId/tasks',
-  path: '/teams/$teamId/tasks',
-  getParentRoute: () => mainRouteRoute,
-} as any)
-const mainTeamsTeamIdSettingsRoute = mainTeamsTeamIdSettingsRouteImport.update({
-  id: '/teams/$teamId/settings',
-  path: '/teams/$teamId/settings',
-  getParentRoute: () => mainRouteRoute,
-} as any)
-const mainProjectsProjectIdSettingsRoute =
-  mainProjectsProjectIdSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
 const mainProjectsProjectIdCiCdRoute =
@@ -143,16 +122,37 @@ const mainProjectsProjectIdCiCdRoute =
     path: '/ci-cd',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
-const mainProjectsProjectIdTasksTaskKeyRoute =
-  mainProjectsProjectIdTasksTaskKeyRouteImport.update({
-    id: '/tasks/$taskKey',
-    path: '/tasks/$taskKey',
+const mainProjectsProjectIdSettingsRoute =
+  mainProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
+const mainTeamsTeamIdIndexRoute = mainTeamsTeamIdIndexRouteImport.update({
+  id: '/teams/$teamId/',
+  path: '/teams/$teamId/',
+  getParentRoute: () => mainRouteRoute,
+} as any)
+const mainTeamsTeamIdSettingsRoute = mainTeamsTeamIdSettingsRouteImport.update({
+  id: '/teams/$teamId/settings',
+  path: '/teams/$teamId/settings',
+  getParentRoute: () => mainRouteRoute,
+} as any)
+const mainTeamsTeamIdTasksRoute = mainTeamsTeamIdTasksRouteImport.update({
+  id: '/teams/$teamId/tasks',
+  path: '/teams/$teamId/tasks',
+  getParentRoute: () => mainRouteRoute,
+} as any)
 const mainProjectsProjectIdBoardsBoardIdRoute =
   mainProjectsProjectIdBoardsBoardIdRouteImport.update({
     id: '/boards/$boardId',
     path: '/boards/$boardId',
+    getParentRoute: () => mainProjectsProjectIdRouteRoute,
+  } as any)
+const mainProjectsProjectIdTasksTaskKeyRoute =
+  mainProjectsProjectIdTasksTaskKeyRouteImport.update({
+    id: '/tasks/$taskKey',
+    path: '/tasks/$taskKey',
     getParentRoute: () => mainProjectsProjectIdRouteRoute,
   } as any)
 const mainProjectsProjectIdBoardsBoardIdIndexRoute =
@@ -340,18 +340,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
+    '/(main)': {
+      id: '/(main)'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof mainRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/complete-profile': {
@@ -361,74 +361,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompleteProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(main)': {
-      id: '/(main)'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof mainRouteRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/oauth/consent': {
-      id: '/oauth/consent'
-      path: '/oauth/consent'
-      fullPath: '/oauth/consent'
-      preLoaderRoute: typeof OauthConsentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invite/$token': {
-      id: '/invite/$token'
-      path: '/invite/$token'
-      fullPath: '/invite/$token'
-      preLoaderRoute: typeof InviteTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(main)/settings': {
-      id: '/(main)/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof mainSettingsRouteImport
-      parentRoute: typeof mainRouteRoute
-    }
-    '/(main)/notifications': {
-      id: '/(main)/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof mainNotificationsRouteImport
-      parentRoute: typeof mainRouteRoute
-    }
-    '/(main)/home': {
-      id: '/(main)/home'
-      path: '/home'
-      fullPath: '/home'
-      preLoaderRoute: typeof mainHomeRouteImport
-      parentRoute: typeof mainRouteRoute
-    }
-    '/(main)/dashboard': {
-      id: '/(main)/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof mainDashboardRouteImport
-      parentRoute: typeof mainRouteRoute
-    }
-    '/(main)/about': {
-      id: '/(main)/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof mainAboutRouteImport
-      parentRoute: typeof mainRouteRoute
-    }
-    '/(auth)/sign-up': {
-      id: '/(auth)/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof authSignUpRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/sign-in': {
@@ -438,18 +382,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(auth)/sign-up': {
+      id: '/(auth)/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof authSignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(main)/about': {
+      id: '/(main)/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof mainAboutRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/(main)/dashboard': {
+      id: '/(main)/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof mainDashboardRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/(main)/home': {
+      id: '/(main)/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof mainHomeRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/(main)/notifications': {
+      id: '/(main)/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof mainNotificationsRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/(main)/settings': {
+      id: '/(main)/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof mainSettingsRouteImport
+      parentRoute: typeof mainRouteRoute
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(main)/projects/$projectId': {
       id: '/(main)/projects/$projectId'
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof mainProjectsProjectIdRouteRouteImport
-      parentRoute: typeof mainRouteRoute
-    }
-    '/(main)/teams/$teamId/': {
-      id: '/(main)/teams/$teamId/'
-      path: '/teams/$teamId'
-      fullPath: '/teams/$teamId/'
-      preLoaderRoute: typeof mainTeamsTeamIdIndexRouteImport
       parentRoute: typeof mainRouteRoute
     }
     '/(main)/projects/$projectId/': {
@@ -459,11 +452,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainProjectsProjectIdIndexRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
-    '/(main)/teams/$teamId/tasks': {
-      id: '/(main)/teams/$teamId/tasks'
-      path: '/teams/$teamId/tasks'
-      fullPath: '/teams/$teamId/tasks'
-      preLoaderRoute: typeof mainTeamsTeamIdTasksRouteImport
+    '/(main)/projects/$projectId/ci-cd': {
+      id: '/(main)/projects/$projectId/ci-cd'
+      path: '/ci-cd'
+      fullPath: '/projects/$projectId/ci-cd'
+      preLoaderRoute: typeof mainProjectsProjectIdCiCdRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
+    '/(main)/projects/$projectId/settings': {
+      id: '/(main)/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/projects/$projectId/settings'
+      preLoaderRoute: typeof mainProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    }
+    '/(main)/teams/$teamId/': {
+      id: '/(main)/teams/$teamId/'
+      path: '/teams/$teamId'
+      fullPath: '/teams/$teamId/'
+      preLoaderRoute: typeof mainTeamsTeamIdIndexRouteImport
       parentRoute: typeof mainRouteRoute
     }
     '/(main)/teams/$teamId/settings': {
@@ -473,18 +480,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof mainTeamsTeamIdSettingsRouteImport
       parentRoute: typeof mainRouteRoute
     }
-    '/(main)/projects/$projectId/settings': {
-      id: '/(main)/projects/$projectId/settings'
-      path: '/settings'
-      fullPath: '/projects/$projectId/settings'
-      preLoaderRoute: typeof mainProjectsProjectIdSettingsRouteImport
-      parentRoute: typeof mainProjectsProjectIdRouteRoute
+    '/(main)/teams/$teamId/tasks': {
+      id: '/(main)/teams/$teamId/tasks'
+      path: '/teams/$teamId/tasks'
+      fullPath: '/teams/$teamId/tasks'
+      preLoaderRoute: typeof mainTeamsTeamIdTasksRouteImport
+      parentRoute: typeof mainRouteRoute
     }
-    '/(main)/projects/$projectId/ci-cd': {
-      id: '/(main)/projects/$projectId/ci-cd'
-      path: '/ci-cd'
-      fullPath: '/projects/$projectId/ci-cd'
-      preLoaderRoute: typeof mainProjectsProjectIdCiCdRouteImport
+    '/(main)/projects/$projectId/boards/$boardId': {
+      id: '/(main)/projects/$projectId/boards/$boardId'
+      path: '/boards/$boardId'
+      fullPath: '/projects/$projectId/boards/$boardId'
+      preLoaderRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
     '/(main)/projects/$projectId/tasks/$taskKey': {
@@ -492,13 +499,6 @@ declare module '@tanstack/react-router' {
       path: '/tasks/$taskKey'
       fullPath: '/projects/$projectId/tasks/$taskKey'
       preLoaderRoute: typeof mainProjectsProjectIdTasksTaskKeyRouteImport
-      parentRoute: typeof mainProjectsProjectIdRouteRoute
-    }
-    '/(main)/projects/$projectId/boards/$boardId': {
-      id: '/(main)/projects/$projectId/boards/$boardId'
-      path: '/boards/$boardId'
-      fullPath: '/projects/$projectId/boards/$boardId'
-      preLoaderRoute: typeof mainProjectsProjectIdBoardsBoardIdRouteImport
       parentRoute: typeof mainProjectsProjectIdRouteRoute
     }
     '/(main)/projects/$projectId/boards/$boardId/': {
