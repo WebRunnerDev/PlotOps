@@ -130,18 +130,88 @@ const MOCK_API_BUILDS: MockBuild[] = [
     },
 ];
 
-/** Full log scripts keyed by build id — streamed via setInterval. */
-const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
-    "build-analytics-1": [
+/** Log script of each job, keyed by job id — streamed via setInterval. */
+const MOCK_JOB_LOGS: Record<string, string[]> = {
+    "job-1": [
+        "##[group]Run actions/checkout@v4",
+        "[command]/usr/bin/git checkout main",
+        "Switched to branch 'main'",
+        "##[endgroup]",
+        "##[group]Run npm ci",
+        "[command]/usr/bin/npm ci",
+        "added 412 packages in 18s",
+        "##[endgroup]",
+        "##[group]Run npm run test",
+        "[command]/usr/bin/npm run test",
+        "\u001B[32m PASS \u001B[39m src/features/tasks",
+        "\u001B[32m PASS \u001B[39m src/widgets/kanban-board",
+        "\u001B[1mTests:\u001B[22m \u001B[32m128 passed\u001B[39m, 128 total",
+        "##[endgroup]",
+        "All tests passed.",
+    ],
+    "job-2": [
+        "$ git checkout main",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run lint",
+        "✓ No lint errors",
+    ],
+    "job-3": [
+        "##[group]Run actions/checkout@v4",
+        "[command]/usr/bin/git checkout feature/analytics",
+        "Switched to branch 'feature/analytics'",
+        "##[endgroup]",
+        "##[group]Run npm ci",
+        "[command]/usr/bin/npm ci",
+        "##[warning]npm WARN deprecated inflight@1.0.6",
+        "added 412 packages in 18s",
+        "##[endgroup]",
+        "##[group]Run npm run test",
+        "[command]/usr/bin/npm run test",
+        "\u001B[31m FAIL \u001B[39m src/widgets/analytics/chart.test.ts",
+        "  Expected series length 7, received 0",
+        "\u001B[1mTests:\u001B[22m \u001B[31m1 failed\u001B[39m, 127 passed, 128 total",
+        "##[error]Process completed with exit code 1.",
+        "##[endgroup]",
+    ],
+    "job-4": [
         "$ git checkout feature/analytics",
         "$ npm ci",
         "added 412 packages in 18s",
-        "$ npm run test",
-        " FAIL  src/widgets/analytics/chart.test.ts",
-        "Expected series length 7, received 0",
-        "error Command failed with exit code 1.",
+        "$ npm run lint",
+        "✓ No lint errors",
     ],
-    "build-api-bug-11": [
+    "job-5": [
+        "$ git checkout feature/TASK-42-login-page",
+        "$ npm ci",
+        "added 412 packages in 18s",
+        "$ npm run test",
+        "… still running",
+    ],
+    "job-6": ["Queued — waiting for a runner…", "No runner available yet."],
+    "job-api-1": [
+        "$ git checkout feature/FEAT-2-guest-ci-mock",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "… still running",
+    ],
+    "job-api-2": [
+        "$ git checkout feature/FEAT-2-guest-ci-mock",
+        "$ deno check supabase/functions/**/*.ts",
+        "✓ Check succeeded",
+    ],
+    "job-api-3": [
+        "$ git checkout develop",
+        "$ supabase db reset",
+        "$ supabase test db",
+        "All tests successful.",
+    ],
+    "job-api-4": [
+        "$ git checkout develop",
+        "$ deno check supabase/functions/**/*.ts",
+        "✓ Check succeeded",
+    ],
+    "job-api-5": [
         "$ git checkout fix/BUG-11-realtime-reconnect",
         "$ supabase db reset",
         "$ supabase test db",
@@ -149,44 +219,16 @@ const MOCK_LOG_SCRIPTS: Record<string, string[]> = {
         "Failed 1/12 subtests",
         "error Command failed with exit code 1.",
     ],
-    "build-api-develop-1": [
-        "$ git checkout develop",
-        "$ supabase db reset",
-        "$ supabase test db",
-        "All tests successful.",
+    "job-api-6": [
+        "$ git checkout fix/BUG-11-realtime-reconnect",
         "$ deno check supabase/functions/**/*.ts",
-        "✓ Build succeeded",
-    ],
-    "build-api-feat-2": [
-        "$ git checkout feature/FEAT-2-guest-ci-mock",
-        "$ supabase db reset",
-        "$ supabase test db",
-        "… still running",
-    ],
-    "build-invite-1": [
-        "Queued — waiting for a runner…",
-        "No runner available yet.",
-    ],
-    "build-login-1": [
-        "$ git checkout feature/TASK-42-login-page",
-        "$ npm ci",
-        "added 412 packages in 18s",
-        "$ npm run lint",
-        "… still running",
-    ],
-    "build-main-1": [
-        "$ git checkout main",
-        "$ npm ci",
-        "added 412 packages in 18s",
-        "$ npm run test",
-        " PASS  src/features/tasks",
-        " PASS  src/widgets/kanban-board",
-        "All tests passed.",
-        "✓ Build succeeded",
+        "✓ Check succeeded",
     ],
 };
 
 const STREAM_INTERVAL_MS = 50;
+/** A finished job's log arrives whole after a short "download". */
+const DOWNLOAD_MS = 400;
 
 /** The canned runs a Repository gets: the API set for `…/api`, else the web set. */
 function buildsFor(repository: BuildsRepository): MockBuild[] {
@@ -291,9 +333,12 @@ export const mockBuildsForProject: BuildsForProject = {
         };
     },
 
-    streamBuildLogs(repository, buildId, onLine) {
-        void repository;
-        const script = MOCK_LOG_SCRIPTS[buildId];
+    streamJobLogs(repository, job, onLine) {
+        // Only jobs of this Repository's runs have a log here.
+        const known = buildsFor(repository).some((build) =>
+            build.jobs?.some((item) => item.id === job.id)
+        );
+        const script = known ? MOCK_JOB_LOGS[job.id] : undefined;
         if (!script || script.length === 0) {
             // Complete immediately with no lines so UI does not stay “Streaming…”.
             const timer = setTimeout(() => {
@@ -303,6 +348,16 @@ export const mockBuildsForProject: BuildsForProject = {
                 clearTimeout(timer);
             };
         }
-        return streamMockLogLines(script, onLine);
+        if (job.status === "running" || job.status === "queued") {
+            return streamMockLogLines(script, onLine);
+        }
+        const timer = setTimeout(() => {
+            for (const [index, text] of script.entries()) {
+                onLine({ done: index === script.length - 1, index, text });
+            }
+        }, DOWNLOAD_MS);
+        return () => {
+            clearTimeout(timer);
+        };
     },
 };

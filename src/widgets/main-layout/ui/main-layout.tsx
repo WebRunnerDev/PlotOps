@@ -2,6 +2,7 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 
 import { AppShellSeo } from "@/features/app-shell/ui/app-shell-seo";
 import { CommandPalette } from "@/features/command-palette";
+import { TaskPeekDrawer } from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 import { TopBar } from "@/widgets/top-bar";
 
@@ -46,6 +47,7 @@ function MainLayoutContent() {
             <AuthSessionGuard />
             <TopBar />
             <CommandPalette />
+            <TaskPeekDrawer />
             {layoutMode === "kanban" ? (
                 <div className="min-h-0 flex-1 overflow-hidden [view-transition-name:main-content]">
                     <Outlet />

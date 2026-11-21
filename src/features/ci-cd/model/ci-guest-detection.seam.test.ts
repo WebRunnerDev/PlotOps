@@ -16,7 +16,7 @@ describe("CI/git Guest Mode detection seam", () => {
             "utf8"
         );
         const stream = readFileSync(
-            path.join(dirname, "use-build-log-stream.ts"),
+            path.join(dirname, "use-job-log-stream.ts"),
             "utf8"
         );
 

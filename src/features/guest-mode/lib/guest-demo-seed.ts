@@ -487,6 +487,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             kind: "subtask_change",
             metadata: {
                 action: "created",
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 subtaskKey: "TASK-20",
             },
             projectId: PROJ_GIT_ID,
@@ -500,6 +501,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "d0000000-0000-4000-8000-000000000305",
             kind: "comment",
             metadata: {
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 commentId: "e0000000-0000-4000-8000-000000000401",
                 source: "app",
             },
@@ -514,6 +516,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "d0000000-0000-4000-8000-000000000306",
             kind: "title_change",
             metadata: {
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 from: "Wire guest CTA",
                 source: "app",
                 to: "Wire guest sign-in CTA",
@@ -529,6 +532,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "d0000000-0000-4000-8000-000000000307",
             kind: "description_change",
             metadata: {
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 source: "app",
             },
             projectId: PROJ_GIT_ID,
@@ -542,6 +546,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "d0000000-0000-4000-8000-000000000308",
             kind: "labels_change",
             metadata: {
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 source: "app",
             },
             projectId: PROJ_GIT_ID,
@@ -555,6 +560,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "d0000000-0000-4000-8000-000000000309",
             kind: "estimate_change",
             metadata: {
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 from: 3,
                 source: "app",
                 to: 5,
@@ -570,6 +576,7 @@ export const GUEST_DEMO_SEED: GuestSandbox = {
             id: "d0000000-0000-4000-8000-000000000310",
             kind: "sprint_change",
             metadata: {
+                actor: { id: GUEST_SEED_ACTOR_ID, name: "Demo Guest" },
                 source: "app",
             },
             projectId: PROJ_GIT_ID,

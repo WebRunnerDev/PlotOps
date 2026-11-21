@@ -17,10 +17,16 @@ import type {
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
+import { resolveNotificationActor } from "@/features/notifications/lib/resolve-notification-actor";
 import { asJson } from "@/shared/api/database";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseNotificationRow = {
+    actor_avatar_url?: null | string;
+    actor_first_name?: null | string;
+    actor_id?: null | string;
+    actor_last_name?: null | string;
+    actor_username?: null | string;
     created_at: string;
     id: string;
     kind: string;
@@ -316,6 +322,18 @@ export async function markNotificationsRead(notificationIds: string[]) {
     if (error) throw error;
 }
 
+/** Recipient-only via RLS (`notifications_update_recipient_only`). */
+export async function markNotificationsUnread(notificationIds: string[]) {
+    if (notificationIds.length === 0) return;
+    const userId = await requireUserId();
+    const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: null })
+        .eq("recipient_id", userId)
+        .in("id", notificationIds);
+    if (error) throw error;
+}
+
 export async function removeTaskWatch(input: {
     taskId: string;
     userId?: string;
@@ -372,11 +390,22 @@ function mapNotificationMetadata(
 
 function mapNotificationRow(row: DatabaseNotificationRow): Notification {
     const kind = row.kind as NotificationKind;
+    const metadata = mapNotificationMetadata(kind, row.metadata ?? {});
     return {
+        actor: resolveNotificationActor({
+            actorId: row.actor_id,
+            metadata,
+            profile: {
+                avatarUrl: row.actor_avatar_url,
+                firstName: row.actor_first_name,
+                lastName: row.actor_last_name,
+                username: row.actor_username,
+            },
+        }),
         createdAt: row.created_at,
         id: row.id,
         kind,
-        metadata: mapNotificationMetadata(kind, row.metadata ?? {}),
+        metadata,
         projectId: row.project_id,
         readAt: row.read_at,
         taskId: row.task_id,

@@ -40,6 +40,7 @@ export type {
     MentionMetadata,
     MentionSource,
     Notification,
+    NotificationActor,
     NotificationKind,
     NotificationMetadata,
     PriorityChangeMetadata,
@@ -52,6 +53,7 @@ export {
     useCleanupNotificationsForUser,
     useMarkAllNotificationsRead,
     useMarkNotificationRead,
+    useMarkNotificationUnread,
     useNotificationsList,
     useNotificationsRealtime,
     useUnreadNotificationsCount,
@@ -66,5 +68,4 @@ export {
     useToggleTaskWatch,
 } from "./model/use-task-watchers";
 
-export { NotificationsBell } from "./ui/notifications-bell";
 export { TaskWatchersList } from "./ui/task-watchers-list";

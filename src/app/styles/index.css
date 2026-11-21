@@ -889,6 +889,18 @@ body {
     }
 }
 
+/* Moving scan in the failure hue — a log still loading for a failed job. */
+@utility cicd-live-scan-danger {
+    &::after {
+        background: linear-gradient(
+            90deg,
+            transparent,
+            color-mix(in oklab, var(--destructive) 55%, transparent),
+            transparent
+        );
+    }
+}
+
 @utility cicd-status-breathe {
     animation: cicd-status-breathe 2s var(--ease-out-quart) infinite;
 }

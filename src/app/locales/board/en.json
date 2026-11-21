@@ -99,6 +99,9 @@
         "merged": "merged",
         "closed": "closed"
     },
+    "peek": {
+        "openOnBoard": "Open on board"
+    },
     "drawerDescription": "Edit task details and GitHub links",
     "fields": {
         "title": "Title",
@@ -470,12 +473,32 @@
             "console": "Console",
             "lines": "lines",
             "hint": "Logs from GitHub Actions",
-            "streaming": "Loading logs…",
-            "empty": "No log lines for this run.",
+            "empty": "No log lines for this job.",
             "openOnGitHub": "Open on GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "No jobs for this run.",
-            "jobsLoadFailed": "Could not load jobs for this run."
+            "jobsLoadFailed": "Could not load jobs for this run.",
+            "copy": "Copy log",
+            "download": "Download log",
+            "copied": "Log copied",
+            "loadingFull": "Downloading the full log…",
+            "loadingLive": "Connecting to the live log…",
+            "live": "Live",
+            "liveHint": "Job in progress — the log refreshes every 5 s",
+            "expandAll": "Expand all steps",
+            "collapseAll": "Collapse all steps",
+            "wrap": "Wrap long lines",
+            "nextError": "Jump to next error",
+            "errors_one": "{{count}} error",
+            "errors_other": "{{count}} errors",
+            "jumpToEnd": "Jump to end",
+            "maximize": "Expand console",
+            "restore": "Restore size",
+            "level": {
+                "error": "Error",
+                "warning": "Warning",
+                "notice": "Notice"
+            }
         },
         "retry": "Retry"
     },
@@ -884,6 +907,9 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Merged PR #{{number}}",
         "mergePrFailed": "Could not merge pull request",
+        "mergePrAlreadyMerged": "PR #{{number}} is already merged on GitHub",
+        "mergePrClosed": "PR #{{number}} is closed on GitHub — nothing to merge",
+        "mergePrMergedElsewhere": "PR #{{number}} is already merged into {{base}}, not the board's base branch — the task keeps waiting",
         "closePr": "Close",
         "closePrTitle": "Close pull request #{{number}}?",
         "closePrBody": "Closes without merging. The task stays in its current column.",

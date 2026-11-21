@@ -99,6 +99,9 @@
         "merged": "merged",
         "closed": "closed"
     },
+    "peek": {
+        "openOnBoard": "Открыть на доске"
+    },
     "drawerDescription": "Редактирование задачи и связей с GitHub",
     "fields": {
         "title": "Название",
@@ -472,12 +475,34 @@
             "console": "Console",
             "lines": "строк",
             "hint": "Логи GitHub Actions",
-            "streaming": "Загрузка логов…",
-            "empty": "Нет строк лога для этого прогона.",
+            "empty": "Нет строк лога у этого job.",
             "openOnGitHub": "Открыть на GitHub",
             "jobsLabel": "Jobs",
             "noJobs": "Нет jobs у этого прогона.",
-            "jobsLoadFailed": "Не удалось загрузить jobs этого прогона."
+            "jobsLoadFailed": "Не удалось загрузить jobs этого прогона.",
+            "copy": "Скопировать лог",
+            "download": "Скачать лог",
+            "copied": "Лог скопирован",
+            "loadingFull": "Загружаем лог целиком…",
+            "loadingLive": "Подключаемся к логу…",
+            "live": "Live",
+            "liveHint": "Job выполняется — лог обновляется каждые 5 с",
+            "expandAll": "Развернуть все шаги",
+            "collapseAll": "Свернуть все шаги",
+            "wrap": "Переносить длинные строки",
+            "nextError": "К следующей ошибке",
+            "errors_one": "{{count}} ошибка",
+            "errors_few": "{{count}} ошибки",
+            "errors_many": "{{count}} ошибок",
+            "errors_other": "{{count}} ошибки",
+            "jumpToEnd": "В конец лога",
+            "maximize": "Развернуть консоль",
+            "restore": "Обычный размер",
+            "level": {
+                "error": "Ошибка",
+                "warning": "Предупреждение",
+                "notice": "Заметка"
+            }
         },
         "retry": "Повторить"
     },
@@ -896,6 +921,9 @@
         "mergeMethodRebase": "Rebase and merge",
         "mergePrToast": "Слит PR #{{number}}",
         "mergePrFailed": "Не удалось слить pull request",
+        "mergePrAlreadyMerged": "PR #{{number}} уже слит на GitHub",
+        "mergePrClosed": "PR #{{number}} закрыт на GitHub — сливать нечего",
+        "mergePrMergedElsewhere": "PR #{{number}} уже слит в {{base}}, а не в базовую ветку доски — задача ждёт",
         "closePr": "Закрыть",
         "closePrTitle": "Закрыть pull request #{{number}}?",
         "closePrBody": "Закрывает без слияния. Задача остаётся в текущей колонке.",

@@ -143,6 +143,53 @@ describe("tools on the multi-repo schema", () => {
         });
     });
 
+    it("get_task returns git naming built from the task key", async () => {
+        const fake = fakeSupabase();
+        const result = await callTool(
+            "get_task",
+            { task_id: TASK_ID },
+            contextWith(fake.supabase)
+        );
+        const payload = JSON.parse(result.text) as {
+            git: { branch: string; pr_title: string; task_key: string };
+        };
+        expect(payload.git).toMatchObject({
+            branch: "feat/WEB-1",
+            pr_title: "WEB-1",
+            task_key: "WEB-1",
+        });
+    });
+
+    it("change_status returns git naming for the moved task", async () => {
+        const fake = scriptedSupabase({
+            tasks: [
+                { task_key: "WEB-9", task_type: "bug", title: "Crash on save" },
+            ],
+        });
+        const result = await callTool(
+            "change_status",
+            { column_id: "in_progress", task_id: TASK_ID },
+            contextWith(fake.supabase)
+        );
+        const payload = JSON.parse(result.text) as {
+            column_id: string;
+            git: { branch: string };
+        };
+        expect(payload.column_id).toBe("in_progress");
+        expect(payload.git.branch).toBe("fix/WEB-9-crash-on-save");
+        expect(fake.queries[0]?.filters).toContainEqual(["eq", "id", TASK_ID]);
+    });
+
+    it("tells agents to put the task key in git names", async () => {
+        const { SERVER_INSTRUCTIONS } = await import("./mcp.ts");
+        const { TOOLS } = await import("./tools.ts");
+        expect(SERVER_INSTRUCTIONS).toMatch(/task_key.*branch.*commit.*PR/s);
+        for (const name of ["get_task", "create_task", "change_status"]) {
+            const tool = TOOLS.find((item) => item.name === name)!;
+            expect(tool.description).toMatch(/`git`/);
+        }
+    });
+
     it("update_task never forwards git fields to update_task_details", async () => {
         const fake = fakeSupabase();
         await callTool(
