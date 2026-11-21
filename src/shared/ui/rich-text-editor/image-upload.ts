@@ -2,6 +2,8 @@ import type { Editor } from "@tiptap/react";
 
 import { Extension } from "@tiptap/core";
 
+import { isImageFile } from "@/shared/ui/rich-text-editor/image-file";
+
 export type ImageUploadFunction = (file: File) => Promise<string>;
 
 type ImageUploadStorage = {
@@ -17,16 +19,6 @@ declare module "@tiptap/core" {
         imageUpload: ImageUploadStorage;
     }
 }
-
-const IMAGE_EXTENSION_PATTERN = /\.(jpe?g|png|gif|webp)$/i;
-
-const IMAGE_MIME_TYPES = new Set([
-    "image/gif",
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-]);
 
 export const ImageUpload = Extension.create({
     addStorage(): ImageUploadStorage {
@@ -93,15 +85,6 @@ export function insertImageFiles(
 
         void uploadImage(editor, file, uploadId, localSource);
     }
-}
-
-/** Windows Explorer often leaves `file.type` empty on drag — fall back to extension. */
-export function isImageFile(file: File): boolean {
-    if (file.type) {
-        return IMAGE_MIME_TYPES.has(file.type);
-    }
-
-    return IMAGE_EXTENSION_PATTERN.test(file.name);
 }
 
 export function pickAndInsertImage(editor: Editor) {
@@ -194,3 +177,5 @@ async function uploadImage(
         URL.revokeObjectURL(localSource);
     }
 }
+
+export { isImageFile } from "@/shared/ui/rich-text-editor/image-file";

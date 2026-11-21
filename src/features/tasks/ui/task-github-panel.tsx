@@ -53,8 +53,8 @@ import {
     useReopenPullRequest,
     useRequestPullRequestReviewers,
 } from "@/features/git-integration/model/use-github-pr-writes";
+import { PrDiffDialog } from "@/features/git-integration/ui/lazy-pr-diff-dialog";
 import { PrChecksSummary } from "@/features/git-integration/ui/pr-checks-summary";
-import { PrDiffDialog } from "@/features/git-integration/ui/pr-diff-dialog";
 import { RequestReviewDialog } from "@/features/git-integration/ui/request-review-dialog";
 import { isGuest } from "@/features/guest-mode";
 import {

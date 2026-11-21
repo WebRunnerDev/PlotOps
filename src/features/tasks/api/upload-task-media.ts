@@ -1,5 +1,5 @@
 import { supabase } from "@/shared/api/supabase";
-import { isImageFile } from "@/shared/ui/rich-text-editor/image-upload";
+import { isImageFile } from "@/shared/ui/rich-text-editor/image-file";
 
 export const TASK_MEDIA_BUCKET = "task-media";
 export const TASK_MEDIA_MAX_BYTES = 5 * 1024 * 1024;
