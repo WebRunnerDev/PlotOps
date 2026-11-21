@@ -48,22 +48,38 @@ describe("CI/CD builds-for-Project seam — streamJobLogs", () => {
         vi.useRealTimers();
     });
 
-    it("emits progressive log lines for a known job without a network call", () => {
-        const { lines, stop } = collect(REPOSITORY, job("job-3", "failure"));
+    it("streams a running job's log line by line without a network call", () => {
+        const { lines, stop } = collect(REPOSITORY, job("job-5", "running"));
 
         expect(lines).toEqual([]);
 
         vi.advanceTimersByTime(50);
         expect(lines.length).toBe(1);
-        expect(lines[0]).toMatch(/checkout|install|test|fail|error|run/i);
+        expect(lines[0]).toMatch(/checkout/i);
 
         vi.advanceTimersByTime(50);
         expect(lines.length).toBe(2);
         expect(lines[1]).not.toBe(lines[0]);
 
         vi.advanceTimersByTime(10_000);
+        expect(lines.at(-1)).toMatch(/still running/i);
+
+        stop();
+    });
+
+    it("hands a finished job's log over whole, in one go", () => {
+        const { done, lines, stop } = collect(
+            REPOSITORY,
+            job("job-3", "failure")
+        );
+
+        vi.advanceTimersByTime(399);
+        expect(lines).toEqual([]);
+
+        vi.advanceTimersByTime(1);
+        expect(done()).toBe(true);
         expect(lines.length).toBeGreaterThanOrEqual(4);
-        expect(lines.at(-1)).toMatch(/fail|error|exit/i);
+        expect(lines.join("\n")).toMatch(/##\[error\].*exit code 1/);
 
         stop();
     });
@@ -102,7 +118,7 @@ describe("CI/CD builds-for-Project seam — streamJobLogs", () => {
     });
 
     it("stops emitting after unsubscribe", () => {
-        const { lines, stop } = collect(REPOSITORY, job("job-1", "success"));
+        const { lines, stop } = collect(REPOSITORY, job("job-5", "running"));
 
         vi.advanceTimersByTime(50);
         const countAfterFirst = lines.length;

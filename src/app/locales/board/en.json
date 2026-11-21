@@ -470,7 +470,6 @@
             "console": "Console",
             "lines": "lines",
             "hint": "Logs from GitHub Actions",
-            "streaming": "Loading logs…",
             "empty": "No log lines for this job.",
             "openOnGitHub": "Open on GitHub",
             "jobsLabel": "Jobs",
@@ -478,7 +477,25 @@
             "jobsLoadFailed": "Could not load jobs for this run.",
             "copy": "Copy log",
             "download": "Download log",
-            "copied": "Log copied"
+            "copied": "Log copied",
+            "loadingFull": "Downloading the full log…",
+            "loadingLive": "Connecting to the live log…",
+            "live": "Live",
+            "liveHint": "Job in progress — the log refreshes every 5 s",
+            "expandAll": "Expand all steps",
+            "collapseAll": "Collapse all steps",
+            "wrap": "Wrap long lines",
+            "nextError": "Jump to next error",
+            "errors_one": "{{count}} error",
+            "errors_other": "{{count}} errors",
+            "jumpToEnd": "Jump to end",
+            "maximize": "Expand console",
+            "restore": "Restore size",
+            "level": {
+                "error": "Error",
+                "warning": "Warning",
+                "notice": "Notice"
+            }
         },
         "retry": "Retry"
     },

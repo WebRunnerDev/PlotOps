@@ -133,12 +133,20 @@ const MOCK_API_BUILDS: MockBuild[] = [
 /** Log script of each job, keyed by job id — streamed via setInterval. */
 const MOCK_JOB_LOGS: Record<string, string[]> = {
     "job-1": [
-        "$ git checkout main",
-        "$ npm ci",
+        "##[group]Run actions/checkout@v4",
+        "[command]/usr/bin/git checkout main",
+        "Switched to branch 'main'",
+        "##[endgroup]",
+        "##[group]Run npm ci",
+        "[command]/usr/bin/npm ci",
         "added 412 packages in 18s",
-        "$ npm run test",
-        " PASS  src/features/tasks",
-        " PASS  src/widgets/kanban-board",
+        "##[endgroup]",
+        "##[group]Run npm run test",
+        "[command]/usr/bin/npm run test",
+        "\u001B[32m PASS \u001B[39m src/features/tasks",
+        "\u001B[32m PASS \u001B[39m src/widgets/kanban-board",
+        "\u001B[1mTests:\u001B[22m \u001B[32m128 passed\u001B[39m, 128 total",
+        "##[endgroup]",
         "All tests passed.",
     ],
     "job-2": [
@@ -149,13 +157,22 @@ const MOCK_JOB_LOGS: Record<string, string[]> = {
         "✓ No lint errors",
     ],
     "job-3": [
-        "$ git checkout feature/analytics",
-        "$ npm ci",
+        "##[group]Run actions/checkout@v4",
+        "[command]/usr/bin/git checkout feature/analytics",
+        "Switched to branch 'feature/analytics'",
+        "##[endgroup]",
+        "##[group]Run npm ci",
+        "[command]/usr/bin/npm ci",
+        "##[warning]npm WARN deprecated inflight@1.0.6",
         "added 412 packages in 18s",
-        "$ npm run test",
-        " FAIL  src/widgets/analytics/chart.test.ts",
-        "Expected series length 7, received 0",
-        "error Command failed with exit code 1.",
+        "##[endgroup]",
+        "##[group]Run npm run test",
+        "[command]/usr/bin/npm run test",
+        "\u001B[31m FAIL \u001B[39m src/widgets/analytics/chart.test.ts",
+        "  Expected series length 7, received 0",
+        "\u001B[1mTests:\u001B[22m \u001B[31m1 failed\u001B[39m, 127 passed, 128 total",
+        "##[error]Process completed with exit code 1.",
+        "##[endgroup]",
     ],
     "job-4": [
         "$ git checkout feature/analytics",
@@ -210,6 +227,8 @@ const MOCK_JOB_LOGS: Record<string, string[]> = {
 };
 
 const STREAM_INTERVAL_MS = 50;
+/** A finished job's log arrives whole after a short "download". */
+const DOWNLOAD_MS = 400;
 
 /** The canned runs a Repository gets: the API set for `…/api`, else the web set. */
 function buildsFor(repository: BuildsRepository): MockBuild[] {
@@ -329,6 +348,16 @@ export const mockBuildsForProject: BuildsForProject = {
                 clearTimeout(timer);
             };
         }
-        return streamMockLogLines(script, onLine);
+        if (job.status === "running" || job.status === "queued") {
+            return streamMockLogLines(script, onLine);
+        }
+        const timer = setTimeout(() => {
+            for (const [index, text] of script.entries()) {
+                onLine({ done: index === script.length - 1, index, text });
+            }
+        }, DOWNLOAD_MS);
+        return () => {
+            clearTimeout(timer);
+        };
     },
 };

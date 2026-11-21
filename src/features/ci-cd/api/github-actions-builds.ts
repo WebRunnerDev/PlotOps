@@ -78,6 +78,23 @@ export class CiCdUnauthorizedError extends Error {
     }
 }
 
+/**
+ * Hand the whole log over in one batch — a finished job's log is final, so
+ * there is nothing to "stream". The last line carries `done`.
+ */
+export function emitLinesAtOnce(
+    lines: string[],
+    onLine: (line: BuildLogLine) => void
+): void {
+    if (lines.length === 0) {
+        onLine({ done: true, index: 0, text: "" });
+        return;
+    }
+    for (const [index, text] of lines.entries()) {
+        onLine({ done: index === lines.length - 1, index, text });
+    }
+}
+
 /** Pure mapper — exported for unit tests. */
 export function mapWorkflowRunToBuild(
     run: RawWorkflowRun,
@@ -397,7 +414,11 @@ export const githubActionsBuilds: BuildsForProject = {
                         : "Could not download logs for this job.",
                 ];
             }
-            stopProgress = streamLinesProgressively(lines, onLine);
+            if (job.status === "running" || job.status === "queued") {
+                stopProgress = streamLinesProgressively(lines, onLine);
+            } else {
+                emitLinesAtOnce(lines, onLine);
+            }
         })();
 
         return () => {

@@ -7,9 +7,11 @@ import {
     ExternalLink,
     GitBranch,
     LoaderCircle,
+    Maximize2,
+    Minimize2,
     Timer,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -27,6 +29,7 @@ import {
 } from "@/features/ci-cd/model/job-log-export";
 import { useBuildJobs } from "@/features/ci-cd/model/use-build-jobs";
 import { useJobLogStream } from "@/features/ci-cd/model/use-job-log-stream";
+import { JobLogConsole } from "@/features/ci-cd/ui/job-log-console";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -65,7 +68,6 @@ export function BuildLogDialog({
     showRepository = false,
 }: BuildLogDialogProperties) {
     const { t } = useTranslation("board");
-    const endReference = useRef<HTMLSpanElement>(null);
     const {
         data: jobs = build?.jobs ?? [],
         isError: jobsError,
@@ -84,12 +86,13 @@ export function BuildLogDialog({
         (picked && picked.buildId === build?.id
             ? jobs.find((job) => job.id === picked.jobId)
             : undefined) ?? pickDefaultJob(jobs);
-    const { isStreaming, lines } = useJobLogStream(
+    const { isLive, isLoading, lines } = useJobLogStream(
         repository,
         open && build ? selectedJob : undefined
     );
 
     const [copied, setCopied] = useState(false);
+    const [maximized, setMaximized] = useState(false);
     const canExport = Boolean(build && selectedJob) && lines.length > 0;
 
     const handleCopyLog = async () => {
@@ -115,14 +118,6 @@ export function BuildLogDialog({
         globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
     };
 
-    useEffect(() => {
-        if (!open || lines.length === 0) return;
-        endReference.current?.scrollIntoView({
-            behavior: "auto",
-            block: "end",
-        });
-    }, [lines.length, open]);
-
     return (
         <Dialog
             onOpenChange={(nextOpen) => {
@@ -132,7 +127,10 @@ export function BuildLogDialog({
         >
             <DialogContent
                 className={cn(
-                    "flex h-[min(90vh,44rem)] w-full max-w-3xl flex-col gap-0 overflow-hidden rounded-none border-l-2 p-0 sm:max-w-3xl",
+                    "flex w-full flex-col gap-0 overflow-hidden rounded-none border-l-2 p-0 transition-[width,height,max-width] duration-200 ease-(--ease-out-expo)",
+                    maximized
+                        ? "h-[calc(100dvh-2rem)] sm:max-w-[calc(100vw-2rem)]"
+                        : "h-[min(92dvh,62rem)] sm:max-w-6xl",
                     "max-sm:top-0 max-sm:left-0 max-sm:h-dvh max-sm:max-h-dvh max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none",
                     build ? STATUS_BORDER[build.status] : "border-l-border"
                 )}
@@ -293,113 +291,80 @@ export function BuildLogDialog({
                         )}
                     </section>
 
-                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-border bg-background">
-                        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-                            <span className="flex min-w-0 items-baseline gap-2 font-mono text-meta text-muted-foreground uppercase tracking-[0.12em]">
-                                <span className="shrink-0">
-                                    {t("cicd.logs.console")}
-                                </span>
-                                {selectedJob ? (
-                                    <span className="min-w-0 truncate normal-case tracking-normal text-foreground">
-                                        {selectedJob.name}
-                                    </span>
-                                ) : undefined}
-                            </span>
-                            <div className="flex items-center gap-3">
-                                {lines.length > 0 ? (
-                                    <span className="font-mono text-meta text-muted-foreground/60 tabular-nums">
-                                        {String(lines.length).padStart(3, "0")}{" "}
-                                        {t("cicd.logs.lines")}
-                                    </span>
-                                ) : undefined}
-                                {isStreaming ? (
-                                    <span className="inline-flex items-center gap-1.5 font-mono text-meta text-amber-300 uppercase tracking-[0.12em]">
-                                        <span className="size-1.5 bg-amber-400 cicd-status-breathe" />
-                                        {t("cicd.logs.streaming")}
-                                    </span>
-                                ) : undefined}
-                                <div className="flex items-center gap-0.5">
-                                    <Button
-                                        aria-label={t("cicd.logs.copy")}
-                                        disabled={!canExport}
-                                        onClick={() => void handleCopyLog()}
-                                        size="icon-xs"
-                                        title={t("cicd.logs.copy")}
-                                        type="button"
-                                        variant="ghost"
-                                    >
-                                        {copied ? <Check /> : <Copy />}
-                                    </Button>
-                                    <Button
-                                        aria-label={t("cicd.logs.download")}
-                                        disabled={!canExport}
-                                        onClick={handleDownloadLog}
-                                        size="icon-xs"
-                                        title={t("cicd.logs.download")}
-                                        type="button"
-                                        variant="ghost"
-                                    >
-                                        <Download />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="scrollbar-board min-h-0 flex-1 overflow-y-auto">
-                            <pre
-                                aria-live="polite"
-                                className={cn(
-                                    "m-0 min-h-full p-0 font-mono text-meta normal-case tracking-normal text-foreground sm:text-code",
-                                    "selection:bg-primary/30"
-                                )}
-                            >
-                                {lines.map((line) => (
-                                    <span
-                                        className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-0 border-b border-border/30"
-                                        key={line.index}
-                                    >
-                                        <span
-                                            aria-hidden
-                                            className="select-none border-r border-border/40 px-2 py-0.5 text-right text-muted-foreground/45 tabular-nums"
-                                        >
-                                            {line.index + 1}
-                                        </span>
-                                        <span className="whitespace-pre-wrap break-all px-2.5 py-0.5">
-                                            {line.text}
-                                        </span>
-                                    </span>
-                                ))}
-                                {isStreaming ? (
-                                    <span
-                                        aria-hidden
-                                        className="grid grid-cols-[2.75rem_minmax(0,1fr)]"
-                                    >
-                                        <span className="border-r border-border/40" />
-                                        <span className="inline-block animate-pulse px-2.5 text-emerald-400">
-                                            ▌
-                                        </span>
-                                    </span>
-                                ) : undefined}
-                                {selectedJob &&
-                                !isStreaming &&
-                                lines.length === 0 ? (
-                                    <span className="block px-3 py-3 text-muted-foreground">
-                                        {t("cicd.logs.empty")}
-                                    </span>
-                                ) : undefined}
-                                <span ref={endReference} />
-                            </pre>
-                        </div>
-                    </div>
+                    <JobLogConsole
+                        actions={
+                            <>
+                                <Button
+                                    aria-label={t("cicd.logs.copy")}
+                                    disabled={!canExport}
+                                    onClick={() => void handleCopyLog()}
+                                    size="icon-xs"
+                                    title={t("cicd.logs.copy")}
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    {copied ? <Check /> : <Copy />}
+                                </Button>
+                                <Button
+                                    aria-label={t("cicd.logs.download")}
+                                    disabled={!canExport}
+                                    onClick={handleDownloadLog}
+                                    size="icon-xs"
+                                    title={t("cicd.logs.download")}
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    <Download />
+                                </Button>
+                                <Button
+                                    aria-label={t(
+                                        maximized
+                                            ? "cicd.logs.restore"
+                                            : "cicd.logs.maximize"
+                                    )}
+                                    aria-pressed={maximized}
+                                    className="max-sm:hidden"
+                                    onClick={() =>
+                                        setMaximized((value) => !value)
+                                    }
+                                    size="icon-xs"
+                                    title={t(
+                                        maximized
+                                            ? "cicd.logs.restore"
+                                            : "cicd.logs.maximize"
+                                    )}
+                                    type="button"
+                                    variant="ghost"
+                                >
+                                    {maximized ? <Minimize2 /> : <Maximize2 />}
+                                </Button>
+                            </>
+                        }
+                        isLive={isLive}
+                        isLoading={isLoading}
+                        jobName={selectedJob?.name}
+                        key={`${build?.id ?? ""}:${selectedJob?.id ?? ""}`}
+                        lines={lines}
+                        status={selectedJob?.status}
+                    />
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2 border-t border-border px-4 py-2.5 font-mono text-meta uppercase tracking-[0.12em] text-muted-foreground sm:px-5">
-                    {isStreaming ? (
+                    {isLoading ? (
                         <>
-                            <Spinner
-                                aria-label={t("cicd.logs.streaming")}
-                                className="size-4 text-amber-400"
-                            />
-                            <span>{t("cicd.logs.streaming")}</span>
+                            <Spinner className="size-3.5 text-primary" />
+                            <span>
+                                {t(
+                                    isLive
+                                        ? "cicd.logs.loadingLive"
+                                        : "cicd.logs.loadingFull"
+                                )}
+                            </span>
+                        </>
+                    ) : isLive ? (
+                        <>
+                            <span className="size-1.5 bg-amber-400 cicd-status-breathe" />
+                            <span>{t("cicd.logs.liveHint")}</span>
                         </>
                     ) : (
                         <span>{t("cicd.logs.hint")}</span>
