@@ -18,6 +18,16 @@ describe("stripInlineScripts", () => {
         ).toBe("");
     });
 
+    it("matches end tags with trailing whitespace", () => {
+        expect(stripInlineScripts("a<script>b()</script >c")).toBe("ac");
+    });
+
+    it("does not leave a script spliced together by a removal", () => {
+        expect(
+            stripInlineScripts("<scr<script>x</script>ipt>evil()</script>")
+        ).toBe("");
+    });
+
     it("keeps external scripts and JSON data blocks", () => {
         const html = [
             '<script type="module" src="/assets/index.js"></script>',
