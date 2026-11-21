@@ -2,6 +2,10 @@
     "aboutPlotOps": "О PlotOps",
     "accountMenu": "Меню аккаунта",
     "back": "Назад",
+    "chunkLoad": {
+        "failed": "Не удалось загрузить эту часть PlotOps — возможно, вышла новая версия или пропала сеть.",
+        "reload": "Обновить страницу"
+    },
     "actions": {
         "cancel": "Отмена"
     },

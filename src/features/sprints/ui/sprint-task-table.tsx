@@ -35,6 +35,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/shared/shadcn/ui/table";
+import { preloadRichTextEditor } from "@/shared/ui/rich-text-editor";
 
 export const BACKLOG_DROP_ID = "drop:backlog";
 
@@ -504,6 +505,8 @@ function DraggableTaskCard({
                 }
                 onOpenTask?.(row.id);
             }}
+            onFocus={onOpenTask ? preloadRichTextEditor : undefined}
+            onPointerEnter={onOpenTask ? preloadRichTextEditor : undefined}
             ref={setNodeRef}
             {...(canDrag ? attributes : {})}
             {...(canDrag ? listeners : {})}
@@ -618,6 +621,8 @@ function DraggableTaskRow({
                 }
                 onOpenTask?.(row.id);
             }}
+            onFocus={onOpenTask ? preloadRichTextEditor : undefined}
+            onPointerEnter={onOpenTask ? preloadRichTextEditor : undefined}
             ref={setNodeRef}
             {...(canDrag ? attributes : {})}
         >

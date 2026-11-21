@@ -2,6 +2,10 @@
     "aboutPlotOps": "About PlotOps",
     "accountMenu": "Account menu",
     "back": "Back",
+    "chunkLoad": {
+        "failed": "Couldn't load this part of PlotOps — a new version may have been released, or the connection dropped.",
+        "reload": "Reload page"
+    },
     "actions": {
         "cancel": "Cancel"
     },

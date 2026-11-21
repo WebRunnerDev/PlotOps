@@ -106,6 +106,7 @@ import {
     withoutEpics,
 } from "@/features/tasks";
 import { EASE_OUT, SPRING_PRESS } from "@/shared/lib/ease";
+import { useIdlePreload } from "@/shared/lib/use-idle-preload";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import {
@@ -133,6 +134,7 @@ import {
     SelectTrigger,
 } from "@/shared/shadcn/ui/select";
 import { Spinner } from "@/shared/shadcn/ui/spinner";
+import { preloadRichTextEditor } from "@/shared/ui/rich-text-editor";
 
 const backlogCollisionDetection: CollisionDetection = (collisionArguments) => {
     const dropContainers = collisionArguments.droppableContainers.filter(
@@ -155,6 +157,7 @@ type BacklogPageProperties = {
 type BacklogSectionAccent = "active" | "draft" | "history" | "pool";
 
 export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
+    useIdlePreload(preloadRichTextEditor);
     const { t } = useTranslation("board");
     const reduceMotion = useReducedMotion();
     const { githubAccessToken } = useAuth();
