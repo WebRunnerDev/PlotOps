@@ -8,9 +8,17 @@ import { getGuestSandbox, isGuest } from "@/features/guest-mode";
 import { fetchTaskNavigation } from "@/features/notifications/api/notifications-api";
 import { focusCommentIdFromNotification } from "@/features/notifications/lib/focus-comment-from-notification";
 import { useMarkNotificationRead } from "@/features/notifications/model/use-notifications";
+import {
+    canPeekTask,
+    useTaskPeekStore,
+} from "@/features/tasks/model/task-peek-store";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 import { waitForActiveViewTransition } from "@/shared/lib/page-transitions";
 
+/**
+ * Opens a Notification's Task: in place on its Board, as a Task Peek on pages
+ * without a Board drawer (Notifications, Home…), else by navigating to the Board.
+ */
 export function useOpenNotification() {
     const navigate = useNavigate();
     const parameters = useParams({ strict: false });
@@ -19,6 +27,7 @@ export function useOpenNotification() {
         (state) => state.clearSelectedTask
     );
     const selectTask = useTasksUiStore((state) => state.selectTask);
+    const setPeekTarget = useTaskPeekStore((state) => state.setTarget);
     const markRead = useMarkNotificationRead();
 
     return async function openNotification(
@@ -44,7 +53,10 @@ export function useOpenNotification() {
                 parameters.projectId === nav.projectId &&
                 parameters.boardId === nav.boardId;
 
-            if (!alreadyOnBoard) {
+            if (!alreadyOnBoard && canPeekTask()) {
+                // No Board on this page — open the Task in place (Task Peek).
+                setPeekTarget(nav);
+            } else if (!alreadyOnBoard) {
                 await navigate({
                     params: {
                         boardId: nav.boardId,
