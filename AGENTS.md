@@ -26,6 +26,7 @@ Single-context: root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Releases
 
-Releases are automatic on every feat/fix merge to `main`. When a PR changes something
+Feature PRs go into `dev`; `dev` → `main` is merged with a merge commit (not squash), and
+each such merge with feat/fix commits releases automatically. When a PR changes something
 users notice, add a bilingual (EN + RU) note file to `src/features/whats-new/upcoming/`
 (format in its README). See `docs/RELEASING.md`.

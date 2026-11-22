@@ -1,6 +1,9 @@
-# Releases, hands-off. Every feat/fix/perf merged into main ships as a new
-# version a few minutes later; nobody approves anything:
+# Releases, hands-off. Work flows feature → dev → main; every dev → main merge
+# that brings feat/fix/perf commits ships as a new version a few minutes
+# later, and nobody approves anything:
 #
+#   0. Merge dev → main with "Create a merge commit". A squash keeps only the
+#      PR title, so release-please would not see the feat/fix commits inside.
 #   1. release-please opens (or refreshes) the release PR: version bump in
 #      package.json, package-lock.json and src/shared/config/app-version.ts,
 #      plus the CHANGELOG.md section. feat → minor, fix/perf → patch, `!` → major.
@@ -11,6 +14,8 @@
 #      when the required checks pass, GitHub merges it.
 #   4. That merge is a push to main: release-please tags vX.Y.Z and publishes
 #      the GitHub Release, and production deploys as usual.
+#   5. sync-dev opens a main → dev PR with auto-merge, so dev gets the version
+#      bump and the stamped notes back and does not drift behind main.
 #
 # Needs the RELEASE_PLEASE_TOKEN secret (fine-grained PAT on this repo:
 # Contents, Pull requests, Issues — read/write). With the default
@@ -36,6 +41,9 @@ jobs:
         name: release-please
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        outputs:
+            release_created: ${{ steps.release.outputs.release_created }}
+            tag_name: ${{ steps.release.outputs.tag_name }}
         steps:
             - name: Require the release token
               env:
@@ -92,3 +100,31 @@ jobs:
                   GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
                   PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
               run: gh pr merge "$PR_NUMBER" --auto --squash
+
+    # After a release, bring main back into dev (version bump, CHANGELOG,
+    # stamped What's new notes) through a PR, because dev only takes changes
+    # that passed CI. Merge commit, not squash, so dev keeps main's history.
+    sync-dev:
+        name: sync main into dev
+        needs: release-please
+        if: needs.release-please.outputs.release_created == 'true'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Open or reuse the main → dev PR and merge it when green
+              env:
+                  GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  TAG: ${{ needs.release-please.outputs.tag_name }}
+              run: |
+                  number="$(gh pr list --repo "$GITHUB_REPOSITORY" --base dev --head main --state open --json number --jq '.[0].number')"
+                  if [ -z "$number" ]; then
+                    if [ -z "$(gh api "repos/$GITHUB_REPOSITORY/compare/dev...main" --jq '.ahead_by | select(. > 0)')" ]; then
+                      echo "dev already has everything from main."
+                      exit 0
+                    fi
+                    url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base dev --head main \
+                      --title "chore: sync main into dev after $TAG" \
+                      --body "Brings the $TAG release commit (version, CHANGELOG, What's new) back into dev. Opened by the release workflow; merges itself when checks pass.")"
+                    number="${url##*/}"
+                  fi
+                  gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --auto --merge
