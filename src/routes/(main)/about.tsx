@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
     Bell,
     Columns3,
@@ -14,6 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { LegalFooterLinks } from "@/features/legal";
+import { PLOTOPS_VERSION } from "@/shared/config/app-version";
 import {
     PLOTOPS_GITHUB_URL,
     PLOTOPS_LICENSE,
@@ -63,6 +64,18 @@ function AboutPage() {
                 </p>
                 <p className="max-w-xl text-body text-muted-foreground">
                     {t("description")}
+                </p>
+                <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 font-mono text-meta text-muted-foreground">
+                    <span className="text-foreground tabular-nums">
+                        v{PLOTOPS_VERSION}
+                    </span>
+                    <span aria-hidden>·</span>
+                    <Link
+                        className="underline underline-offset-2 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        to="/whats-new"
+                    >
+                        {t("whatsNew:menuLabel")}
+                    </Link>
                 </p>
             </header>
 

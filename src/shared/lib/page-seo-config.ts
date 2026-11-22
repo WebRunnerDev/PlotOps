@@ -69,3 +69,11 @@ export function buildLegalPageSeo(
         title: `${t(titleKey)} — ${PLOTOPS_SITE_NAME} · ${PLOTOPS_SITE_TAGLINE}`,
     };
 }
+
+export function buildWhatsNewPageSeo(t: TFunction<"whatsNew">): PageSeo {
+    return {
+        description: t("seo.description"),
+        path: "/whats-new",
+        title: `${t("seo.title")} — ${PLOTOPS_SITE_NAME} · ${PLOTOPS_SITE_TAGLINE}`,
+    };
+}
