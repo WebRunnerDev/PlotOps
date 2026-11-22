@@ -14,6 +14,7 @@ import { Route as mainRouteRouteImport } from './../routes/(main)/route'
 import { Route as CompleteProfileRouteImport } from './../routes/complete-profile'
 import { Route as PrivacyRouteImport } from './../routes/privacy'
 import { Route as TermsRouteImport } from './../routes/terms'
+import { Route as WhatsNewRouteImport } from './../routes/whats-new'
 import { Route as authSignInRouteImport } from './../routes/(auth)/sign-in'
 import { Route as authSignUpRouteImport } from './../routes/(auth)/sign-up'
 import { Route as mainAboutRouteImport } from './../routes/(main)/about'
@@ -57,6 +58,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhatsNewRoute = WhatsNewRouteImport.update({
+  id: '/whats-new',
+  path: '/whats-new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authSignInRoute = authSignInRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/complete-profile': typeof CompleteProfileRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/whats-new': typeof WhatsNewRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/complete-profile': typeof CompleteProfileRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/whats-new': typeof WhatsNewRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/about': typeof mainAboutRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/complete-profile': typeof CompleteProfileRoute
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
+  '/whats-new': typeof WhatsNewRoute
   '/(auth)/sign-in': typeof authSignInRoute
   '/(auth)/sign-up': typeof authSignUpRoute
   '/(main)/about': typeof mainAboutRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/complete-profile'
     | '/privacy'
     | '/terms'
+    | '/whats-new'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/complete-profile'
     | '/privacy'
     | '/terms'
+    | '/whats-new'
     | '/sign-in'
     | '/sign-up'
     | '/about'
@@ -304,6 +315,7 @@ export interface FileRouteTypes {
     | '/complete-profile'
     | '/privacy'
     | '/terms'
+    | '/whats-new'
     | '/(auth)/sign-in'
     | '/(auth)/sign-up'
     | '/(main)/about'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   CompleteProfileRoute: typeof CompleteProfileRoute
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
+  WhatsNewRoute: typeof WhatsNewRoute
   authSignInRoute: typeof authSignInRoute
   authSignUpRoute: typeof authSignUpRoute
   InviteTokenRoute: typeof InviteTokenRoute
@@ -373,6 +386,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/whats-new': {
+      id: '/whats-new'
+      path: '/whats-new'
+      fullPath: '/whats-new'
+      preLoaderRoute: typeof WhatsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/sign-in': {
@@ -594,6 +614,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompleteProfileRoute: CompleteProfileRoute,
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
+  WhatsNewRoute: WhatsNewRoute,
   authSignInRoute: authSignInRoute,
   authSignUpRoute: authSignUpRoute,
   InviteTokenRoute: InviteTokenRoute,

@@ -1,0 +1,138 @@
+# Releases, hands-off. Work flows feature → dev → main; every dev → main merge
+# that brings feat/fix/perf commits ships as a new version a few minutes
+# later, and nobody approves anything:
+#
+#   0. Merge dev → main with "Create a merge commit". A squash keeps only the
+#      PR title, so release-please would not see the feat/fix commits inside.
+#   1. release-please opens (or refreshes) the release PR: version bump in
+#      package.json, package-lock.json and src/shared/config/app-version.ts,
+#      plus the CHANGELOG.md section. feat → minor, fix/perf → patch, `!` → major.
+#   2. This job moves the What's new notes waiting in
+#      src/features/whats-new/upcoming/ into data/releases.json under that
+#      version (scripts/whats-new-stamp.ts) and pushes it to the release PR.
+#   3. It turns on auto-merge. CI runs on the release PR like on any other;
+#      when the required checks pass, GitHub merges it.
+#   4. That merge is a push to main: release-please tags vX.Y.Z and publishes
+#      the GitHub Release, and production deploys as usual.
+#   5. sync-dev opens a main → dev PR with auto-merge, so dev gets the version
+#      bump and the stamped notes back and does not drift behind main.
+#
+# Needs the RELEASE_PLEASE_TOKEN secret (fine-grained PAT on this repo:
+# Contents, Pull requests, Issues — read/write). With the default
+# GITHUB_TOKEN, CI would never start on the release PR, so it could never
+# auto-merge. Also needs Settings → General → "Allow auto-merge".
+# Process: docs/RELEASING.md.
+name: release-please
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+concurrency:
+    group: release-please
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    release-please:
+        name: release-please
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        outputs:
+            release_created: ${{ steps.release.outputs.release_created }}
+            tag_name: ${{ steps.release.outputs.tag_name }}
+        steps:
+            - name: Require the release token
+              env:
+                  RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+              run: |
+                  if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
+                    echo "::error::Set the RELEASE_PLEASE_TOKEN secret (see docs/RELEASING.md)."
+                    exit 1
+                  fi
+
+            - id: release
+              uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+              with:
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  config-file: release-please-config.json
+                  manifest-file: .release-please-manifest.json
+                  # The repo's default branch is dev; releases happen on main.
+                  target-branch: main
+
+            # Steps below run only when the release PR was opened or refreshed.
+            # release-please rebuilds its branch from main each time, so the
+            # notes are re-stamped from scratch on every refresh.
+            - if: steps.release.outputs.pr
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+            - if: steps.release.outputs.pr
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  # 24 runs scripts/*.ts directly (type stripping).
+                  node-version: 24
+                  cache: npm
+
+            - if: steps.release.outputs.pr
+              run: npm ci
+
+            - name: Move upcoming What's new notes into the release
+              if: steps.release.outputs.pr
+              run: |
+                  version="$(node -p "require('./package.json').version")"
+                  node scripts/whats-new-stamp.ts "$version" "$(date -u +%F)"
+                  npx prettier --write src/features/whats-new/data/releases.json
+                  if [ -n "$(git status --porcelain)" ]; then
+                    git config user.name "github-actions[bot]"
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                    git add -A src/features/whats-new
+                    git commit -m "chore: add v$version to What's new"
+                    git push
+                  fi
+
+            - name: Merge the release PR when checks pass
+              if: steps.release.outputs.pr
+              env:
+                  GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+              run: |
+                  # Auto-merge waits for main's required checks. With none
+                  # configured, GitHub refuses auto-merge ("clean status"), and
+                  # there is nothing to wait for, so merge right away.
+                  if ! gh pr merge "$PR_NUMBER" --auto --merge; then
+                    gh pr merge "$PR_NUMBER" --merge
+                  fi
+
+    # After a release, bring main back into dev (version bump, CHANGELOG,
+    # stamped What's new notes) through a PR, because dev only takes changes
+    # that passed CI. Merge commit, not squash, so dev keeps main's history.
+    sync-dev:
+        name: sync main into dev
+        needs: release-please
+        if: needs.release-please.outputs.release_created == 'true'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Open or reuse the main → dev PR and merge it when green
+              env:
+                  GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  TAG: ${{ needs.release-please.outputs.tag_name }}
+              run: |
+                  number="$(gh pr list --repo "$GITHUB_REPOSITORY" --base dev --head main --state open --json number --jq '.[0].number')"
+                  if [ -z "$number" ]; then
+                    if [ -z "$(gh api "repos/$GITHUB_REPOSITORY/compare/dev...main" --jq '.ahead_by | select(. > 0)')" ]; then
+                      echo "dev already has everything from main."
+                      exit 0
+                    fi
+                    url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base dev --head main \
+                      --title "chore: sync main into dev after $TAG" \
+                      --body "Brings the $TAG release commit (version, CHANGELOG, What's new) back into dev. Opened by the release workflow; merges itself when checks pass.")"
+                    number="${url##*/}"
+                  fi
+                  gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --auto --merge
