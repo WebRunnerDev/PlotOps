@@ -18,6 +18,8 @@ import homeEn from "./locales/home/en.json";
 import homeRu from "./locales/home/ru.json";
 import legalEn from "./locales/legal/en.json";
 import legalRu from "./locales/legal/ru.json";
+import whatsNewEn from "./locales/whatsNew/en.json";
+import whatsNewRu from "./locales/whatsNew/ru.json";
 
 const resources = {
     en: {
@@ -29,6 +31,7 @@ const resources = {
         dashboard: dashboardEn,
         home: homeEn,
         legal: legalEn,
+        whatsNew: whatsNewEn,
     },
     ru: {
         about: aboutRu,
@@ -39,6 +42,7 @@ const resources = {
         dashboard: dashboardRu,
         home: homeRu,
         legal: legalRu,
+        whatsNew: whatsNewRu,
     },
 };
 
@@ -51,6 +55,7 @@ const namespaces = [
     "dashboard",
     "home",
     "legal",
+    "whatsNew",
 ] as const;
 
 function syncDocumentLanguage(language: string) {

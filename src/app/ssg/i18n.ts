@@ -17,6 +17,8 @@ import homeEn from "@/app/locales/home/en.json";
 import homeRu from "@/app/locales/home/ru.json";
 import legalEn from "@/app/locales/legal/en.json";
 import legalRu from "@/app/locales/legal/ru.json";
+import whatsNewEn from "@/app/locales/whatsNew/en.json";
+import whatsNewRu from "@/app/locales/whatsNew/ru.json";
 
 const resources = {
     en: {
@@ -28,6 +30,7 @@ const resources = {
         dashboard: dashboardEn,
         home: homeEn,
         legal: legalEn,
+        whatsNew: whatsNewEn,
     },
     ru: {
         about: aboutRu,
@@ -38,6 +41,7 @@ const resources = {
         dashboard: dashboardRu,
         home: homeRu,
         legal: legalRu,
+        whatsNew: whatsNewRu,
     },
 };
 
@@ -67,6 +71,7 @@ export function initSsgI18n() {
             "dashboard",
             "home",
             "legal",
+            "whatsNew",
         ],
         resources,
     });

@@ -4,12 +4,17 @@ import type { PlotOpsPublicPath } from "@/shared/config/site";
 
 import type { PageSeo } from "./seo";
 
-import { buildAuthPageSeo, buildLegalPageSeo } from "./page-seo-config";
+import {
+    buildAuthPageSeo,
+    buildLegalPageSeo,
+    buildWhatsNewPageSeo,
+} from "./page-seo-config";
 
 /** Resolves crawl meta for a public route at build time (SSG). */
 export function getPublicPageSeo(path: PlotOpsPublicPath): PageSeo {
     const authT = i18n.getFixedT("ru", "auth");
     const legalT = i18n.getFixedT("ru", "legal");
+    const whatsNewT = i18n.getFixedT("ru", "whatsNew");
 
     switch (path) {
         case "/": {
@@ -26,6 +31,9 @@ export function getPublicPageSeo(path: PlotOpsPublicPath): PageSeo {
         }
         case "/terms": {
             return buildLegalPageSeo("terms", legalT);
+        }
+        case "/whats-new": {
+            return buildWhatsNewPageSeo(whatsNewT);
         }
     }
 }

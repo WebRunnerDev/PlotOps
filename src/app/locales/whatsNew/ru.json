@@ -1,0 +1,21 @@
+{
+    "currentVersion": "Текущая версия {{version}}",
+    "eyebrow": "История изменений",
+    "fullChangelog": "Технический changelog на GitHub",
+    "intro": "Всё, что менялось в PlotOps, — от первой доски до текущего релиза.",
+    "kind": {
+        "fixed": "Исправлено",
+        "improved": "Улучшено",
+        "new": "Новое"
+    },
+    "menuLabel": "Что нового",
+    "newBadge": "Новый релиз",
+    "period": "До 1.0",
+    "releaseTitle": "PlotOps {{version}}",
+    "seo": {
+        "description": "Заметки о релизах и полная история PlotOps — git-native трекера задач с канбаном, спринтами и интеграцией с GitHub.",
+        "title": "Что нового"
+    },
+    "timelineLabel": "Хронология релизов",
+    "title": "Что нового в PlotOps"
+}

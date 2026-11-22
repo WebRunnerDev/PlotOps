@@ -6,6 +6,7 @@ import {
     MoonIcon,
     RotateCcwIcon,
     SettingsIcon,
+    SparklesIcon,
     SunIcon,
     User,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
     resetGuestSession,
     useIsGuest,
 } from "@/features/guest-mode";
+import { useHasUnseenRelease } from "@/features/whats-new";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/shadcn/ui/avatar";
 import { Button } from "@/shared/shadcn/ui/button";
 import {
@@ -65,6 +67,7 @@ export function UserMenu() {
     const { theme, toggleTheme } = useTheme();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+    const hasUnseenRelease = useHasUnseenRelease();
 
     const guestIdentity = guest ? getGuestDisplayIdentity() : null;
     const guestDisplayName = guestIdentity
@@ -133,17 +136,26 @@ export function UserMenu() {
                     aria-label={t("accountMenu")}
                     className="flex h-8 min-h-9 max-w-48 cursor-pointer items-center gap-2 rounded-none border-0 bg-transparent px-1.5 text-foreground outline-none transition-colors duration-200 ease-[var(--ease-out-quart)] hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-8 sm:min-h-0"
                 >
-                    <Avatar size="sm">
-                        {avatarUrl ? (
-                            <AvatarImage
-                                alt={displayName ?? ""}
-                                src={avatarUrl}
+                    <span className="relative inline-flex shrink-0">
+                        <Avatar size="sm">
+                            {avatarUrl ? (
+                                <AvatarImage
+                                    alt={displayName ?? ""}
+                                    src={avatarUrl}
+                                />
+                            ) : null}
+                            <AvatarFallback className="text-meta">
+                                {initials ?? <User className="size-3.5" />}
+                            </AvatarFallback>
+                        </Avatar>
+                        {hasUnseenRelease ? (
+                            <span
+                                aria-hidden
+                                className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary ring-2 ring-background"
+                                data-testid="whats-new-unseen-dot"
                             />
                         ) : null}
-                        <AvatarFallback className="text-meta">
-                            {initials ?? <User className="size-3.5" />}
-                        </AvatarFallback>
-                    </Avatar>
+                    </span>
                     <span className="hidden truncate text-sm font-medium sm:inline">
                         {displayName}
                     </span>
@@ -174,6 +186,18 @@ export function UserMenu() {
                         >
                             <InfoIcon />
                             {t("aboutPlotOps")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="cursor-pointer"
+                            onClick={() => void navigate({ to: "/whats-new" })}
+                        >
+                            <SparklesIcon />
+                            {t("whatsNew:menuLabel")}
+                            {hasUnseenRelease ? (
+                                <span className="ml-auto font-mono text-meta text-primary">
+                                    {t("whatsNew:newBadge")}
+                                </span>
+                            ) : null}
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
