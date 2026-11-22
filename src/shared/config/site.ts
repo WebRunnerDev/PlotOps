@@ -16,6 +16,7 @@ export const PLOTOPS_PUBLIC_PATHS = [
     "/sign-up",
     "/privacy",
     "/terms",
+    "/whats-new",
 ] as const;
 
 export type PlotOpsPublicPath = (typeof PLOTOPS_PUBLIC_PATHS)[number];

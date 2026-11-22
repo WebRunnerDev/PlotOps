@@ -1,0 +1,21 @@
+{
+    "currentVersion": "Current version {{version}}",
+    "eyebrow": "Changelog",
+    "fullChangelog": "Technical changelog on GitHub",
+    "intro": "Everything that changed in PlotOps, from the first board to the current release.",
+    "kind": {
+        "fixed": "Fixed",
+        "improved": "Improved",
+        "new": "New"
+    },
+    "menuLabel": "What's new",
+    "newBadge": "New release",
+    "period": "Before 1.0",
+    "releaseTitle": "PlotOps {{version}}",
+    "seo": {
+        "description": "Release notes and the full history of PlotOps — the git-native project tracker with Kanban, sprints and GitHub integration.",
+        "title": "What's new"
+    },
+    "timelineLabel": "Release timeline",
+    "title": "What's new in PlotOps"
+}

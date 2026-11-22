@@ -1,0 +1,302 @@
+[
+    {
+        "id": "v1-0-0",
+        "version": "1.0.0",
+        "date": "2026-09-02",
+        "title": {
+            "en": "PlotOps 1.0",
+            "ru": "PlotOps 1.0"
+        },
+        "summary": {
+            "en": "The first stable release: Kanban, sprints, in-app GitHub pull requests and diffs, and a real GitHub Actions dashboard in one product.",
+            "ru": "Первый стабильный релиз: канбан, спринты, pull request и диффы GitHub внутри приложения и настоящая панель GitHub Actions — в одном продукте."
+        },
+        "changes": [
+            {
+                "kind": "new",
+                "en": "Shareable task URLs: every Task has a link that opens it in place.",
+                "ru": "Ссылки на задачи: у каждой задачи есть адрес, который открывает её на месте."
+            },
+            {
+                "kind": "new",
+                "en": "Search on the board and the backlog.",
+                "ru": "Поиск по доске и бэклогу."
+            },
+            {
+                "kind": "new",
+                "en": "Link Tasks from descriptions with #, next to @ mentions.",
+                "ru": "Ссылки на задачи в описаниях через # — рядом с упоминаниями через @."
+            },
+            {
+                "kind": "new",
+                "en": "Privacy policy and terms of use in English and Russian.",
+                "ru": "Политика конфиденциальности и пользовательское соглашение на русском и английском."
+            },
+            {
+                "kind": "improved",
+                "en": "Sign-in on the landing page, and public pages that search engines can read.",
+                "ru": "Вход прямо на главной странице и публичные страницы, которые видят поисковики."
+            }
+        ]
+    },
+    {
+        "id": "2026-08-road-to-1-0",
+        "version": null,
+        "date": "2026-09-01",
+        "from": "2026-08-17",
+        "title": {
+            "en": "Road to 1.0",
+            "ru": "Путь к 1.0"
+        },
+        "summary": {
+            "en": "The last stretch before 1.0: smart commits, Google sign-in, custom fields and a lot of polish.",
+            "ru": "Финишная прямая перед 1.0: умные коммиты, вход через Google, собственные поля и много шлифовки."
+        },
+        "changes": [
+            {
+                "kind": "new",
+                "en": "Smart commits: commits that mention the task key show up in the Task's Git tab and can be linked.",
+                "ru": "Умные коммиты: коммиты с ключом задачи появляются во вкладке Git и привязываются к задаче."
+            },
+            {
+                "kind": "new",
+                "en": "Sign in with Google, and link or unlink GitHub and Google in Settings.",
+                "ru": "Вход через Google и привязка или отвязка GitHub и Google в настройках."
+            },
+            {
+                "kind": "new",
+                "en": "Project custom text fields, managed in Project Settings and filled in the task drawer.",
+                "ru": "Собственные текстовые поля проекта: настраиваются в проекте и заполняются в карточке задачи."
+            },
+            {
+                "kind": "new",
+                "en": "PR check runs in the task drawer and browsing a PR diff commit by commit.",
+                "ru": "Статусы проверок PR в карточке задачи и просмотр диффа PR по коммитам."
+            },
+            {
+                "kind": "new",
+                "en": "Replies to comments.",
+                "ru": "Ответы на комментарии."
+            },
+            {
+                "kind": "new",
+                "en": "Quick-add chips for type, priority, assignee and labels when creating a Task.",
+                "ru": "Быстрые чипы типа, приоритета, исполнителя и меток при создании задачи."
+            },
+            {
+                "kind": "improved",
+                "en": "Tables, image copy and fullscreen preview in the editor, plus a Ctrl+M mention hotkey.",
+                "ru": "Таблицы, копирование изображений и полноэкранный просмотр в редакторе, а также горячая клавиша Ctrl+M для упоминаний."
+            },
+            {
+                "kind": "improved",
+                "en": "Hide completed Tasks, shift-click range select and double-click to open on the board.",
+                "ru": "Скрытие завершённых задач, выделение диапазона через Shift и открытие задачи двойным кликом."
+            },
+            {
+                "kind": "improved",
+                "en": "Older GitHub Actions runs load as you scroll.",
+                "ru": "Старые запуски GitHub Actions подгружаются при прокрутке."
+            },
+            {
+                "kind": "fixed",
+                "en": "Email sign-up protected with CAPTCHA, stricter password rules and rate limits.",
+                "ru": "Регистрация по почте защищена CAPTCHA, более строгими требованиями к паролю и ограничением частоты запросов."
+            }
+        ]
+    },
+    {
+        "id": "2026-08-teams-and-demo",
+        "version": null,
+        "date": "2026-08-14",
+        "from": "2026-08-01",
+        "title": {
+            "en": "Teams, demo and sprint analytics",
+            "ru": "Команды, демо и аналитика спринтов"
+        },
+        "summary": {
+            "en": "PlotOps became a tool for teams — and anyone could try it without signing up.",
+            "ru": "PlotOps стал инструментом для команд — и его можно попробовать без регистрации."
+        },
+        "changes": [
+            {
+                "kind": "new",
+                "en": "Teams above Projects: members, roles and invites now belong to a Team, and every Project lives in one.",
+                "ru": "Команды над проектами: участники, роли и приглашения принадлежат команде, а каждый проект живёт в одной из них."
+            },
+            {
+                "kind": "new",
+                "en": "Guest Mode: “Try demo” opens a seeded sandbox in the browser, no account needed.",
+                "ru": "Гостевой режим: кнопка «Попробовать демо» открывает готовую песочницу прямо в браузере, без регистрации."
+            },
+            {
+                "kind": "new",
+                "en": "Reusable invite links and invites by email.",
+                "ru": "Многоразовые ссылки-приглашения и приглашения по почте."
+            },
+            {
+                "kind": "new",
+                "en": "Projects without a GitHub repository; connect one later.",
+                "ru": "Проекты без репозитория GitHub — его можно подключить позже."
+            },
+            {
+                "kind": "new",
+                "en": "Fibonacci estimates, sprint burndown and Backlog insights with velocity and commitment accuracy.",
+                "ru": "Оценки по Фибоначчи, burndown спринта и аналитика бэклога со скоростью и точностью планирования."
+            },
+            {
+                "kind": "new",
+                "en": "Open and merge pull requests from the task panel.",
+                "ru": "Открытие и merge pull request прямо из задачи."
+            },
+            {
+                "kind": "new",
+                "en": "Subtasks as full Tasks, and Task Links (blocks and relates to) that keep a Task from Done while its blockers are open.",
+                "ru": "Подзадачи как полноценные задачи и связи «блокирует» и «связана с»: задачу нельзя закрыть, пока открыты блокирующие."
+            },
+            {
+                "kind": "improved",
+                "en": "Sort the board by priority, deadline, title or creation date; multi-select Tasks to archive or drag them together.",
+                "ru": "Сортировка доски по приоритету, сроку, названию или дате создания; несколько задач можно выделить, чтобы архивировать или перетащить вместе."
+            },
+            {
+                "kind": "improved",
+                "en": "Command palette: navigate sections, create bugs and features, search members and archived Tasks.",
+                "ru": "Палитра команд: переход по разделам, создание багов и фич, поиск участников и архивных задач."
+            }
+        ]
+    },
+    {
+        "id": "2026-07-notifications",
+        "version": null,
+        "date": "2026-07-31",
+        "from": "2026-07-27",
+        "title": {
+            "en": "Notifications",
+            "ru": "Уведомления"
+        },
+        "summary": {
+            "en": "Nothing important slips by: watchers, an inbox and mentions.",
+            "ru": "Ничего важного не проходит мимо: наблюдатели, входящие и упоминания."
+        },
+        "changes": [
+            {
+                "kind": "new",
+                "en": "Watch Tasks and get notified about status, assignee, priority, deadline and board moves.",
+                "ru": "Наблюдение за задачами и уведомления о смене статуса, исполнителя, приоритета, срока и доски."
+            },
+            {
+                "kind": "new",
+                "en": "Notification inbox with search, plus @ mentions in descriptions that always reach the person.",
+                "ru": "Входящие уведомления с поиском и упоминания через @ в описаниях, которые всегда доходят до адресата."
+            },
+            {
+                "kind": "new",
+                "en": "Profile completion: first and last name are set once after sign-up.",
+                "ru": "Заполнение профиля: имя и фамилия указываются один раз после регистрации."
+            },
+            {
+                "kind": "improved",
+                "en": "Project section tabs and a slimmer board toolbar.",
+                "ru": "Вкладки разделов проекта и более компактная панель доски."
+            }
+        ]
+    },
+    {
+        "id": "2026-07-git-sprints-ci",
+        "version": null,
+        "date": "2026-07-24",
+        "from": "2026-07-20",
+        "title": {
+            "en": "Git, sprints and CI/CD",
+            "ru": "Git, спринты и CI/CD"
+        },
+        "summary": {
+            "en": "The week PlotOps became git-native: branches, pull requests, sprints and CI/CD in one place.",
+            "ru": "Неделя, когда PlotOps стал git-native: ветки, pull request, спринты и CI/CD в одном месте."
+        },
+        "changes": [
+            {
+                "kind": "new",
+                "en": "Task keys, several Boards per Project, and project members with invite links.",
+                "ru": "Ключи задач, несколько досок в проекте, участники проекта и ссылки-приглашения."
+            },
+            {
+                "kind": "new",
+                "en": "Git tab on every Task: link a branch and a pull request and read the diff in the app; a merged PR moves its Task to Done.",
+                "ru": "Вкладка Git в задаче: привязка ветки и pull request и дифф прямо в приложении; после merge PR задача переходит в «Готово»."
+            },
+            {
+                "kind": "new",
+                "en": "Comments, an activity feed and archive for Tasks.",
+                "ru": "Комментарии, лента активности и архив задач."
+            },
+            {
+                "kind": "new",
+                "en": "Board-scoped sprints with a Backlog and start, close and cancel.",
+                "ru": "Спринты внутри доски: бэклог, запуск, закрытие и отмена."
+            },
+            {
+                "kind": "new",
+                "en": "CI/CD screen with live GitHub Actions runs and job logs.",
+                "ru": "Экран CI/CD с живыми запусками GitHub Actions и логами job."
+            },
+            {
+                "kind": "new",
+                "en": "Command palette on Ctrl/Cmd+K: search and create Tasks, switch Projects, toggle the theme.",
+                "ru": "Палитра команд по Ctrl/Cmd+K: поиск и создание задач, переключение проектов, смена темы."
+            },
+            {
+                "kind": "new",
+                "en": "Sign up with email, in addition to GitHub.",
+                "ru": "Регистрация по почте — в дополнение к GitHub."
+            },
+            {
+                "kind": "improved",
+                "en": "New visual design with view transitions, and skeletons instead of spinners while loading.",
+                "ru": "Новый дизайн с анимированными переходами и скелетоны вместо спиннеров при загрузке."
+            }
+        ]
+    },
+    {
+        "id": "2026-07-first-board",
+        "version": null,
+        "date": "2026-07-17",
+        "from": "2026-07-09",
+        "title": {
+            "en": "The first board",
+            "ru": "Первая доска"
+        },
+        "summary": {
+            "en": "PlotOps starts: a Kanban board connected to GitHub.",
+            "ru": "Начало PlotOps: канбан-доска, подключённая к GitHub."
+        },
+        "changes": [
+            {
+                "kind": "new",
+                "en": "Sign in with GitHub and see your repositories as Projects.",
+                "ru": "Вход через GitHub и проекты на основе ваших репозиториев."
+            },
+            {
+                "kind": "new",
+                "en": "Kanban board with drag-and-drop across columns.",
+                "ru": "Канбан-доска с перетаскиванием задач между колонками."
+            },
+            {
+                "kind": "new",
+                "en": "Rich-text task descriptions with images, links and a slash menu.",
+                "ru": "Описания задач с форматированием, изображениями, ссылками и меню команд через /."
+            },
+            {
+                "kind": "new",
+                "en": "Labels, priorities and deadlines, with board filters for each.",
+                "ru": "Метки, приоритеты и сроки — и фильтры доски по каждому из них."
+            },
+            {
+                "kind": "new",
+                "en": "English and Russian interface.",
+                "ru": "Интерфейс на русском и английском."
+            }
+        ]
+    }
+]

@@ -5,6 +5,7 @@ Allow: /sign-in
 Allow: /sign-up
 Allow: /privacy
 Allow: /terms
+Allow: /whats-new
 Disallow: /home
 Disallow: /dashboard
 Disallow: /projects/
