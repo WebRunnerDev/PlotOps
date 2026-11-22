@@ -99,7 +99,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
                   PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
-              run: gh pr merge "$PR_NUMBER" --auto --squash
+              run: gh pr merge "$PR_NUMBER" --auto --merge
 
     # After a release, bring main back into dev (version bump, CHANGELOG,
     # stamped What's new notes) through a PR, because dev only takes changes
