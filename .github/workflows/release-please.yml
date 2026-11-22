@@ -1,0 +1,94 @@
+# Releases, hands-off. Every feat/fix/perf merged into main ships as a new
+# version a few minutes later; nobody approves anything:
+#
+#   1. release-please opens (or refreshes) the release PR: version bump in
+#      package.json, package-lock.json and src/shared/config/app-version.ts,
+#      plus the CHANGELOG.md section. feat → minor, fix/perf → patch, `!` → major.
+#   2. This job moves the What's new notes waiting in
+#      src/features/whats-new/upcoming/ into data/releases.json under that
+#      version (scripts/whats-new-stamp.ts) and pushes it to the release PR.
+#   3. It turns on auto-merge. CI runs on the release PR like on any other;
+#      when the required checks pass, GitHub merges it.
+#   4. That merge is a push to main: release-please tags vX.Y.Z and publishes
+#      the GitHub Release, and production deploys as usual.
+#
+# Needs the RELEASE_PLEASE_TOKEN secret (fine-grained PAT on this repo:
+# Contents, Pull requests, Issues — read/write). With the default
+# GITHUB_TOKEN, CI would never start on the release PR, so it could never
+# auto-merge. Also needs Settings → General → "Allow auto-merge".
+# Process: docs/RELEASING.md.
+name: release-please
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+concurrency:
+    group: release-please
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    release-please:
+        name: release-please
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        steps:
+            - name: Require the release token
+              env:
+                  RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+              run: |
+                  if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
+                    echo "::error::Set the RELEASE_PLEASE_TOKEN secret (see docs/RELEASING.md)."
+                    exit 1
+                  fi
+
+            - id: release
+              uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+              with:
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  config-file: release-please-config.json
+                  manifest-file: .release-please-manifest.json
+
+            # Steps below run only when the release PR was opened or refreshed.
+            # release-please rebuilds its branch from main each time, so the
+            # notes are re-stamped from scratch on every refresh.
+            - if: steps.release.outputs.pr
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+            - if: steps.release.outputs.pr
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  # 24 runs scripts/*.ts directly (type stripping).
+                  node-version: 24
+                  cache: npm
+
+            - if: steps.release.outputs.pr
+              run: npm ci
+
+            - name: Move upcoming What's new notes into the release
+              if: steps.release.outputs.pr
+              run: |
+                  version="$(node -p "require('./package.json').version")"
+                  node scripts/whats-new-stamp.ts "$version" "$(date -u +%F)"
+                  npx prettier --write src/features/whats-new/data/releases.json
+                  if [ -n "$(git status --porcelain)" ]; then
+                    git config user.name "github-actions[bot]"
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                    git add -A src/features/whats-new
+                    git commit -m "chore: add v$version to What's new"
+                    git push
+                  fi
+
+            - name: Merge the release PR when checks pass
+              if: steps.release.outputs.pr
+              env:
+                  GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+              run: gh pr merge "$PR_NUMBER" --auto --squash
