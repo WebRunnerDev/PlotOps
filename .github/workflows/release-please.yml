@@ -60,6 +60,8 @@ jobs:
                   token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
                   config-file: release-please-config.json
                   manifest-file: .release-please-manifest.json
+                  # The repo's default branch is dev; releases happen on main.
+                  target-branch: main
 
             # Steps below run only when the release PR was opened or refreshed.
             # release-please rebuilds its branch from main each time, so the
@@ -99,7 +101,13 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
                   PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
-              run: gh pr merge "$PR_NUMBER" --auto --merge
+              run: |
+                  # Auto-merge waits for main's required checks. With none
+                  # configured, GitHub refuses auto-merge ("clean status"), and
+                  # there is nothing to wait for, so merge right away.
+                  if ! gh pr merge "$PR_NUMBER" --auto --merge; then
+                    gh pr merge "$PR_NUMBER" --merge
+                  fi
 
     # After a release, bring main back into dev (version bump, CHANGELOG,
     # stamped What's new notes) through a PR, because dev only takes changes
