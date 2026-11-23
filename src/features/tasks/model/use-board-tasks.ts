@@ -89,7 +89,7 @@ import { toastTaskDoneRefusal } from "@/features/tasks/lib/toast-task-done-refus
 import {
     getBoardSnapshot,
     invalidateBoardWorkspace,
-    invalidateBoardWorkspaceSlice,
+    invalidateTasksSlice,
     setTasksCache,
 } from "@/features/tasks/model/board-query-cache";
 import {
@@ -276,7 +276,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             // Authenticated: coalesce with Realtime echo so drop animation
             // is not followed by a second sortable layout pass.
             if (guest) {
-                invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+                requestTasksRefresh(queryClient, projectId);
                 return;
             }
             const controller = taskInvalidationControllers.get(projectId);
@@ -284,7 +284,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 controller.onMoveSettled();
                 return;
             }
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
         },
     });
 
@@ -434,7 +434,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
         },
         onSettled: (_data, _error, variables) => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             // Stake enroll (ADR 0028) mutates task_watchers / Guest sandbox —
             // refresh Watchers UI when Author/Assignee changes.
             if (
@@ -518,7 +518,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             );
         },
         onSettled: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
         },
     });
 
@@ -720,7 +720,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 ]),
                 tasks: [...current.tasks, withLabels],
             }));
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
 
             if (labelIds && labelIds.length > 0) {
                 void tasksProvider
@@ -760,7 +760,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     tasks: [...current.tasks, task],
                 }));
             }
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             if (task.parentId) {
                 void queryClient.invalidateQueries({
                     queryKey: activityKey(task.parentId),
@@ -789,7 +789,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
             parentId: string;
         }) => tasksProvider.setTaskParent(childId, parentId),
         onSuccess: (task, variables) => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: activityKey(task.id),
             });
@@ -823,7 +823,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 kind
             ),
         onSuccess: (task, variables) => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: activityKey(task.id),
             });
@@ -837,7 +837,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
         mutationFn: (linkId: string) =>
             tasksProvider.deleteTaskLinkRecord(linkId),
         onSuccess: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: [...taskKeys.all, "activity"],
             });
@@ -860,7 +860,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                         : item
                 ),
             }));
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: activityKey(taskId),
             });
@@ -875,13 +875,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
     const deleteTaskMutation = useMutation({
         mutationFn: (taskId: string) => tasksProvider.deleteTaskRecord(taskId),
         onError: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
         onSettled: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
@@ -896,13 +896,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             return { archivedCount, taskIds: uniqueIds };
         },
         onError: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
         onSettled: (_data, _error, taskIds) => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
@@ -929,13 +929,13 @@ export function useBoardTasks(projectId: string, boardId: string) {
             if (error) throw error;
         },
         onError: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
         },
         onSettled: (_data, _error, taskId) => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
+            requestTasksRefresh(queryClient, projectId);
             void queryClient.invalidateQueries({
                 queryKey: taskKeys.archived(projectId, boardId),
             });
@@ -1832,9 +1832,7 @@ function ensureTasksInvalidationController(
     if (existing) return existing;
 
     const controller = createTasksRealtimeInvalidationController({
-        invalidate: () => {
-            invalidateBoardWorkspaceSlice(queryClient, projectId, "tasks");
-        },
+        invalidate: () => invalidateTasksSlice(queryClient, projectId),
         pendingMoveCount: () =>
             queryClient.isMutating({
                 mutationKey: taskMoveMutationKey(projectId),
@@ -2086,6 +2084,20 @@ function releaseTasksChannel(projectId: string) {
         controller.dispose();
         taskInvalidationControllers.delete(projectId);
     }
+}
+
+/**
+ * Refresh the Tasks slice after a local write. Goes through the Project's
+ * Realtime controller when one is live, so the write and its Realtime echo
+ * cost one board refetch; Guest (no Realtime) refetches at once.
+ */
+function requestTasksRefresh(queryClient: QueryClient, projectId: string) {
+    const controller = taskInvalidationControllers.get(projectId);
+    if (controller) {
+        controller.requestInvalidation();
+        return;
+    }
+    void invalidateTasksSlice(queryClient, projectId);
 }
 
 function resolveBoardName(
