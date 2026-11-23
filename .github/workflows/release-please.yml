@@ -100,8 +100,12 @@ jobs:
               if: steps.release.outputs.pr
               env:
                   GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-                  PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr).number }}
+                  # Raw JSON, parsed in the script: step `env` is evaluated
+                  # before `if`, so fromJSON() here fails on the release-tag
+                  # run, where `pr` is empty and the step would be skipped.
+                  PR_JSON: ${{ steps.release.outputs.pr }}
               run: |
+                  PR_NUMBER="$(jq -r '.number' <<<"$PR_JSON")"
                   # Auto-merge waits for main's required checks. With none
                   # configured, GitHub refuses auto-merge ("clean status"), and
                   # there is nothing to wait for, so merge right away.
