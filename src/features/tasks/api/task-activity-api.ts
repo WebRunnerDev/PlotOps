@@ -7,6 +7,7 @@ import type {
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { TASK_ACTIVITY_FEED_LIMIT } from "@/features/tasks/model/constants";
 import { asJson } from "@/shared/api/database";
+import { getSessionUser } from "@/shared/api/session-user";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseActivityLog = {
@@ -74,9 +75,7 @@ export async function insertTaskActivityEvent(input: {
         return { data: null, error: null };
     }
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
 
     if (!user) {
         return { data: null, error: new Error("Not authenticated") };

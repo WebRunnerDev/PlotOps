@@ -1,6 +1,7 @@
 import type { TaskComment } from "@/features/tasks/model/types";
 
 import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
+import { getSessionUser } from "@/shared/api/session-user";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseProfile = {
@@ -47,9 +48,7 @@ export async function createTaskComment(input: {
     projectId: string;
     taskId: string;
 }) {
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
 
     if (!user) {
         throw new Error("Not authenticated");
