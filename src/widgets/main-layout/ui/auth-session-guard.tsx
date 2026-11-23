@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 
-import { requireAuthSession } from "@/features/auth";
+import { getVerifiedAuthUser, requireAuthSession } from "@/features/auth";
 import { isGuest } from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
 
@@ -9,6 +9,8 @@ import { supabase } from "@/shared/api/supabase";
  * Re-check Auth on every settled location under main chrome.
  * Parent `beforeLoad` alone is not enough — sibling navigations often reuse
  * the layout match without re-running it, so a dead JWT left the shell up.
+ * `getVerifiedAuthUser` hits the network once per access token, so this adds
+ * no round trip per navigation.
  */
 export function AuthSessionGuard() {
     const navigate = useNavigate();
@@ -28,10 +30,7 @@ export function AuthSessionGuard() {
 
         void (async () => {
             const gate = await requireAuthSession({
-                getUser: async () => {
-                    const { data, error } = await supabase.auth.getUser();
-                    return { error, user: data.user };
-                },
+                getUser: getVerifiedAuthUser,
                 isGuest: false,
                 signOutLocal: async () => {
                     await supabase.auth.signOut({ scope: "local" });

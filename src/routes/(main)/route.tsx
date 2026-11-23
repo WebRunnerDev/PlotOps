@@ -1,6 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { isProfileGateRequired, requireAuthSession } from "@/features/auth";
+import {
+    getVerifiedAuthUser,
+    isProfileGateRequired,
+    requireAuthSession,
+} from "@/features/auth";
 import { hasMainAppAccess, isGuest } from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
 import { MainLayoutWidget } from "@/widgets/main-layout/ui/main-layout";
@@ -16,10 +20,8 @@ export const Route = createFileRoute("/(main)")({
         // React `auth.user` alone is not enough — a dead/missing JWT still
         // leaves chrome mounted while queries return empty/401.
         const authGate = await requireAuthSession({
-            getUser: async () => {
-                const { data, error } = await supabase.auth.getUser();
-                return { error, user: data.user };
-            },
+            // Network check at most once per access token, not per navigation.
+            getUser: getVerifiedAuthUser,
             isGuest: guest,
             signOutLocal: async () => {
                 await supabase.auth.signOut({ scope: "local" });

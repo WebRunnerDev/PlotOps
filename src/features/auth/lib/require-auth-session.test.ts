@@ -1,3 +1,8 @@
+import {
+    AuthApiError,
+    AuthRefreshDiscardedError,
+    AuthRetryableFetchError,
+} from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 
 import { requireAuthSession } from "./require-auth-session";
@@ -33,13 +38,17 @@ describe("requireAuthSession", () => {
         expect(signOutLocal).toHaveBeenCalledOnce();
     });
 
-    it("redirects and clears local Auth when getUser errors (dead JWT)", async () => {
+    it("redirects and clears local Auth when the server dropped the user", async () => {
         const signOutLocal = vi.fn(async () => {});
 
         await expect(
             requireAuthSession({
                 getUser: async () => ({
-                    error: new Error("JWT expired"),
+                    error: new AuthApiError(
+                        "User from sub claim does not exist",
+                        403,
+                        "user_not_found"
+                    ),
                     user: null,
                 }),
                 isGuest: false,
@@ -49,6 +58,34 @@ describe("requireAuthSession", () => {
 
         expect(signOutLocal).toHaveBeenCalledOnce();
     });
+
+    it.each([
+        ["offline", new AuthRetryableFetchError("Failed to fetch", 0)],
+        ["another tab won the refresh", new AuthRefreshDiscardedError()],
+        [
+            "rate limited",
+            new AuthApiError(
+                "Too many requests",
+                429,
+                "over_request_rate_limit"
+            ),
+        ],
+    ])(
+        "keeps the session on a transient error (%s) — local sign-out logs out every tab",
+        async (_label, error) => {
+            const signOutLocal = vi.fn(async () => {});
+
+            await expect(
+                requireAuthSession({
+                    getUser: async () => ({ error, user: null }),
+                    isGuest: false,
+                    signOutLocal,
+                })
+            ).resolves.toBe("ok");
+
+            expect(signOutLocal).not.toHaveBeenCalled();
+        }
+    );
 
     it("allows a live Auth user", async () => {
         const signOutLocal = vi.fn();

@@ -6,6 +6,7 @@ import type {
 } from "@/features/sprints/model/types";
 
 import { asJson } from "@/shared/api/database";
+import { getSessionUser } from "@/shared/api/session-user";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseSprint = {
@@ -123,9 +124,7 @@ export async function createDraftSprint(
     name: string,
     goal?: string
 ): Promise<Sprint> {
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
 
     const { data, error } = await supabase
         .from("sprints")

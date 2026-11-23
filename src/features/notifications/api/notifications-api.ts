@@ -19,6 +19,7 @@ import { formatProfileDisplayName } from "@/features/auth/lib/user-display";
 import { expandNotificationSearchQuery } from "@/features/notifications/lib/expand-notification-search-query";
 import { resolveNotificationActor } from "@/features/notifications/lib/resolve-notification-actor";
 import { asJson } from "@/shared/api/database";
+import { getSessionUser } from "@/shared/api/session-user";
 import { supabase } from "@/shared/api/supabase";
 
 type DatabaseNotificationRow = {
@@ -415,8 +416,7 @@ function mapNotificationRow(row: DatabaseNotificationRow): Notification {
 }
 
 async function requireUserId() {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    if (!data.user) throw new Error("Not authenticated");
-    return data.user.id;
+    const user = await getSessionUser();
+    if (!user) throw new Error("Not authenticated");
+    return user.id;
 }

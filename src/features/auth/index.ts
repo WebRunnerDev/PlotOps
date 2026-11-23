@@ -15,6 +15,7 @@ export {
 export { AuthProvider } from "./model/auth-provider";
 export type { AuthContextValue } from "./model/types";
 export { useAuth } from "./model/use-auth";
+export { getVerifiedAuthUser } from "./model/verified-auth-user";
 export { AuthLanguageSwitcher } from "./ui/auth-language-switcher";
 export { CompleteProfileForm } from "./ui/complete-profile-form";
 export { ConnectedAccountsSettings } from "./ui/connected-accounts-settings";
