@@ -1,0 +1,9 @@
+{
+    "changes": [
+        {
+            "kind": "improved",
+            "en": "Boards stay responsive while Tasks change: an edit and its live update now reload the Board once, and returning to a tab no longer reloads everything.",
+            "ru": "Доски не тормозят, пока меняются задачи: правка и её живое обновление теперь перезагружают доску один раз, а возврат во вкладку больше не перезагружает всё подряд."
+        }
+    ]
+}
