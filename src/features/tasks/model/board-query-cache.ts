@@ -75,18 +75,31 @@ export function invalidateBoardWorkspaceSlice(
             return;
         }
         case "tasks": {
-            void queryClient.invalidateQueries({
-                queryKey: [...taskKeys.all, "board", projectId],
-            });
-            void queryClient.invalidateQueries({
-                queryKey: [...taskKeys.all, "project", projectId],
-            });
-            // Epic progress rolls up Task status / membership / Estimates.
-            void queryClient.invalidateQueries({
-                queryKey: taskKeys.epics(projectId),
-            });
+            void invalidateTasksSlice(queryClient, projectId);
         }
     }
+}
+
+/**
+ * Refetch a Project's Board, Project and Epic Task queries. Resolves when the
+ * active ones have refetched, so a caller can wait instead of cancelling.
+ */
+export async function invalidateTasksSlice(
+    queryClient: QueryClient,
+    projectId: string
+): Promise<void> {
+    await Promise.all([
+        queryClient.invalidateQueries({
+            queryKey: [...taskKeys.all, "board", projectId],
+        }),
+        queryClient.invalidateQueries({
+            queryKey: [...taskKeys.all, "project", projectId],
+        }),
+        // Epic progress rolls up Task status / membership / Estimates.
+        queryClient.invalidateQueries({
+            queryKey: taskKeys.epics(projectId),
+        }),
+    ]);
 }
 
 /** Optimistic update of the Board Tasks cache only (columns/Labels unchanged). */
