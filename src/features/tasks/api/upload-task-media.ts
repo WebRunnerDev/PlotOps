@@ -1,3 +1,4 @@
+import { getSessionUser } from "@/shared/api/session-user";
 import { supabase } from "@/shared/api/supabase";
 import { isImageFile } from "@/shared/ui/rich-text-editor/image-file";
 
@@ -23,12 +24,9 @@ export async function uploadTaskMedia(
         throw new TaskMediaUploadError("tooLarge");
     }
 
-    const {
-        data: { user },
-        error: userError,
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
 
-    if (userError || !user) {
+    if (!user) {
         throw new TaskMediaUploadError("unauthenticated");
     }
 

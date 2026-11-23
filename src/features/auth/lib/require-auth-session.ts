@@ -1,3 +1,5 @@
+import { isDeadSessionError } from "@/features/auth/lib/dead-session-error";
+
 /**
  * Live Auth gate for protected app chrome.
  *
@@ -5,11 +7,15 @@
  * revoked refresh, wiped storage while memory lags). Route guards that only
  * check context then let navigation continue while queries return empty/401.
  *
+ * Only a dead session signs out. A transient failure (offline after sleep,
+ * 5xx, 429, another tab winning a token refresh) keeps the user in: local
+ * sign-out clears the localStorage entry every open tab shares.
+ *
  * Guest Session is Auth XOR (ADR 0018) — skip the network check.
  */
 export async function requireAuthSession(input: {
     getUser: () => Promise<{
-        error: null | { message?: string };
+        error: unknown;
         user: null | { id: string };
     }>;
     isGuest: boolean;
@@ -20,10 +26,12 @@ export async function requireAuthSession(input: {
     }
 
     const { error, user } = await input.getUser();
-    if (error || !user) {
-        await input.signOutLocal();
-        return "redirect-sign-in";
+    if (user) return "ok";
+
+    if (error && !isDeadSessionError(error)) {
+        return "ok";
     }
 
-    return "ok";
+    await input.signOutLocal();
+    return "redirect-sign-in";
 }

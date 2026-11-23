@@ -4,7 +4,7 @@ import { getUserDisplayName } from "@/features/auth/lib/user-display";
 import { createNotificationsForMentions } from "@/features/notifications/api/notifications-api";
 import { buildMentionFanOutRequest } from "@/features/notifications/lib/build-mention-fan-out-request";
 import { newMentioneeIds } from "@/features/notifications/lib/extract-mentionee-ids";
-import { supabase } from "@/shared/api/supabase";
+import { getSessionUser } from "@/shared/api/session-user";
 
 /**
  * After Description/Comment save: fan out always-on Mention Notifications
@@ -21,9 +21,7 @@ export async function notifyNewMentionsBestEffort(input: {
     const mentioneeIds = newMentioneeIds(input.previousBody, input.nextBody);
     if (mentioneeIds.length === 0) return;
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSessionUser();
     const actorName = user ? getUserDisplayName(user) : "";
 
     const request = buildMentionFanOutRequest({
