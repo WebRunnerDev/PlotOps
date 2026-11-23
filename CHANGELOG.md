@@ -4,6 +4,14 @@ Technical log of every release, written by release-please from Conventional
 Commits. The user-facing story lives on the **What's new** page
 (`/whats-new`, notes in `src/features/whats-new/`).
 
+## [1.1.1](https://github.com/WebRunnerDev/PlotOps/compare/v1.1.0...v1.1.1) (2026-11-23)
+
+
+### Performance Improvements
+
+* **tasks:** one board refetch per burst; 30 s default staleTime ([b917777](https://github.com/WebRunnerDev/PlotOps/commit/b917777c8972b1d34ea952a1873f3bddbb0045d1))
+* **tasks:** one board refetch per burst; 30 s default staleTime ([04df61f](https://github.com/WebRunnerDev/PlotOps/commit/04df61fb041fb28f791e3de8b7b0b0866649d1e4))
+
 ## [1.1.0](https://github.com/WebRunnerDev/PlotOps/compare/v1.0.0...v1.1.0) (2026-11-23)
 
 
