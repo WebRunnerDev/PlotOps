@@ -14,6 +14,10 @@ import type {
 } from "../model/types";
 
 import { cloneGuestDemoSeed } from "./guest-demo-seed";
+import {
+    recordGuestStatusChanges,
+    withGuestDemoStatusHistory,
+} from "./guest-status-history";
 
 /** Synthetic chrome identity for a Guest Session — not a Supabase user. */
 export type GuestDisplayIdentity = {
@@ -67,6 +71,10 @@ export function getGuestSandbox(): GuestSandbox | null {
     if (!Array.isArray(sandbox.taskWatchers)) {
         sandbox.taskWatchers = [];
     }
+    if (!Array.isArray(sandbox.statusChanges)) {
+        // Sessions stored before flow reports: demo history, kept on write.
+        withGuestDemoStatusHistory(sandbox);
+    }
     ensureGuestDescriptionFields(sandbox);
     migrateGuestTaskTypes(sandbox);
     migrateGuestRepositories(sandbox);
@@ -100,11 +108,11 @@ export function resetGuestSession(): GuestDisplayIdentity | null {
     if (!isGuest()) {
         return null;
     }
-    return persistSession(SYNTHETIC_GUEST_IDENTITY, cloneGuestDemoSeed());
+    return persistSession(SYNTHETIC_GUEST_IDENTITY, freshGuestSandbox());
 }
 
 export function startGuestSession(): GuestDisplayIdentity {
-    return persistSession(SYNTHETIC_GUEST_IDENTITY, cloneGuestDemoSeed());
+    return persistSession(SYNTHETIC_GUEST_IDENTITY, freshGuestSandbox());
 }
 
 /** Subscribe to Guest Session start / leave / reset / sandbox writes. */
@@ -145,7 +153,9 @@ export function writeGuestSandbox(sandbox: GuestSandbox): void {
     if (!session) {
         return;
     }
-    persistSession(session.identity, structuredClone(sandbox));
+    const next = structuredClone(sandbox);
+    recordGuestStatusChanges(session.sandbox, next);
+    persistSession(session.identity, next);
 }
 
 function ensureGuestDescriptionFields(sandbox: GuestSandbox): void {
@@ -203,6 +213,10 @@ function ensureGuestGitLinkIds(sandbox: GuestSandbox): void {
             link.id ??= guestGitLinkId(task.id, index);
         }
     }
+}
+
+function freshGuestSandbox(): GuestSandbox {
+    return withGuestDemoStatusHistory(cloneGuestDemoSeed());
 }
 
 function isGuestSandbox(value: unknown): value is GuestSandbox {

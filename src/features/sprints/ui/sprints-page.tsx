@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { SprintsPageView } from "@/features/sprints/model/sprints-page-search";
 import type { Sprint } from "@/features/sprints/model/types";
 import type { Task } from "@/features/tasks";
 
@@ -13,6 +14,7 @@ import {
     useBoardColumns,
     useProjectBoards,
 } from "@/features/boards";
+import { FlowReportsPanel } from "@/features/flow-reports";
 import { projectHasGithubRepo } from "@/features/projects/model/project-github-gate";
 import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProject } from "@/features/projects/model/use-projects";
@@ -34,7 +36,12 @@ import {
 import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
 import { CloseSprintDialog } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
 import { SprintStateBadge } from "@/features/sprints/ui/sprint-state-badge";
-import { TaskDrawer, useBoardTasks, withoutEpics } from "@/features/tasks";
+import {
+    TaskDrawer,
+    useBoardTasks,
+    useTasksUiStore,
+    withoutEpics,
+} from "@/features/tasks";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button, buttonVariants } from "@/shared/shadcn/ui/button";
@@ -43,14 +50,21 @@ import { Spinner } from "@/shared/shadcn/ui/spinner";
 type SprintsPageProperties = {
     boardId: string;
     projectId: string;
+    view?: SprintsPageView;
 };
 
 /**
  * Sprints page: health of Active sprints, Velocity and the history of
  * Closed / Canceled sprints, each linking to its own Sprint report.
- * Planning (Drafts, Backlog) stays on the Backlog page.
+ * Planning (Drafts, Backlog) stays on the Backlog page. The Flow tab holds
+ * the Board's flow reports (Cumulative flow, Cycle time) for teams that
+ * work without Sprints.
  */
-export function SprintsPage({ boardId, projectId }: SprintsPageProperties) {
+export function SprintsPage({
+    boardId,
+    projectId,
+    view = "sprints",
+}: SprintsPageProperties) {
     const { t } = useTranslation("board");
     const { githubAccessToken } = useAuth();
     const { canManageBoard, isSettled } = useProjectAccess(projectId);
@@ -83,16 +97,53 @@ export function SprintsPage({ boardId, projectId }: SprintsPageProperties) {
         [sprints, tasks]
     );
 
+    const selectTask = useTasksUiStore((state) => state.selectTask);
+
     const header = (
         <SprintsPageHeader
             boardId={boardId}
             canManage={canManage}
             project={project}
             projectId={projectId}
-            subtitle={t("sprintsPage.subtitle")}
-            title={t("sprintsPage.title")}
+            subtitle={view === "flow" ? undefined : t("sprintsPage.subtitle")}
+            title={t(view === "flow" ? "flow.title" : "sprintsPage.title")}
+        >
+            <SprintsPageTabs
+                boardId={boardId}
+                projectId={projectId}
+                view={view}
+            />
+        </SprintsPageHeader>
+    );
+
+    const drawer = (
+        <TaskDrawer
+            boardId={boardId}
+            githubToken={githubAccessToken}
+            projectId={projectId}
+            repositories={project?.repositories ?? []}
         />
     );
+
+    if (view === "flow") {
+        return (
+            <SprintsPageFrame>
+                {header}
+                {columnsApi.isLoading ? (
+                    <div className="flex h-48 items-center justify-center">
+                        <Spinner className="size-8 text-primary" />
+                    </div>
+                ) : (
+                    <FlowReportsPanel
+                        boardId={boardId}
+                        columns={columns}
+                        onOpenTask={selectTask}
+                    />
+                )}
+                {drawer}
+            </SprintsPageFrame>
+        );
+    }
 
     if (Boolean(sprintsQueryError) && sprintsData === undefined) {
         return (
@@ -180,12 +231,7 @@ export function SprintsPage({ boardId, projectId }: SprintsPageProperties) {
                         />
                     </PageSection>
 
-                    <TaskDrawer
-                        boardId={boardId}
-                        githubToken={githubAccessToken}
-                        projectId={projectId}
-                        repositories={project?.repositories ?? []}
-                    />
+                    {drawer}
                 </>
             )}
         </SprintsPageFrame>
@@ -685,5 +731,45 @@ function SprintHistoryTable({
                 </tbody>
             </table>
         </div>
+    );
+}
+
+function SprintsPageTabs({
+    boardId,
+    projectId,
+    view,
+}: {
+    boardId: string;
+    projectId: string;
+    view: SprintsPageView;
+}) {
+    const { t } = useTranslation("board");
+    const tabs = [
+        { label: t("sprintsPage.tabSprints"), view: "sprints" as const },
+        { label: t("sprintsPage.tabFlow"), view: "flow" as const },
+    ];
+    return (
+        <nav aria-label={t("sprintsPage.tabsLabel")} className="flex gap-1">
+            {tabs.map((tab) => {
+                const current = tab.view === view;
+                return (
+                    <Link
+                        aria-current={current ? "page" : undefined}
+                        className={cn(
+                            "-mb-px border-b-2 px-3 py-1.5 text-ui transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                            current
+                                ? "border-primary text-foreground"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                        key={tab.view}
+                        params={{ boardId, projectId }}
+                        search={tab.view === "flow" ? { view: "flow" } : {}}
+                        to="/projects/$projectId/boards/$boardId/sprints"
+                    >
+                        {tab.label}
+                    </Link>
+                );
+            })}
+        </nav>
     );
 }
