@@ -22,6 +22,8 @@
     "nav": {
         "backlog": "Бэклог",
         "backlogShort": "Бэк",
+        "sprints": "Спринты",
+        "sprintsShort": "Спринты",
         "board": "Доска",
         "boardShort": "Доска",
         "breadcrumb": "Навигация",

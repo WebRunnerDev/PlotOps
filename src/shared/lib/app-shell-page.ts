@@ -14,6 +14,7 @@ export type AppShellPageKind =
     | "project"
     | "project-settings"
     | "settings"
+    | "sprints"
     | "task"
     | "team"
     | "team-settings"
@@ -40,6 +41,7 @@ export type AppShellSeoLabels = {
     notFound: string;
     notifications: string;
     settings: string;
+    sprints: string;
     teamTasks: string;
 };
 
@@ -52,6 +54,12 @@ export type BuildAppShellTitleOptions = {
 export type ParsedAppShellPage =
     | { boardId: string; kind: "backlog"; projectId: string }
     | { boardId: string; kind: "board"; projectId: string }
+    | {
+          boardId: string;
+          kind: "sprints";
+          projectId: string;
+          sprintId?: string;
+      }
     | { kind: "about" }
     | { kind: "ci-cd"; projectId: string }
     | { kind: "complete-profile" }
@@ -70,7 +78,11 @@ export type ParsedAppShellPage =
     | { kind: "unknown" };
 
 export function appShellPageNeedsBoard(page: ParsedAppShellPage): boolean {
-    return page.kind === "backlog" || page.kind === "board";
+    return (
+        page.kind === "backlog" ||
+        page.kind === "board" ||
+        page.kind === "sprints"
+    );
 }
 
 export function appShellPageNeedsProject(page: ParsedAppShellPage): boolean {
@@ -139,6 +151,19 @@ export function parseAppShellPath(pathname: string): ParsedAppShellPage {
             boardId: match[2],
             kind: "backlog",
             projectId: match[1],
+        };
+    }
+
+    match =
+        /^\/projects\/([^/]+)\/boards\/([^/]+)\/sprints(?:\/([^/]+))?$/.exec(
+            path
+        );
+    if (match?.[1] && match[2]) {
+        return {
+            boardId: match[2],
+            kind: "sprints",
+            projectId: match[1],
+            ...(match[3] ? { sprintId: match[3] } : {}),
         };
     }
 
@@ -240,6 +265,9 @@ export function resolveAppShellTitleParts(
         }
         case "settings": {
             return [labels.accountSettings];
+        }
+        case "sprints": {
+            return [entities.boardName ?? labels.board, labels.sprints];
         }
         case "task": {
             return [entities.taskKey ?? page.taskKey];

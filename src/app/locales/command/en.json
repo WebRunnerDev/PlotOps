@@ -80,6 +80,20 @@
         "backlog": {
             "keywords": ["backlog", "sprints", "planning", "epics"]
         },
+        "sprints": {
+            "keywords": [
+                "sprints",
+                "reports",
+                "velocity",
+                "burndown",
+                "metrics",
+                "sprint report",
+                "flow",
+                "cumulative flow",
+                "cycle time",
+                "kanban"
+            ]
+        },
         "cicd": {
             "keywords": [
                 "ci/cd",

@@ -61,6 +61,13 @@
     --chart-3: #64748b;
     --chart-4: #cbd5e1;
     --chart-5: #238636;
+    /* Cumulative flow: workflow stages light→dark (ordinal), Done apart */
+    --chart-flow-1: #38bdf8;
+    --chart-flow-2: #0ea5e9;
+    --chart-flow-3: #0284c7;
+    --chart-flow-4: #0369a1;
+    --chart-flow-5: #0c4a6e;
+    --chart-flow-done: var(--chart-5);
 
     /* Sharp / neobrutalism — all rounded-* tokens derive from this */
     --radius: 0;
@@ -132,6 +139,11 @@
     --chart-3: #8b929e;
     --chart-4: #181c24;
     --chart-5: #3fb950;
+    --chart-flow-1: #0369a1;
+    --chart-flow-2: #0284c7;
+    --chart-flow-3: #0ea5e9;
+    --chart-flow-4: #38bdf8;
+    --chart-flow-5: #7dd3fc;
     --sidebar: #08090e;
     --sidebar-foreground: #f0f2f5;
     --sidebar-primary: #3ecfff;

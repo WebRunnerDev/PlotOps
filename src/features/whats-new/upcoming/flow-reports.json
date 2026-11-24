@@ -1,0 +1,14 @@
+{
+    "changes": [
+        {
+            "kind": "new",
+            "en": "The Sprints page has a Flow tab for teams without Sprints: a Cumulative flow chart shows where Tasks pile up on the Board, and Cycle time shows how long each Task took from start to Done.",
+            "ru": "На странице «Спринты» появилась вкладка «Поток» для команд без спринтов: накопительный поток показывает, где на доске копятся задачи, а cycle time — сколько каждая задача шла от старта до Done."
+        },
+        {
+            "kind": "fixed",
+            "en": "Opening a Task from the Sprints page or a Sprint report no longer jumps to the Kanban.",
+            "ru": "Открытие задачи со страницы «Спринты» или из отчёта спринта больше не перебрасывает на канбан."
+        }
+    ]
+}

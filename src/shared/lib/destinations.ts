@@ -1,5 +1,6 @@
 import {
     Bell,
+    ChartColumn,
     Columns3,
     GitBranch,
     House,
@@ -53,6 +54,7 @@ export type DestinationRoute =
     | "/notifications"
     | "/projects/$projectId/boards/$boardId"
     | "/projects/$projectId/boards/$boardId/backlog"
+    | "/projects/$projectId/boards/$boardId/sprints"
     | "/projects/$projectId/ci-cd"
     | "/projects/$projectId/settings"
     | "/settings"
@@ -225,6 +227,15 @@ export const DESTINATIONS = [
         keywordsKey: keywords("backlog"),
         titleKey: "common:nav.backlog",
         to: "/projects/$projectId/boards/$boardId/backlog",
+    },
+    {
+        group: "project",
+        icon: ChartColumn,
+        id: "sprints",
+        isVisible: hasBoard,
+        keywordsKey: keywords("sprints"),
+        titleKey: "common:nav.sprints",
+        to: "/projects/$projectId/boards/$boardId/sprints",
     },
     {
         group: "project",
