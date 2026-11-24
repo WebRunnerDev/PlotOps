@@ -43,10 +43,7 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { useProject } from "@/features/projects/model/use-projects";
 import { todayIsoDate } from "@/features/sprints/api/sprints-api";
-import { buildSprintBurndownSeries } from "@/features/sprints/model/build-sprint-burndown-series";
-import { summarizeCarryoverByTaskId } from "@/features/sprints/model/carryover-targets";
 import { computeSprintTimeline } from "@/features/sprints/model/compute-sprint-timeline";
-import { listSprintCompletionTasks } from "@/features/sprints/model/list-sprint-completion-tasks";
 import {
     BACKLOG_LIST_PAGE_SIZE,
     windowListItems,
@@ -60,7 +57,6 @@ import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-
 import { useListWindow } from "@/features/sprints/model/use-list-window";
 import {
     useBoardSprints,
-    useSprintEvents,
     useSprintMutations,
 } from "@/features/sprints/model/use-sprints";
 import { useVisibleSprintId } from "@/features/sprints/model/use-visible-sprint-id";
@@ -68,13 +64,13 @@ import { ActiveSprintLiveStrip } from "@/features/sprints/ui/active-sprint-live-
 import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
 import { BacklogEpicsPanel } from "@/features/sprints/ui/backlog-epics-panel";
 import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
-import { SprintBurndownChart } from "@/features/sprints/ui/sprint-burndown-chart";
 import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
 import {
     CancelSprintDialog,
     CloseSprintDialog,
     StartSprintDialog,
 } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
+import { SprintReportPanel } from "@/features/sprints/ui/sprint-report-panel";
 import {
     BACKLOG_DROP_ID,
     type BacklogTaskDragData,
@@ -602,14 +598,24 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             actives.length === 1 &&
                             activeTimeline &&
                             activeTimeline.daysRemaining !== null
-                                ? t("sprints.pulseDaysLeft")
+                                ? activeTimeline.phase === "overdue"
+                                    ? t("sprints.pulseDaysOverdue")
+                                    : t("sprints.pulseDaysLeft")
                                 : t("sprints.pulseActive")
+                        }
+                        tone={
+                            activeTimeline?.phase === "overdue" &&
+                            actives.length === 1
+                                ? "warning"
+                                : "default"
                         }
                         value={
                             actives.length === 1 &&
                             activeTimeline &&
                             activeTimeline.daysRemaining !== null
-                                ? activeTimeline.daysRemaining
+                                ? activeTimeline.phase === "overdue"
+                                    ? (activeTimeline.daysOverdue ?? 0)
+                                    : activeTimeline.daysRemaining
                                 : actives.length
                         }
                     />
@@ -937,6 +943,9 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                                                     columns
                                                                 }
                                                                 key={sprint.id}
+                                                                onOpenTask={
+                                                                    selectTask
+                                                                }
                                                                 projectId={
                                                                     projectId
                                                                 }
@@ -1237,6 +1246,7 @@ function PastSprintSection({
     boardId,
     canManage,
     columns,
+    onOpenTask,
     projectId,
     sprint,
     tasks,
@@ -1244,6 +1254,7 @@ function PastSprintSection({
     boardId: string;
     canManage: boolean;
     columns: Array<{ id: string; isDone: boolean }>;
+    onOpenTask: (taskId: string) => void;
     projectId: string;
     sprint: Sprint;
     tasks: Task[];
@@ -1329,6 +1340,7 @@ function PastSprintSection({
                     boardId={boardId}
                     canManage={canManage}
                     columns={columns}
+                    onOpenTask={onOpenTask}
                     projectId={projectId}
                     sprint={sprint}
                     tasks={tasks}
@@ -1370,10 +1382,12 @@ function PastSprintSection({
 function PlanningPulseStat({
     emphasize = false,
     label,
+    tone = "default",
     value,
 }: {
     emphasize?: boolean;
     label: string;
+    tone?: "default" | "warning";
     value: number;
 }) {
     const reduceMotion = useReducedMotion();
@@ -1385,7 +1399,11 @@ function PlanningPulseStat({
             <dd
                 className={cn(
                     "font-heading text-h3 tabular-nums tracking-tight",
-                    emphasize ? "text-primary" : "text-foreground"
+                    tone === "warning"
+                        ? "text-warning"
+                        : emphasize
+                          ? "text-primary"
+                          : "text-foreground"
                 )}
             >
                 {reduceMotion ? (
@@ -1405,279 +1423,6 @@ function sortBySprintPosition(tasks: Task[]) {
         if (leftPos !== rightPos) return leftPos - rightPos;
         return left.key.localeCompare(right.key);
     });
-}
-
-function SprintReportPanel({
-    boardId,
-    canManage,
-    columns,
-    projectId,
-    sprint,
-    tasks,
-}: {
-    boardId: string;
-    canManage: boolean;
-    columns: Array<{ id: string; isDone: boolean }>;
-    projectId: string;
-    sprint: Sprint;
-    tasks: Task[];
-}) {
-    const { t } = useTranslation("board");
-    const { moveTasks } = useSprintMutations(projectId, boardId);
-    const { data: events = [], isLoading } = useSprintEvents(sprint.id);
-    const committed = sprint.committedTaskIds.length;
-    const completed = sprint.completedTaskIds.length;
-    const scopeAdds = events.filter(
-        (event) => event.eventType === "task_added"
-    ).length;
-    const scopeRemoves = events.filter(
-        (event) => event.eventType === "task_removed"
-    ).length;
-    const isCanceled = sprint.state === "canceled";
-    const carryoverSummary = useMemo(() => {
-        const closed = events.find((event) => event.eventType === "closed");
-        return summarizeCarryoverByTaskId(
-            closed?.payload?.carryover_by_task_id
-        );
-    }, [events]);
-
-    const estimateLines = useMemo(() => {
-        const byId = new Map(tasks.map((task) => [task.id, task]));
-        const resolve = (ids: string[]) =>
-            ids.map((id) => byId.get(id) ?? { estimate: undefined });
-        return {
-            committed: summarizeTaskEstimates(resolve(sprint.committedTaskIds)),
-            completed: summarizeTaskEstimates(resolve(sprint.completedTaskIds)),
-        };
-    }, [sprint.committedTaskIds, sprint.completedTaskIds, tasks]);
-
-    const burndownSeries = useMemo(() => {
-        const doneColumnIds = new Set(
-            columns.filter((column) => column.isDone).map((column) => column.id)
-        );
-        const closedOn = sprint.closedAt
-            ? todayIsoDate(new Date(sprint.closedAt))
-            : undefined;
-        return buildSprintBurndownSeries({
-            asOfDate:
-                sprint.state === "closed"
-                    ? (sprint.endsOn ?? closedOn ?? todayIsoDate())
-                    : todayIsoDate(),
-            closedOn,
-            committedTaskIds: sprint.committedTaskIds,
-            completedTaskIds: sprint.completedTaskIds,
-            doneColumnIds,
-            endsOn: sprint.endsOn,
-            events,
-            startsOn: sprint.startsOn,
-            state: sprint.state,
-            tasks: tasks.map((task) => ({
-                estimate: task.estimate,
-                id: task.id,
-                status: task.status,
-            })),
-        });
-    }, [columns, events, sprint, tasks]);
-
-    const completedRows = useMemo(
-        () =>
-            listSprintCompletionTasks({
-                completedTaskIds: sprint.completedTaskIds,
-                sprintId: sprint.id,
-                tasks,
-            }),
-        [sprint.completedTaskIds, sprint.id, tasks]
-    );
-
-    const returnCompletedToSprint = (
-        taskId: string,
-        sprintPosition: null | number
-    ) => {
-        void moveTasks
-            .mutateAsync([{ sprintId: sprint.id, sprintPosition, taskId }])
-            .catch(() => {
-                toast.error(t("sprints.reportMoveToBacklogUndoFailed"));
-            });
-    };
-
-    const moveCompletedToBacklog = (taskId: string) => {
-        const previousPosition =
-            tasks.find((task) => task.id === taskId)?.sprintPosition ?? null;
-
-        void moveTasks
-            .mutateAsync([{ sprintId: null, sprintPosition: null, taskId }])
-            .then(() => {
-                toast.success(t("sprints.reportMoveToBacklogDone"), {
-                    action: {
-                        label: t("sprints.reportMoveToBacklogUndo"),
-                        onClick: () => {
-                            returnCompletedToSprint(taskId, previousPosition);
-                        },
-                    },
-                });
-            })
-            .catch(() => {
-                toast.error(t("sprints.reportMoveToBacklogFailed"));
-            });
-    };
-
-    return (
-        <div className="space-y-3 border-t border-border px-3 py-3">
-            {isCanceled ? (
-                <p className="text-ui text-muted-foreground">
-                    {t("sprints.canceledSummary")}
-                </p>
-            ) : (
-                <>
-                    {estimateLines.committed.estimatedCount > 0 ||
-                    estimateLines.completed.estimatedCount > 0 ? (
-                        <p className="text-ui">
-                            {t("sprints.reportPoints", {
-                                committedPoints:
-                                    estimateLines.committed.pointsSum,
-                                completedPoints:
-                                    estimateLines.completed.pointsSum,
-                            })}
-                        </p>
-                    ) : null}
-                    <p
-                        className={
-                            estimateLines.committed.estimatedCount > 0 ||
-                            estimateLines.completed.estimatedCount > 0
-                                ? "text-ui text-muted-foreground"
-                                : "text-ui"
-                        }
-                    >
-                        {t("sprints.reportSummary", { committed, completed })}
-                    </p>
-                    {estimateLines.committed.unestimatedCount > 0 ? (
-                        <p className="text-ui text-muted-foreground">
-                            {t("sprints.reportUnestimated", {
-                                count: estimateLines.committed.unestimatedCount,
-                            })}
-                        </p>
-                    ) : null}
-                    {sprint.state === "closed" && completedRows.length > 0 ? (
-                        <div className="space-y-1">
-                            <p className="text-ui text-muted-foreground">
-                                {t("sprints.reportCompletedList")}
-                            </p>
-                            <ul className="max-h-40 space-y-1 overflow-y-auto text-code">
-                                {completedRows.map((row) => (
-                                    <li
-                                        className="flex min-w-0 items-center gap-2"
-                                        key={row.id}
-                                    >
-                                        <span className="min-w-0 flex-1 truncate">
-                                            {row.key ? (
-                                                <>
-                                                    <span className="text-foreground">
-                                                        {row.key}
-                                                    </span>
-                                                    {row.title
-                                                        ? ` · ${row.title}`
-                                                        : ""}
-                                                    {row.stillMember
-                                                        ? ""
-                                                        : ` · ${t(
-                                                              row.inBacklog
-                                                                  ? "sprints.reportCompletedInBacklog"
-                                                                  : "sprints.reportCompletedMoved"
-                                                          )}`}
-                                                </>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    {t(
-                                                        "sprints.reportCompletedMissing",
-                                                        {
-                                                            id: row.id.slice(
-                                                                0,
-                                                                8
-                                                            ),
-                                                        }
-                                                    )}
-                                                </span>
-                                            )}
-                                        </span>
-                                        {canManage && row.stillMember ? (
-                                            <Button
-                                                className="min-h-9 shrink-0"
-                                                disabled={moveTasks.isPending}
-                                                onClick={() => {
-                                                    moveCompletedToBacklog(
-                                                        row.id
-                                                    );
-                                                }}
-                                                size="sm"
-                                                type="button"
-                                                variant="outline"
-                                            >
-                                                {t(
-                                                    "sprints.reportMoveToBacklog"
-                                                )}
-                                            </Button>
-                                        ) : null}
-                                        {canManage && row.inBacklog ? (
-                                            <Button
-                                                className="min-h-9 shrink-0"
-                                                disabled={moveTasks.isPending}
-                                                onClick={() => {
-                                                    returnCompletedToSprint(
-                                                        row.id,
-                                                        null
-                                                    );
-                                                }}
-                                                size="sm"
-                                                type="button"
-                                                variant="outline"
-                                            >
-                                                {t(
-                                                    "sprints.reportReturnToSprint"
-                                                )}
-                                            </Button>
-                                        ) : null}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ) : null}
-                    {sprint.state === "active" || sprint.state === "closed" ? (
-                        <SprintBurndownChart
-                            mode={
-                                sprint.state === "active" ? "active" : "closed"
-                            }
-                            series={burndownSeries}
-                        />
-                    ) : null}
-                </>
-            )}
-            <p className="text-ui text-muted-foreground">
-                {t("sprints.reportScope", {
-                    added: scopeAdds,
-                    removed: scopeRemoves,
-                })}
-            </p>
-            {carryoverSummary ? (
-                <p className="text-ui text-muted-foreground">
-                    {t("sprints.reportCarryover", {
-                        backlog: carryoverSummary.backlogCount,
-                        drafts: carryoverSummary.draftCount,
-                    })}
-                </p>
-            ) : null}
-            {isLoading ? <Spinner className="size-4" /> : null}
-            <ul className="space-y-1 text-code text-muted-foreground">
-                {events.map((event) => (
-                    <li key={event.id}>
-                        {t(`sprints.event.${event.eventType}`)}
-                        {event.taskId ? ` · ${event.taskId.slice(0, 8)}` : ""}
-                        {" · "}
-                        {new Date(event.createdAt).toLocaleString()}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
 }
 
 function SprintSection({
@@ -1865,6 +1610,7 @@ function SprintSection({
                     boardId={boardId}
                     canManage={canManage}
                     columns={columns}
+                    onOpenTask={onOpenTask}
                     projectId={projectId}
                     sprint={sprint}
                     tasks={allTasks}
