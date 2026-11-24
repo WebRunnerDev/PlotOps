@@ -12,9 +12,15 @@ import {
     useSensor,
     useSensors,
 } from "@dnd-kit/core";
-import NumberFlow from "@number-flow/react";
-import { useNavigate } from "@tanstack/react-router";
-import { ChevronDown, MoreHorizontal, Play, Plus } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+    ArrowRight,
+    ChartColumn,
+    MoreHorizontal,
+    Play,
+    Plus,
+    X,
+} from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import {
     type CSSProperties,
@@ -29,7 +35,12 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import type { Sprint } from "@/features/sprints/model/types";
-import type { BoardTaskFilters, EpicColor, Task } from "@/features/tasks";
+import type {
+    BoardTaskFilters,
+    EpicColor,
+    Task,
+    TaskEstimate,
+} from "@/features/tasks";
 
 import { useAuth } from "@/features/auth/model/use-auth";
 import {
@@ -44,18 +55,14 @@ import { useProjectAccess } from "@/features/projects/model/use-project-access";
 import { useProjectPeople } from "@/features/projects/model/use-project-people";
 import { useProject } from "@/features/projects/model/use-projects";
 import { todayIsoDate } from "@/features/sprints/api/sprints-api";
-import { computeSprintTimeline } from "@/features/sprints/model/compute-sprint-timeline";
-import {
-    BACKLOG_LIST_PAGE_SIZE,
-    windowListItems,
-} from "@/features/sprints/model/list-window";
+import { buildSprintReportSummary } from "@/features/sprints/model/build-sprint-report-summary";
+import { formatSprintDateRange } from "@/features/sprints/model/format-sprint-dates";
 import {
     closestScrollRoot,
     offsetToBringSectionToTop,
     scrollPortMetrics,
 } from "@/features/sprints/model/scroll-sprint-section";
 import { summarizeTaskEstimates } from "@/features/sprints/model/summarize-task-estimates";
-import { useListWindow } from "@/features/sprints/model/use-list-window";
 import {
     useBoardSprints,
     useSprintMutations,
@@ -64,14 +71,11 @@ import { useVisibleSprintId } from "@/features/sprints/model/use-visible-sprint-
 import { ActiveSprintLiveStrip } from "@/features/sprints/ui/active-sprint-live-strip";
 import { BacklogAddTask } from "@/features/sprints/ui/backlog-add-task";
 import { BacklogEpicsPanel } from "@/features/sprints/ui/backlog-epics-panel";
-import { ListWindowControls } from "@/features/sprints/ui/list-window-controls";
-import { SprintInsightsPanel } from "@/features/sprints/ui/sprint-insights-panel";
 import {
     CancelSprintDialog,
     CloseSprintDialog,
     StartSprintDialog,
 } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
-import { SprintReportPanel } from "@/features/sprints/ui/sprint-report-panel";
 import { SprintStateBadge } from "@/features/sprints/ui/sprint-state-badge";
 import {
     BACKLOG_DROP_ID,
@@ -93,6 +97,7 @@ import {
     filterTasksBySearchQuery,
     hideCompletedBoardTasks,
     isBoardFiltersActive,
+    isTaskEstimate,
     sortTasksByBoardSort,
     TaskDrawer,
     toggleFilterValue,
@@ -107,17 +112,7 @@ import { EASE_OUT, SPRING_PRESS } from "@/shared/lib/ease";
 import { useIdlePreload } from "@/shared/lib/use-idle-preload";
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/shared/shadcn/ui/alert-dialog";
-import { Button } from "@/shared/shadcn/ui/button";
+import { Button, buttonVariants } from "@/shared/shadcn/ui/button";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -226,14 +221,14 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const [searchQuery, setSearchQuery] = useState("");
     const [filters, setFilters] =
         useState<BoardTaskFilters>(EMPTY_BOARD_FILTERS);
-    const [historyOpen, setHistoryOpen] = useState(false);
+    const [onlyUnestimated, setOnlyUnestimated] = useState(false);
     const [bulkMoveValue, setBulkMoveValue] = useState<string | undefined>();
 
     useEffect(() => {
         setRowSelection({});
         setSearchQuery("");
         setFilters(EMPTY_BOARD_FILTERS);
-        setHistoryOpen(false);
+        setOnlyUnestimated(false);
         setBulkMoveValue(undefined);
         setNewName("");
     }, [boardId]);
@@ -250,38 +245,24 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     );
 
     const actives = sprints.filter((sprint) => sprint.state === "active");
-    const active = actives[0];
     const drafts = sprints.filter((sprint) => sprint.state === "draft");
-    const activeTimeline = useMemo(() => {
-        if (!active) return null;
-        return computeSprintTimeline({
-            endsOn: active.endsOn,
-            startsOn: active.startsOn,
-            today: todayIsoDate(),
-        });
-    }, [active?.endsOn, active?.id, active?.startsOn]);
-    const pastSprints = useMemo(() => {
-        const past = sprints.filter(
-            (sprint) => sprint.state === "closed" || sprint.state === "canceled"
-        );
-        return past.toSorted((left, right) => {
-            const leftAt = left.closedAt ?? left.canceledAt ?? left.createdAt;
-            const rightAt =
-                right.closedAt ?? right.canceledAt ?? right.createdAt;
-            return rightAt.localeCompare(leftAt);
-        });
-    }, [sprints]);
+    const pastSprintCount = sprints.filter(
+        (sprint) => sprint.state === "closed" || sprint.state === "canceled"
+    ).length;
     const planningSprints = [...actives, ...drafts];
 
     const filtersActive =
         isBoardFiltersActive(filters) ||
         searchQuery.trim().length > 0 ||
-        hideCompleted;
+        hideCompleted ||
+        onlyUnestimated;
 
     const doneColumnIds = useMemo(() => doneColumnIdSet(columns), [columns]);
 
     const visibleTasks = useMemo(() => {
-        const filtered = filterTasks(tasks, filters);
+        const filtered = filterTasks(tasks, filters).filter(
+            (task) => !onlyUnestimated || !isTaskEstimate(task.estimate)
+        );
         const withoutCompleted = hideCompletedBoardTasks(
             filtered,
             doneColumnIds,
@@ -291,7 +272,15 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
             filterTasksBySearchQuery(withoutCompleted, searchQuery),
             boardSort
         );
-    }, [boardSort, doneColumnIds, filters, hideCompleted, searchQuery, tasks]);
+    }, [
+        boardSort,
+        doneColumnIds,
+        filters,
+        hideCompleted,
+        onlyUnestimated,
+        searchQuery,
+        tasks,
+    ]);
 
     const backlogTasks = useMemo(() => {
         const group = visibleTasks.filter((task) => !task.sprintId);
@@ -307,15 +296,17 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                 boardSort,
                 filters,
                 hideCompleted,
+                onlyUnestimated,
                 searchQuery,
             }),
-        [boardId, boardSort, filters, hideCompleted, searchQuery]
-    );
-
-    const historyWindow = useListWindow(listWindowResetKey);
-    const windowedPastSprints = windowListItems(
-        pastSprints,
-        historyWindow.visibleCount
+        [
+            boardId,
+            boardSort,
+            filters,
+            hideCompleted,
+            onlyUnestimated,
+            searchQuery,
+        ]
     );
 
     const tasksBySprint = useMemo(() => {
@@ -480,7 +471,14 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
     const clearFilters = () => {
         setSearchQuery("");
         setFilters(EMPTY_BOARD_FILTERS);
+        setOnlyUnestimated(false);
     };
+
+    const handleEstimateChange = canManage
+        ? (taskId: string, estimate: null | TaskEstimate) => {
+              updateTaskDetails(taskId, { estimate });
+          }
+        : undefined;
 
     if (sprintsError) {
         return (
@@ -543,11 +541,8 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
 
     return (
         <BacklogPageFrame>
-            <header className="relative flex flex-col gap-5 border-b border-primary/25 pb-5 sm:gap-6 sm:pb-6">
-                <div
-                    className="flex min-w-0 flex-wrap items-center gap-2 motion-reveal"
-                    style={{ animationDelay: "0ms" }}
-                >
+            <header className="relative flex flex-col gap-4 border-b border-primary/25 pb-5">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 motion-reveal">
                     <BoardSwitcher
                         boardId={boardId}
                         canManage={canManage}
@@ -562,108 +557,70 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                 : []
                         }
                     />
+                    <Link
+                        className={cn(
+                            buttonVariants({ size: "sm", variant: "ghost" }),
+                            "rounded-none text-muted-foreground"
+                        )}
+                        params={{ boardId, projectId }}
+                        to="/projects/$projectId/boards/$boardId/sprints"
+                    >
+                        <ChartColumn data-icon="inline-start" />
+                        {t("sprints.openSprintsPage")}
+                    </Link>
                 </div>
-
-                <div className="flex min-w-0 flex-col gap-3 sm:gap-4">
-                    <p
-                        className="font-mono text-meta text-primary uppercase tracking-[0.14em] motion-reveal"
-                        style={{ animationDelay: "40ms" }}
-                    >
-                        {t("sprints.planningEyebrow")}
-                    </p>
-                    <h1
-                        className="min-w-0 font-heading text-[clamp(2.125rem,1rem+3.8vw,3.75rem)] font-bold leading-[0.94] tracking-[-0.045em] text-balance wrap-break-word motion-reveal"
-                        style={{ animationDelay: "120ms" }}
-                    >
-                        {t("sprints.backlogTitle")}
-                    </h1>
-                    <div
-                        aria-hidden
-                        className="h-px w-14 origin-left bg-primary/70 motion-reveal"
-                        style={{ animationDelay: "200ms" }}
-                    />
-                    <p
-                        className="max-w-2xl text-body text-muted-foreground motion-reveal"
-                        style={{ animationDelay: "260ms" }}
-                    >
-                        {t("sprints.backlogSubtitle")}
-                    </p>
-                </div>
-
-                <dl
-                    className="grid grid-cols-3 gap-px overflow-hidden rounded-none border border-primary/25 bg-primary/25 motion-reveal"
-                    style={{ animationDelay: "320ms" }}
-                >
-                    <PlanningPulseStat
-                        emphasize={actives.length > 0}
-                        label={
-                            actives.length === 1 &&
-                            activeTimeline &&
-                            activeTimeline.daysRemaining !== null
-                                ? activeTimeline.phase === "overdue"
-                                    ? t("sprints.pulseDaysOverdue")
-                                    : t("sprints.pulseDaysLeft")
-                                : t("sprints.pulseActive")
-                        }
-                        tone={
-                            activeTimeline?.phase === "overdue" &&
-                            actives.length === 1
-                                ? "warning"
-                                : "default"
-                        }
-                        value={
-                            actives.length === 1 &&
-                            activeTimeline &&
-                            activeTimeline.daysRemaining !== null
-                                ? activeTimeline.phase === "overdue"
-                                    ? (activeTimeline.daysOverdue ?? 0)
-                                    : activeTimeline.daysRemaining
-                                : actives.length
-                        }
-                    />
-                    <PlanningPulseStat
-                        label={t("sprints.pulseDrafts")}
-                        value={drafts.length}
-                    />
-                    <PlanningPulseStat
-                        label={t("sprints.pulsePool")}
-                        value={backlogTasks.length}
-                    />
-                </dl>
-
-                {canManage ? (
-                    <div
-                        className="flex min-w-0 flex-col gap-2 motion-reveal sm:flex-row sm:flex-wrap sm:items-center"
-                        style={{ animationDelay: "380ms" }}
-                    >
-                        <Input
-                            className="min-w-0 w-full rounded-none border-primary/25 bg-input/30 font-mono text-code shadow-none transition-[border-color,box-shadow] duration-300 ease-(--ease-out-expo) focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 sm:max-w-xs"
-                            onChange={(event) => setNewName(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                    event.preventDefault();
-                                    void handleCreateDraft();
-                                }
-                            }}
-                            placeholder={t("sprints.newDraftPlaceholder")}
-                            value={newName}
-                        />
-                        <Button
-                            className="rounded-none transition-transform duration-300 ease-(--ease-out-expo) enabled:hover:-translate-y-0.5"
-                            disabled={createDraft.isPending || !newName.trim()}
-                            onClick={() => void handleCreateDraft()}
-                            size="sm"
-                            type="button"
-                        >
-                            <Plus data-icon="inline-start" />
-                            {t("sprints.createDraft")}
-                        </Button>
-                    </div>
-                ) : null}
 
                 <div
-                    className="motion-reveal"
-                    style={{ animationDelay: "440ms" }}
+                    className="flex min-w-0 flex-col gap-3 motion-reveal sm:flex-row sm:items-end sm:justify-between"
+                    style={{ animationDelay: "60ms" }}
+                >
+                    <div className="flex min-w-0 flex-col gap-1">
+                        <h1 className="min-w-0 font-heading text-[clamp(1.75rem,1rem+2vw,2.5rem)] font-bold leading-tight tracking-[-0.03em] text-balance wrap-break-word">
+                            {t("sprints.backlogTitle")}
+                        </h1>
+                        <p className="text-ui text-muted-foreground">
+                            {t("sprints.backlogSummary", {
+                                backlog: backlogTasks.length,
+                                sprints: planningSprints.length,
+                            })}
+                        </p>
+                    </div>
+
+                    {canManage ? (
+                        <form
+                            className="flex min-w-0 gap-2"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleCreateDraft();
+                            }}
+                        >
+                            <Input
+                                aria-label={t("sprints.newDraftPlaceholder")}
+                                className="min-w-0 flex-1 rounded-none border-primary/25 bg-input/30 shadow-none focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20 sm:w-56 sm:flex-none"
+                                onChange={(event) =>
+                                    setNewName(event.target.value)
+                                }
+                                placeholder={t("sprints.newDraftPlaceholder")}
+                                value={newName}
+                            />
+                            <Button
+                                className="shrink-0 rounded-none"
+                                disabled={
+                                    createDraft.isPending || !newName.trim()
+                                }
+                                size="sm"
+                                type="submit"
+                            >
+                                <Plus data-icon="inline-start" />
+                                {t("sprints.createDraft")}
+                            </Button>
+                        </form>
+                    ) : null}
+                </div>
+
+                <div
+                    className="flex min-w-0 flex-col gap-2 motion-reveal"
+                    style={{ animationDelay: "120ms" }}
                 >
                     <BoardTaskToolbar
                         epics={epicFilterOptions}
@@ -682,6 +639,23 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                         searchQuery={searchQuery}
                         sort={boardSort}
                     />
+                    {onlyUnestimated ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-2 border border-primary/40 bg-primary/10 px-2 py-1 text-sm">
+                                {t("sprints.filterUnestimatedActive")}
+                                <button
+                                    aria-label={t(
+                                        "sprints.filterUnestimatedClear"
+                                    )}
+                                    className="text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                    onClick={() => setOnlyUnestimated(false)}
+                                    type="button"
+                                >
+                                    <X className="size-3.5" />
+                                </button>
+                            </span>
+                        </div>
+                    ) : null}
                 </div>
             </header>
 
@@ -825,6 +799,18 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                                 )}
                                                 firstColumnId={firstColumnId}
                                                 labels={projectLabels}
+                                                onEstimateChange={
+                                                    handleEstimateChange
+                                                }
+                                                onFilterUnestimated={
+                                                    canManage
+                                                        ? () => {
+                                                              setOnlyUnestimated(
+                                                                  true
+                                                              );
+                                                          }
+                                                        : undefined
+                                                }
                                                 onOpenTask={selectTask}
                                                 onRowSelectionChange={
                                                     setRowSelection
@@ -878,6 +864,9 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                             )}
                                             epicsById={epicsById}
                                             labels={projectLabels}
+                                            onEstimateChange={
+                                                handleEstimateChange
+                                            }
                                             onOpenTask={selectTask}
                                             onRowSelectionChange={
                                                 setRowSelection
@@ -898,87 +887,19 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                                         ) : null}
                                     </BacklogSectionShell>
 
-                                    {pastSprints.length > 0 ? (
-                                        <section
-                                            className="space-y-3 motion-reveal"
-                                            style={{
-                                                animationDelay: `${200 + planningSprints.length * 80}ms`,
-                                            }}
+                                    {pastSprintCount > 0 ? (
+                                        <Link
+                                            className="group flex min-w-0 items-center justify-between gap-3 border border-dashed border-border px-4 py-3 text-ui text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                            params={{ boardId, projectId }}
+                                            to="/projects/$projectId/boards/$boardId/sprints"
                                         >
-                                            <button
-                                                className="group flex min-w-0 items-center gap-2 text-left transition-colors duration-300 ease-(--ease-out-expo) hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-                                                onClick={() =>
-                                                    setHistoryOpen(
-                                                        (value) => !value
-                                                    )
-                                                }
-                                                type="button"
-                                            >
-                                                <ChevronDown
-                                                    aria-hidden
-                                                    className={cn(
-                                                        "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-expo) group-hover:text-primary",
-                                                        historyOpen
-                                                            ? ""
-                                                            : "-rotate-90"
-                                                    )}
-                                                />
-                                                <span className="text-h3">
-                                                    {t("sprints.historyList")}
-                                                </span>
-                                                <span className="text-meta text-muted-foreground">
-                                                    ({pastSprints.length})
-                                                </span>
-                                            </button>
-                                            {historyOpen ? (
-                                                <>
-                                                    {windowedPastSprints.visible.map(
-                                                        (sprint) => (
-                                                            <PastSprintSection
-                                                                boardId={
-                                                                    boardId
-                                                                }
-                                                                canManage={
-                                                                    canManage
-                                                                }
-                                                                columns={
-                                                                    columns
-                                                                }
-                                                                key={sprint.id}
-                                                                onOpenTask={
-                                                                    selectTask
-                                                                }
-                                                                projectId={
-                                                                    projectId
-                                                                }
-                                                                sprint={sprint}
-                                                                tasks={tasks}
-                                                            />
-                                                        )
-                                                    )}
-                                                    <ListWindowControls
-                                                        bordered={false}
-                                                        hasMore={
-                                                            windowedPastSprints.hasMore
-                                                        }
-                                                        nextCount={Math.min(
-                                                            BACKLOG_LIST_PAGE_SIZE,
-                                                            windowedPastSprints.remaining
-                                                        )}
-                                                        onLoadMore={() => {
-                                                            historyWindow.loadMore(
-                                                                pastSprints.length
-                                                            );
-                                                        }}
-                                                        onShowAll={() => {
-                                                            historyWindow.showAll(
-                                                                pastSprints.length
-                                                            );
-                                                        }}
-                                                    />
-                                                </>
-                                            ) : null}
-                                        </section>
+                                            <span>
+                                                {t("sprints.historyMovedHint", {
+                                                    count: pastSprintCount,
+                                                })}
+                                            </span>
+                                            <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                                        </Link>
                                     ) : null}
                                 </>
                             )}
@@ -1014,10 +935,6 @@ export function BacklogPage({ boardId, projectId }: BacklogPageProperties) {
                             ) : null}
                         </DragOverlay>
                     </DndContext>
-
-                    <div className="relative motion-reveal [animation-delay:360ms]">
-                        <SprintInsightsPanel sprints={sprints} tasks={tasks} />
-                    </div>
 
                     <TaskDrawer
                         boardId={boardId}
@@ -1225,13 +1142,14 @@ function BacklogSectionShell({
 
 function formatSprintSizeLabel(
     t: (key: string, options?: Record<string, unknown>) => string,
-    tasks: Task[]
+    tasks: Task[],
+    options: { omitUnestimated?: boolean } = {}
 ) {
     const summary = summarizeTaskEstimates(tasks);
     if (summary.estimatedCount === 0) {
         return t("sprints.taskCount", { count: summary.taskCount });
     }
-    if (summary.unestimatedCount === 0) {
+    if (summary.unestimatedCount === 0 || options.omitUnestimated) {
         return t("sprints.sizeWithPoints", {
             count: summary.taskCount,
             points: summary.pointsSum,
@@ -1242,180 +1160,6 @@ function formatSprintSizeLabel(
         points: summary.pointsSum,
         unestimated: summary.unestimatedCount,
     });
-}
-
-function PastSprintSection({
-    boardId,
-    canManage,
-    columns,
-    onOpenTask,
-    projectId,
-    sprint,
-    tasks,
-}: {
-    boardId: string;
-    canManage: boolean;
-    columns: Array<{ id: string; isDone: boolean }>;
-    onOpenTask: (taskId: string) => void;
-    projectId: string;
-    sprint: Sprint;
-    tasks: Task[];
-}) {
-    const { t } = useTranslation("board");
-    const { removePast } = useSprintMutations(projectId, boardId);
-    const [reportOpen, setReportOpen] = useState(false);
-    const [deleteOpen, setDeleteOpen] = useState(false);
-    const isCanceled = sprint.state === "canceled";
-
-    const handleDelete = async () => {
-        try {
-            await removePast.mutateAsync(sprint.id);
-            toast.success(t("sprints.pastDeleted", { name: sprint.name }));
-            setDeleteOpen(false);
-        } catch {
-            toast.error(t("sprints.pastDeleteFailed"));
-        }
-    };
-
-    return (
-        <BacklogSectionShell
-            accent="history"
-            header={
-                <header className="flex min-w-0 flex-col gap-2 border-b border-border/80 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
-                    <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-h3">{sprint.name}</h2>
-                            <SprintStateBadge state={sprint.state} />
-                        </div>
-                        {sprint.startsOn && sprint.endsOn ? (
-                            <p className="text-code text-muted-foreground">
-                                {sprint.startsOn} → {sprint.endsOn}
-                            </p>
-                        ) : null}
-                        {isCanceled && sprint.canceledAt ? (
-                            <p className="text-meta text-muted-foreground">
-                                {t("sprints.canceledAt", {
-                                    date: new Date(
-                                        sprint.canceledAt
-                                    ).toLocaleString(),
-                                })}
-                            </p>
-                        ) : null}
-                        {!isCanceled && sprint.closedAt ? (
-                            <p className="text-meta text-muted-foreground">
-                                {t("sprints.closedAt", {
-                                    date: new Date(
-                                        sprint.closedAt
-                                    ).toLocaleString(),
-                                })}
-                            </p>
-                        ) : null}
-                    </div>
-                    <Button
-                        className="rounded-none"
-                        onClick={() => setReportOpen((value) => !value)}
-                        size="xs"
-                        type="button"
-                        variant="outline"
-                    >
-                        {reportOpen
-                            ? t("sprints.hideReport")
-                            : isCanceled
-                              ? t("sprints.showDetails")
-                              : t("sprints.showReport")}
-                    </Button>
-                    {canManage ? (
-                        <Button
-                            onClick={() => setDeleteOpen(true)}
-                            size="xs"
-                            type="button"
-                            variant="ghost"
-                        >
-                            {t("sprints.deletePast")}
-                        </Button>
-                    ) : null}
-                </header>
-            }
-        >
-            {reportOpen ? (
-                <SprintReportPanel
-                    boardId={boardId}
-                    canManage={canManage}
-                    columns={columns}
-                    onOpenTask={onOpenTask}
-                    projectId={projectId}
-                    sprint={sprint}
-                    tasks={tasks}
-                />
-            ) : null}
-
-            <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
-                <AlertDialogContent size="sm">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            {t("sprints.deletePastTitle", {
-                                name: sprint.name,
-                            })}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t("sprints.deletePastDescription")}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={removePast.isPending}>
-                            {t("sprints.deletePastKeep")}
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            disabled={removePast.isPending}
-                            onClick={() => {
-                                void handleDelete();
-                            }}
-                            variant="destructive"
-                        >
-                            {t("sprints.deletePastConfirm")}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </BacklogSectionShell>
-    );
-}
-
-function PlanningPulseStat({
-    emphasize = false,
-    label,
-    tone = "default",
-    value,
-}: {
-    emphasize?: boolean;
-    label: string;
-    tone?: "default" | "warning";
-    value: number;
-}) {
-    const reduceMotion = useReducedMotion();
-    return (
-        <div className="flex min-w-0 flex-col gap-1 bg-background/90 px-3 py-3 sm:px-4 sm:py-3.5">
-            <dt className="truncate text-meta text-muted-foreground">
-                {label}
-            </dt>
-            <dd
-                className={cn(
-                    "font-heading text-h3 tabular-nums tracking-tight",
-                    tone === "warning"
-                        ? "text-warning"
-                        : emphasize
-                          ? "text-primary"
-                          : "text-foreground"
-                )}
-            >
-                {reduceMotion ? (
-                    value
-                ) : (
-                    <NumberFlow isolate value={value} willChange />
-                )}
-            </dd>
-        </div>
-    );
 }
 
 function sortBySprintPosition(tasks: Task[]) {
@@ -1437,6 +1181,8 @@ function SprintSection({
     draggingTaskIds,
     firstColumnId,
     labels,
+    onEstimateChange,
+    onFilterUnestimated,
     onOpenTask,
     onRowSelectionChange,
     projectId,
@@ -1454,15 +1200,18 @@ function SprintSection({
     draggingTaskIds: string[];
     firstColumnId?: string;
     labels: Parameters<typeof SprintTaskTable>[0]["labels"];
+    onEstimateChange?: (taskId: string, estimate: null | TaskEstimate) => void;
+    onFilterUnestimated?: () => void;
     onOpenTask: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
     projectId: string;
     resetKey: string;
     rowSelection: RowSelectionState;
     sprint: Sprint;
+    /** Member Tasks that pass the toolbar filters (table rows). */
     tasks: Task[];
 }) {
-    const { t } = useTranslation("board");
+    const { i18n, t } = useTranslation("board");
     const navigate = useNavigate();
     const reduceMotion = useReducedMotion();
     const { removeDraft } = useSprintMutations(projectId, boardId);
@@ -1470,23 +1219,62 @@ function SprintSection({
     const [startOpen, setStartOpen] = useState(false);
     const [closeOpen, setCloseOpen] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false);
-    const [reportOpen, setReportOpen] = useState(false);
 
+    // Dialogs act on every member, not only the rows the toolbar filters show.
+    const memberTasks = useMemo(
+        () => allTasks.filter((task) => task.sprintId === sprint.id),
+        [allTasks, sprint.id]
+    );
+    const unestimatedCount = memberTasks.filter(
+        (task) => !isTaskEstimate(task.estimate)
+    ).length;
     const isActive = sprint.state === "active";
+    const progress = useMemo(
+        () =>
+            isActive
+                ? buildSprintReportSummary({
+                      columns,
+                      events: [],
+                      sprint,
+                      tasks: allTasks,
+                  })
+                : undefined,
+        [allTasks, columns, isActive, sprint]
+    );
+    const dateRange = formatSprintDateRange({
+        endsOn: sprint.endsOn,
+        locale: i18n.resolvedLanguage,
+        startsOn: sprint.startsOn,
+        today: todayIsoDate(),
+    });
+    const unestimatedChip =
+        onFilterUnestimated && unestimatedCount > 0 ? (
+            <button
+                className="border border-dashed border-warning/60 px-1.5 py-px text-meta text-warning transition-colors hover:bg-warning/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                onClick={onFilterUnestimated}
+                type="button"
+            >
+                {t("sprints.unestimatedChip", { count: unestimatedCount })}
+            </button>
+        ) : null;
+    const sizeLabel = formatSprintSizeLabel(t, tasks, {
+        omitUnestimated: unestimatedChip !== null,
+    });
+
     const sprintActions = (
         <>
             {isActive ? (
-                <Button
-                    className="rounded-none"
-                    onClick={() => setReportOpen((value) => !value)}
-                    size="xs"
-                    type="button"
-                    variant="outline"
+                <Link
+                    className={cn(
+                        buttonVariants({ size: "xs", variant: "outline" }),
+                        "rounded-none"
+                    )}
+                    params={{ boardId, projectId, sprintId: sprint.id }}
+                    to="/projects/$projectId/boards/$boardId/sprints/$sprintId"
                 >
-                    {reportOpen
-                        ? t("sprints.hideReport")
-                        : t("sprints.showReport")}
-                </Button>
+                    {t("sprints.showReport")}
+                    <ArrowRight data-icon="inline-end" />
+                </Link>
             ) : null}
             {canManage && sprint.state === "draft" ? (
                 <motion.div
@@ -1531,7 +1319,8 @@ function SprintSection({
                         <MoreHorizontal className="size-3.5" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        {sprint.state === "draft" && tasks.length === 0 ? (
+                        {sprint.state === "draft" &&
+                        memberTasks.length === 0 ? (
                             <DropdownMenuItem
                                 onClick={() => {
                                     void removeDraft
@@ -1553,7 +1342,7 @@ function SprintSection({
                             </DropdownMenuItem>
                         ) : null}
                         {isActive ||
-                        (sprint.state === "draft" && tasks.length > 0) ? (
+                        (sprint.state === "draft" && memberTasks.length > 0) ? (
                             <DropdownMenuItem
                                 onClick={() => setCancelOpen(true)}
                                 variant="destructive"
@@ -1575,8 +1364,11 @@ function SprintSection({
                     <header>
                         <ActiveSprintLiveStrip
                             actions={sprintActions}
+                            dateRange={dateRange}
                             headingId={sprintHeadingId(sprint.id)}
-                            sizeLabel={formatSprintSizeLabel(t, tasks)}
+                            meta={unestimatedChip}
+                            progress={progress}
+                            sizeLabel={sizeLabel}
                             sprint={sprint}
                         />
                     </header>
@@ -1587,17 +1379,18 @@ function SprintSection({
                                 <h2 className="text-h3">{sprint.name}</h2>
                                 <SprintStateBadge state={sprint.state} />
                                 <span className="text-meta text-muted-foreground">
-                                    {formatSprintSizeLabel(t, tasks)}
+                                    {sizeLabel}
                                 </span>
+                                {unestimatedChip}
                             </div>
                             {sprint.goal ? (
                                 <p className="mt-1 max-w-2xl text-ui text-muted-foreground">
                                     {sprint.goal}
                                 </p>
                             ) : null}
-                            {sprint.startsOn && sprint.endsOn ? (
-                                <p className="text-code text-muted-foreground">
-                                    {sprint.startsOn} → {sprint.endsOn}
+                            {dateRange ? (
+                                <p className="text-sm text-muted-foreground">
+                                    {dateRange}
                                 </p>
                             ) : null}
                         </div>
@@ -1608,18 +1401,6 @@ function SprintSection({
             id={isActive ? sprintSectionId(sprint.id) : undefined}
             labelledBy={isActive ? sprintHeadingId(sprint.id) : undefined}
         >
-            {reportOpen && sprint.state === "active" ? (
-                <SprintReportPanel
-                    boardId={boardId}
-                    canManage={canManage}
-                    columns={columns}
-                    onOpenTask={onOpenTask}
-                    projectId={projectId}
-                    sprint={sprint}
-                    tasks={allTasks}
-                />
-            ) : null}
-
             <WindowedSprintTaskTable
                 canManage={canManage}
                 columns={columns}
@@ -1627,6 +1408,7 @@ function SprintSection({
                 draggingTaskIds={draggingTaskIds}
                 epicsById={epicsById}
                 labels={labels}
+                onEstimateChange={onEstimateChange}
                 onOpenTask={onOpenTask}
                 onRowSelectionChange={onRowSelectionChange}
                 resetKey={resetKey}
@@ -1650,7 +1432,7 @@ function SprintSection({
                 open={startOpen}
                 projectId={projectId}
                 sprint={sprint}
-                taskCount={tasks.length}
+                taskCount={memberTasks.length}
             />
             <CloseSprintDialog
                 activeSprints={actives}
@@ -1671,7 +1453,7 @@ function SprintSection({
                 open={closeOpen}
                 projectId={projectId}
                 sprint={sprint}
-                tasks={tasks}
+                tasks={memberTasks}
             />
             <CancelSprintDialog
                 boardId={boardId}

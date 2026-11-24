@@ -1,7 +1,7 @@
 import type { OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 
 import type { ProjectLabel } from "@/features/labels";
-import type { ProjectEpic, Task } from "@/features/tasks";
+import type { ProjectEpic, Task, TaskEstimate } from "@/features/tasks";
 
 import {
     BACKLOG_LIST_PAGE_SIZE,
@@ -22,6 +22,7 @@ type WindowedSprintTaskTableProperties = {
     draggingTaskIds: string[];
     epicsById?: ReadonlyMap<string, ProjectEpic>;
     labels: ProjectLabel[];
+    onEstimateChange?: (taskId: string, estimate: null | TaskEstimate) => void;
     onOpenTask?: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
     resetKey: string;
@@ -36,6 +37,7 @@ export function WindowedSprintTaskTable({
     draggingTaskIds,
     epicsById,
     labels,
+    onEstimateChange,
     onOpenTask,
     onRowSelectionChange,
     resetKey,
@@ -77,6 +79,7 @@ export function WindowedSprintTaskTable({
                 draggingTaskIds={draggingTaskIds}
                 epicsById={epicsById}
                 labels={labels}
+                onEstimateChange={onEstimateChange}
                 onOpenTask={onOpenTask}
                 onRowSelectionChange={onRowSelectionChange}
                 rowSelection={rowSelection}
