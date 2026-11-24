@@ -22,6 +22,8 @@
     "nav": {
         "backlog": "Backlog",
         "backlogShort": "Back",
+        "sprints": "Sprints",
+        "sprintsShort": "Sprints",
         "board": "Board",
         "boardShort": "Board",
         "breadcrumb": "Breadcrumb",

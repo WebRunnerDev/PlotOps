@@ -11,7 +11,7 @@ import { cn } from "@/shared/lib/utils";
 import { buttonVariants } from "@/shared/shadcn/ui/button";
 import { resolveSectionNavBoardId } from "@/widgets/top-bar/model/resolve-section-nav-board-id";
 
-type ProjectSection = "backlog" | "board" | "cicd" | "settings";
+type ProjectSection = "backlog" | "board" | "cicd" | "settings" | "sprints";
 
 type ProjectSectionNavProperties = {
     boardId?: string;
@@ -26,6 +26,7 @@ type SectionNavItem = {
     to:
         | "/projects/$projectId/boards/$boardId"
         | "/projects/$projectId/boards/$boardId/backlog"
+        | "/projects/$projectId/boards/$boardId/sprints"
         | "/projects/$projectId/ci-cd"
         | "/projects/$projectId/settings";
 };
@@ -75,6 +76,13 @@ export function ProjectSectionNav({
                       labelShort: t("nav.backlogShort"),
                       params: { boardId, projectId },
                       to: "/projects/$projectId/boards/$boardId/backlog" as const,
+                  },
+                  {
+                      id: "sprints" as const,
+                      label: t("nav.sprints"),
+                      labelShort: t("nav.sprintsShort"),
+                      params: { boardId, projectId },
+                      to: "/projects/$projectId/boards/$boardId/sprints" as const,
                   },
               ]
             : []),
@@ -135,6 +143,7 @@ function resolveSection(pathname: string): null | ProjectSection {
     if (pathname.includes("/ci-cd")) return "cicd";
     if (pathname.includes("/settings")) return "settings";
     if (pathname.includes("/backlog")) return "backlog";
+    if (/\/boards\/[^/]+\/sprints(\/|$)/.test(pathname)) return "sprints";
     if (pathname.includes("/boards/")) return "board";
     return null;
 }

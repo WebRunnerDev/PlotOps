@@ -45,7 +45,7 @@ type BoardSwitcherProperties = {
     boardId: string;
     canManage: boolean;
     /** Where selecting/creating a board navigates. Default: kanban board. */
-    destination?: "backlog" | "board";
+    destination?: "backlog" | "board" | "sprints";
     projectId: string;
     /**
      * The Project's Repositories, oldest first. The Development Board option
@@ -85,7 +85,9 @@ export function BoardSwitcher({
             to:
                 destination === "backlog"
                     ? "/projects/$projectId/boards/$boardId/backlog"
-                    : "/projects/$projectId/boards/$boardId",
+                    : destination === "sprints"
+                      ? "/projects/$projectId/boards/$boardId/sprints"
+                      : "/projects/$projectId/boards/$boardId",
         });
     };
 

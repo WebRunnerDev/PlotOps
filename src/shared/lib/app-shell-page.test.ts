@@ -20,6 +20,7 @@ const labels = {
     notFound: "Page not found",
     notifications: "Notifications",
     settings: "Settings",
+    sprints: "Sprints",
     teamTasks: "Team Tasks",
 };
 
@@ -37,6 +38,30 @@ describe("parseAppShellPath", () => {
             kind: "backlog",
             projectId: "proj-1",
         });
+    });
+
+    it("parses the Sprints page and a Sprint report", () => {
+        expect(
+            parseAppShellPath("/projects/proj-1/boards/board-9/sprints")
+        ).toEqual({
+            boardId: "board-9",
+            kind: "sprints",
+            projectId: "proj-1",
+        });
+        expect(
+            parseAppShellPath("/projects/proj-1/boards/board-9/sprints/s-1/")
+        ).toEqual({
+            boardId: "board-9",
+            kind: "sprints",
+            projectId: "proj-1",
+            sprintId: "s-1",
+        });
+        expect(
+            resolveAppShellDocumentTitle("/projects/p/boards/b/sprints", {
+                entities: { boardName: "Core" },
+                labels,
+            })
+        ).toBe(`Core · Sprints — ${PLOTOPS_SITE_NAME}`);
     });
 
     it("parses project, team, and static app routes", () => {
