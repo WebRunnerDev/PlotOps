@@ -1,5 +1,7 @@
 export type SprintTimeline = {
     daysElapsed: null | number;
+    /** Calendar days past endsOn; 0 unless phase is overdue, null when undated. */
+    daysOverdue: null | number;
     daysRemaining: null | number;
     phase: SprintTimelinePhase;
     /** 0–1 calendar progress through the sprint window; null when undated. */
@@ -29,6 +31,7 @@ export function computeSprintTimeline({
     if (!startsOn || !endsOn) {
         return {
             daysElapsed: null,
+            daysOverdue: null,
             daysRemaining: null,
             phase: "undated",
             progress01: null,
@@ -47,6 +50,7 @@ export function computeSprintTimeline({
     ) {
         return {
             daysElapsed: null,
+            daysOverdue: null,
             daysRemaining: null,
             phase: "undated",
             progress01: null,
@@ -61,6 +65,7 @@ export function computeSprintTimeline({
         const daysRemaining = Math.floor((endMs - todayMs) / dayMs);
         return {
             daysElapsed: 0,
+            daysOverdue: 0,
             daysRemaining,
             phase: "upcoming",
             progress01: 0,
@@ -71,6 +76,7 @@ export function computeSprintTimeline({
     if (todayMs > endMs) {
         return {
             daysElapsed: totalDays,
+            daysOverdue: Math.floor((todayMs - endMs) / dayMs),
             daysRemaining: 0,
             phase: "overdue",
             progress01: 1,
@@ -85,6 +91,7 @@ export function computeSprintTimeline({
 
     return {
         daysElapsed,
+        daysOverdue: 0,
         daysRemaining,
         phase: "active",
         progress01,

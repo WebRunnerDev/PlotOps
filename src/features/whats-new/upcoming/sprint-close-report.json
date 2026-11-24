@@ -1,0 +1,19 @@
+{
+    "changes": [
+        {
+            "kind": "improved",
+            "en": "Completing a Sprint shows every Task with its status and points, totals what you are closing, and lets you pick where each unfinished Task goes in its own row.",
+            "ru": "При завершении спринта видны все задачи со статусом и очками, итог того, что закрывается, а куда перенести каждую незавершённую задачу можно выбрать прямо в её строке."
+        },
+        {
+            "kind": "improved",
+            "en": "The Sprint report shows live progress for an Active Sprint and lists activity with Task keys instead of internal ids.",
+            "ru": "Отчёт активного спринта показывает живой прогресс, а лог событий — ключи задач вместо внутренних идентификаторов."
+        },
+        {
+            "kind": "fixed",
+            "en": "An overdue Sprint now shows how many days it is overdue instead of 0.",
+            "ru": "Просроченный спринт теперь показывает, на сколько дней он просрочен, а не 0."
+        }
+    ]
+}

@@ -101,31 +101,28 @@ function ActiveCountdown({ timeline }: { timeline: SprintTimeline }) {
         );
     }
 
-    const label =
-        timeline.phase === "overdue"
-            ? t("sprints.activeLiveOverdue")
-            : timeline.phase === "upcoming"
-              ? t("sprints.activeLiveUpcoming")
-              : t("sprints.pulseDaysLeft");
+    const isOverdue = timeline.phase === "overdue";
+    const value = isOverdue
+        ? (timeline.daysOverdue ?? 0)
+        : timeline.daysRemaining;
+    const label = isOverdue
+        ? t("sprints.activeLiveOverdue", { count: value })
+        : timeline.phase === "upcoming"
+          ? t("sprints.activeLiveUpcoming")
+          : t("sprints.pulseDaysLeft");
 
     return (
         <div className="flex min-w-0 items-end gap-3 sm:flex-col sm:items-end sm:gap-1">
             <p
                 className={cn(
                     "font-heading text-[clamp(2.75rem,1.5rem+4vw,4.5rem)] font-bold leading-none tracking-tighter tabular-nums",
-                    timeline.phase === "overdue"
-                        ? "text-warning"
-                        : "text-primary"
+                    isOverdue ? "text-warning" : "text-primary"
                 )}
             >
                 {reduceMotion ? (
-                    timeline.daysRemaining
+                    value
                 ) : (
-                    <NumberFlow
-                        isolate
-                        value={timeline.daysRemaining}
-                        willChange
-                    />
+                    <NumberFlow isolate value={value} willChange />
                 )}
             </p>
             <p className="pb-1 text-meta text-muted-foreground">{label}</p>

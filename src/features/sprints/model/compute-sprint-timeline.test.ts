@@ -12,6 +12,7 @@ describe("computeSprintTimeline", () => {
             })
         ).toEqual({
             daysElapsed: null,
+            daysOverdue: null,
             daysRemaining: null,
             phase: "undated",
             progress01: null,
@@ -28,6 +29,7 @@ describe("computeSprintTimeline", () => {
             })
         ).toEqual({
             daysElapsed: 0,
+            daysOverdue: 0,
             daysRemaining: 10,
             phase: "upcoming",
             progress01: 0,
@@ -45,6 +47,7 @@ describe("computeSprintTimeline", () => {
             })
         ).toEqual({
             daysElapsed: 3,
+            daysOverdue: 0,
             daysRemaining: 3,
             phase: "active",
             progress01: 3 / 6,
@@ -60,10 +63,21 @@ describe("computeSprintTimeline", () => {
                 today: "2026-09-04",
             })
         ).toMatchObject({
+            daysOverdue: 3,
             daysRemaining: 0,
             phase: "overdue",
             progress01: 1,
         });
+    });
+
+    it("counts days overdue from the day after endsOn", () => {
+        expect(
+            computeSprintTimeline({
+                endsOn: "2026-08-15",
+                startsOn: "2026-08-02",
+                today: "2026-11-24",
+            }).daysOverdue
+        ).toBe(101);
     });
 
     it("clamps single-day sprint", () => {
@@ -75,6 +89,7 @@ describe("computeSprintTimeline", () => {
             })
         ).toEqual({
             daysElapsed: 0,
+            daysOverdue: 0,
             daysRemaining: 0,
             phase: "active",
             progress01: 1,
