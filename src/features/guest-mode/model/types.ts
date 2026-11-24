@@ -179,6 +179,11 @@ export type GuestSandbox = {
     notifications: GuestNotification[];
     projects: GuestProject[];
     sprints: GuestSprint[];
+    /**
+     * Column history for flow reports (`task_status_changes`); recorded on
+     * every sandbox write. Optional on older stored sessions.
+     */
+    statusChanges?: GuestStatusChange[];
     taskLinks: GuestTaskLink[];
     tasks: GuestTask[];
     /** Sticky Watch rows (ADR 0028); optional on older stored sessions. */
@@ -201,6 +206,19 @@ export type GuestSprint = {
     startedAt?: string;
     startsOn?: string;
     state: "active" | "canceled" | "closed" | "draft";
+};
+
+/** One column change of a Guest Task; `fromStatus` null = creation. */
+export type GuestStatusChange = {
+    /** Board the Task was on after the change. */
+    boardId: string;
+    changedAt: string;
+    fromStatus: null | string;
+    fromStatusName: null | string;
+    id: string;
+    taskId: string;
+    toStatus: string;
+    toStatusName: null | string;
 };
 
 export type GuestTask = {

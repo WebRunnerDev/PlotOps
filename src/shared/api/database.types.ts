@@ -344,6 +344,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: undefined
       }
+      get_board_flow_history: {
+        Args: { p_board_id: string; p_since: string }
+        Returns: Json
+      }
       get_team_invite_by_token: {
         Args: { p_token: string }
         Returns: {
@@ -1539,6 +1543,67 @@ export type Database = {
           project_id?: string
           source_task_id?: string
           target_task_id?: string
+        }
+      }
+      task_status_changes: {
+        Insert: {
+          board_id: string
+          changed_at?: string
+          from_status?: null | string
+          from_status_name?: null | string
+          id?: string
+          project_id: string
+          source?: string
+          task_id: string
+          to_status: string
+          to_status_name?: null | string
+        }
+        Relationships: [
+          {
+            columns: ["board_id"]
+            foreignKeyName: "task_status_changes_board_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "boards"
+          },
+          {
+            columns: ["project_id"]
+            foreignKeyName: "task_status_changes_project_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "projects"
+          },
+          {
+            columns: ["task_id"]
+            foreignKeyName: "task_status_changes_task_id_fkey"
+            isOneToOne: false
+            referencedColumns: ["id"]
+            referencedRelation: "tasks"
+          },
+        ]
+        Row: {
+          board_id: string
+          changed_at: string
+          from_status: null | string
+          from_status_name: null | string
+          id: string
+          project_id: string
+          source: string
+          task_id: string
+          to_status: string
+          to_status_name: null | string
+        }
+        Update: {
+          board_id?: string
+          changed_at?: string
+          from_status?: null | string
+          from_status_name?: null | string
+          id?: string
+          project_id?: string
+          source?: string
+          task_id?: string
+          to_status?: string
+          to_status_name?: null | string
         }
       }
       task_watchers: {

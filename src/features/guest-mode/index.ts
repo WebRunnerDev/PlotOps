@@ -40,6 +40,7 @@ export type {
     GuestRepository,
     GuestSandbox,
     GuestSprint,
+    GuestStatusChange,
     GuestTask,
     GuestTaskLink,
     GuestTaskWatch,

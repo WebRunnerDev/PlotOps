@@ -177,8 +177,20 @@ Average completed work across the last N Closed Sprints on a Board (default N = 
 _Avoid_: Throughput (broader), lead time
 
 **Sprints page**:
-The Board-scoped page for how Sprints go (`/projects/$projectId/boards/$boardId/sprints`), separate from the Backlog: health of each Active Sprint (work done vs time elapsed, days left or overdue, Scope changes), Velocity with Commitment accuracy, and the history of Closed and Canceled Sprints. Each Sprint links to its Sprint report. Planning — Drafts, the Backlog, Start — stays on the Backlog page. Visible to every Role, Viewer included.
+The Board-scoped page for how Sprints go (`/projects/$projectId/boards/$boardId/sprints`), separate from the Backlog: health of each Active Sprint (work done vs time elapsed, days left or overdue, Scope changes), Velocity with Commitment accuracy, and the history of Closed and Canceled Sprints. Each Sprint links to its Sprint report. Its Flow tab (`?view=flow`) holds the Board's flow reports — Cumulative flow and Cycle time — for teams that work without Sprints. Planning — Drafts, the Backlog, Start — stays on the Backlog page. Visible to every Role, Viewer included.
 _Avoid_: Reports page (Jira), Insights, dashboard
+
+**Status history**:
+Every column change of a Task, recorded by the database whatever made it (Kanban, Task drawer, MCP, merge sync, Board move) — `task_status_changes`, ADR 0037. Feeds the flow reports. Distinct from Activity, the drawer's feed of field changes. Complete only from its introduction on; earlier moves come from Activity.
+_Avoid_: audit log, activity (Activity is the drawer feed)
+
+**Cumulative flow**:
+A flow report: how many Tasks sat in each column of one Board at the end of each day over the last 14, 30 or 90 days, as stacked bands with Done at the bottom. A band that keeps widening shows where work piles up. History from another Board counts by this Board's columns (matched by name, else the first column). Archived Tasks drop out from their archive day.
+_Avoid_: CFD (UI only), burnup (Sprint-scoped)
+
+**Cycle time**:
+For a Task that reached the Board's Done column within the report window: the time from first leaving the Board's first column to the last entry into Done (`board_columns.is_done`, else the rightmost column). A Task created straight into a middle column starts at creation. Reported per Task by completion date with the median and the 85th percentile. A Task whose start predates its Status history gets no Cycle time.
+_Avoid_: lead time (from creation, not from start), duration, age (open work)
 
 **Sprint report**:
 One Sprint's numbers at its own URL (`…/sprints/$sprintId`): completion against scope, Commitment, Scope changes, Carryover, burndown/burnup, completed Tasks and the Sprint event log. For an Active Sprint, "done" is read live from Done columns; for a Closed Sprint it is the Sprint completion snapshot. A Draft has no report.

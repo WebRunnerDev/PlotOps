@@ -87,7 +87,11 @@
                 "velocity",
                 "burndown",
                 "metrics",
-                "sprint report"
+                "sprint report",
+                "flow",
+                "cumulative flow",
+                "cycle time",
+                "kanban"
             ]
         },
         "cicd": {

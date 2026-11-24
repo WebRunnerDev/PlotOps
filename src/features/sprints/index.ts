@@ -30,6 +30,11 @@ export {
     resolveCreateTaskSprint,
 } from "./model/resolve-create-task-sprint-id";
 export { resolveEffectiveBoardSprintScope } from "./model/resolve-effective-board-sprint-scope";
+export {
+    parseSprintsPageSearch,
+    type SprintsPageSearch,
+    type SprintsPageView,
+} from "./model/sprints-page-search";
 export type {
     BoardSprintScope,
     Sprint,

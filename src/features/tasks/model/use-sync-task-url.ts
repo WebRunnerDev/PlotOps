@@ -16,7 +16,10 @@ import { parseTaskBoardSearch } from "@/features/tasks/model/task-board-search";
 import { useTasksUiStore } from "@/features/tasks/model/use-tasks-ui-store";
 
 /**
- * Keeps `?task=<key|id>` in sync with the Task drawer on Board routes.
+ * Keeps `?task=<key|id>` in sync with the Task drawer on Board routes
+ * (Kanban, Backlog, Sprints, Sprint report). The param is written on the
+ * current route, keeping its other search params, so opening a Task from a
+ * report does not jump to the Kanban.
  * Opening a shared link selects the Task; closing the drawer clears the param.
  */
 export function useSyncTaskUrl() {
@@ -35,10 +38,6 @@ export function useSyncTaskUrl() {
 
     const onBoardRoute =
         Boolean(boardId && projectId) && location.pathname.includes("/boards/");
-
-    const boardRoute = location.pathname.endsWith("/backlog")
-        ? "/projects/$projectId/boards/$boardId/backlog"
-        : "/projects/$projectId/boards/$boardId";
 
     const urlTaskReference = search.task;
     const urlTaskId =
@@ -85,12 +84,15 @@ export function useSyncTaskUrl() {
                 break;
             }
             case "push-url": {
+                const taskReference = action.taskRef;
                 void navigate({
-                    params: { boardId, projectId },
                     replace: true,
                     resetScroll: false,
-                    search: { task: action.taskRef },
-                    to: boardRoute,
+                    search: (previous) => ({
+                        ...previous,
+                        task: taskReference,
+                    }),
+                    to: ".",
                     viewTransition: false,
                 });
                 break;
@@ -102,11 +104,10 @@ export function useSyncTaskUrl() {
             case "strip-url": {
                 wasSelectedReference.current = false;
                 void navigate({
-                    params: { boardId, projectId },
                     replace: true,
                     resetScroll: false,
-                    search: {},
-                    to: boardRoute,
+                    search: (previous) => withoutTaskParameter(previous),
+                    to: ".",
                     viewTransition: false,
                 });
                 break;
@@ -114,7 +115,6 @@ export function useSyncTaskUrl() {
         }
     }, [
         boardId,
-        boardRoute,
         clearSelectedTask,
         navigate,
         onBoardRoute,
@@ -126,4 +126,10 @@ export function useSyncTaskUrl() {
         urlTaskId,
         urlTaskReference,
     ]);
+}
+
+function withoutTaskParameter<T extends object>(search: T): Omit<T, "task"> {
+    const rest = { ...search } as Record<string, unknown>;
+    delete rest.task;
+    return rest as Omit<T, "task">;
 }
