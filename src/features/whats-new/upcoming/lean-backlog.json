@@ -1,0 +1,19 @@
+{
+    "changes": [
+        {
+            "kind": "improved",
+            "en": "The Backlog is now just for planning: a compact header, and an Active Sprint that shows work done against time elapsed. Reports and Velocity moved to the Sprints page.",
+            "ru": "Бэклог теперь только для планирования: компактная шапка, а у активного спринта видно, сколько работы сделано относительно прошедшего времени. Отчёты и скорость команды переехали на страницу «Спринты»."
+        },
+        {
+            "kind": "new",
+            "en": "Set a Task's Estimate right in the Backlog's Pts column, and click “without estimate” on a Sprint to see only the Tasks still missing one.",
+            "ru": "Оценку задачи можно поставить прямо в колонке Pts бэклога, а клик по «без оценки» у спринта показывает только задачи, которым её не хватает."
+        },
+        {
+            "kind": "fixed",
+            "en": "Completing or starting a Sprint while Backlog filters are on now includes every Task in that Sprint, not only the ones shown.",
+            "ru": "Завершение и старт спринта при включённых фильтрах бэклога теперь учитывают все задачи спринта, а не только видимые."
+        }
+    ]
+}

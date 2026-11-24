@@ -10,20 +10,39 @@ function readUi(name: string) {
 }
 
 describe("Backlog skin seam (ADR 0007 craft)", () => {
-    it("keeps planning hero: atmosphere, display type, pulse, cobalt border", () => {
+    it("keeps a compact planning header that links to the Sprints page", () => {
         const page = readUi("backlog-page.tsx");
 
         expect(page).toMatch(/bg-auth-atmosphere/);
-        expect(page).toMatch(/clamp\(2\.125rem/);
-        expect(page).toMatch(/planningEyebrow/);
-        expect(page).toMatch(/PlanningPulseStat/);
+        expect(page).not.toMatch(/PlanningPulseStat/);
+        expect(page).not.toMatch(/SprintInsightsPanel/);
+        expect(page).not.toMatch(/PastSprintSection/);
+        expect(page).toMatch(
+            /to="\/projects\/\$projectId\/boards\/\$boardId\/sprints"/
+        );
+        expect(page).toMatch(/historyMovedHint/);
         expect(page).toMatch(/ActiveSprintLiveStrip/);
         expect(page).toMatch(/ActiveSprintJumpNav/);
         expect(page).toMatch(/sprintSectionId/);
         expect(page).toMatch(/border-primary\/25/);
         expect(page).toMatch(/motion-reveal/);
         expect(page).toMatch(/rounded-none/);
-        expect(page).toMatch(/ActiveSprintJumpNav/);
+    });
+
+    it("opens the Sprint report on its own page and filters unestimated work", () => {
+        const page = readUi("backlog-page.tsx");
+        const live = readUi("active-sprint-live-strip.tsx");
+
+        expect(page).toMatch(
+            /to="\/projects\/\$projectId\/boards\/\$boardId\/sprints\/\$sprintId"/
+        );
+        expect(page).not.toMatch(/SprintReportPanel/);
+        expect(page).toMatch(/onlyUnestimated/);
+        expect(page).toMatch(/onEstimateChange=/);
+        // Dialogs see every member, not only rows the toolbar filters show.
+        expect(page).toMatch(/tasks=\{memberTasks\}/);
+        expect(live).toMatch(/buildSprintReportSummary|SprintReportSummary/);
+        expect(live).toMatch(/role="progressbar"/);
     });
 
     it("skins sprint sections with state rails, badges, and magnetic Start", () => {

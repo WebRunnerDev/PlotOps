@@ -13,9 +13,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectLabel } from "@/features/labels";
-import type { ProjectEpic, Task } from "@/features/tasks";
+import type { ProjectEpic, Task, TaskEstimate } from "@/features/tasks";
 
 import { TaskLabelChips } from "@/features/labels";
+import { BacklogEstimatePicker } from "@/features/sprints/ui/backlog-estimate-picker";
 import {
     EpicBadge,
     formatDeadline,
@@ -56,6 +57,8 @@ type SprintTaskTableProperties = {
     /** Project Epics — rows show the Task's (or its Parent's) Epic chip. */
     epicsById?: ReadonlyMap<string, ProjectEpic>;
     labels: ProjectLabel[];
+    /** Inline Estimate editing (Manager+); read-only when omitted. */
+    onEstimateChange?: (taskId: string, estimate: null | TaskEstimate) => void;
     onOpenTask?: (taskId: string) => void;
     onRowSelectionChange: OnChangeFn<RowSelectionState>;
     rowSelection: RowSelectionState;
@@ -110,6 +113,7 @@ export function SprintTaskTable({
     draggingTaskIds,
     epicsById,
     labels,
+    onEstimateChange,
     onOpenTask,
     onRowSelectionChange,
     rowSelection,
@@ -241,7 +245,15 @@ export function SprintTaskTable({
             },
             {
                 cell: ({ row }) =>
-                    row.original.estimate === undefined ? (
+                    onEstimateChange ? (
+                        <BacklogEstimatePicker
+                            estimate={row.original.estimate}
+                            onChange={(next) => {
+                                onEstimateChange(row.original.id, next);
+                            }}
+                            taskKey={row.original.key}
+                        />
+                    ) : row.original.estimate === undefined ? (
                         <span className="text-meta text-muted-foreground">
                             —
                         </span>
@@ -329,7 +341,15 @@ export function SprintTaskTable({
                 size: 100,
             },
         ],
-        [canManage, epicsById, i18n.language, labelsById, statusNameById, t]
+        [
+            canManage,
+            epicsById,
+            i18n.language,
+            labelsById,
+            onEstimateChange,
+            statusNameById,
+            t,
+        ]
     );
 
     const table = useReactTable({
