@@ -4,6 +4,21 @@ Technical log of every release, written by release-please from Conventional
 Commits. The user-facing story lives on the **What's new** page
 (`/whats-new`, notes in `src/features/whats-new/`).
 
+## [1.2.0](https://github.com/WebRunnerDev/PlotOps/compare/v1.1.1...v1.2.0) (2026-11-24)
+
+
+### Features
+
+* **flow:** Cumulative flow and Cycle time on the Sprints page Flow tab (STORY-160) ([b790788](https://github.com/WebRunnerDev/PlotOps/commit/b790788e298371549138640267695a65ddbdc57e))
+* **sprints:** clearer Complete sprint dialog and live sprint report (TASK-158) ([59e206b](https://github.com/WebRunnerDev/PlotOps/commit/59e206b9229f64e6889d306169d6ffaa00034591))
+* **sprints:** lean planning Backlog with live progress and inline estimates (TASK-158) ([2a5d244](https://github.com/WebRunnerDev/PlotOps/commit/2a5d244dfeb03cd9d98230803b1f9b40569d452d))
+* **sprints:** Sprints page with sprint health, velocity and per-sprint report URLs (TASK-158) ([338faac](https://github.com/WebRunnerDev/PlotOps/commit/338faac258e8403cb5f55c3ccd10abaa267ce040))
+
+
+### Bug Fixes
+
+* **tasks:** keep the current page when opening a Task from Sprints pages (STORY-160) ([183d164](https://github.com/WebRunnerDev/PlotOps/commit/183d164dec94edfe954ee4fae27d9d10ca9a5c8c))
+
 ## [1.1.1](https://github.com/WebRunnerDev/PlotOps/compare/v1.1.0...v1.1.1) (2026-11-23)
 
 
