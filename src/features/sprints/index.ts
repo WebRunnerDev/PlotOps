@@ -50,6 +50,7 @@ export {
     CloseSprintDialog,
     StartSprintDialog,
 } from "./ui/sprint-lifecycle-dialogs";
+export { SprintReportPage } from "./ui/sprint-report-page";
 export {
     BACKLOG_DROP_ID,
     type BacklogTaskDragData,
@@ -59,3 +60,4 @@ export {
     sprintSectionId,
     SprintTaskTable,
 } from "./ui/sprint-task-table";
+export { SprintsPage } from "./ui/sprints-page";

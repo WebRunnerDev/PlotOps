@@ -31,6 +31,7 @@ describe("buildAppShellSeo", () => {
                 notFound: "Page not found",
                 notifications: "Notifications",
                 settings: "Settings",
+                sprints: "Sprints",
                 teamTasks: "Team Tasks",
             },
         });

@@ -13,6 +13,7 @@ import {
     useSensors,
 } from "@dnd-kit/core";
 import NumberFlow from "@number-flow/react";
+import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, MoreHorizontal, Play, Plus } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -71,6 +72,7 @@ import {
     StartSprintDialog,
 } from "@/features/sprints/ui/sprint-lifecycle-dialogs";
 import { SprintReportPanel } from "@/features/sprints/ui/sprint-report-panel";
+import { SprintStateBadge } from "@/features/sprints/ui/sprint-state-badge";
 import {
     BACKLOG_DROP_ID,
     type BacklogTaskDragData,
@@ -1461,6 +1463,7 @@ function SprintSection({
     tasks: Task[];
 }) {
     const { t } = useTranslation("board");
+    const navigate = useNavigate();
     const reduceMotion = useReducedMotion();
     const { removeDraft } = useSprintMutations(projectId, boardId);
     const { epicsById } = useProjectEpics(projectId);
@@ -1654,6 +1657,16 @@ function SprintSection({
                 boardId={boardId}
                 columns={columns}
                 draftSprints={drafts}
+                onClosed={(closedSprintId) => {
+                    void navigate({
+                        params: {
+                            boardId,
+                            projectId,
+                            sprintId: closedSprintId,
+                        },
+                        to: "/projects/$projectId/boards/$boardId/sprints/$sprintId",
+                    });
+                }}
                 onOpenChange={setCloseOpen}
                 open={closeOpen}
                 projectId={projectId}
@@ -1668,32 +1681,5 @@ function SprintSection({
                 sprint={sprint}
             />
         </BacklogSectionShell>
-    );
-}
-
-function SprintStateBadge({ state }: { state: Sprint["state"] }) {
-    const { t } = useTranslation("board");
-    return (
-        <span
-            className={cn(
-                "inline-flex items-center gap-1.5 text-meta",
-                state === "active" && "text-primary",
-                state === "draft" && "text-muted-foreground",
-                state === "closed" && "text-muted-foreground",
-                state === "canceled" && "text-warning"
-            )}
-        >
-            <span
-                aria-hidden
-                className={cn(
-                    "size-1.5 shrink-0",
-                    state === "active" && "bg-primary",
-                    state === "draft" && "bg-muted-foreground/60",
-                    state === "closed" && "bg-muted-foreground/40",
-                    state === "canceled" && "bg-warning"
-                )}
-            />
-            {t(`sprints.state.${state}`)}
-        </span>
     );
 }

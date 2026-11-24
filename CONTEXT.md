@@ -173,8 +173,16 @@ Optional Fibonacci story points on a Task (`1 | 2 | 3 | 5 | 8 | 13 | 21`). Absen
 _Avoid_: Ideal hours, t-shirt sizes, free-form integers outside the Fibonacci scale
 
 **Velocity**:
-Average completed work across the last N Closed Sprints on a Board (default N = 5). Prefers points when any Estimate exists in the window; otherwise task count. Shown on Backlog Insights for all viewers — not a corporate reporting export.
+Average completed work across the last N Closed Sprints on a Board (default N = 5). Prefers points when any Estimate exists in the window; otherwise task count. Shown on the Sprints page for all viewers — not a corporate reporting export.
 _Avoid_: Throughput (broader), lead time
+
+**Sprints page**:
+The Board-scoped page for how Sprints go (`/projects/$projectId/boards/$boardId/sprints`), separate from the Backlog: health of each Active Sprint (work done vs time elapsed, days left or overdue, Scope changes), Velocity with Commitment accuracy, and the history of Closed and Canceled Sprints. Each Sprint links to its Sprint report. Planning — Drafts, the Backlog, Start — stays on the Backlog page. Visible to every Role, Viewer included.
+_Avoid_: Reports page (Jira), Insights, dashboard
+
+**Sprint report**:
+One Sprint's numbers at its own URL (`…/sprints/$sprintId`): completion against scope, Commitment, Scope changes, Carryover, burndown/burnup, completed Tasks and the Sprint event log. For an Active Sprint, "done" is read live from Done columns; for a Closed Sprint it is the Sprint completion snapshot. A Draft has no report.
+_Avoid_: retro, summary
 
 **Commitment accuracy**:
 Completed ÷ committed work over the same Closed-Sprint window as Velocity (macro ratio). Quality companion to Velocity; null when the window's Commitment total is zero.
