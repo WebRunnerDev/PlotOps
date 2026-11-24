@@ -1,5 +1,62 @@
 [
     {
+        "id": "v1-2-0",
+        "version": "1.2.0",
+        "date": "2026-11-24",
+        "changes": [
+            {
+                "kind": "new",
+                "en": "The Sprints page has a Flow tab for teams without Sprints: a Cumulative flow chart shows where Tasks pile up on the Board, and Cycle time shows how long each Task took from start to Done.",
+                "ru": "На странице «Спринты» появилась вкладка «Поток» для команд без спринтов: накопительный поток показывает, где на доске копятся задачи, а cycle time — сколько каждая задача шла от старта до Done."
+            },
+            {
+                "kind": "fixed",
+                "en": "Opening a Task from the Sprints page or a Sprint report no longer jumps to the Kanban.",
+                "ru": "Открытие задачи со страницы «Спринты» или из отчёта спринта больше не перебрасывает на канбан."
+            },
+            {
+                "kind": "improved",
+                "en": "The Backlog is now just for planning: a compact header, and an Active Sprint that shows work done against time elapsed. Reports and Velocity moved to the Sprints page.",
+                "ru": "Бэклог теперь только для планирования: компактная шапка, а у активного спринта видно, сколько работы сделано относительно прошедшего времени. Отчёты и скорость команды переехали на страницу «Спринты»."
+            },
+            {
+                "kind": "new",
+                "en": "Set a Task's Estimate right in the Backlog's Pts column, and click “without estimate” on a Sprint to see only the Tasks still missing one.",
+                "ru": "Оценку задачи можно поставить прямо в колонке Pts бэклога, а клик по «без оценки» у спринта показывает только задачи, которым её не хватает."
+            },
+            {
+                "kind": "fixed",
+                "en": "Completing or starting a Sprint while Backlog filters are on now includes every Task in that Sprint, not only the ones shown.",
+                "ru": "Завершение и старт спринта при включённых фильтрах бэклога теперь учитывают все задачи спринта, а не только видимые."
+            },
+            {
+                "kind": "improved",
+                "en": "Completing a Sprint shows every Task with its status and points, totals what you are closing, and lets you pick where each unfinished Task goes in its own row.",
+                "ru": "При завершении спринта видны все задачи со статусом и очками, итог того, что закрывается, а куда перенести каждую незавершённую задачу можно выбрать прямо в её строке."
+            },
+            {
+                "kind": "improved",
+                "en": "The Sprint report shows live progress for an Active Sprint and lists activity with Task keys instead of internal ids.",
+                "ru": "Отчёт активного спринта показывает живой прогресс, а лог событий — ключи задач вместо внутренних идентификаторов."
+            },
+            {
+                "kind": "fixed",
+                "en": "An overdue Sprint now shows how many days it is overdue instead of 0.",
+                "ru": "Просроченный спринт теперь показывает, на сколько дней он просрочен, а не 0."
+            },
+            {
+                "kind": "new",
+                "en": "A new Sprints page next to the Backlog shows how each Active Sprint is going, team Velocity, and the history of past Sprints.",
+                "ru": "Новая страница «Спринты» рядом с бэклогом показывает, как идёт каждый активный спринт, скорость команды и историю прошлых спринтов."
+            },
+            {
+                "kind": "new",
+                "en": "Every Sprint report has its own link, and completing a Sprint offers to open its report right away.",
+                "ru": "У каждого отчёта спринта есть своя ссылка, а после завершения спринта можно сразу открыть его отчёт."
+            }
+        ]
+    },
+    {
         "id": "v1-1-1",
         "version": "1.1.1",
         "date": "2026-11-23",
