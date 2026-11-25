@@ -8,6 +8,13 @@ import { securityHeaders } from "./config/vite-security-headers.ts";
 
 // https://vite.dev/config/
 export default defineConfig({
+    // Pages sets CF_PAGES_BRANCH at build time; previews show a "production
+    // data" banner (src/shared/config/deploy-environment.ts).
+    define: {
+        "import.meta.env.VITE_DEPLOY_BRANCH": JSON.stringify(
+            process.env.CF_PAGES_BRANCH ?? ""
+        ),
+    },
     plugins: [
         tanstackRouter({
             autoCodeSplitting: true,
