@@ -213,7 +213,7 @@ function CompletedTaskList({
                     {rows.length}
                 </span>
             </h3>
-            <ul className="max-h-72 divide-y divide-border overflow-y-auto border border-border">
+            <ul className="scrollbar-board max-h-72 divide-y divide-border overflow-y-auto overscroll-contain border border-border">
                 {rows.map((row) => (
                     <li
                         className="flex min-w-0 items-center gap-2 px-3 py-1.5"
@@ -354,7 +354,7 @@ function SprintEventLog({
                 </p>
             ) : null}
             {ordered.length > 0 ? (
-                <ol className="max-h-72 divide-y divide-border overflow-y-auto border border-border">
+                <ol className="scrollbar-board max-h-72 divide-y divide-border overflow-y-auto overscroll-contain border border-border">
                     {ordered.map((event) => {
                         const task = event.taskId
                             ? tasksById.get(event.taskId)
