@@ -175,5 +175,6 @@
         "openAfterCreateHint": "When off, new tasks stay on the board until you open them.",
         "dragDrawer": "Drag or Alt+Scroll to resize or dismiss task drawer",
         "title": "Task drawer"
-    }
+    },
+    "previewBanner": "Preview of {{branch}} · production data, changes are real"
 }
