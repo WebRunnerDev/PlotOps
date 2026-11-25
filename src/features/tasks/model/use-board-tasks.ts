@@ -1474,6 +1474,9 @@ export function useBoardTasks(projectId: string, boardId: string) {
                 const epics = queryClient.getQueryData<ProjectEpic[]>(
                     taskKeys.epics(projectId)
                 );
+                if (details.description !== undefined) {
+                    before.description = previous.description ?? "";
+                }
                 if (details.epicId !== undefined) {
                     before.epic = toEpicActivityReference(
                         previous.epicId,
@@ -1484,6 +1487,7 @@ export function useBoardTasks(projectId: string, boardId: string) {
                     assignee: details.assignee,
                     branchName: details.branchName,
                     deadline: details.deadline,
+                    description: details.description,
                     epic:
                         details.epicId === undefined
                             ? undefined

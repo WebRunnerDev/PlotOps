@@ -430,13 +430,16 @@ Enable RLS and base policies before writing frontend code.
 
 ### What to log
 
-| Include                                 | Exclude                                                              |
-| --------------------------------------- | -------------------------------------------------------------------- |
-| status, assignee, priority, deadline    | description (no body, no “description updated”)                      |
-| title, type, labels                     | comments (stay in `task_comments` only)                              |
-| branch / PR link or unlink              | position-only DnD reorders within a column (optional; skip if noisy) |
-| move to another board                   |                                                                      |
-| archive / restore (`field: "archived"`) |                                                                      |
+| Include                                     | Exclude                                                              |
+| ------------------------------------------- | -------------------------------------------------------------------- |
+| status, assignee, priority, deadline        | description body (no text, no diff)                                  |
+| title, type, labels                         | comments (stay in `task_comments` only)                              |
+| branch / PR link or unlink                  | position-only DnD reorders within a column (optional; skip if noisy) |
+| move to another board                       |                                                                      |
+| archive / restore (`field: "archived"`)     |                                                                      |
+| description edited (`field: "description"`) |                                                                      |
+
+`description` records only that the body changed: `from` and `to` are always `null`. It fires on the same previous/next body comparison as the Watcher `description_change` Notification, so the inbox and the feed agree (BUG-174).
 
 ### Event shape
 

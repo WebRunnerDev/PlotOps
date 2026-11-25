@@ -248,6 +248,10 @@ function formatChangeSummary(change: TaskActivityChange, t: Translate): string {
                 to: displayScalar(change.to, none),
             });
         }
+        case "description": {
+            // No body is stored (SPEC — Task activity feed): only that it changed.
+            return t("activity.change.description");
+        }
         case "epic": {
             return t("activity.change.fromTo", {
                 field: fieldLabel,
