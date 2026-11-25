@@ -1,11 +1,12 @@
 -- RLS audit (#280): catalog invariants, plus the Owner of Team B can neither
--- insert into Team A tables nor read or write Team A task media.
--- SELECT / UPDATE / DELETE on every project/task/team table is covered table
--- by table in rls_cross_team_table_matrix_test.sql (#434).
+-- slip a Task into Project A through the board trigger nor read or write
+-- Team A task media.
+-- SELECT / INSERT / UPDATE / DELETE on every project/task/team table is
+-- covered table by table in rls_cross_team_table_matrix_test.sql (#434).
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(12);
 
 select set_config('test.user_a', 'f1111111-1111-1111-1111-111111111111', true);
 select set_config('test.user_b', 'f2222222-2222-2222-2222-222222222222', true);
@@ -180,7 +181,7 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------------
--- User B: inserts into Team A data are rejected
+-- User B: writes into Team A data are rejected
 -- ---------------------------------------------------------------------------
 
 select throws_ok(
@@ -196,29 +197,6 @@ select throws_ok(
   'P0001',
   'tasks.board_id must reference an existing board',
   'B cannot insert a task into Project A'
-);
-
-select throws_ok(
-  format(
-    $$insert into public.team_members (team_id, user_id, role) values (%L, %L, 'admin')$$,
-    current_setting('test.team_a'),
-    current_setting('test.user_b')
-  ),
-  '42501',
-  null,
-  'B cannot add itself to Team A'
-);
-
-select throws_ok(
-  format(
-    $$insert into public.task_comments (task_id, project_id, author_id, body) values (%L, %L, %L, 'x')$$,
-    current_setting('test.task_a'),
-    current_setting('test.project_a'),
-    current_setting('test.user_b')
-  ),
-  '42501',
-  null,
-  'B cannot comment on Task A'
 );
 
 select throws_ok(

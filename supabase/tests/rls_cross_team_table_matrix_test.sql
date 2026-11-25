@@ -1,13 +1,12 @@
 -- Table-driven cross-team RLS isolation (#434): for every public table scoped
 -- by project_id / task_id / team_id (found in the catalog, not listed by hand),
--- the Owner of Team B can neither read, update nor delete Team A rows.
+-- the Owner of Team B can neither read, insert, update nor delete Team A rows.
 --
 -- A new table is picked up automatically. The first two assertions then fail
 -- until the fixture below seeds a Team A row in it (or the table is added to
 -- the exempt list with a reason), so the matrix never passes vacuously.
 --
--- Out of scope here: INSERT (per-table payloads; see
--- rls_cross_team_isolation_test.sql) and storage.
+-- Storage is covered in rls_cross_team_isolation_test.sql.
 begin;
 create extension if not exists pgtap with schema extensions;
 
@@ -36,6 +35,11 @@ set local role postgres;
 create temp table matrix_exempt (tbl name primary key, reason text not null);
 insert into matrix_exempt values
   ('edge_rate_limit_hits', 'service-role only: no client grants, no Team data');
+
+-- Tables left out of the INSERT probe only.
+create temp table matrix_insert_exempt (tbl name primary key, reason text not null);
+insert into matrix_insert_exempt values
+  ('teams', 'a new Team row is its inserter''s own Team; a copy of Team A only collides on the id');
 
 -- Scope column per table: project_id, else task_id, else team_id. Tables
 -- scoped by another key are mapped explicitly. team_a_key is the value of
@@ -297,10 +301,17 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------------
--- Probe: one actor runs SELECT / UPDATE / DELETE on every scoped table and
--- records, per (table, op), how many Team A rows it saw or touched.
+-- Probe: one actor runs SELECT / INSERT / UPDATE / DELETE on every scoped
+-- table and records, per (table, op), how many Team A rows it saw, wrote or
+-- touched.
 --
 -- SELECT filters on the Team A scope and counts what comes back.
+--
+-- INSERT replays a copy of a Team A fixture row: key columns that have a
+-- default are left to it, and columns naming a user are set to the actor, so
+-- a policy such as "author_id = auth.uid()" can't reject the row for a reason
+-- other than Team scope. RLS checks the row before constraints and unique
+-- indexes do, so any outcome other than 42501 means RLS admitted it.
 --
 -- UPDATE and DELETE go in blind, with no WHERE clause: a filter makes Postgres
 -- apply the SELECT policies as well, which would hide an UPDATE / DELETE
@@ -328,16 +339,67 @@ begin
 end;
 $$;
 
--- The blind statement for one write op, or null when the client holds no
--- grant for it. UPDATE sets a column to DEFAULT, which reads nothing, so only
--- the UPDATE policy applies.
-create function pg_temp.blind_write_sql(op text, tbl name)
+-- The statement for one write op, or null when the client holds no grant for
+-- it. UPDATE sets a column to DEFAULT, which reads nothing, so only the UPDATE
+-- policy applies.
+create function pg_temp.write_sql(op text, tbl name, scope_col name, team_a_key uuid, uid uuid)
 returns text
 language plpgsql
 as $$
 declare
   set_col name;
+  cols text;
+  payload jsonb;
 begin
+  if op = 'insert' then
+    execute format(
+      'select to_jsonb(x) from public.%I as x where x.%I = %L limit 1',
+      tbl, scope_col, team_a_key
+    ) into payload;
+
+    select
+      string_agg(format('%I', a.attname), ', ' order by a.attnum),
+      payload || coalesce(
+        jsonb_object_agg(a.attname, uid) filter (
+          where a.attname <> scope_col
+            and exists (
+              select 1 from pg_constraint as k
+              where k.conrelid = a.attrelid
+                and k.contype = 'f'
+                and k.conkey = array[a.attnum]
+                and k.confrelid in ('auth.users'::regclass, 'public.profiles'::regclass)
+            )
+        ),
+        '{}'::jsonb
+      )
+    into cols, payload
+    from pg_attribute as a
+    where a.attrelid = format('public.%I', tbl)::regclass
+      and a.attnum > 0
+      and not a.attisdropped
+      and a.attgenerated = ''
+      and a.attidentity = ''
+      and has_column_privilege('authenticated', a.attrelid, a.attnum, 'INSERT')
+      and not (
+        a.atthasdef
+        and a.attname <> scope_col
+        and exists (
+          select 1 from pg_constraint as k
+          where k.conrelid = a.attrelid
+            and k.contype in ('p', 'u')
+            and a.attnum = any (k.conkey)
+        )
+      );
+
+    if cols is null then
+      return null;
+    end if;
+    return format(
+      'insert into public.%I (%s) select %s from jsonb_populate_record(null::public.%I, %L::jsonb)',
+      tbl, cols, cols, tbl, payload
+    );
+  end if;
+
   if op = 'delete' then
     if has_table_privilege('authenticated', format('public.%I', tbl), 'DELETE') then
       return format('delete from public.%I', tbl);
@@ -406,6 +468,9 @@ declare
 begin
   for s in select tbl, scope_col, team_a_key from matrix_scope where scope_col is not null order by tbl loop
     foreach op in array ops loop
+      continue when op = 'insert'
+        and exists (select 1 from matrix_insert_exempt as e where e.tbl = s.tbl);
+
       team_a_hits := null;
       state := null;
       msg := null;
@@ -425,7 +490,7 @@ begin
           end;
         end if;
       else
-        stmt := pg_temp.blind_write_sql(op, s.tbl);
+        stmt := pg_temp.write_sql(op, s.tbl, s.scope_col, s.team_a_key, uid);
         granted := stmt is not null;
         if granted then
           begin
@@ -439,14 +504,27 @@ begin
             perform pg_temp.as_user(uid);
             execute stmt;
             execute 'set local role postgres';
-            -- Read before the rollback below resets the setting.
-            team_a_hits := current_setting('test.team_a_touched')::integer;
+            -- Read before the rollback below resets the setting. An INSERT
+            -- that got here wrote its row.
+            team_a_hits := case
+              when op = 'insert' then 1
+              else current_setting('test.team_a_touched')::integer
+            end;
             raise exception using errcode = 'P0434', message = 'roll back the probe';
           exception
             when sqlstate 'P0434' then
               null;
             when others then
               get stacked diagnostics state = returned_sqlstate, msg = message_text;
+              if op = 'insert' then
+                -- 42501 is RLS (or a grant) rejecting the row. Anything else
+                -- came after RLS admitted it: a duplicate key, a foreign key.
+                team_a_hits := (state <> '42501')::integer;
+                if state = '42501' then
+                  state := null;
+                  msg := null;
+                end if;
+              end if;
           end;
         end if;
       end if;
@@ -464,7 +542,7 @@ $$;
 -- isolation, not a probe that cannot see or touch anything.
 -- ---------------------------------------------------------------------------
 
-select pg_temp.probe('A', current_setting('test.user_a')::uuid, array['select', 'update', 'delete']);
+select pg_temp.probe('A', current_setting('test.user_a')::uuid, array['select', 'insert', 'update', 'delete']);
 
 select is_empty(
   $$
@@ -477,18 +555,18 @@ select is_empty(
 );
 
 -- (table, op) pairs where a policy exists but rightly admits none of A's
--- fixture rows.
+-- fixture rows (or, for INSERT, A's copy of one).
 create temp table matrix_write_control_exempt (tbl name, op text, reason text not null);
 insert into matrix_write_control_exempt values
   ('teams', 'delete', 'the Owner may delete only a Team with no Projects');
 
--- Wherever a policy lets the client UPDATE / DELETE at all, A's blind write
--- reaches A's rows.
+-- Wherever a policy lets the client INSERT / UPDATE / DELETE at all, the same
+-- write as A reaches A's rows.
 select is_empty(
   $$
     select p.tbl || ' ' || p.op || coalesce(': ' || p.sqlstate || ' ' || p.message, ': 0 rows')
     from matrix_probe as p
-    where p.actor = 'A' and p.op in ('update', 'delete') and p.granted
+    where p.actor = 'A' and p.op <> 'select' and p.granted
       and exists (
         select 1 from pg_policies as pol
         where pol.schemaname = 'public'
@@ -500,16 +578,16 @@ select is_empty(
         select 1 from matrix_write_control_exempt as e
         where e.tbl = p.tbl and e.op = p.op
       )
-      and (coalesce(p.team_a_rows, 0) = 0 or p.sqlstate is not null)
+      and coalesce(p.team_a_rows, 0) = 0
   $$,
-  'A''s blind UPDATE / DELETE reaches its own rows wherever a policy allows the op'
+  'A''s INSERT / UPDATE / DELETE reaches its own rows wherever a policy allows the op'
 );
 
 -- ---------------------------------------------------------------------------
 -- B against Team A
 -- ---------------------------------------------------------------------------
 
-select pg_temp.probe('B', current_setting('test.user_b')::uuid, array['select', 'update', 'delete']);
+select pg_temp.probe('B', current_setting('test.user_b')::uuid, array['select', 'insert', 'update', 'delete']);
 
 select is_empty(
   $$
@@ -521,17 +599,18 @@ select is_empty(
   'B sees no Team A rows in any scoped table'
 );
 
--- The probe writes nothing, so an error is never a legitimate outcome: it is
--- reported rather than read as "isolated".
+-- UPDATE / DELETE write nothing, so an error there is never a legitimate
+-- outcome: it is reported rather than read as "isolated". For INSERT, only
+-- 42501 is (recorded as 0 rows).
 select is_empty(
   $$
     select tbl || ' ' || op || ': '
-      || coalesce(team_a_rows::text || ' Team A rows touched', sqlstate || ' ' || message)
+      || coalesce(sqlstate || ' ' || message, team_a_rows::text || ' Team A rows written')
     from matrix_probe
-    where actor = 'B' and op in ('update', 'delete') and granted
+    where actor = 'B' and op <> 'select' and granted
       and (coalesce(team_a_rows, 0) > 0 or sqlstate is not null)
   $$,
-  'B''s blind UPDATE / DELETE touches no Team A row in any scoped table'
+  'B can insert, update or delete no Team A row in any scoped table'
 );
 
 select * from finish();
