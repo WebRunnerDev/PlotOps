@@ -8,6 +8,10 @@ import type { GitHubRepo, Project } from "@/features/projects/model/types";
 import { signInWithGitHub } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
+import {
+    GitHubRepositoryAccessError,
+    githubRepositoryAccessReason,
+} from "@/features/projects/api/verify-github-repositories-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import {
     defaultProjectNameFromRepos,
@@ -184,16 +188,32 @@ export function AddProjectDialog({
             }
             onOpenChange(false);
         } catch (connectError) {
+            const accessReason = githubRepositoryAccessReason(connectError);
             toast.error(
-                isCapExceeded(connectError, "team_projects_cap")
-                    ? t("addProjectCapReached", { cap: TEAM_PROJECTS_CAP })
-                    : isCapExceeded(connectError, "project_repositories_cap")
-                      ? t("createProjectRepoCapReached", {
-                            cap: PROJECT_REPOSITORIES_CAP,
-                        })
-                      : isUniqueViolation(connectError)
-                        ? t("createProjectDuplicate")
-                        : t("createProjectFailed")
+                accessReason === "no_access"
+                    ? t("createProjectNoAccess", {
+                          repositories:
+                              connectError instanceof
+                              GitHubRepositoryAccessError
+                                  ? connectError.repositories.join(", ")
+                                  : selectedRepos
+                                        .map((repo) => repo.full_name)
+                                        .join(", "),
+                      })
+                    : accessReason === "unavailable"
+                      ? t("createProjectVerifyUnavailable")
+                      : isCapExceeded(connectError, "team_projects_cap")
+                        ? t("addProjectCapReached", { cap: TEAM_PROJECTS_CAP })
+                        : isCapExceeded(
+                                connectError,
+                                "project_repositories_cap"
+                            )
+                          ? t("createProjectRepoCapReached", {
+                                cap: PROJECT_REPOSITORIES_CAP,
+                            })
+                          : isUniqueViolation(connectError)
+                            ? t("createProjectDuplicate")
+                            : t("createProjectFailed")
             );
         }
     };

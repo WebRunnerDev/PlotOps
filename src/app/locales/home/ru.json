@@ -69,6 +69,8 @@
     "noReposFound": "Репозитории не найдены",
     "createProjectFailed": "Не удалось подключить репозиторий. Попробуйте снова.",
     "createProjectDuplicate": "Этот репозиторий уже подключён, или slug проекта занят.",
+    "createProjectNoAccess": "GitHub не подтвердил ваш доступ к {{repositories}}. Для публичного репозитория нужны права на запись. Если вас добавили недавно, переподключите GitHub.",
+    "createProjectVerifyUnavailable": "Не удалось проверить ваш доступ к репозиториям на GitHub. Попробуйте снова.",
     "createProjectReposSelected": "Выбрано {{count}} из {{cap}} репозиториев",
     "createProjectReposSelectedUncapped_one": "Выбран {{count}} репозиторий",
     "createProjectReposSelectedUncapped_few": "Выбрано {{count}} репозитория",

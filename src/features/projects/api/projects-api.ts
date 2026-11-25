@@ -6,6 +6,7 @@ import type {
 } from "@/features/projects/model/types";
 
 import { ensureUserProfile } from "@/features/auth/api/profile-api";
+import { verifyGitHubRepositories } from "@/features/projects/api/verify-github-repositories-api";
 import { supabase } from "@/shared/api/supabase";
 
 type ProjectRepositoryRow = {
@@ -48,9 +49,11 @@ const PROJECT_SELECT = `
 `;
 
 /**
- * Link a GitHub repository to a Project (Admin+, ADR 0035). The cap and the
- * Team-wide uniqueness are enforced in Postgres, and a trigger recomputes the
- * Project's visibility from its Repositories (#360).
+ * Link a GitHub repository to a Project (Admin+, ADR 0035). GitHub first
+ * confirms the user's access to it (BUG-163); Postgres refuses the link
+ * otherwise and stores the name, URL, default branch and visibility GitHub
+ * reported. The cap and the Team-wide uniqueness are enforced in Postgres, and
+ * a trigger recomputes the Project's visibility from its Repositories (#360).
  */
 export async function addProjectRepository(
     projectId: string,
@@ -63,6 +66,12 @@ export async function addProjectRepository(
             data: null,
             error: new Error("Project not found or update not permitted"),
         };
+    }
+
+    try {
+        await verifyGitHubRepositories([patch]);
+    } catch (verifyError) {
+        return { data: null, error: verifyError as Error };
     }
 
     const { error: insertError } = await supabase
@@ -110,6 +119,14 @@ export async function createProject(input: CreateProjectInput) {
     }
 
     await ensureUserProfile(user);
+
+    // GitHub confirms access to every repository first (BUG-163); the RPC
+    // links none of them otherwise.
+    try {
+        await verifyGitHubRepositories(input.repositories);
+    } catch (verifyError) {
+        return { data: null, error: verifyError as Error };
+    }
 
     const { data: projectId, error } = await supabase.rpc(
         "create_project_with_repositories",

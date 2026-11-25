@@ -24,6 +24,21 @@ on conflict (id) do nothing;
 insert into public.teams (id, owner_id, name)
 values (current_setting('test.team')::uuid, current_setting('test.owner')::uuid, 'Privacy Team');
 
+-- GitHub has confirmed each linking user's access to the repositories below
+-- (BUG-163): a client may link only a verified repository.
+insert into public.github_repository_verifications (
+  user_id, github_repo_id, github_full_name, github_html_url, github_default_branch, is_private
+)
+select v.user_id, v.repo_id, v.full_name, 'https://github.com/' || v.full_name, v.branch, v.is_private
+from (values
+  (current_setting('test.owner')::uuid, 8001::bigint, 'o/web', 'main', false),
+  (current_setting('test.owner')::uuid, 8002::bigint, 'o/infra', 'main', true),
+  (current_setting('test.owner')::uuid, 8003::bigint, 'o/secrets', 'main', true),
+  (current_setting('test.owner')::uuid, 8011::bigint, 'o/pub', 'main', false),
+  (current_setting('test.owner')::uuid, 8012::bigint, 'o/priv', 'main', true),
+  (current_setting('test.owner')::uuid, 8021::bigint, 'o/legacy', 'main', true)
+) as v (user_id, repo_id, full_name, branch, is_private);
+
 create or replace function pg_temp.as_user(uid uuid)
 returns void
 language plpgsql
@@ -125,7 +140,7 @@ select is(
   'a Project with any private Repository is private'
 );
 
--- An older client sends no per-Repository is_private: fall back to p_is_private.
+-- An older client sends no per-Repository is_private: the verification decides.
 select set_config(
   'test.legacy',
   public.create_project_with_repositories(
@@ -142,7 +157,7 @@ select set_config(
 select is(
   (select is_private from public.project_repositories where github_repo_id = 8021 and team_id = current_setting('test.team')::uuid),
   true,
-  'a Repository without is_private takes p_is_private'
+  'a Repository without is_private takes its visibility from the GitHub verification'
 );
 
 select is(

@@ -531,6 +531,8 @@
             "connectSuccess": "{{repository}} linked",
             "connectFailed": "Could not link repository. Try again.",
             "connectDuplicate": "This repository is already linked to another Project in this Team.",
+            "connectNoAccess": "GitHub did not confirm your access to this repository. A public repository needs write access. Reconnect GitHub if you were added recently.",
+            "connectVerifyUnavailable": "Could not check your access to this repository on GitHub. Try again.",
             "defaultBranch": "default: {{branch}}",
             "appChecking": "Checking GitHub App…",
             "appInstalled": "App installed",

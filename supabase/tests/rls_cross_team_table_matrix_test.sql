@@ -34,7 +34,8 @@ set local role postgres;
 -- Tables outside the matrix, each with the reason it cannot leak across Teams.
 create temp table matrix_exempt (tbl name primary key, reason text not null);
 insert into matrix_exempt values
-  ('edge_rate_limit_hits', 'service-role only: no client grants, no Team data');
+  ('edge_rate_limit_hits', 'service-role only: no client grants, no Team data'),
+  ('github_repository_verifications', 'service-role only: no client grants, no Team data (BUG-163)');
 
 -- Tables left out of the INSERT probe only.
 create temp table matrix_insert_exempt (tbl name primary key, reason text not null);

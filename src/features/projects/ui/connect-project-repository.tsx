@@ -8,6 +8,7 @@ import type { GitHubRepo, Project } from "@/features/projects/model/types";
 import { signInWithGitHub, useAuth } from "@/features/auth";
 import { useIsGuest } from "@/features/guest-mode";
 import { GitHubMissingRepoScopeError } from "@/features/projects/api/github-api";
+import { githubRepositoryAccessReason } from "@/features/projects/api/verify-github-repositories-api";
 import { isUniqueViolation } from "@/features/projects/lib/is-unique-violation";
 import { PROJECT_REPOSITORIES_CAP } from "@/features/projects/model/limits";
 import { resolveRepoAddNamePrompt } from "@/features/projects/model/resolve-repo-add-name-prompt";
@@ -118,14 +119,22 @@ export function ConnectProjectRepository({
             }
             onAdded?.();
         } catch (connectError) {
+            const accessReason = githubRepositoryAccessReason(connectError);
             toast.error(
-                isUniqueViolation(connectError)
-                    ? t("settings.repository.connectDuplicate")
-                    : isCapExceeded(connectError, "project_repositories_cap")
-                      ? t("settings.repository.capReached", {
-                            count: PROJECT_REPOSITORIES_CAP,
-                        })
-                      : t("settings.repository.connectFailed")
+                accessReason === "no_access"
+                    ? t("settings.repository.connectNoAccess")
+                    : accessReason === "unavailable"
+                      ? t("settings.repository.connectVerifyUnavailable")
+                      : isUniqueViolation(connectError)
+                        ? t("settings.repository.connectDuplicate")
+                        : isCapExceeded(
+                                connectError,
+                                "project_repositories_cap"
+                            )
+                          ? t("settings.repository.capReached", {
+                                count: PROJECT_REPOSITORIES_CAP,
+                            })
+                          : t("settings.repository.connectFailed")
             );
         }
     };
