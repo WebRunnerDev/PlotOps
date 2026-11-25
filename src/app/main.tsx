@@ -9,6 +9,7 @@ import { initTheme } from "@/app/model/theme";
 import { AuthProvider } from "@/features/auth";
 
 import { AppRouter } from "./app-router";
+import { queryClient } from "./router";
 
 initTheme();
 
@@ -20,7 +21,7 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
     <StrictMode>
-        <AuthProvider>
+        <AuthProvider queryClient={queryClient}>
             <AppRouter />
         </AuthProvider>
     </StrictMode>

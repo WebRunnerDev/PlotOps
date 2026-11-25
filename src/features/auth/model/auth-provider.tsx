@@ -1,4 +1,5 @@
 import type { Session, User } from "@supabase/supabase-js";
+import type { QueryClient } from "@tanstack/react-query";
 
 import {
     type ReactNode,
@@ -36,14 +37,26 @@ import {
     subscribeGitHubAccessToken,
     validateGitHubAccessToken,
 } from "@/features/auth/model/github-token";
+import { createIdentityCacheReset } from "@/features/auth/model/identity-cache-reset";
 import { validatePersistedSession } from "@/features/auth/model/validate-persisted-session";
-import { leaveGuestSession } from "@/features/guest-mode";
+import {
+    isGuest,
+    leaveGuestSession,
+    subscribeGuestSession,
+} from "@/features/guest-mode";
 import { supabase } from "@/shared/api/supabase";
 
 const OAUTH_CALLBACK_BOOT_TIMEOUT_MS = 15_000;
 const AUTH_BOOT_TIMEOUT_MS = 20_000;
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({
+    children,
+    queryClient,
+}: {
+    children: ReactNode;
+    /** Cleared whenever the signed-in user or Guest mode changes. */
+    queryClient: QueryClient;
+}) {
     const [session, setSession] = useState<null | Session>(null);
     const [user, setUser] = useState<null | User>(null);
     const [profile, setProfile] = useState<null | UserProfile>(null);
@@ -60,15 +73,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     const profileLoadGate = useMemo(() => createAsyncGenerationGate(), []);
     const authEventGate = useMemo(() => createAsyncGenerationGate(), []);
+    const identityCacheReset = useMemo(
+        () => createIdentityCacheReset({ isGuest, queryClient }),
+        [queryClient]
+    );
+    // Synchronous with every identity change, before React renders the new
+    // user: queries must not read the previous identity's cache.
+    const syncCacheIdentity = useCallback(() => {
+        identityCacheReset.sync(sessionUserIdReference.current);
+    }, [identityCacheReset]);
 
-    const applySessionUser = useCallback((nextUser: null | User) => {
-        sessionUserIdReference.current = nextUser?.id ?? null;
-        // Real Auth and Guest Session are mutually exclusive (ADR 0018).
-        if (nextUser) {
-            leaveGuestSession();
-        }
-        setUser(nextUser);
-    }, []);
+    useEffect(
+        () => subscribeGuestSession(syncCacheIdentity),
+        [syncCacheIdentity]
+    );
+
+    const applySessionUser = useCallback(
+        (nextUser: null | User) => {
+            sessionUserIdReference.current = nextUser?.id ?? null;
+            // Real Auth and Guest Session are mutually exclusive (ADR 0018).
+            if (nextUser) {
+                leaveGuestSession();
+            }
+            syncCacheIdentity();
+            setUser(nextUser);
+        },
+        [syncCacheIdentity]
+    );
 
     const loadProfile = useCallback(
         async (nextUser: null | User) => {
@@ -354,10 +385,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
     }, [applySessionUser, authEventGate, bootAttempt, loadProfile]);
 
+    // Boot without a session never calls applySessionUser: record the settled
+    // identity so the first sign-in after it still clears the cache.
+    useEffect(() => {
+        if (!isLoading) syncCacheIdentity();
+    }, [isLoading, syncCacheIdentity]);
+
     const signOut = useCallback(async () => {
         const { error } = await signOutApi();
         if (error) throw error;
-    }, []);
+        // SIGNED_OUT reaches applySessionUser asynchronously; clear now so
+        // the caller's navigation never renders the old user's cache.
+        identityCacheReset.sync(null);
+    }, [identityCacheReset]);
 
     const profileNamesComplete = isProfileNamesComplete(profile);
 
