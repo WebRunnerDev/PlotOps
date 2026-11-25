@@ -45,7 +45,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { Alert, AlertDescription } from "@/shared/shadcn/ui/alert";
 import { Button, buttonVariants } from "@/shared/shadcn/ui/button";
-import { Spinner } from "@/shared/shadcn/ui/spinner";
+import { Skeleton } from "@/shared/shadcn/ui/skeleton";
 
 type SprintsPageProperties = {
     boardId: string;
@@ -130,8 +130,9 @@ export function SprintsPage({
             <SprintsPageFrame>
                 {header}
                 {columnsApi.isLoading ? (
-                    <div className="flex h-48 items-center justify-center">
-                        <Spinner className="size-8 text-primary" />
+                    <div aria-busy className="flex flex-col gap-8">
+                        <Skeleton className="h-72 w-full" />
+                        <Skeleton className="h-72 w-full" />
                     </div>
                 ) : (
                     <FlowReportsPanel
@@ -186,8 +187,10 @@ export function SprintsPage({
         <SprintsPageFrame>
             {header}
             {loading ? (
-                <div className="flex h-48 items-center justify-center">
-                    <Spinner className="size-8 text-primary" />
+                <div aria-busy className="flex flex-col gap-8">
+                    <Skeleton className="h-44 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-32 w-full" />
                 </div>
             ) : (
                 <>
@@ -546,11 +549,11 @@ function PageSection({
         <section className="flex min-w-0 flex-col gap-3">
             <h2 className="text-h3">
                 {title}
-                {count === undefined ? null : (
-                    <span className="ml-2 text-meta text-muted-foreground">
+                {count ? (
+                    <span className="ml-2 text-meta text-muted-foreground tabular-nums">
                         {count}
                     </span>
-                )}
+                ) : null}
             </h2>
             {children}
         </section>
@@ -612,14 +615,14 @@ function SprintHistoryTable({
 
     if (rows.length === 0) {
         return (
-            <p className="text-ui text-muted-foreground">
+            <p className="border border-dashed border-border bg-card/40 px-4 py-6 text-ui text-muted-foreground">
                 {t("sprintsPage.historyEmpty")}
             </p>
         );
     }
 
     return (
-        <div className="min-w-0 overflow-x-auto border border-border">
+        <div className="scrollbar-board min-w-0 overflow-x-auto border border-border">
             <table className="w-full min-w-xl border-collapse text-left text-ui">
                 <caption className="caption-bottom border-t border-border px-3 py-2 text-left text-sm text-muted-foreground">
                     {t(

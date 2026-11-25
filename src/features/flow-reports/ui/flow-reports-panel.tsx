@@ -17,6 +17,8 @@ import { useBoardFlowHistory } from "@/features/flow-reports/model/use-board-flo
 import { CumulativeFlowChart } from "@/features/flow-reports/ui/cumulative-flow-chart";
 import { CycleTimeChart } from "@/features/flow-reports/ui/cycle-time-chart";
 import {
+    FlowDataTable,
+    flowTableHeadClassName,
     formatCycleDuration,
     formatShortDate,
 } from "@/features/flow-reports/ui/flow-chart-parts";
@@ -191,64 +193,54 @@ function CycleTimeTable({
     const rows = cycle.points.toSorted((a, b) => b.durationMs - a.durationMs);
 
     return (
-        <details className="text-sm">
-            <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                {t("flow.showTable")}
-            </summary>
-            <div className="mt-2 max-h-72 overflow-auto border border-border">
-                <table className="w-full border-collapse text-left">
-                    <thead className="sticky top-0 border-b border-border bg-muted text-meta text-muted-foreground">
-                        <tr>
-                            <th className="px-3 py-1.5 font-normal" scope="col">
-                                {t("flow.columnTask")}
-                            </th>
-                            <th
-                                className="px-3 py-1.5 text-right font-normal"
-                                scope="col"
+        <FlowDataTable>
+            <thead className={flowTableHeadClassName}>
+                <tr>
+                    <th className="px-3 py-1.5 font-normal" scope="col">
+                        {t("flow.columnTask")}
+                    </th>
+                    <th
+                        className="px-3 py-1.5 text-right font-normal"
+                        scope="col"
+                    >
+                        {t("flow.cycleTitle")}
+                    </th>
+                    <th
+                        className="px-3 py-1.5 text-right font-normal"
+                        scope="col"
+                    >
+                        {t("flow.columnCompleted")}
+                    </th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+                {rows.map((point) => (
+                    <tr
+                        className="transition-colors hover:bg-primary/5"
+                        key={point.task.id}
+                    >
+                        <td className="max-w-0 px-3 py-1.5">
+                            <button
+                                className="block w-full truncate text-left hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                onClick={() => onOpenTask(point.task.id)}
+                                type="button"
                             >
-                                {t("flow.cycleTitle")}
-                            </th>
-                            <th
-                                className="px-3 py-1.5 text-right font-normal"
-                                scope="col"
-                            >
-                                {t("flow.columnCompleted")}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {rows.map((point) => (
-                            <tr key={point.task.id}>
-                                <td className="max-w-0 px-3 py-1.5">
-                                    <button
-                                        className="block w-full truncate text-left hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                                        onClick={() =>
-                                            onOpenTask(point.task.id)
-                                        }
-                                        type="button"
-                                    >
-                                        <span className="text-muted-foreground">
-                                            {point.task.key}
-                                        </span>{" "}
-                                        {point.task.title}
-                                    </button>
-                                </td>
-                                <td className="px-3 py-1.5 text-right whitespace-nowrap tabular-nums">
-                                    {formatCycleDuration(
-                                        point.durationMs,
-                                        locale,
-                                        t
-                                    )}
-                                </td>
-                                <td className="px-3 py-1.5 text-right whitespace-nowrap text-muted-foreground">
-                                    {formatShortDate(point.completedAt, locale)}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </details>
+                                <span className="text-muted-foreground">
+                                    {point.task.key}
+                                </span>{" "}
+                                {point.task.title}
+                            </button>
+                        </td>
+                        <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                            {formatCycleDuration(point.durationMs, locale, t)}
+                        </td>
+                        <td className="px-3 py-1.5 text-right whitespace-nowrap text-muted-foreground">
+                            {formatShortDate(point.completedAt, locale)}
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </FlowDataTable>
     );
 }
 

@@ -145,7 +145,7 @@ export function SprintBurndownChart({
                     aspectRatio="16 / 9"
                     className="min-h-[180px] w-full"
                     data={chartData}
-                    margin={{ bottom: 28, left: 40, right: 12, top: 12 }}
+                    margin={{ bottom: 34, left: 40, right: 12, top: 12 }}
                     status="ready"
                     yDomainTween={false}
                 >

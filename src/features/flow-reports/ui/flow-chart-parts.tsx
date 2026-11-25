@@ -1,37 +1,50 @@
 import type { ReactNode } from "react";
 
+import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
+
 import type { FlowColumn } from "@/features/flow-reports/model/types";
 
 import { resolveDoneColumnIndex } from "@/features/flow-reports/model/build-task-timelines";
+import { cn } from "@/shared/lib/utils";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/shared/shadcn/ui/collapsible";
 
 export const DAY_MS = 86_400_000;
 
-export function ChartTooltipBox({
-    children,
-    left,
-    top,
-    width,
-}: {
-    children: ReactNode;
-    left: number;
-    top: number;
-    width: number;
-}) {
-    // Flip to the left of the pointer past the middle of the chart.
-    const flip = left > width / 2;
+/**
+ * "Show as table" disclosure under a flow chart: the same numbers for
+ * screen readers and exact reading, scrolled inside the project's thin
+ * scrollbar with a sticky header.
+ */
+export function FlowDataTable({ children }: { children: ReactNode }) {
+    const { t } = useTranslation("board");
     return (
-        <div
-            className="pointer-events-none absolute z-10 min-w-36 border border-border bg-popover px-2.5 py-2 text-sm text-popover-foreground shadow-md"
-            style={{
-                left: flip ? undefined : left + 12,
-                right: flip ? width - left + 12 : undefined,
-                top,
-            }}
-        >
-            {children}
-        </div>
+        <Collapsible className="text-sm">
+            <CollapsibleTrigger className="group inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                <ChevronRight
+                    aria-hidden
+                    className="size-3.5 transition-transform duration-200 ease-(--ease-out-expo) group-data-panel-open:rotate-90"
+                />
+                {t("flow.showTable")}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                <div className="scrollbar-board mt-2 max-h-72 overflow-auto overscroll-contain border border-border">
+                    <table className="w-full border-collapse text-left tabular-nums">
+                        {children}
+                    </table>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
     );
 }
+
+/** Table header row cell styling shared by both flow tables. */
+export const flowTableHeadClassName =
+    "sticky top-0 z-10 border-b border-border bg-muted text-meta text-muted-foreground";
 
 /**
  * Band colour per column: Done apart in green, the other stages along one
@@ -80,11 +93,20 @@ export function formatShortDate(
     }).format(value);
 }
 
-export function LegendSwatch({ color }: { color: string }) {
+export function LegendSwatch({
+    color,
+    outlined = false,
+}: {
+    color: string;
+    outlined?: boolean;
+}) {
     return (
         <span
             aria-hidden
-            className="inline-block size-2.5 shrink-0"
+            className={cn(
+                "inline-block size-2.5 shrink-0",
+                outlined && "border border-muted-foreground/60"
+            )}
             style={{ backgroundColor: color }}
         />
     );
