@@ -10,6 +10,7 @@ import { ChartYValueAxis } from "@/components/charts/chart-y-value-axis";
 import { Grid } from "@/components/charts/grid";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { buildSprintKpis } from "@/features/sprints/model/build-sprint-kpis";
+import { cn } from "@/shared/lib/utils";
 
 type SprintInsightsPanelProperties = {
     sprints: readonly Sprint[];
@@ -65,10 +66,10 @@ export function SprintInsightsPanel({
               : "w-full";
 
     return (
-        <section className="overflow-hidden rounded-none border border-border bg-card/50 shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--primary)_35%,transparent)]">
-            <header className="border-b border-border/80 px-3 py-3 sm:px-4">
+        <section className="flex min-w-0 flex-col gap-3">
+            <header className="flex flex-col gap-1">
                 <h2 className="text-h3">{t("sprints.insightsTitle")}</h2>
-                <p className="mt-1 text-ui text-muted-foreground">
+                <p className="max-w-2xl text-sm text-muted-foreground text-pretty">
                     {kpis.emptyReason
                         ? t("sprints.insightsSubtitle", {
                               count: kpis.windowSize,
@@ -79,15 +80,21 @@ export function SprintInsightsPanel({
                           })}
                 </p>
             </header>
-            <div className="space-y-4 px-3 py-4 sm:px-4">
+            <div
+                className={cn(
+                    "min-w-0 space-y-4",
+                    !kpis.emptyReason &&
+                        "rounded-none border border-border bg-card/50 px-3 py-4 shadow-[inset_3px_0_0_0_color-mix(in_oklab,var(--primary)_35%,transparent)] sm:px-4"
+                )}
+            >
                 {kpis.emptyReason ? (
-                    <p className="text-ui text-muted-foreground">
+                    <p className="border border-dashed border-border bg-card/40 px-4 py-6 text-ui text-muted-foreground">
                         {t(`sprints.insightsEmpty.${kpis.emptyReason}`)}
                     </p>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 gap-px overflow-hidden border border-primary/20 bg-primary/20 sm:grid-cols-2">
-                            <div className="min-w-0 space-y-1 bg-background/90 px-3 py-3">
+                        <div className="grid grid-cols-1 gap-px overflow-hidden border border-border bg-border sm:grid-cols-2">
+                            <div className="min-w-0 space-y-1 bg-card px-3 py-3 sm:px-4">
                                 <p className="text-sm text-muted-foreground">
                                     {t("sprints.insightsVelocityLabel")}
                                 </p>
@@ -107,7 +114,7 @@ export function SprintInsightsPanel({
                                     })}
                                 </p>
                             </div>
-                            <div className="min-w-0 space-y-1 bg-background/90 px-3 py-3">
+                            <div className="min-w-0 space-y-1 bg-card px-3 py-3 sm:px-4">
                                 <p className="text-sm text-muted-foreground">
                                     {t("sprints.insightsAccuracyLabel")}
                                 </p>
