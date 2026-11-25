@@ -13,7 +13,7 @@ Production Supabase has no platform backups (Free plan, no PITR), so we keep our
 
 GitHub environment `production` (deployments allowed from `main` and `dev` only):
 
-- variables: `R2_BUCKET`, `R2_ENDPOINT`, `BACKUP_AGE_RECIPIENT` (age public key);
+- variables: `R2_BUCKET`, `R2_ENDPOINT`, `BACKUP_AGE_RECIPIENT` (age public key), `SUPABASE_PROJECT_ID`;
 - secrets: `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (R2 token: Object Read & Write, this bucket only).
 
 The age **private** key is kept offline by the project owner. CI can encrypt but never
