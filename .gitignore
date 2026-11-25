@@ -70,3 +70,6 @@ Thumbs.db
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Local audit reports (contain security details; never commit)
+/docs/audits/
