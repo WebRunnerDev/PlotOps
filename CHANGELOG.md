@@ -4,6 +4,19 @@ Technical log of every release, written by release-please from Conventional
 Commits. The user-facing story lives on the **What's new** page
 (`/whats-new`, notes in `src/features/whats-new/`).
 
+## [1.3.0](https://github.com/WebRunnerDev/PlotOps/compare/v1.2.0...v1.3.0) (2026-11-25)
+
+
+### Features
+
+* **charts:** add Bklit area and scatter charts, follow app language in chart dates (STORY-160) ([7af3a4f](https://github.com/WebRunnerDev/PlotOps/commit/7af3a4f62688857bf4bedcb49f3322669fb8decc))
+* **flow:** Bklit charts for Cumulative flow and Cycle time (STORY-160) ([096367b](https://github.com/WebRunnerDev/PlotOps/commit/096367b845af4c4d67575fc62d06ef23f7e0f451))
+
+
+### Bug Fixes
+
+* **sprints:** consistent sections, skeletons and scrollbars on the Sprints pages (STORY-160) ([b9258ed](https://github.com/WebRunnerDev/PlotOps/commit/b9258ed9dd266d17b5a459fcf99a16974f6119d4))
+
 ## [1.2.0](https://github.com/WebRunnerDev/PlotOps/compare/v1.1.1...v1.2.0) (2026-11-24)
 
 
