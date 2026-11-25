@@ -1,0 +1,19 @@
+{
+    "changes": [
+        {
+            "kind": "improved",
+            "en": "On the Flow tab, click a column in the Cumulative flow legend to hide it: hiding Done shows work in progress up close.",
+            "ru": "На вкладке «Поток» колонку можно скрыть кликом по легенде накопительного потока: без Done работа в процессе видна крупнее."
+        },
+        {
+            "kind": "improved",
+            "en": "The Cycle time chart highlights the nearest task as you move the pointer, and you can step through tasks with ← and → and open one with Enter.",
+            "ru": "График cycle time подсвечивает ближайшую к курсору задачу, а с клавиатуры между задачами можно переходить стрелками ← и → и открывать их по Enter."
+        },
+        {
+            "kind": "improved",
+            "en": "Chart dates on the Sprints pages follow the app language, and data tables scroll with the app's own thin scrollbar.",
+            "ru": "Даты на графиках страниц спринтов теперь на языке интерфейса, а таблицы с данными прокручиваются фирменным тонким скроллбаром."
+        }
+    ]
+}
