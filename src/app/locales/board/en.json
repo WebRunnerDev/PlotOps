@@ -328,7 +328,8 @@
         "change": {
             "fromTo": "{{field}}: {{from}} → {{to}}",
             "archived": "Archived this task",
-            "restored": "Restored this task from archive"
+            "restored": "Restored this task from archive",
+            "description": "Changed the description"
         },
         "fields": {
             "title": "Title",
@@ -336,6 +337,7 @@
             "status": "Status",
             "priority": "Priority",
             "deadline": "Deadline",
+            "description": "Description",
             "epic": "Epic",
             "estimate": "Estimate",
             "assignee": "Assignee",

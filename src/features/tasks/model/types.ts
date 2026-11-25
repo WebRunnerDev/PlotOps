@@ -107,6 +107,7 @@ export type TaskActivityField =
     | "board"
     | "branch"
     | "deadline"
+    | "description"
     | "epic"
     | "estimate"
     | "labels"

@@ -1,9 +1,12 @@
--- RLS audit (#280): catalog invariants + a member of Team B can neither read
--- nor change Team A data (tables and task-media storage).
+-- RLS audit (#280): catalog invariants, plus the Owner of Team B can neither
+-- slip a Task into Project A through the board trigger nor read or write
+-- Team A task media.
+-- SELECT / INSERT / UPDATE / DELETE on every project/task/team table is
+-- covered table by table in rls_cross_team_table_matrix_test.sql (#434).
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(30);
+select plan(12);
 
 select set_config('test.user_a', 'f1111111-1111-1111-1111-111111111111', true);
 select set_config('test.user_b', 'f2222222-2222-2222-2222-222222222222', true);
@@ -141,17 +144,6 @@ select set_config(
   true
 );
 
-insert into public.task_comments (task_id, project_id, author_id, body)
-values (
-  current_setting('test.task_a')::uuid,
-  current_setting('test.project_a')::uuid,
-  current_setting('test.user_a')::uuid,
-  'secret'
-);
-
-insert into public.labels (project_id, name, color)
-values (current_setting('test.project_a')::uuid, 'iso-label', '#ff0000');
-
 insert into storage.objects (bucket_id, name, owner)
 values (
   'task-media',
@@ -175,51 +167,11 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- User B: reads of Team A data return nothing
+-- User B: Team A task media is not listed
 -- ---------------------------------------------------------------------------
 
 select pg_temp.as_user(current_setting('test.user_b')::uuid);
 
-select is_empty(
-  format('select 1 from public.teams where id = %L', current_setting('test.team_a')),
-  'B cannot see Team A'
-);
-select is_empty(
-  format('select 1 from public.team_members where team_id = %L', current_setting('test.team_a')),
-  'B cannot see Team A members'
-);
-select is_empty(
-  format('select 1 from public.projects where id = %L', current_setting('test.project_a')),
-  'B cannot see Project A'
-);
-select is_empty(
-  format('select 1 from public.boards where project_id = %L', current_setting('test.project_a')),
-  'B cannot see Project A boards'
-);
-select is_empty(
-  format('select 1 from public.board_columns where project_id = %L', current_setting('test.project_a')),
-  'B cannot see Project A columns'
-);
-select is_empty(
-  format('select 1 from public.tasks where project_id = %L', current_setting('test.project_a')),
-  'B cannot see Project A tasks'
-);
-select is_empty(
-  format('select 1 from public.task_comments where project_id = %L', current_setting('test.project_a')),
-  'B cannot see Project A comments'
-);
-select is_empty(
-  format('select 1 from public.labels where project_id = %L', current_setting('test.project_a')),
-  'B cannot see Project A labels'
-);
-select is_empty(
-  format('select 1 from public.activity_log where project_id = %L', current_setting('test.project_a')),
-  'B cannot see Project A activity'
-);
-select is_empty(
-  format('select 1 from public.profiles where id = %L', current_setting('test.user_a')),
-  'B cannot see the profile of a user it shares no Team with'
-);
 select is_empty(
   format(
     $$select 1 from storage.objects where bucket_id = 'task-media' and name like %L$$,
@@ -229,21 +181,8 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------------
--- User B: writes against Team A data are rejected or affect nothing
+-- User B: writes into Team A data are rejected
 -- ---------------------------------------------------------------------------
-
-update public.tasks set title = 'pwned'
-where id = current_setting('test.task_a')::uuid;
-update public.projects set name = 'pwned'
-where id = current_setting('test.project_a')::uuid;
-update public.teams set name = 'pwned'
-where id = current_setting('test.team_a')::uuid;
-delete from public.task_comments
-where project_id = current_setting('test.project_a')::uuid;
-delete from public.tasks
-where id = current_setting('test.task_a')::uuid;
-delete from public.projects
-where id = current_setting('test.project_a')::uuid;
 
 select throws_ok(
   format(
@@ -258,29 +197,6 @@ select throws_ok(
   'P0001',
   'tasks.board_id must reference an existing board',
   'B cannot insert a task into Project A'
-);
-
-select throws_ok(
-  format(
-    $$insert into public.team_members (team_id, user_id, role) values (%L, %L, 'admin')$$,
-    current_setting('test.team_a'),
-    current_setting('test.user_b')
-  ),
-  '42501',
-  null,
-  'B cannot add itself to Team A'
-);
-
-select throws_ok(
-  format(
-    $$insert into public.task_comments (task_id, project_id, author_id, body) values (%L, %L, %L, 'x')$$,
-    current_setting('test.task_a'),
-    current_setting('test.project_a'),
-    current_setting('test.user_b')
-  ),
-  '42501',
-  null,
-  'B cannot comment on Task A'
 );
 
 select throws_ok(
@@ -315,52 +231,17 @@ select lives_ok(
 );
 
 -- ---------------------------------------------------------------------------
--- Team A data is intact
--- ---------------------------------------------------------------------------
-
-set local role postgres;
-
-select is(
-  (select title from public.tasks where id = current_setting('test.task_a')::uuid),
-  'Iso task',
-  'Task A untouched by B'
-);
-select is(
-  (select name from public.projects where id = current_setting('test.project_a')::uuid),
-  'RLS Iso A',
-  'Project A untouched by B'
-);
-select is(
-  (select name from public.teams where id = current_setting('test.team_a')::uuid),
-  'RLS Iso A',
-  'Team A untouched by B'
-);
-select is(
-  (select count(*)::integer from public.task_comments where project_id = current_setting('test.project_a')::uuid),
-  1,
-  'Project A comments untouched by B'
-);
-
--- ---------------------------------------------------------------------------
--- Positive control: A still sees its own data
+-- Positive control: A still lists its own media
 -- ---------------------------------------------------------------------------
 
 select pg_temp.as_user(current_setting('test.user_a')::uuid);
 
-select isnt_empty(
-  format('select 1 from public.tasks where id = %L', current_setting('test.task_a')),
-  'A sees Task A'
-);
 select isnt_empty(
   format(
     $$select 1 from storage.objects where bucket_id = 'task-media' and name like %L$$,
     current_setting('test.user_a') || '/%'
   ),
   'A lists Task A media'
-);
-select is_empty(
-  format('select 1 from public.tasks where id = %L', current_setting('test.task_b')),
-  'A cannot see Task B'
 );
 
 select * from finish();
