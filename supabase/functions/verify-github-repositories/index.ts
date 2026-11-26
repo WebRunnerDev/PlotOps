@@ -1,6 +1,6 @@
-// Deno Edge runtime resolves https imports; Node/eslint cannot.
-// eslint-disable-next-line import-x/no-unresolved -- esm.sh URL for Deno deploy
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "@supabase/supabase-js";
+
+import type { Database } from "../_shared/database.types.ts";
 
 import { parseAllowedOrigins } from "../_shared/cors.ts";
 import { createPostgresRateLimiter } from "../_shared/postgres-rate-limit.ts";
@@ -14,7 +14,7 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 // backs the shared rate limit; the caller is resolved from their own JWT.
 const adminClient =
     supabaseUrl && serviceRoleKey
-        ? createClient(supabaseUrl, serviceRoleKey, {
+        ? createClient<Database>(supabaseUrl, serviceRoleKey, {
               auth: { autoRefreshToken: false, persistSession: false },
           })
         : null;
@@ -30,7 +30,7 @@ Deno.serve(
         createServiceClient: () => adminClient,
         createUserClient: (authHeader) => {
             if (!supabaseUrl || !anonKey) return null;
-            return createClient(supabaseUrl, anonKey, {
+            return createClient<Database>(supabaseUrl, anonKey, {
                 auth: { autoRefreshToken: false, persistSession: false },
                 global: { headers: { Authorization: authHeader } },
             });

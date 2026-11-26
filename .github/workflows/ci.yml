@@ -43,6 +43,23 @@ jobs:
             - run: npm run lint
             - run: npm run format:check
 
+    # Edge Functions run on Deno, which no tsconfig covers: `deno check` each
+    # one with its deploy import map against the frozen `deno.lock`.
+    deno-check:
+        name: deno check (Edge Functions)
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version: 22
+            - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+              with:
+                  # Supabase Edge Runtime runs Deno 2 (`deno_version` in config.toml).
+                  deno-version: v2.x
+            - run: npm run typecheck:edge
+
     # Vitest shards split the test files evenly and run in parallel; together they
     # cover exactly what `npm test` does. fail-fast is off so one failing shard does
     # not cancel the others and the PR shows every failure at once.

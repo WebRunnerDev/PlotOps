@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { z } from "zod";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type {
     RateLimiter,
     RateLimitRule,
@@ -56,9 +55,9 @@ export const verifyRequestSchema = z.object({
 export type VerifyGithubRepositoriesDeps = {
     cors: CorsPolicy;
     /** Service-role client that writes verifications; `null` when env is missing. */
-    createServiceClient: () => null | SupabaseClient;
+    createServiceClient: () => DatabaseClient | null;
     /** Caller-scoped client (resolves the user); `null` when env is missing. */
-    createUserClient: (authHeader: string) => null | SupabaseClient;
+    createUserClient: (authHeader: string) => DatabaseClient | null;
     fetchImpl?: typeof fetch;
     rateLimiter: RateLimiter;
 };

@@ -558,6 +558,15 @@ export type Database = {
         Args: { p_label_ids?: string[]; p_patch?: Json; p_task_id: string }
         Returns: undefined
       }
+      verified_github_repository: {
+        Args: { p_github_repo_id: number }
+        Returns: {
+          github_default_branch: string
+          github_full_name: string
+          github_html_url: string
+          is_private: boolean
+        }[]
+      }
     }
     Tables: {
       activity_log: {
@@ -811,6 +820,36 @@ export type Database = {
           bucket?: string
           hit_at?: string
           id?: never
+        }
+      }
+      github_repository_verifications: {
+        Insert: {
+          github_default_branch: string
+          github_full_name: string
+          github_html_url: string
+          github_repo_id: number
+          is_private: boolean
+          user_id: string
+          verified_at?: string
+        }
+        Relationships: []
+        Row: {
+          github_default_branch: string
+          github_full_name: string
+          github_html_url: string
+          github_repo_id: number
+          is_private: boolean
+          user_id: string
+          verified_at: string
+        }
+        Update: {
+          github_default_branch?: string
+          github_full_name?: string
+          github_html_url?: string
+          github_repo_id?: number
+          is_private?: boolean
+          user_id?: string
+          verified_at?: string
         }
       }
       labels: {

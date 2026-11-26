@@ -1,52 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import type { Database } from "../../../src/shared/api/database.types.ts";
 import type { McpEnv as McpEnvironment } from "./env.ts";
 
-/** Subset of the Supabase access-token claims the Worker reads. */
-export type JwtClaims = {
-    [claim: string]: unknown;
-    email?: string;
-    iss?: string;
-    role?: string;
-    sub?: string;
-};
-
-export type UserSupabase = {
-    auth: {
-        getClaims: (jwt: string) => Promise<{
-            data: null | { claims: JwtClaims };
-            error: null | { message: string };
-        }>;
-    };
-    from: (table: string) => {
-        select: (columns: string) => QueryBuilder;
-    };
-    rpc: (fn: string, args?: Record<string, unknown>) => QueryResult;
-};
-
-type QueryBuilder = QueryResult & {
-    eq: (column: string, value: unknown) => QueryBuilder;
-    in: (column: string, values: readonly unknown[]) => QueryBuilder;
-    is: (column: string, value: unknown) => QueryBuilder;
-    limit: (count: number) => QueryBuilder;
-    or: (filter: string) => QueryBuilder;
-    order: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
-    range: (from: number, to: number) => QueryBuilder;
-    single: () => QueryResult;
-};
-
-type QueryResult = PromiseLike<{
-    // PostgREST rows are untyped here so the Worker stays schema-agnostic.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- row shape varies per tool
-    data: any;
-    error: null | { message: string };
-}>;
+/**
+ * The caller's Supabase client, typed by the generated schema, so a renamed
+ * column or RPC argument fails `npm run typecheck` instead of failing in prod.
+ */
+export type UserSupabase = SupabaseClient<Database>;
 
 export function createUserClient(
     environment: McpEnvironment,
     accessToken: string
 ): UserSupabase {
-    return createClient(
+    return createClient<Database>(
         environment.SUPABASE_URL,
         environment.SUPABASE_PUBLISHABLE_KEY,
         {
@@ -61,5 +28,5 @@ export function createUserClient(
                 },
             },
         }
-    ) as unknown as UserSupabase;
+    );
 }

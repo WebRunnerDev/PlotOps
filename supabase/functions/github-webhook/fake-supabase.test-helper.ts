@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import type { DatabaseClient } from "../_shared/database-client.ts";
 
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
@@ -180,5 +180,5 @@ export function createFakeSupabase(tables: Tables) {
         },
     };
 
-    return { client: client as unknown as SupabaseClient, rpcCalls };
+    return { client: client as unknown as DatabaseClient, rpcCalls };
 }

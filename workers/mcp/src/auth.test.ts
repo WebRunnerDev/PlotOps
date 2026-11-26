@@ -11,9 +11,13 @@ const environment = {
 
 const ISSUER = "https://ijcelrdcygzyzhcijkhe.supabase.co/auth/v1";
 
-function clientReturning(
-    result: Awaited<ReturnType<UserSupabase["auth"]["getClaims"]>>
-): UserSupabase {
+/** Only the claims `verifyAccessToken` reads; the real payload has more. */
+type FakeClaimsResult = {
+    data: null | { claims: Record<string, unknown> };
+    error: null | { message: string };
+};
+
+function clientReturning(result: FakeClaimsResult): UserSupabase {
     return {
         auth: { getClaims: async () => result },
     } as unknown as UserSupabase;

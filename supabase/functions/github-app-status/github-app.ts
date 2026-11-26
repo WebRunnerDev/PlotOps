@@ -123,7 +123,7 @@ function base64UrlJson(value: unknown): string {
     return base64Url(new TextEncoder().encode(JSON.stringify(value)));
 }
 
-function concatBytes(...parts: Uint8Array[]): Uint8Array {
+function concatBytes(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
     const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
     const out = new Uint8Array(total);
     let offset = 0;
@@ -151,7 +151,7 @@ function githubAppHeaders(jwt: string): Record<string, string> {
 }
 
 /** PrivateKeyInfo { version 0, rsaEncryption, OCTET STRING <pkcs1> }. */
-function wrapPkcs1InPkcs8(pkcs1: Uint8Array): Uint8Array {
+function wrapPkcs1InPkcs8(pkcs1: Uint8Array): Uint8Array<ArrayBuffer> {
     const version = Uint8Array.of(0x02, 0x01, 0x00);
     const rsaAlgorithm = Uint8Array.of(
         0x30,

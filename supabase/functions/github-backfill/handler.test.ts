@@ -1,7 +1,7 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
+
+import type { DatabaseClient } from "../_shared/database-client.ts";
 
 import {
     createFakeSupabase,
@@ -153,7 +153,7 @@ function userClient(options: { canEdit?: boolean } = {}) {
             data: options.canEdit ?? true,
             error: null,
         })),
-    } as unknown as SupabaseClient;
+    } as unknown as DatabaseClient;
 }
 
 const linkOf = (tables: Tables, taskId: string) =>

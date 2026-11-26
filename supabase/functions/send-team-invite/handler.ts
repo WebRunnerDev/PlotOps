@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { z } from "zod";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type {
     RateLimiter,
     RateLimitRule,
@@ -48,20 +47,10 @@ export const inviteRequestSchema = z.object({
 export type SendTeamInviteDeps = {
     cors: CorsPolicy;
     /** Caller-scoped client (RLS applies); `null` when Supabase env is missing. */
-    createUserClient: (authHeader: string) => null | SupabaseClient;
+    createUserClient: (authHeader: string) => DatabaseClient | null;
     env: (name: string) => string | undefined;
     fetchImpl?: typeof fetch;
     rateLimiter: RateLimiter;
-};
-
-type InviteRow = {
-    email: null | string;
-    kind: string;
-    role: string;
-    status: string;
-    team_id: string;
-    teams: null | { name: string } | { name: string }[];
-    token: string;
 };
 
 export function createSendTeamInviteHandler(
@@ -182,7 +171,7 @@ export function createSendTeamInviteHandler(
             return json({ error: "invite_not_found" }, 404);
         }
 
-        const row = invite as InviteRow;
+        const row = invite;
 
         if (row.kind !== "email") {
             return json({ error: "not_email_invite", skipped: true }, 400);

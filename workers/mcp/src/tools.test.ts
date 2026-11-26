@@ -208,7 +208,8 @@ describe("tools on the multi-repo schema", () => {
         expect(fake.rpcs).toEqual([
             {
                 args: {
-                    p_label_ids: null,
+                    // Omitted, so the SQL default (null) keeps the labels.
+                    p_label_ids: undefined,
                     p_patch: { title: "Renamed" },
                     p_task_id: TASK_ID,
                 },

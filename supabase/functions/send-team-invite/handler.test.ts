@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { describe, expect, it, vi } from "vitest";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type { RateLimiter } from "../_shared/postgres-rate-limit";
 
 import { createPostgresRateLimiter } from "../_shared/postgres-rate-limit";
@@ -29,7 +28,7 @@ function fakeSupabase(invite: null | Record<string, unknown> = null) {
                 }),
             }),
         })),
-    } as unknown as SupabaseClient;
+    } as unknown as DatabaseClient;
 }
 
 function invite(body: unknown, headers: Record<string, string> = {}): Request {

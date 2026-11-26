@@ -1,5 +1,4 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type { CandidateGitLink, CandidateTask } from "./match-task.ts";
 
 export type GitLinkPrRow = {
@@ -12,21 +11,12 @@ export type GitLinkPrRow = {
 /** A `project_repositories` row a delivery resolved to. */
 export type RepositoryReference = { id: string; project_id: string };
 
-type DismissalRow = { kind: string; task_id: string; value: string };
-
-type TaskWithGitLinkRow = Omit<
-    CandidateTask,
-    "dismissed_branches" | "dismissed_prs" | "git_links"
-> & {
-    task_git_links: CandidateGitLink[] | null;
-};
-
 /**
  * Base branch of a Board for one Repository (`board_repositories`); null when
  * the Board is not a Development Board.
  */
 export async function fetchBoardBaseBranch(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     boardId: string,
     repositoryId: string
 ): Promise<null | string> {
@@ -38,7 +28,7 @@ export async function fetchBoardBaseBranch(
         .maybeSingle();
 
     if (error) throw error;
-    return (data?.base_branch as string | undefined) ?? null;
+    return data?.base_branch ?? null;
 }
 
 /**
@@ -46,7 +36,7 @@ export async function fetchBoardBaseBranch(
  * (ADR 0035 «Merge sync waits for all PRs»).
  */
 export async function fetchTaskGitLinks(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     taskId: string
 ): Promise<GitLinkPrRow[]> {
     const { data, error } = await supabase
@@ -55,7 +45,7 @@ export async function fetchTaskGitLinks(
         .eq("task_id", taskId);
 
     if (error) throw error;
-    return (data ?? []) as GitLinkPrRow[];
+    return data ?? [];
 }
 
 /**
@@ -63,7 +53,7 @@ export async function fetchTaskGitLinks(
  * The id survives renames and transfers, unlike `full_name`.
  */
 export async function findRepositories(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     githubRepoId: number
 ): Promise<RepositoryReference[]> {
     const { data, error } = await supabase
@@ -72,7 +62,7 @@ export async function findRepositories(
         .eq("github_repo_id", githubRepoId);
 
     if (error) throw error;
-    return (data ?? []) as RepositoryReference[];
+    return data ?? [];
 }
 
 /**
@@ -81,7 +71,7 @@ export async function findRepositories(
  * the Task in that Repository.
  */
 export async function loadCandidateTasks(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     repository: RepositoryReference
 ): Promise<CandidateTask[]> {
     const { data, error } = await supabase
@@ -103,7 +93,7 @@ export async function loadCandidateTasks(
 
     const branchesByTask = new Map<string, string[]>();
     const prsByTask = new Map<string, number[]>();
-    for (const row of (dismissals ?? []) as DismissalRow[]) {
+    for (const row of dismissals ?? []) {
         if (row.kind === "branch") {
             branchesByTask.set(row.task_id, [
                 ...(branchesByTask.get(row.task_id) ?? []),
@@ -117,25 +107,23 @@ export async function loadCandidateTasks(
         }
     }
 
-    return ((data ?? []) as TaskWithGitLinkRow[]).map(
-        ({ task_git_links: links, ...task }) => ({
-            ...task,
-            dismissed_branches: branchesByTask.get(task.id) ?? [],
-            dismissed_prs: prsByTask.get(task.id) ?? [],
-            git_links: (
-                (links ?? []) as (CandidateGitLink & { created_at?: string })[]
+    return (data ?? []).map(({ task_git_links: links, ...task }) => ({
+        ...task,
+        dismissed_branches: branchesByTask.get(task.id) ?? [],
+        dismissed_prs: prsByTask.get(task.id) ?? [],
+        git_links: (
+            (links ?? []) as (CandidateGitLink & { created_at?: string })[]
+        )
+            .toSorted((a, b) =>
+                (a.created_at ?? "").localeCompare(b.created_at ?? "")
             )
-                .toSorted((a, b) =>
-                    (a.created_at ?? "").localeCompare(b.created_at ?? "")
-                )
-                .map(({ branch_name, id, pr_number, pr_state }) => ({
-                    branch_name,
-                    id,
-                    pr_number,
-                    pr_state,
-                })),
-        })
-    );
+            .map(({ branch_name, id, pr_number, pr_state }) => ({
+                branch_name,
+                id,
+                pr_number,
+                pr_state,
+            })),
+    }));
 }
 
 /**
@@ -144,7 +132,7 @@ export async function loadCandidateTasks(
  * and leaves the first writer's link in place.
  */
 export async function writeBranchLink(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     taskId: string,
     repository: RepositoryReference,
     branchName: string
@@ -166,7 +154,7 @@ export async function writeBranchLink(
  * created (`unique (task_id, repository_id, pr_number)`), never a duplicate.
  */
 export async function writeGitLink(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     taskId: string,
     repository: RepositoryReference,
     update: {

@@ -1,6 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { z } from "zod";
+
+import type { DatabaseClient } from "../_shared/database-client.ts";
 
 import {
     corsHeadersFor,
@@ -69,7 +69,7 @@ export const createEventPayloadSchema = z.object({
 export type WebhookHandlerDeps = {
     cors: CorsPolicy;
     /** `null` when Supabase env is missing. */
-    createServiceClient: () => null | SupabaseClient;
+    createServiceClient: () => DatabaseClient | null;
     webhookSecret: string;
 };
 

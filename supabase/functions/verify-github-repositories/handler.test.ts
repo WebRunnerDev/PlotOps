@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { describe, expect, it, vi } from "vitest";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type { RateLimiter } from "../_shared/postgres-rate-limit";
 
 import { createVerifyGithubRepositoriesHandler } from "./handler";
@@ -88,8 +87,8 @@ function setup(
                 error: null,
             })),
         },
-    } as unknown as SupabaseClient;
-    const serviceClient = { from } as unknown as SupabaseClient;
+    } as unknown as DatabaseClient;
+    const serviceClient = { from } as unknown as DatabaseClient;
 
     const handler = createVerifyGithubRepositoriesHandler({
         cors: {

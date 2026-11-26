@@ -57,10 +57,10 @@ async function logAction(
     }
 ) {
     await supabase.rpc("log_mcp_action", {
-        p_client_id: input.clientId,
-        p_error_code: input.errorCode ?? null,
-        p_resource_id: input.resourceId ?? null,
-        p_resource_type: input.resourceType ?? null,
+        p_client_id: input.clientId ?? undefined,
+        p_error_code: input.errorCode,
+        p_resource_id: input.resourceId ?? undefined,
+        p_resource_type: input.resourceType ?? undefined,
         p_success: input.success,
         p_tool_name: input.toolName,
     });
