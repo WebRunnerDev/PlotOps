@@ -4,6 +4,17 @@ Technical log of every release, written by release-please from Conventional
 Commits. The user-facing story lives on the **What's new** page
 (`/whats-new`, notes in `src/features/whats-new/`).
 
+## [1.3.1](https://github.com/WebRunnerDev/PlotOps/compare/v1.3.0...v1.3.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **auth:** clear the query cache when the signed-in identity changes ([#413](https://github.com/WebRunnerDev/PlotOps/issues/413)) ([766639d](https://github.com/WebRunnerDev/PlotOps/commit/766639ded8defa0dd7bab9194637a8d0491a916d))
+* **auth:** clear the query cache when the signed-in identity changes ([#413](https://github.com/WebRunnerDev/PlotOps/issues/413)) ([da7e757](https://github.com/WebRunnerDev/PlotOps/commit/da7e757de4e45c74c43e1cfd2233b1187440f8c9))
+* link a repository only after GitHub confirms the user's access (BUG-163) ([c2ef3f4](https://github.com/WebRunnerDev/PlotOps/commit/c2ef3f48a4de3aed7fe0181e4c098ff15025bd8d))
+* log description edits in Task Activity (BUG-174) ([2de1879](https://github.com/WebRunnerDev/PlotOps/commit/2de1879ce5a8fe1fef990708a12758427729edc0))
+* **teams:** require a claimed pending invite to confirm (BUG-164) ([41c6414](https://github.com/WebRunnerDev/PlotOps/commit/41c64147aa6cb060aaeac8822dd10c7ee33c05fd))
+
 ## [1.3.0](https://github.com/WebRunnerDev/PlotOps/compare/v1.2.0...v1.3.0) (2026-11-25)
 
 
