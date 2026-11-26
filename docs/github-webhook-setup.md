@@ -131,3 +131,12 @@ Branches and PRs that existed before the App or the Repository was connected nev
 - **Deploy:** `npx supabase functions deploy github-backfill --project-ref ijcelrdcygzyzhcijkhe` (`verify_jwt = true`).
 
 The answer lists each Repository as `synced`, `not_installed` (no installation, so no token) or `unavailable` (GitHub failed).
+
+## 7. Verified Repository links (BUG-163)
+
+The webhook and backfill send a repository's branches and PRs to every Project that links its `github_repo_id`. Linking is therefore gated: a signed-in client can insert a `project_repositories` row (Project Settings or Create Project) only for a repository GitHub has confirmed the caller can reach.
+
+- **Verify:** before linking, the app calls the `verify-github-repositories` Edge Function with the caller's GitHub token and the repository ids and names. The function calls `GET /repos/{full_name}` with that token (never the App's) and requires the same repository id. A private repository passes when GitHub shows it to the caller; a public one needs push, maintain or admin rights, since anyone can read it. Each confirmed repository is written to `github_repository_verifications` (service role only); the token is not stored.
+- **Link:** a trigger on `project_repositories` refuses a client insert (`42501`, hint `github_repository_unverified`) without the caller's own verification from the last 15 minutes, and takes the name, URL, default branch and visibility from it rather than from the client. Clients hold no UPDATE grant, so a linked row cannot be pointed at another repository.
+- **Who:** any signed-in user may verify; linking still needs Admin+ (`can_manage_project_settings`). 60 requests per user per hour.
+- **Deploy:** `npx supabase functions deploy verify-github-repositories --project-ref ijcelrdcygzyzhcijkhe` (`verify_jwt = true`). Deploy it **before** the migration reaches production, or nobody can link a Repository.

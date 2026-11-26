@@ -43,11 +43,18 @@ next merge to `main`; the sync PR needs a look (usually a conflict in `dev`).
 
 ## One-time setup
 
-- Secret `RELEASE_PLEASE_TOKEN`: a fine-grained PAT for this repository with
-  **Contents**, **Pull requests** and **Issues** set to read/write. The
+- Secret `RELEASE_PLEASE_TOKEN` in the GitHub environment `release`
+  (deployment branches: `main` only), not at repository level: a fine-grained
+  PAT for this repository with **Contents**, **Pull requests** and **Issues**
+  set to read/write. It can reach `main` through the release PR, so the
+  workflow never runs dependency code while the token is reachable
+  (`npm ci --ignore-scripts`, no persisted checkout credentials). The
   default `GITHUB_TOKEN` is not enough: GitHub does not start CI for PRs it
   opens, so the release PR could never pass its checks and merge.
-- Settings → General → Pull Requests → **Allow auto-merge**.
+- Settings → General → Pull Requests → **Allow auto-merge**, and required
+  status checks on `main` (repository ruleset). Without them auto-merge can't
+  be enabled; the workflow then leaves a warning and a person merges the
+  release PR.
 
 ## Files
 

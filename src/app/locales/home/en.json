@@ -65,6 +65,8 @@
     "noReposFound": "No repositories found",
     "createProjectFailed": "Could not connect repository. Try again.",
     "createProjectDuplicate": "This repository is already connected, or the project slug is taken.",
+    "createProjectNoAccess": "GitHub did not confirm your access to {{repositories}}. A public repository needs write access. Reconnect GitHub if you were added recently.",
+    "createProjectVerifyUnavailable": "Could not check your access to the repositories on GitHub. Try again.",
     "createProjectReposSelected": "Selected {{count}} of {{cap}} repositories",
     "createProjectReposSelectedUncapped_one": "Selected {{count}} repository",
     "createProjectReposSelectedUncapped_other": "Selected {{count}} repositories",

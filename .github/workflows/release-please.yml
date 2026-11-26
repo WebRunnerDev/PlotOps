@@ -17,10 +17,15 @@
 #   5. sync-dev opens a main → dev PR with auto-merge, so dev gets the version
 #      bump and the stamped notes back and does not drift behind main.
 #
-# Needs the RELEASE_PLEASE_TOKEN secret (fine-grained PAT on this repo:
-# Contents, Pull requests, Issues — read/write). With the default
-# GITHUB_TOKEN, CI would never start on the release PR, so it could never
-# auto-merge. Also needs Settings → General → "Allow auto-merge".
+# Needs the RELEASE_PLEASE_TOKEN secret in the `release` environment (main
+# only; fine-grained PAT on this repo: Contents, Pull requests, Issues —
+# read/write). With the default GITHUB_TOKEN, CI would never start on the
+# release PR, so it could never auto-merge. Also needs Settings → General →
+# "Allow auto-merge" and required checks on main (repository ruleset).
+#
+# The PAT can reach main through the release PR, so no dependency code runs in
+# a job that holds it: stamp-notes (npm ci, prettier) has no secrets and only
+# returns a patch; publish-release-pr validates and pushes that patch.
 # Process: docs/RELEASING.md.
 name: release-please
 
@@ -41,9 +46,11 @@ jobs:
         name: release-please
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        environment: release
         outputs:
             release_created: ${{ steps.release.outputs.release_created }}
             tag_name: ${{ steps.release.outputs.tag_name }}
+            pr: ${{ steps.release.outputs.pr }}
         steps:
             - name: Require the release token
               env:
@@ -63,54 +70,96 @@ jobs:
                   # The repo's default branch is dev; releases happen on main.
                   target-branch: main
 
-            # Steps below run only when the release PR was opened or refreshed.
-            # release-please rebuilds its branch from main each time, so the
-            # notes are re-stamped from scratch on every refresh.
-            - if: steps.release.outputs.pr
-              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    # Runs code from node_modules (the stamp script's runtime, prettier), so it
+    # gets no secrets and no environment, and hands back only a patch. A
+    # compromised package here can at worst produce a bad patch, which the
+    # publish job rejects unless it touches exactly the expected data files.
+    # release-please rebuilds its branch from main each time, so the notes are
+    # re-stamped from scratch on every refresh.
+    stamp-notes:
+        name: stamp What's new
+        needs: release-please
+        if: needs.release-please.outputs.pr
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        outputs:
+            patch: ${{ steps.stamp.outputs.patch }}
+            version: ${{ steps.stamp.outputs.version }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
-                  ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
-                  token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+                  persist-credentials: false
 
-            - if: steps.release.outputs.pr
-              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+            - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
               with:
                   # 24 runs scripts/*.ts directly (type stripping).
                   node-version: 24
                   cache: npm
 
-            - if: steps.release.outputs.pr
-              run: npm ci
+            - run: npm ci --ignore-scripts
 
             - name: Move upcoming What's new notes into the release
-              if: steps.release.outputs.pr
+              id: stamp
               run: |
                   version="$(node -p "require('./package.json').version")"
                   node scripts/whats-new-stamp.ts "$version" "$(date -u +%F)"
                   npx prettier --write src/features/whats-new/data/releases.json
-                  if [ -n "$(git status --porcelain)" ]; then
-                    git config user.name "github-actions[bot]"
-                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-                    git add -A src/features/whats-new
-                    git commit -m "chore: add v$version to What's new"
-                    git push
+                  git add -A src/features/whats-new
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  echo "patch=$(git diff --cached --binary | base64 -w0)" >> "$GITHUB_OUTPUT"
+
+    # Holds the write token, so it runs no dependency code: fresh checkout,
+    # git, jq and gh only.
+    publish-release-pr:
+        name: publish release PR
+        needs: [release-please, stamp-notes]
+        if: needs.release-please.outputs.pr
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        environment: release
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  ref: ${{ fromJSON(needs.release-please.outputs.pr).headBranchName }}
+                  persist-credentials: false
+
+            - name: Push the stamped notes to the release PR
+              if: needs.stamp-notes.outputs.patch != ''
+              env:
+                  RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+                  PATCH: ${{ needs.stamp-notes.outputs.patch }}
+                  VERSION: ${{ needs.stamp-notes.outputs.version }}
+                  PR_JSON: ${{ needs.release-please.outputs.pr }}
+              run: |
+                  base64 -d <<<"$PATCH" > "$RUNNER_TEMP/stamp.patch"
+                  git apply --index "$RUNNER_TEMP/stamp.patch"
+                  # Accept only: releases.json modified, upcoming notes deleted.
+                  unexpected="$(git status --porcelain=v1 | grep -vE '^(M  src/features/whats-new/data/releases\.json|D  src/features/whats-new/upcoming/[A-Za-z0-9._-]+\.json)$' || true)"
+                  if [ -n "$unexpected" ]; then
+                    echo "::error::Stamp patch touches unexpected paths:"
+                    echo "$unexpected"
+                    exit 1
                   fi
+                  jq empty src/features/whats-new/data/releases.json
+                  [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Bad version: $VERSION"; exit 1; }
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git commit -m "chore: add v$VERSION to What's new"
+                  branch="$(jq -r '.headBranchName' <<<"$PR_JSON")"
+                  git push "https://x-access-token:${RELEASE_PLEASE_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$branch"
 
             - name: Merge the release PR when checks pass
-              if: steps.release.outputs.pr
               env:
                   GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-                  # Raw JSON, parsed in the script: step `env` is evaluated
-                  # before `if`, so fromJSON() here fails on the release-tag
-                  # run, where `pr` is empty and the step would be skipped.
-                  PR_JSON: ${{ steps.release.outputs.pr }}
+                  PR_JSON: ${{ needs.release-please.outputs.pr }}
               run: |
                   PR_NUMBER="$(jq -r '.number' <<<"$PR_JSON")"
-                  # Auto-merge waits for main's required checks. With none
-                  # configured, GitHub refuses auto-merge ("clean status"), and
-                  # there is nothing to wait for, so merge right away.
-                  if ! gh pr merge "$PR_NUMBER" --auto --merge; then
-                    gh pr merge "$PR_NUMBER" --merge
+                  # Auto-merge waits for main's required checks (ruleset). No
+                  # immediate-merge fallback: if auto-merge can't be enabled, a
+                  # person merges the release PR.
+                  if ! gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --merge; then
+                    echo "::warning::Auto-merge could not be enabled for release PR #$PR_NUMBER; merge it by hand once checks pass."
                   fi
 
     # After a release, bring main back into dev (version bump, CHANGELOG,
@@ -122,6 +171,7 @@ jobs:
         if: needs.release-please.outputs.release_created == 'true'
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        environment: release
         steps:
             - name: Open or reuse the main → dev PR and merge it when green
               env:

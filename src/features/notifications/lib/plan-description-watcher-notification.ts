@@ -11,7 +11,8 @@ export type PlanDescriptionWatcherInput = {
  * Call-site seam: Description body change → Watcher `description_change`.
  * New Mentionees on the same save are excluded so they get `mention` only.
  * Actor exclusion happens in `create_task_notifications`.
- * Description is not an Activity field — compare previous/next bodies.
+ * Compares previous/next bodies, like the bodiless Activity `description`
+ * change, so the two always agree.
  */
 export function planDescriptionWatcherNotification(
     input: PlanDescriptionWatcherInput

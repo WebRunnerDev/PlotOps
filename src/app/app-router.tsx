@@ -15,6 +15,7 @@ import { clearGitQueryCache } from "@/features/git-integration/model/clear-git-q
 import { safeGetItem } from "@/shared/lib/safe-storage";
 import { Toaster } from "@/shared/shadcn/ui/sonner";
 import { BootScreen, useBootVisible } from "@/widgets/boot-screen";
+import { PreviewBanner } from "@/widgets/preview-banner";
 
 import { queryClient, router } from "./router";
 
@@ -135,6 +136,8 @@ export function AppRouter() {
                     />
                 ) : null}
             </AnimatePresence>
+
+            <PreviewBanner />
         </>
     );
 }

@@ -138,16 +138,23 @@ Schema changes reach remote via **GitHub Actions** after the migration file is m
 
 ### One-time GitHub setup
 
-Repository → **Settings → Secrets and variables → Actions** — add secrets:
+Prod secrets live in the GitHub **environment `production`** (Settings → Environments), never at
+repository level: a repository secret can be read by a workflow pushed to any branch, while an
+environment secret only reaches jobs that run from the environment's allowed branches
+(`main`, plus `dev` for the scheduled backup, see [BACKUPS.md](BACKUPS.md)). The `migrate` job
+additionally runs only on `main`.
 
-| Secret                             | Where to get it                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN`            | [Supabase Account → Access Tokens](https://supabase.com/dashboard/account/tokens) |
-| `SUPABASE_DB_PASSWORD`             | Project Settings → Database → Database password                                   |
-| `SUPABASE_PROJECT_ID`              | `ijcelrdcygzyzhcijkhe` (PlotOps ref)                                              |
-| `CLOUDFLARE_PAGES_DEPLOY_HOOK_URL` | Cloudflare project → Settings → Builds → Deploy Hooks (production branch)         |
+| Name                               | Kind     | Where to get it                                                                                                         |
+| ---------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN`            | secret   | [Supabase Account → Access Tokens](https://supabase.com/dashboard/account/tokens); scope it to this project if possible |
+| `SUPABASE_DB_PASSWORD`             | secret   | Project Settings → Database → Database password                                                                         |
+| `SUPABASE_PROJECT_ID`              | variable | `ijcelrdcygzyzhcijkhe` (PlotOps ref)                                                                                    |
+| `CLOUDFLARE_PAGES_DEPLOY_HOOK_URL` | secret   | Cloudflare project → Settings → Builds → Deploy Hooks (production branch)                                               |
 
-Branch protection on `main`: require status check **`supabase-migrate-check`** before merge.
+The R2 backup variables and secrets are listed in [BACKUPS.md](BACKUPS.md). `RELEASE_PLEASE_TOKEN`
+lives in a separate environment `release` (`main` only), see [RELEASING.md](RELEASING.md).
+
+Rulesets on `main` and `dev` require the status check **`supabase-migrate-check`** before merge.
 
 ### One-time Cloudflare setup (migrations before frontend)
 

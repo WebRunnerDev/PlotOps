@@ -1,0 +1,9 @@
+{
+    "changes": [
+        {
+            "kind": "fixed",
+            "en": "A Task's Activity now shows when someone changes its description, matching the notification Watchers get.",
+            "ru": "В активности задачи теперь видно, что кто-то изменил описание, как и в уведомлении для наблюдателей."
+        }
+    ]
+}
