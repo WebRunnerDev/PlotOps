@@ -31,6 +31,29 @@ values (current_setting('test.team')::uuid, current_setting('test.owner')::uuid,
 insert into public.team_members (team_id, user_id, role)
 values (current_setting('test.team')::uuid, current_setting('test.contributor')::uuid, 'contributor');
 
+-- GitHub has confirmed each linking user's access to the repositories below
+-- (BUG-163): a client may link only a verified repository.
+insert into public.github_repository_verifications (
+  user_id, github_repo_id, github_full_name, github_html_url, github_default_branch, is_private
+)
+select v.user_id, v.repo_id, v.full_name, 'https://github.com/' || v.full_name, v.branch, v.is_private
+from (values
+  (current_setting('test.owner')::uuid, 5001::bigint, 'o/web', 'main', false),
+  (current_setting('test.owner')::uuid, 5002::bigint, 'o/api', 'develop', false),
+  (current_setting('test.owner')::uuid, 5101::bigint, 'o/fresh', 'main', false),
+  (current_setting('test.owner')::uuid, 5003::bigint, 'o/r3', 'main', false),
+  (current_setting('test.owner')::uuid, 5004::bigint, 'o/r4', 'main', false),
+  (current_setting('test.owner')::uuid, 5005::bigint, 'o/r5', 'main', false),
+  (current_setting('test.owner')::uuid, 5006::bigint, 'o/r6', 'main', false),
+  (current_setting('test.owner')::uuid, 6001::bigint, 'o/many1', 'main', false),
+  (current_setting('test.owner')::uuid, 6002::bigint, 'o/many2', 'main', false),
+  (current_setting('test.owner')::uuid, 6003::bigint, 'o/many3', 'main', false),
+  (current_setting('test.owner')::uuid, 6004::bigint, 'o/many4', 'main', false),
+  (current_setting('test.owner')::uuid, 6005::bigint, 'o/many5', 'main', false),
+  (current_setting('test.owner')::uuid, 6006::bigint, 'o/many6', 'main', false),
+  (current_setting('test.contributor')::uuid, 5100::bigint, 'o/x', 'main', false)
+) as v (user_id, repo_id, full_name, branch, is_private);
+
 create or replace function pg_temp.as_user(uid uuid)
 returns void
 language plpgsql

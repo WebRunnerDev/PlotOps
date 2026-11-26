@@ -38,6 +38,18 @@ values
   (current_setting('test.team')::uuid, current_setting('test.admin')::uuid, 'admin'),
   (current_setting('test.team')::uuid, current_setting('test.manager')::uuid, 'manager');
 
+-- GitHub has confirmed each linking user's access to the repositories below
+-- (BUG-163): a client may link only a verified repository.
+insert into public.github_repository_verifications (
+  user_id, github_repo_id, github_full_name, github_html_url, github_default_branch, is_private
+)
+select v.user_id, v.repo_id, v.full_name, 'https://github.com/' || v.full_name, v.branch, v.is_private
+from (values
+  (current_setting('test.owner')::uuid, 7001::bigint, 'o/web', 'main', false),
+  (current_setting('test.admin')::uuid, 7002::bigint, 'o/api', 'develop', false),
+  (current_setting('test.manager')::uuid, 7003::bigint, 'o/x', 'main', false)
+) as v (user_id, repo_id, full_name, branch, is_private);
+
 create or replace function pg_temp.as_user(uid uuid)
 returns void
 language plpgsql

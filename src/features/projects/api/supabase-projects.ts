@@ -11,15 +11,17 @@ import {
     removeProjectRepository,
     renameProject,
 } from "@/features/projects/api/projects-api";
+import { GitHubRepositoryAccessError } from "@/features/projects/api/verify-github-repositories-api";
 
 /**
  * Preserve Postgrest `code` (e.g. 23505 unique_violation) and `hint` (cap
- * triggers, P0001) for UI mapping.
+ * triggers, P0001) for UI mapping. A GitHub access error passes through as is.
  */
 function toProviderError(
     error: null | { code?: string; hint?: string; message: string }
 ): Error | null {
     if (!error) return null;
+    if (error instanceof GitHubRepositoryAccessError) return error;
     const wrapped = new Error(error.message) as Error & {
         code?: string;
         hint?: string;
