@@ -40,12 +40,22 @@ https://ijcelrdcygzyzhcijkhe.supabase.co/functions/v1/github-webhook
 
 ## 3. Create the GitHub App
 
-1. GitHub → **Settings → Developer settings → GitHub Apps → New GitHub App**
-2. **Webhook URL:** the URL above
-3. **Webhook secret:** same as `GITHUB_WEBHOOK_SECRET`
-4. **Permissions:** Repository → **Pull requests** (Read-only) and **Contents** (Read-only). Contents is needed for the `Create` event and for the backfill to list branches.
-5. **Subscribe to events:** `Pull request`, `Create`, `Push`
-6. Create the App, then **Install App** on the team repos PlotOps projects use
+1. GitHub → organization **Settings → Developer settings → GitHub Apps → New GitHub App** (under the organization, so the App does not depend on one person's account). The name must be unique on GitHub and becomes the slug in `github.com/apps/<slug>`.
+2. **Homepage URL:** `https://plotops.webrunner.dev`. Callback and Setup URL stay empty: the App does not sign users in.
+3. **Webhook URL:** the URL above
+4. **Webhook secret:** same as `GITHUB_WEBHOOK_SECRET`. Supabase shows only a digest of a secret, so to change it generate a new value and set it in both places; delete any repository-level webhook on the same URL, which would keep failing with `401`.
+5. **Permissions:** Repository → **Pull requests** (Read-only) and **Contents** (Read-only). Contents is needed for the `Create` event and for the backfill to list branches.
+6. **Subscribe to events:** `Pull request`, `Create`, `Push`
+7. **Where can this GitHub App be installed:** **Any account**. PlotOps users link repositories from their own accounts and organizations; with _Only on this account_ nobody else can install it.
+8. Create the App, then install it (below).
+
+### Installing the App on a Repository
+
+The App sees only the repositories it is installed on. An installation belongs to the GitHub account that owns the repository (a user or an organization), not to a PlotOps user, so one installation serves every Project that links that repository.
+
+- **Who:** an owner of that GitHub account. An organization member who is not an owner gets **Request** instead of **Install**; the App arrives once an owner approves.
+- **How:** App page → **Install App**, or the **Install GitHub App** link that Project Settings → Repositories shows next to _App not installed_ (`github.com/apps/<slug>/installations/new`). Pick the account, choose **Only select repositories**, tick the repositories linked in PlotOps, **Install**.
+- **Check:** Project Settings → Repositories shows _App installed_. Repositories in several accounts need one installation per account.
 
 ## 4. Smoke test
 

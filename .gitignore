@@ -73,3 +73,6 @@ Thumbs.db
 
 # Local audit reports (contain security details; never commit)
 /docs/audits/
+
+# GitHub App private keys (docs/github-webhook-setup.md §5)
+*.pem

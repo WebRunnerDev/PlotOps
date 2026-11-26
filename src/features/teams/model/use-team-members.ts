@@ -97,8 +97,16 @@ export function useCreateTeamInvite(
                         typeof sendData === "object" &&
                         "error" in sendData &&
                         Boolean((sendData as { error?: unknown }).error));
+                const sendSkipped =
+                    !sendFailed &&
+                    sendData !== null &&
+                    typeof sendData === "object" &&
+                    (sendData as { skipped?: unknown }).skipped === true;
                 if (sendFailed) {
                     toast.message(t("members.inviteEmailDelayed"));
+                } else if (sendSkipped) {
+                    // Email delivery is off (ADR 0038): the copied link is the invite.
+                    toast.message(t("members.inviteEmailOff"));
                 }
             }
             return data;
