@@ -1,9 +1,0 @@
-{
-    "changes": [
-        {
-            "kind": "fixed",
-            "en": "Linking a repository to a Project now checks your access on GitHub: a private repository must be visible to you, and a public one needs write access.",
-            "ru": "При привязке репозитория к проекту PlotOps теперь проверяет ваш доступ на GitHub: приватный репозиторий должен быть вам доступен, а для публичного нужны права на запись."
-        }
-    ]
-}

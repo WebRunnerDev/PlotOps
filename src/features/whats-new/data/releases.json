@@ -1,5 +1,22 @@
 [
     {
+        "id": "v1-3-1",
+        "version": "1.3.1",
+        "date": "2026-11-26",
+        "changes": [
+            {
+                "kind": "fixed",
+                "en": "A Task's Activity now shows when someone changes its description, matching the notification Watchers get.",
+                "ru": "В активности задачи теперь видно, что кто-то изменил описание, как и в уведомлении для наблюдателей."
+            },
+            {
+                "kind": "fixed",
+                "en": "Linking a repository to a Project now checks your access on GitHub: a private repository must be visible to you, and a public one needs write access.",
+                "ru": "При привязке репозитория к проекту PlotOps теперь проверяет ваш доступ на GitHub: приватный репозиторий должен быть вам доступен, а для публичного нужны права на запись."
+            }
+        ]
+    },
+    {
         "id": "v1-3-0",
         "version": "1.3.0",
         "date": "2026-11-25",
