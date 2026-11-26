@@ -23,6 +23,7 @@
         "db:local-status": "supabase status",
         "db:advisors": "supabase db advisors --local --type security",
         "db:advisors:remote": "supabase db advisors --linked --type security",
+        "secrets:check:edge": "supabase secrets list -o json | node scripts/edge-secrets.ts",
         "db:types": "supabase gen types typescript --local > src/shared/api/database.types.ts",
         "shadcn:add": "node scripts/shadcn-add.mjs",
         "shadcn:exports": "node scripts/generate-shadcn-index.mjs",

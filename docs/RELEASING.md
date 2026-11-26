@@ -38,6 +38,13 @@ That is the whole manual part.
    gets the new version and stamped notes back and does not drift behind
    `main`.
 
+The same push to `main` runs the `edge-secrets` job (`supabase-migrate`
+workflow): it compares the Edge Function secrets the code needs with
+`supabase secrets list` and fails on a gap. It does not stop the deploy, but a
+red job means a feature is off in prod: set the named secrets
+(`docs/SUPABASE.md#edge-function-secrets`). Edge Functions themselves are still
+deployed by hand.
+
 If a bot PR's checks fail, it stays open: the release PR is retried on the
 next merge to `main`; the sync PR needs a look (usually a conflict in `dev`).
 

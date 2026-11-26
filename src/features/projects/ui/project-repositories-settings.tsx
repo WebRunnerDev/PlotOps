@@ -167,9 +167,12 @@ export function ProjectRepositoriesSettings({
 
 function AppStatusBadge({
     installUrl,
+    owner,
     status,
 }: {
     installUrl: null | string;
+    /** GitHub account that owns the Repository; only its owners can install. */
+    owner: string;
     status: "loading" | GithubAppInstallationStatus;
 }) {
     const { t } = useTranslation("board");
@@ -224,6 +227,11 @@ function AppStatusBadge({
                     <ExternalLink aria-hidden className="size-3" />
                 </a>
             ) : undefined}
+            {status === "not_installed" && installUrl ? (
+                <span className="text-meta text-muted-foreground">
+                    {t("settings.repository.appInstallWho", { owner })}
+                </span>
+            ) : undefined}
         </span>
     );
 }
@@ -265,6 +273,7 @@ function RepositoryRow({
                     {isGuest ? undefined : (
                         <AppStatusBadge
                             installUrl={installUrl}
+                            owner={repository.github_full_name.split("/")[0]!}
                             status={status}
                         />
                     )}

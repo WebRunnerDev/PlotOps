@@ -569,7 +569,7 @@ export function TaskGithubPanel({
             },
             onSuccess: (result) => {
                 if (!result.configured) {
-                    toast.error(t("github.refreshLinksFailed"));
+                    toast.error(t("github.refreshLinksNotConfigured"));
                 } else if (result.linked > 0) {
                     toast.success(
                         t("github.refreshLinksLinked", { count: result.linked })

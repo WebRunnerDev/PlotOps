@@ -302,7 +302,25 @@ Functions live under `supabase/functions/`. They are **not** deployed by the mig
 | `github-webhook`    | Off (`verify_jwt = false`) | GitHub App PR merge → Task column sync — see [`docs/github-webhook-setup.md`](github-webhook-setup.md)                                                              |
 | `send-team-invite`  | On (`verify_jwt = true`)   | Best-effort Resend email for **email-kind** Team invites (copy-link remains primary)                                                                                |
 
+### Edge Function secrets
+
+[`scripts/edge-secrets.ts`](../scripts/edge-secrets.ts) lists every secret the functions read, grouped by feature, as **required** or **optional** (optional: all set or all unset, never half). A test fails when a function reads a name the list does not have. Production today:
+
+| Feature               | Secrets                                                                                   | Need                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Supabase system       | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`                          | Required (set by Supabase)                                            |
+| GitHub webhook        | `GITHUB_WEBHOOK_SECRET`                                                                   | Required                                                              |
+| GitHub App API        | `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` — [setup](github-webhook-setup.md#5-app-status) | Required                                                              |
+| GitHub App slug       | `GITHUB_APP_SLUG`                                                                         | Optional                                                              |
+| Turnstile             | `TURNSTILE_SECRET_KEY`                                                                    | Required                                                              |
+| Extra CORS origins    | `CORS_ALLOWED_ORIGINS`                                                                    | Optional                                                              |
+| Invite email (Resend) | `RESEND_API_KEY`, `INVITE_FROM_EMAIL`, `INVITE_APP_ORIGIN`                                | Optional, **off** ([ADR 0038](adr/0038-invite-email-delivery-off.md)) |
+
+Check: `npm run secrets:check:edge` (linked project; reads names only). The `edge-secrets` job in `supabase-migrate` runs the same check on every push to `main` and fails on a gap; it does not hold back the deploy. When a function starts reading a new secret, add it to the list and set it in prod before the release.
+
 ### `send-team-invite` (Resend)
+
+**Off in production** ([ADR 0038](adr/0038-invite-email-delivery-off.md)): no Resend secrets are set, the function answers `{ skipped: true }` and the inviter is told to share the copied link. The setup below turns it on.
 
 After `createTeamInvite` (email kind), the client invokes this function with the caller’s JWT. Open invites (`kind = open`) never call it.
 

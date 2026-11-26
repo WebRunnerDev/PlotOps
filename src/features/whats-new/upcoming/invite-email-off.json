@@ -1,0 +1,19 @@
+{
+    "changes": [
+        {
+            "kind": "fixed",
+            "en": "Creating an email invite now says that PlotOps doesn't send the email, so you know to share the copied link yourself.",
+            "ru": "При создании приглашения по email теперь видно, что PlotOps не отправляет письмо, — поделитесь скопированной ссылкой сами."
+        },
+        {
+            "kind": "fixed",
+            "en": "Refreshing Git links in a Task explains when the GitHub App isn't connected instead of asking to try again later.",
+            "ru": "Обновление Git-ссылок в задаче теперь сообщает, что GitHub App не подключён, а не просит попробовать позже."
+        },
+        {
+            "kind": "improved",
+            "en": "Project Settings → Repositories now says who can install the GitHub App on a Repository.",
+            "ru": "В настройках проекта → Репозитории теперь написано, кто может установить GitHub App на репозиторий."
+        }
+    ]
+}

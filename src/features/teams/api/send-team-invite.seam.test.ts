@@ -46,6 +46,14 @@ describe("useCreateTeamInvite email send", () => {
         );
     });
 
+    it("says email is off when send-team-invite skipped the send (ADR 0038)", () => {
+        const source = readHook();
+        expect(source).toMatch(/\.skipped === true/);
+        expect(source).toMatch(
+            /sendSkipped\)\s*\{[\s\S]*?members\.inviteEmailOff/
+        );
+    });
+
     it("takes a Turnstile token right before the email send", () => {
         const source = readHook();
         expect(source).toMatch(
