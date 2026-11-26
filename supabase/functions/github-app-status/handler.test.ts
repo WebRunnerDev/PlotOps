@@ -1,8 +1,7 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type { RateLimiter } from "../_shared/postgres-rate-limit";
 
 import { createGithubAppStatusHandler } from "./handler";
@@ -30,7 +29,7 @@ function fakeSupabase(rows = ROWS) {
                 })),
             },
             from: vi.fn(() => ({ select: () => ({ eq }) })),
-        } as unknown as SupabaseClient,
+        } as unknown as DatabaseClient,
         eq,
     };
 }

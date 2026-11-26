@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import type { DatabaseClient } from "../_shared/database-client.ts";
 
 import {
     planClosePullRequestSync,
@@ -152,7 +152,7 @@ type Move = {
  * the Task moves when its remaining PRs are all merged.
  */
 export async function syncClosedPullRequest(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     payload: PullRequestPayload,
     log: Log,
     options: SyncOptions = {}
@@ -171,7 +171,7 @@ export async function syncClosedPullRequest(
  * (`bind`).
  */
 export async function syncCreatedBranch(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     payload: CreateBranchPayload,
     log: Log,
     options: SyncOptions = {}
@@ -269,7 +269,7 @@ export async function syncCreatedBranch(
  * this Repository; the Task moves once every PR in its merge set is merged.
  */
 export async function syncMergedPullRequest(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     payload: PullRequestPayload,
     log: Log,
     options: SyncOptions = {}
@@ -294,7 +294,7 @@ export async function syncMergedPullRequest(
  * head branch, PR title or PR body.
  */
 export async function syncOpenedPullRequest(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     payload: PullRequestPayload,
     log: Log,
     options: SyncOptions = {}
@@ -308,7 +308,7 @@ export async function syncOpenedPullRequest(
 
 /** Reopened — `pr_state` back to `open` only (no column move). */
 export async function syncReopenedPullRequest(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     payload: PullRequestPayload,
     log: Log,
     options: SyncOptions = {}
@@ -355,7 +355,7 @@ async function applyEach(
  * activity row carries both; notifications follow a real move only.
  */
 async function applyPrEvent(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     input: {
         binding: GitLinkBinding;
         headRef: string;
@@ -493,7 +493,7 @@ async function applyPrEvent(
  * already synced and would never re-run it — so do not fail the webhook here.
  */
 async function fanOutStatusChange(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     input: { log: Log; move: Move; projectId: string; task: CandidateTask }
 ): Promise<void> {
     const { log, move, projectId, task } = input;
@@ -559,7 +559,7 @@ async function fanOutStatusChange(
  * Repository per Team; try each until one holds a matching Task.
  */
 async function forEachRepository(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     event: RepositoryEvent,
     log: Log,
     options: SyncOptions,
@@ -600,7 +600,7 @@ async function forEachRepository(
  * column; `null` when complete but staying put; `undefined` while pending.
  */
 async function planMove(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     task: CandidateTask,
     links: GitLinkPrState[],
     log: Log
@@ -699,7 +699,7 @@ function readPullRequestEvent(
 }
 
 async function syncMergedInRepository(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     event: PullRequestEvent,
     repository: RepositoryReference,
     log: Log
@@ -754,7 +754,7 @@ async function syncMergedInRepository(
 }
 
 async function syncPrState(
-    supabase: SupabaseClient,
+    supabase: DatabaseClient,
     payload: PullRequestPayload,
     log: Log,
     sync: PrStateSync,

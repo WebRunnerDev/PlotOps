@@ -1,6 +1,6 @@
-// Deno Edge runtime resolves https imports; Node/eslint cannot.
-// eslint-disable-next-line import-x/no-unresolved -- esm.sh URL for Deno deploy
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "@supabase/supabase-js";
+
+import type { Database } from "../_shared/database.types.ts";
 
 import { parseAllowedOrigins } from "../_shared/cors.ts";
 import { createWebhookHandler } from "./handler.ts";
@@ -19,7 +19,7 @@ Deno.serve(
             const supabaseUrl = Deno.env.get("SUPABASE_URL");
             const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
             if (!supabaseUrl || !serviceRoleKey) return null;
-            return createClient(supabaseUrl, serviceRoleKey, {
+            return createClient<Database>(supabaseUrl, serviceRoleKey, {
                 auth: { autoRefreshToken: false, persistSession: false },
             });
         },

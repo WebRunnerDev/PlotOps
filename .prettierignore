@@ -4,6 +4,8 @@ coverage
 .tanstack
 src/app/routeTree.gen.ts
 src/shared/api/database.types.ts
+supabase/functions/_shared/database.types.ts
+supabase/functions/deno.lock
 src/shared/shadcn/ui
 supabase/.temp
 supabase/.branches

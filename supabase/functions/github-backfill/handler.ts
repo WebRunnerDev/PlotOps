@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { z } from "zod";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type {
     RateLimiter,
     RateLimitRule,
@@ -65,20 +64,13 @@ export type BackfillResponse = {
 export type GithubBackfillDeps = {
     cors: CorsPolicy;
     /** Service-role client for the writes; `null` when env is missing. */
-    createServiceClient: () => null | SupabaseClient;
+    createServiceClient: () => DatabaseClient | null;
     /** Caller-scoped client (RLS applies); `null` when env is missing. */
-    createUserClient: (authHeader: string) => null | SupabaseClient;
+    createUserClient: (authHeader: string) => DatabaseClient | null;
     env: (name: string) => string | undefined;
     fetchImpl?: typeof fetch;
     nowSec?: () => number;
     rateLimiter: RateLimiter;
-};
-
-type RepositoryRow = {
-    github_full_name: string;
-    github_repo_id: number;
-    id: string;
-    project_id: string;
 };
 
 /**
@@ -171,7 +163,7 @@ export function createGithubBackfillHandler(
             );
             return json({ error: "repositories_load_failed" }, 500);
         }
-        const rows = (data ?? []) as RepositoryRow[];
+        const rows = data ?? [];
 
         const appId = deps.env("GITHUB_APP_ID")?.trim();
         const privateKey = deps.env("GITHUB_APP_PRIVATE_KEY")?.trim();

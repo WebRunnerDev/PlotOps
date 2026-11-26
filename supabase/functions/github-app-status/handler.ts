@@ -1,7 +1,6 @@
-import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-
 import { z } from "zod";
 
+import type { DatabaseClient } from "../_shared/database-client.ts";
 import type {
     RateLimiter,
     RateLimitRule,
@@ -39,7 +38,7 @@ export const appStatusRequestSchema = z.object({ projectId: z.uuid() });
 export type GithubAppStatusDeps = {
     cors: CorsPolicy;
     /** Caller-scoped client (RLS applies); `null` when Supabase env is missing. */
-    createUserClient: (authHeader: string) => null | SupabaseClient;
+    createUserClient: (authHeader: string) => DatabaseClient | null;
     env: (name: string) => string | undefined;
     fetchImpl?: typeof fetch;
     nowSec?: () => number;
@@ -52,8 +51,6 @@ export type GithubAppStatusResponse = {
     installUrl: null | string;
     repositories: { id: string; status: InstallationStatus }[];
 };
-
-type RepositoryRow = { github_full_name: string; id: string };
 
 /**
  * `POST { projectId }` → GitHub App installation status of each Repository in
@@ -132,7 +129,7 @@ export function createGithubAppStatusHandler(
             );
             return json({ error: "repositories_load_failed" }, 500);
         }
-        const rows = (data ?? []) as RepositoryRow[];
+        const rows = data ?? [];
 
         const appId = deps.env("GITHUB_APP_ID")?.trim();
         const privateKey = deps.env("GITHUB_APP_PRIVATE_KEY")?.trim();

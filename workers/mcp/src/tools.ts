@@ -1,3 +1,4 @@
+import type { Json } from "../../../src/shared/api/database.types.ts";
 import type { McpUser } from "./auth.ts";
 import type { UserSupabase } from "./supabase.ts";
 
@@ -29,24 +30,10 @@ const EPIC_COLORS = new Set([
     "yellow",
 ]);
 
-const TASK_LIST_SELECT = [
-    "id",
-    "task_key",
-    "title",
-    "status",
-    "priority",
-    "task_type",
-    "board_id",
-    "project_id",
-    "assignee_id",
-    "author_id",
-    "parent_id",
-    "epic_id",
-    "deadline",
-    "estimate",
-    "archived_at",
-    "created_at",
-].join(", ");
+// One literal string, not a joined array: supabase-js parses a literal select
+// against the schema, so a renamed column fails typecheck.
+const TASK_LIST_SELECT =
+    "id, task_key, title, status, priority, task_type, board_id, project_id, assignee_id, author_id, parent_id, epic_id, deadline, estimate, archived_at, created_at";
 
 /**
  * Git data lives in `task_git_links` (any number of branches / PRs per Task
@@ -107,15 +94,6 @@ export type ToolResult = {
     text: string;
 };
 
-type TaskLinkRow = {
-    id: string;
-    kind: string;
-    source: null | TaskRef;
-    source_task_id: string;
-    target: null | TaskRef;
-    target_task_id: string;
-};
-
 type TaskRef = {
     archived_at: null | string;
     id: string;
@@ -174,7 +152,7 @@ async function createTask(
         );
     }
 
-    const options: Record<string, unknown> = {};
+    const options: Record<string, Json> = {};
     const projectId = optionalUuid(arguments_.project_id, "project_id");
     if (projectId) options.project_id = projectId;
 
@@ -349,10 +327,7 @@ async function getTask(
         .eq("task_id", task.id);
     if (labelsError) throw new Error(labelsError.message);
 
-    const relations = await loadRelations(
-        task as unknown as TaskRelationSource,
-        context
-    );
+    const relations = await loadRelations(task, context);
 
     return {
         resourceId: task.id,
@@ -512,7 +487,7 @@ async function loadRelations(task: TaskRelationSource, context: ToolContext) {
             .eq("id", id)
             .limit(1);
         if (error) throw new Error(error.message);
-        return ((data ?? [])[0] as TaskRef | undefined) ?? null;
+        return data?.[0] ?? null;
     };
 
     const childrenBy = async (column: "epic_id" | "parent_id") => {
@@ -523,7 +498,7 @@ async function loadRelations(task: TaskRelationSource, context: ToolContext) {
             .order("created_at", { ascending: true })
             .limit(MAX_LIST_LIMIT);
         if (error) throw new Error(error.message);
-        return (data ?? []) as unknown as TaskRef[];
+        return data ?? [];
     };
 
     const isEpic = task.task_type === "epic";
@@ -540,7 +515,7 @@ async function loadRelations(task: TaskRelationSource, context: ToolContext) {
             .or(`source_task_id.eq.${task.id},target_task_id.eq.${task.id}`)
             .then(({ data, error }) => {
                 if (error) throw new Error(error.message);
-                return (data ?? []) as unknown as TaskLinkRow[];
+                return data ?? [];
             }),
     ]);
 
@@ -591,12 +566,14 @@ function requireUuid(value: unknown, field: string): string {
     return uuid;
 }
 
+/** Unwraps an RPC response: throws its error, otherwise returns its data. */
 async function rpcResult<T>(
-    promise: PromiseLike<{ data: T; error: null | { message: string } }>
+    promise: PromiseLike<{ data: null | T; error: null | { message: string } }>
 ): Promise<T> {
     const { data, error } = await promise;
     if (error) throw new Error(error.message);
-    return data;
+    // supabase-js returns `data: null` only alongside an error.
+    return data as T;
 }
 
 async function whoami(
@@ -641,7 +618,7 @@ async function addComment(
         throw new ToolInputError("body is too long");
     }
     assertRichText(body, "body");
-    const parentId = optionalUuid(arguments_.parent_id, "parent_id") ?? null;
+    const parentId = optionalUuid(arguments_.parent_id, "parent_id");
     const id = await rpcResult(
         context.supabase.rpc("add_task_comment", {
             p_body: body,
@@ -747,7 +724,7 @@ async function listEpics(
     const rows = await rpcResult(
         context.supabase.rpc("project_epics", { p_project_id: projectId })
     );
-    const epics = ((rows ?? []) as { archived_at: null | string }[]).filter(
+    const epics = (rows ?? []).filter(
         (epic) => includeArchived || epic.archived_at === null
     );
     return { text: jsonText({ epics }) };
@@ -766,12 +743,7 @@ async function listMembers(
         .eq("id", projectId)
         .limit(1);
     if (projectError) throw new Error(projectError.message);
-    const project = (projects ?? [])[0] as
-        | undefined
-        | {
-              team: null | { owner_id: string } | { owner_id: string }[];
-              team_id: string;
-          };
+    const project = projects?.[0];
     if (!project) throw new Error("Project not found");
     const ownerId = firstOf(project.team)?.owner_id ?? null;
 
@@ -800,7 +772,7 @@ async function listMembers(
             .eq("id", ownerId)
             .limit(1);
         if (ownerError) throw new Error(ownerError.message);
-        const owner = (owners ?? [])[0] as MemberProfile | undefined;
+        const owner = owners?.[0];
         byId.set(ownerId, {
             is_owner: true,
             name: displayName(owner),
@@ -810,11 +782,7 @@ async function listMembers(
         });
     }
 
-    for (const row of (memberRows ?? []) as unknown as {
-        profile: MemberProfile | MemberProfile[] | null;
-        role: string;
-        user_id: string;
-    }[]) {
+    for (const row of memberRows ?? []) {
         if (byId.has(row.user_id)) continue;
         const profile = firstOf(row.profile);
         byId.set(row.user_id, {
@@ -887,7 +855,7 @@ async function updateTask(
     context: ToolContext
 ): Promise<ToolResult> {
     const taskId = requireUuid(arguments_.task_id, "task_id");
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, Json> = {};
 
     for (const field of UPDATE_TASK_FIELDS) {
         if (!(field in arguments_)) continue;
@@ -1000,7 +968,7 @@ async function updateTask(
 
     if (hasDetails) {
         const { error } = await context.supabase.rpc("update_task_details", {
-            p_label_ids: nextLabels ?? null,
+            p_label_ids: nextLabels ?? undefined,
             p_patch: patch,
             p_task_id: taskId,
         });
